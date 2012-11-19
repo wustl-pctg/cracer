@@ -193,6 +193,9 @@ static void init_variables(CilkContext *context)
 {
      /* initialize all shared_ro variables declared above */
      INIT_PARAMETER1(active_size, USE_PARAMETER1(options->nproc));
+
+     // Need to do anything here for dsratio? ###
+
      INIT_PARAMETER1(infofile, (FILE *)0); /*pointer to the stats. output file)*/
      INIT_PARAMETER1(pthread_stacksize, USE_PARAMETER1(options->pthread_stacksize));
      INIT_PARAMETER1(assertion_failed_msg,
