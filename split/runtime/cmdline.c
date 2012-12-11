@@ -222,8 +222,8 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
       ++i;
       CHECK(i < *argc, "argument missing");
       options->dsratio = atof(argv[i]);
-      CHECK(options->dsratio < 0, "invalid worker ratio for ds operations");
-      CHECK(options->dsratio > 1, "invalid worker ratio for ds operations");
+      CHECK(options->dsratio <= 1.0, "invalid worker ratio for ds operations");
+      CHECK(options->dsratio >= 0.0, "invalid worker ratio for ds operations");
       break;
     case STACK:
       ++i;
