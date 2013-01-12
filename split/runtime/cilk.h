@@ -44,6 +44,9 @@
 FILE_IDENTITY(cilk_h_ident,
 	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk.h $ $LastChangedBy: bradley $ $Rev: 2672 $ $Date: 2005-12-20 13:30:02 -0500 (Tue, 20 Dec 2005) $");
 
+/* worker types */
+enum WorkerType { NORMAL_WORKER, DS_WORKER };
+
 /***********************************************************\
  * Cilk configuration options (profiling, etc)
 \***********************************************************/
@@ -250,6 +253,9 @@ typedef struct {
    */
   unsigned int num_threads;
   unsigned int num_steals;
+
+  unsigned int num_real_workers;
+  unsigned int num_ds_workers;
 #if CILK_STATS
   unsigned int max_stack_depth;
 #endif
@@ -301,6 +307,8 @@ typedef struct {
 #ifdef CILK_USE_PERFCTR
   volatile const struct vperfctr_state *perfctr_kstate;
 #endif
+  // For some reason this has to be at the end, or else something goes wrong
+  enum WorkerType type;
 } CilkWorkerState;
 
 typedef struct{

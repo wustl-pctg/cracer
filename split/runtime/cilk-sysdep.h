@@ -150,7 +150,7 @@ FILE_IDENTITY(ident_cilk_sysdep_h,
 #define CILKC_PTHREAD_CC "gcc"
 
 /* To be passed to the C compiler when compiling code for pthreads */
-#define CILKC_PTHREAD_CFLAGS "-pthread"
+#define CILKC_PTHREAD_CFLAGS "-D_THREAD_SAFE "
 
 /* The pthread libraries */
 #define CILKC_PTHREAD_LIBS ""
@@ -174,7 +174,7 @@ FILE_IDENTITY(ident_cilk_sysdep_h,
 #define HAVE_UNISTD_H 1
 
 /* Define if you have the memalign function.  */
-#define HAVE_MEMALIGN 1
+/* #undef HAVE_MEMALIGN */
 
 /***********************************************************\
  * OS-specific macros
