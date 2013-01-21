@@ -3,6 +3,7 @@
 	* runtime/sched.c (create_deques): Create the data structure deques.
 	(free_deques): Free the data structure deques.
 	(init_deques): Initialize the data structure deques.
+	(Cilk_scheduler): Added the logic for deciding whether to steal from the data-structure-level of deques, based on dsprob. It doesn't do anything for now.
 
 	* runtime/cilk.h (struct): Changed CilkReadOnlyParams to contain the ReadyDeque for the DS deques.
 
