@@ -254,8 +254,10 @@ typedef struct {
   unsigned int max_stack_depth;
 #endif
   
-  /* dynamically-allocated array of deques, one per processor */
+  /* dynamically-allocated arrays of deques, two per processor:
+     one for real worker, one for DS work */
   struct ReadyDeque *deques;
+  struct ReadyDeque *ds_deques;
 
   Cilk_time start_time;
 

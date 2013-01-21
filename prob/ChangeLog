@@ -1,3 +1,22 @@
+2013-01-21  rob  <rob@rob-macbook>
+
+	* runtime/sched.c (create_deques): Create the data structure deques.
+	(free_deques): Free the data structure deques.
+	(init_deques): Initialize the data structure deques.
+
+	* runtime/cilk.h (struct): Changed CilkReadOnlyParams to contain the ReadyDeque for the DS deques.
+
+2013-01-17  Robert Utterback  <robert.utterback@wustl.edu>
+
+	* /runtime/cmdline.c: Parse the command-line arguments for "dsprob",
+	which specifies the probability that a thread will steal from
+	the DS level of dequeues.
+
+	* /runtime/cilk-internal.h,
+	/runtime/cilk.c,
+	/runtime/cilk.h: Initialize "dsprob" as a global parameter for
+	the runtime system. Default set to 0.5.
+
 2002-05-15  matley  <matley@glauke>
 
 	* /cvsroot/cilk/cilk/support/Makefile.am,

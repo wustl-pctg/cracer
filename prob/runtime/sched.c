@@ -147,10 +147,17 @@ static void create_deques(CilkContext *const context)
 				      sizeof(ReadyDeque)));
      CILK_CHECK(USE_PARAMETER1(deques),
 	        (context, NULL, "failed to allocate deques\n"));
+     INIT_PARAMETER1(ds_deques,
+	            Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
+				      sizeof(ReadyDeque)));
+     CILK_CHECK(USE_PARAMETER1(ds_deques),
+	        (context, NULL, "failed to allocate deques\n"));
 
      for(i = 0; i < USE_PARAMETER1(active_size); ++i) {
 	  Cilk_mutex_init(context, &USE_PARAMETER1(deques)[i].mutex);
+	  Cilk_mutex_init(context, &USE_PARAMETER1(ds_deques)[i].mutex);
      }
+
 }
 
 static void init_deques(CilkContext *const context)
@@ -161,6 +168,10 @@ static void init_deques(CilkContext *const context)
 	  USE_PARAMETER1(deques)[i].top = (Closure *) NULL;
 	  USE_PARAMETER1(deques)[i].bottom = (Closure *) NULL;
 	  WHEN_CILK_DEBUG(USE_PARAMETER1(deques)[i].mutex_owner = NOBODY);
+
+	  USE_PARAMETER1(ds_deques)[i].top = (Closure *) NULL;
+	  USE_PARAMETER1(ds_deques)[i].bottom = (Closure *) NULL;
+	  WHEN_CILK_DEBUG(USE_PARAMETER1(ds_deques)[i].mutex_owner = NOBODY);
      }
 }
 
@@ -170,9 +181,11 @@ static void free_deques(CilkContext *const context)
 
      for(i = 0; i < USE_PARAMETER1(active_size); ++i) {
 	  Cilk_mutex_destroy(context, &USE_PARAMETER1(deques)[i].mutex);
+	  Cilk_mutex_destroy(context, &USE_PARAMETER1(ds_deques)[i].mutex);
      }
 
      Cilk_free(USE_PARAMETER1(deques));
+     Cilk_free(USE_PARAMETER1(ds_deques));
 }
 
 /* assert that pn's deque be locked by ourselves */
