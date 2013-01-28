@@ -184,15 +184,6 @@ extern void *Cilk_calloc(size_t nelem, size_t elsize);
 extern void *Cilk_realloc(void *s, size_t size);
 extern void *Cilk_valloc(size_t size);
 
-//BSS45 - 1/8
-typedef struct BatchOp{
-
-  void *operation;
-  void *data;
-  int   status;
-
-} BatchOp;   
-
 /* global scheduler state */
 struct CilkGlobalState_s{
   Cilk_time critical_path;
@@ -216,10 +207,9 @@ struct CilkGlobalState_s{
   Cilk_mutex dprintf_lock;
   Cilk_mutex die_lock;
   CilkProcInfo invoke_main_sig[3];
+  CilkProcInfo invoke_main_ds_sig[3];
   /*Children (threads) handling */
   pthread_t *tid;
-  //BSS45 - 1/8
-  BatchOp *work_array;
   CilkChildParams *thrd_params_array;
   volatile  int   nothing_to_do;
   volatile  int   workers_are_done;

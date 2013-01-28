@@ -47,6 +47,9 @@ FILE_IDENTITY(cilk_h_ident,
 /* worker types */
 enum WorkerType { NORMAL_WORKER, DS_WORKER };
 
+//BSS45
+enum DSSTatus { DS_WAITING, DS_DONE };
+
 /***********************************************************\
  * Cilk configuration options (profiling, etc)
 \***********************************************************/
@@ -273,6 +276,24 @@ typedef struct {
 
 } CilkReadOnlyParams;
 
+//BSS45 - 1/8
+typedef struct BatchOp{
+
+  void      (*operation)(void*, size_t); 
+  void      *data;
+  size_t    size;
+  int       status;
+
+} BatchOp;   
+  
+//BSS45 - 1/8
+//BatchOp *ds_work_array;
+typedef struct {
+  int       nprocs;
+  BatchOp*  array;  
+} work_array;
+
+work_array ds_work_array;
 
 typedef struct CilkGlobalState_s CilkGlobalState; /* Forward declaration*/
 

@@ -64,6 +64,7 @@ invoke_main_catch_inlet(CilkWorkerState *const _cilk_ws,
      CILK2C_ABORT_STANDALONE();
 }
 
+
 static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 			     struct invoke_main_frame *_cilk_frame)
 {
@@ -131,6 +132,46 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 
 
 
+
+//BSS45 - Closure constructor to modify
+Closure *Cilk_create_initial_ds_thread(
+     CilkContext *const context,
+     void (*import_main_ds)(CilkWorkerState *const ws, void *args),
+     void *args,
+     int return_size)
+{
+     Closure *t;
+     struct invoke_main_frame *f;
+
+     /* create a frame for invoke_cilk_main */
+     t = Cilk_Closure_create_malloc(context, NULL);
+     t->parent = (Closure *) NULL;
+     t->join_counter = 0;
+     t->status = CLOSURE_READY;
+
+     f = Cilk_malloc(sizeof(struct invoke_main_frame));
+     f->header.entry = 0;
+     f->header.sig = USE_SHARED1(invoke_main_ds_sig);
+     WHEN_CILK_DEBUG(f->header.magic = CILK_STACKFRAME_MAGIC);
+
+     f->args = args;
+     f->return_size = return_size;
+     f->import_main = import_main_ds;
+
+     t->frame = &f->header;
+
+     /* Initialize the signature of Cilk_main */
+     memset( USE_SHARED1(invoke_main_ds_sig), 0 , 3*sizeof(CilkProcInfo) );
+     USE_SHARED1(invoke_main_ds_sig)[0].size = sizeof(int);
+     USE_SHARED1(invoke_main_ds_sig)[0].index 
+         = sizeof(struct invoke_main_frame);
+     USE_SHARED1(invoke_main_ds_sig)[0].inlet = NULL;
+     USE_SHARED1(invoke_main_ds_sig)[1].size = sizeof(int);
+     USE_SHARED1(invoke_main_ds_sig)[1].inlet = NULL;
+     USE_SHARED1(invoke_main_ds_sig)[1].argsize = return_size;
+
+     return t;
+}
 
 Closure *Cilk_create_initial_thread(
      CilkContext *const context,
