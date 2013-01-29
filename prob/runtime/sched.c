@@ -30,7 +30,7 @@
 #include <string.h>
 
 FILE_IDENTITY(ident,
-			  "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/sched.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
+	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/sched.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
 #define CLOSURE_HEAD(cl)  (cl->cache->head)
 #define CLOSURE_EXCEPTION(cl)  (cl->cache->exception)
@@ -58,27 +58,27 @@ FILE_IDENTITY(ident,
  * Basic operations on closures
  *************************************************************/
 static inline  void Closure_checkmagic(CilkWorkerState *const UNUSED(ws),
-									   Closure *UNUSED(t))
+				       Closure *UNUSED(t))
 {
 	CILK_ASSERT(ws, t->magic == CILK_CLOSURE_MAGIC);
 }
 
 /* assert that t be locked by ourselves */
 static inline void Closure_assert_ownership(CilkWorkerState *const UNUSED(ws),
-											Closure *UNUSED(t))
+					    Closure *UNUSED(t))
 {
 	CILK_ASSERT(ws, t->mutex_owner == ws->self);
 }
 
 /* assert that t be not locked */
 static inline void Closure_assert_alienation(CilkWorkerState *const UNUSED(ws),
-											 Closure *UNUSED(t))
+					     Closure *UNUSED(t))
 {
 	CILK_ASSERT(ws, t->mutex_owner != ws->self);
 }
 
 static inline void Closure_clean(CilkContext *const context,
-								 Closure *t)
+				 Closure *t)
 {
 	Cilk_mutex_destroy(context, &t->mutex);
 }
@@ -94,7 +94,7 @@ static inline void Closure_destroy(CilkWorkerState *const ws, Closure *t)
 }
 
 static inline void Closure_destroy_malloc(CilkWorkerState *const ws,
-										  Closure *t)
+					  Closure *t)
 {
 	Closure_checkmagic(ws, t);
 
@@ -143,20 +143,22 @@ static void create_deques(CilkContext *const context)
 	int i;
 
 	INIT_PARAMETER1(deques,
-					Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
-									  sizeof(ReadyDeque)));
+			Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
+					  sizeof(ReadyDeque)));
 	CILK_CHECK(USE_PARAMETER1(deques),
-			   (context, NULL, "failed to allocate deques\n"));
+		   (context, NULL, "failed to allocate deques\n"));
 	INIT_PARAMETER1(ds_deques,
-					Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
-									  sizeof(ReadyDeque)));
+			Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
+					  sizeof(ReadyDeque)));
 	CILK_CHECK(USE_PARAMETER1(ds_deques),
-			   (context, NULL, "failed to allocate deques\n"));
+		   (context, NULL, "failed to allocate deques\n"));
 
 	for(i = 0; i < USE_PARAMETER1(active_size); ++i) {
 		Cilk_mutex_init(context, &USE_PARAMETER1(deques)[i].mutex);
 		Cilk_mutex_init(context, &USE_PARAMETER1(ds_deques)[i].mutex);
 	}
+	
+	Cilk_mutex_init(context, &USE_SHARED1(batch_lock));
 
 }
 
@@ -186,27 +188,28 @@ static void free_deques(CilkContext *const context)
 
 	Cilk_free(USE_PARAMETER1(deques));
 	Cilk_free(USE_PARAMETER1(ds_deques));
+	Cilk_mutex_destroy(context, &USE_SHARED1(batch_lock));
 }
 
 /* assert that pn's deque be locked by ourselves */
 static inline void deque_assert_ownership(CilkWorkerState *const UNUSED(ws), 
-										  int UNUSED(pn), 
-										  ReadyDeque *const deque_pool)
+					  int UNUSED(pn), 
+					  ReadyDeque *const deque_pool)
 {
 	CILK_ASSERT(ws, deque_pool[pn].mutex_owner == ws->self);
 	//	CILK_ASSERT(ws, USE_PARAMETER(deques)[pn].mutex_owner == ws->self);
 }
 
 static inline void deque_assert_alienation(CilkWorkerState *const UNUSED(ws), 
-										   int UNUSED(pn), 
-										   ReadyDeque *const deque_pool)
+					   int UNUSED(pn), 
+					   ReadyDeque *const deque_pool)
 {
 	CILK_ASSERT(ws, deque_pool[pn].mutex_owner != ws->self);
 	//	CILK_ASSERT(ws, USE_PARAMETER(deques)[pn].mutex_owner != ws->self);
 }
 
 static inline void deque_lock(CilkWorkerState *const ws, int pn, 
-							  ReadyDeque *const deque_pool)
+			      ReadyDeque *const deque_pool)
 {
 	Cilk_mutex_wait(ws->context, ws, &deque_pool[pn].mutex);
 	WHEN_CILK_DEBUG(deque_pool[pn].mutex_owner = ws->self);
@@ -215,7 +218,7 @@ static inline void deque_lock(CilkWorkerState *const ws, int pn,
 }
 
 static inline void deque_unlock(CilkWorkerState *const ws, int pn,
-								ReadyDeque *const deque_pool)
+				ReadyDeque *const deque_pool)
 {
 	WHEN_CILK_DEBUG(deque_pool[pn].mutex_owner = NOBODY);
 	Cilk_mutex_signal(ws->context, &deque_pool[pn].mutex);
@@ -228,7 +231,7 @@ static inline void deque_unlock(CilkWorkerState *const ws, int pn,
  * of deques
  */
 static Closure *deque_xtract_top(CilkWorkerState *const ws, int pn,
-								 ReadyDeque *const deque_pool)
+				 ReadyDeque *const deque_pool)
 {
 	Closure *cl;
 
@@ -254,7 +257,7 @@ static Closure *deque_xtract_top(CilkWorkerState *const ws, int pn,
 }
 
 static Closure *deque_peek_top(CilkWorkerState *const ws, int pn,
-							   ReadyDeque *const deque_pool)
+			       ReadyDeque *const deque_pool)
 {
 	Closure *cl;
 
@@ -271,7 +274,7 @@ static Closure *deque_peek_top(CilkWorkerState *const ws, int pn,
 }
 
 static Closure *deque_xtract_bottom(CilkWorkerState *const ws, int pn,
-									ReadyDeque *const deque_pool)
+				    ReadyDeque *const deque_pool)
 {
 	Closure *cl;
 
@@ -298,7 +301,7 @@ static Closure *deque_xtract_bottom(CilkWorkerState *const ws, int pn,
 }
 
 static Closure *deque_peek_bottom(CilkWorkerState *const ws, int pn,
-								  ReadyDeque *const deque_pool)
+				  ReadyDeque *const deque_pool)
 {
 	Closure *cl;
 
@@ -319,7 +322,7 @@ static Closure *deque_peek_bottom(CilkWorkerState *const ws, int pn,
  * Unused code, which may be useful if you hack the scheduler.
  */
 static void deque_add_top(CilkWorkerState *const ws, Closure *cl, int pn,
-						  ReadyDeque *const deque_pool)
+			  ReadyDeque *const deque_pool)
 {
 	deque_assert_ownership(ws, pn, deque_pool);
 	CILK_ASSERT(ws, cl->owner_ready_deque == NOBODY);
@@ -339,7 +342,7 @@ static void deque_add_top(CilkWorkerState *const ws, Closure *cl, int pn,
 #endif
 
 static void deque_add_bottom(CilkWorkerState *const ws, Closure *cl, int pn,
-							 ReadyDeque *const deque_pool)
+			     ReadyDeque *const deque_pool)
 {
 	deque_assert_ownership(ws, pn, deque_pool);
 	CILK_ASSERT(ws, cl->owner_ready_deque == NOBODY);
@@ -358,8 +361,8 @@ static void deque_add_bottom(CilkWorkerState *const ws, Closure *cl, int pn,
 }
 
 static inline void deque_assert_is_bottom(CilkWorkerState *const ws, 
-										  Closure *UNUSED(t),
-										  ReadyDeque *const deque_pool)
+					  Closure *UNUSED(t),
+					  ReadyDeque *const deque_pool)
 {
 	deque_assert_ownership(ws, ws->self, deque_pool);
 	CILK_ASSERT(ws, t == deque_peek_bottom(ws, ws->self, deque_pool));
@@ -367,7 +370,7 @@ static inline void deque_assert_is_bottom(CilkWorkerState *const ws,
 
 /* Remove closure for frame f from bottom of pn's deque and free them */
 void Cilk_remove_and_free_closure_and_frame(CilkWorkerState *const ws,
-											CilkStackFrame *f, int pn)
+					    CilkStackFrame *f, int pn)
 {
 	Closure *t;
 
@@ -387,7 +390,7 @@ void Cilk_remove_and_free_closure_and_frame(CilkWorkerState *const ws,
  * of procedure whose signature is p.
  */
 static inline CilkProcInfo *get_CilkProcInfo(CilkWorkerState *const UNUSED(ws),
-											 CilkProcInfo * p, int entry)
+					     CilkProcInfo * p, int entry)
 {
 	CILK_ASSERT(ws, entry > 0);
 	return p + entry;
@@ -470,8 +473,8 @@ Closure *Cilk_Closure_create_malloc(CilkContext *const context, CilkWorkerState 
  */
 static struct InletClosure 
 *make_incomplete_inlet_closure(CilkWorkerState *const ws,
-							   Closure *parent, 
-							   int entry)
+			       Closure *parent, 
+			       int entry)
 {
 	struct InletClosure *p;
 	CilkStackFrame *f;
@@ -502,7 +505,7 @@ static struct InletClosure
 		p->inlet_args = Cilk_internal_malloc(ws, p->argsize);
 
 		memcpy((void *) p->inlet_args,
-			   (char *) f + info->argindex, p->argsize);
+		       (char *) f + info->argindex, p->argsize);
 	} else {
 		/*
 		 * in the non-inlet case, we use the inlet_args field
@@ -521,8 +524,8 @@ static struct InletClosure
  * tree.  Consequently, these operations are private
  */
 static void Closure_add_child(CilkWorkerState *const ws,
-							  Closure *parent,
-							  Closure *child)
+			      Closure *parent,
+			      Closure *child)
 {
 	struct InletClosure *p;
 
@@ -545,8 +548,8 @@ static void Closure_add_child(CilkWorkerState *const ws,
 }
 
 static struct InletClosure *Closure_remove_child(CilkWorkerState *const ws,
-												 Closure *parent,
-												 Closure *child)
+						 Closure *parent,
+						 Closure *child)
 {
 	struct InletClosure **q;
 	struct InletClosure *p;
@@ -604,7 +607,7 @@ static struct InletClosure *Closure_remove_child(CilkWorkerState *const ws,
 #endif
 
 static inline void increment_exception_pointer(CilkWorkerState *const ws,
-											   Closure *cl)
+					       Closure *cl)
 {
 	Closure_assert_ownership(ws, cl);
 
@@ -619,7 +622,7 @@ static inline void increment_exception_pointer(CilkWorkerState *const ws,
 }
 
 static inline void decrement_exception_pointer(CilkWorkerState *const ws,
-											   Closure *cl)
+					       Closure *cl)
 {
 	Closure_assert_ownership(ws, cl);
 
@@ -630,7 +633,7 @@ static inline void decrement_exception_pointer(CilkWorkerState *const ws,
 }
 
 static inline void reset_exception_pointer(CilkWorkerState *const ws,
-										   Closure *cl)
+					   Closure *cl)
 {
 	Closure_assert_ownership(ws, cl);
 
@@ -638,7 +641,7 @@ static inline void reset_exception_pointer(CilkWorkerState *const ws,
 }
 
 static inline void signal_immediate_exception(CilkWorkerState *const ws,
-											  Closure *cl)
+					      Closure *cl)
 {
 	Closure_assert_ownership(ws, cl);
 
@@ -734,7 +737,7 @@ static inline void maybe_reset_abort(Closure *cl)
 
 
 static void recursively_signal_abort(CilkWorkerState *const ws,
-									 Closure *cl, enum AbortStatus s)
+				     Closure *cl, enum AbortStatus s)
 {
 	struct InletClosure *p;
 
@@ -840,7 +843,7 @@ static void Closure_make_ready(Closure *cl)
  * Returns the child.
  */
 static Closure *promote_child(CilkWorkerState *const ws,
-							  Closure *parent, int victim)
+			      Closure *parent, int victim)
 {
 	Closure *child = Closure_create(ws);
 
@@ -877,7 +880,7 @@ static Closure *promote_child(CilkWorkerState *const ws,
  * the promotion complete.
  */
 void finish_promote(CilkWorkerState *const ws, 
-					Closure *parent, Closure *child)
+		    Closure *parent, Closure *child)
 {
 	Closure_assert_ownership(ws, parent);
 	Closure_assert_alienation(ws, child);
@@ -899,16 +902,16 @@ void finish_promote(CilkWorkerState *const ws,
  * stealing protocol.  Tries to steal from the victim; returns a
  * stolen closure, or NULL if none.
  */
-static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
+static Closure *Closure_steal(CilkWorkerState *const ws, int victim, ReadyDeque *const deque_pool)
 {
 	Closure *res = (Closure *) NULL;
 	Closure *cl, *child;
 
 	Cilk_event(ws, EVENT_STEAL_ATTEMPT);
 
-	deque_lock(ws, victim, USE_PARAMETER(deques));
+	deque_lock(ws, victim, deque_pool);
 
-	cl = deque_peek_top(ws, victim, USE_PARAMETER(deques));
+	cl = deque_peek_top(ws, victim, deque_pool);
 
 	if (cl) {
 		Closure_lock(ws, cl);
@@ -922,12 +925,12 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
 		switch (cl->status) {
 		case CLOSURE_READY:
 			Cilk_event(ws, EVENT_STEAL);
-			res = deque_xtract_top(ws, victim, USE_PARAMETER(deques));
+			res = deque_xtract_top(ws, victim, deque_pool);
 			CILK_ASSERT(ws, cl == res);
 
 			/* it is ok to swap these two */
 			Closure_unlock(ws, cl);
-			deque_unlock(ws, victim, USE_PARAMETER(deques));
+			deque_unlock(ws, victim, deque_pool);
 			break;
 
 		case CLOSURE_RUNNING:
@@ -941,9 +944,9 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
 				child = promote_child(ws, cl, victim);
 
 				/* detach the parent */
-				res = deque_xtract_top(ws, victim, USE_PARAMETER(deques));
+				res = deque_xtract_top(ws, victim, deque_pool);
 				CILK_ASSERT(ws, cl == res);
-				deque_unlock(ws, victim, USE_PARAMETER(deques));
+				deque_unlock(ws, victim, deque_pool);
 
 				/* 
 				 * at this point, more steals can happen
@@ -972,7 +975,7 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
 			 */
 		give_up:
 			Closure_unlock(ws, cl);
-			deque_unlock(ws, victim, USE_PARAMETER(deques));
+			deque_unlock(ws, victim, deque_pool);
 			break;
 
 		default:
@@ -980,7 +983,7 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
 		}
 
 	} else {
-		deque_unlock(ws, victim, USE_PARAMETER(deques));
+		deque_unlock(ws, victim, deque_pool);
 		Cilk_event(ws, EVENT_STEAL_EMPTY_DEQUE);
 	}
 
@@ -1007,7 +1010,7 @@ static void signal_abort_from_inlet(CilkWorkerState *const ws, Closure *cl)
 	Closure_assert_ownership(ws, cl);
 
 	if (cl->status == CLOSURE_RUNNING &&
-		!Closure_at_top_of_stack(cl)) {
+	    !Closure_at_top_of_stack(cl)) {
 		/* 
 		 * if closure is running and the frame is not on the top,
 		 * then, poll_inlets is called in exception_handler.  So,
@@ -1042,7 +1045,7 @@ static void signal_abort_from_inlet(CilkWorkerState *const ws, Closure *cl)
  * aborted.
  */
 static void apply_inlet(CilkWorkerState *const ws,
-						Closure *cl, struct InletClosure *i)
+			Closure *cl, struct InletClosure *i)
 {
 	void *receiver = i->receiver;
 	int argsize = i->argsize;
@@ -1093,7 +1096,7 @@ static void poll_inlets(CilkWorkerState *const ws, Closure *cl)
 
 	Closure_assert_ownership(ws, cl);
 	if (cl->status == CLOSURE_RUNNING &&
-		!Closure_at_top_of_stack(cl))
+	    !Closure_at_top_of_stack(cl))
 		/* 
 		 * If we get here, poll_inlets has been called by
 		 * the exception handler 
@@ -1122,8 +1125,8 @@ static void poll_inlets(CilkWorkerState *const ws, Closure *cl)
 }
 
 static void complete_and_enque_inlet(CilkWorkerState *const ws,
-									 Closure *parent, Closure *child, 
-									 struct InletClosure *i)
+				     Closure *parent, Closure *child, 
+				     struct InletClosure *i)
 {
 	Closure_assert_ownership(ws, parent);
 	Cilk_event(ws, EVENT_RETURN_ENQUEUE);
@@ -1163,7 +1166,7 @@ static Closure *provably_good_steal_maybe(CilkWorkerState *const ws, Closure *pa
 	Closure_assert_ownership(ws, parent);
 
 	if (!Closure_has_children(parent) &&
-		parent->status == CLOSURE_SUSPENDED) {
+	    parent->status == CLOSURE_SUSPENDED) {
 		/* do a provably-good steal; this is *really* simple */
 		res = parent;
 
@@ -1285,13 +1288,13 @@ static void Closure_suspend(CilkWorkerState *const ws, Closure *cl)
  *************************************************************/
 /* destruction of a slow frame */
 void Cilk_destroy_frame(CilkWorkerState *const ws,
-						CilkStackFrame *f, size_t size)
+			CilkStackFrame *f, size_t size)
 {
 	WHEN_CILK_ALLOCA( 
-					 {
-						 if (f->alloca_h)
-							 Cilk_unalloca_internal(ws, f);
-					 });
+			 {
+				 if (f->alloca_h)
+					 Cilk_unalloca_internal(ws, f);
+			 });
 
 	Cilk_internal_free(ws, f, size);
 }
@@ -1334,7 +1337,7 @@ int Cilk_sync(CilkWorkerState *const ws)
 #if CILK_TIMING
 /* update work and CP after a slow sync */
 void Cilk_after_sync_slow_cp(CilkWorkerState *const ws,
-							 Cilk_time *work, Cilk_time *cp)
+			     Cilk_time *work, Cilk_time *cp)
 {
 	Closure *t;
 
@@ -1361,8 +1364,8 @@ void Cilk_after_sync_slow_cp(CilkWorkerState *const ws,
 #endif
 
 static void move_result_into_closure(CilkWorkerState *const ws,
-									 Closure *t, void *resultp,
-									 int size)
+				     Closure *t, void *resultp,
+				     int size)
 {
 	Closure_assert_ownership(ws, t);
 	t->return_size = size;
@@ -1436,7 +1439,7 @@ int Cilk_exception_handler(CilkWorkerState *const ws, void *resultp, int size)
 	reset_exception_pointer(ws, t);
 
 	CILK_ASSERT(ws, t->status == CLOSURE_RUNNING ||
-				t->status == CLOSURE_RETURNING);
+		    t->status == CLOSURE_RETURNING);
 
 	if (CLOSURE_HEAD(t) >= CLOSURE_TAIL(t)) {
 		Cilk_event(ws, EVENT_EXCEPTION_STEAL);
@@ -1506,7 +1509,7 @@ void Cilk_set_result(CilkWorkerState *const ws, void *resultp, int size)
 	 * no abort at all, or the parent is trying to kill us
 	 */
 	CILK_ASSERT(ws, CLOSURE_ABORT(t) == NO_ABORT ||
-				CLOSURE_ABORT(t) == ABORT_ALL);
+		    CLOSURE_ABORT(t) == ABORT_ALL);
 
 	t->status = CLOSURE_RETURNING;
 	t->frame = (CilkStackFrame *) NULL;
@@ -1635,8 +1638,8 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t)
 
 	default:
 		Cilk_die_internal(ws->context, ws,
-						  "BUG in do_what_it_says(), t->status = %d\n", 
-						  t->status);
+				  "BUG in do_what_it_says(), t->status = %d\n", 
+				  t->status);
 		break;
 	}
 
@@ -1675,13 +1678,14 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			// Decide where to steal from
 			if ((rts_rand(ws) % 100) < (USE_PARAMETER(dsprob)*100)) {
 				// data structure steal
+				batch_scheduler(ws, (Closure *) NULL);
 
 			} else { // regular steal */
 				victim = rts_rand(ws) % USE_PARAMETER(active_size);
 				if (victim != ws->self) {
-					t = Closure_steal(ws, victim);
+					t = Closure_steal(ws, victim, USE_PARAMETER(deques));
 					if (!t && USE_PARAMETER(options->yieldslice) &&
-						!USE_SHARED(done)) {
+					    !USE_SHARED(done)) {
 						Cilk_lower_priority(ws);
 					}
 				}
@@ -1710,63 +1714,83 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 /*********************************************************
  * Batch scheduler for data structure operations
  *********************************************************/
-void Batch_scheduler(CilkWorkerState *const ws)
+void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 {
-	Cilk_enter_state(ws, STATE_BATCH);
+	int victim;
+	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
+
+	while (USE_SHARED(batch_in_progress)) {
+		if (!t) {
+			/* try to get work from the local ds queue */
+			deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
+			t = deque_xtract_bottom(ws, ws->self, USE_PARAMETER(ds_deques));
+			deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
+		}
+
+		if (!t && USE_SHARED(batch_owner) == ws->self) {
+			// finished the batch
+			USE_SHARED(batch_in_progress) = 0;
+			break;
+		}
+		
+		while (!t && USE_SHARED(batch_in_progress)) {
+			// Otherwise, steal
+			Cilk_enter_state(ws, STATE_DS_STEALING);
+
+			// If the number of DS workers is small compared to total workers,
+			// this victim may often not have anything on the ds_deque.
+			// *** Should we do some trickery to only steal from DS workers?
+			victim = rts_rand(ws) % USE_PARAMETER(active_size);
+			if (victim != ws->self) {
+				t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
+				if (!t && USE_PARAMETER(options->yieldslice) &&
+				    USE_SHARED(batch_in_progress)) {
+					Cilk_lower_priority(ws);
+				}
+			}
+		}
+		/* Cilk_fence(); */
+		Cilk_exit_state(ws, STATE_DS_STEALING);
+
+		if (USE_PARAMETER(options->yieldslice))
+			Cilk_raise_priority(ws);
+
+		if (USE_SHARED(batch_in_progress)) {
+			// These enter/exit states should really be in do_what_it_says,
+			// but that's complicated to figure out if a closure is normal
+			// or DS work.
+			Cilk_enter_state(ws, STATE_DS_WORKING);
+			t = do_what_it_says(ws, t);
+			Cilk_exit_state(ws, STATE_DS_WORKING);
+		}
+	}
+
+	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
+
+	return;
+
+
+}	
+void batch_operation(CilkWorkerState *const ws)
+{
+	Closure *t = (Closure *) NULL;
 
 	// join a batch if there is a batch op in progress
 	// need to use a barrier (?) to synchronize - make sure
-	// one worker doesn't get stuck
-	while (USE_SHARED(batch_in_progress)) {
-		// work on the batch
+	// one worker doesn't get stuck?
+	if (USE_SHARED(batch_in_progress)) batch_scheduler(ws, t);
+
+	if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
+		Cilk_enter_state(ws, STATE_BATCH_START);
+		USE_SHARED(batch_owner) = ws->self;
+		USE_SHARED(batch_in_progress) = 1;
+		// start batch
+		// make sure to correctly reset the Closure t
+		Cilk_exit_state(ws, STATE_BATCH_START);
 	}
 
-	// Now attempt to get lock on batch array
-	// if success, start a batch and work until completion
-	// else, join a batch again and work until completion
-
-	/* 	if (!t) { */
-	/* 		/\* try to get work from our local queue *\/ */
-	/* 		deque_lock(ws, ws->self, USE_PARAMETER(deques)); */
-	/* 		t = deque_xtract_bottom(ws, ws->self, USE_PARAMETER(deques)); */
-	/* 		deque_unlock(ws, ws->self, USE_PARAMETER(deques)); */
-	/* 	} */
-
-	/* 	while (!t && !USE_SHARED(done)) { */
-	/* 		/\* otherwise, steal *\/ */
-	/* 		Cilk_enter_state(ws, STATE_STEALING); */
-	
-	/* 		// Decide where to steal from */
-	/* 		if ((rts_rand(ws) % 100) < (USE_PARAMETER(dsprob)*100)) { */
-	/* 			// data structure steal */
-
-	/* 		} else { // regular steal *\/ */
-	/* 			victim = rts_rand(ws) % USE_PARAMETER(active_size); */
-	/* 			if (victim != ws->self) { */
-	/* 				t = Closure_steal(ws, victim); */
-	/* 				if (!t && USE_PARAMETER(options->yieldslice) && */
-	/* 					!USE_SHARED(done)) { */
-	/* 					Cilk_lower_priority(ws); */
-	/* 				} */
-	/* 			} */
-	/* 		} */
-	/* 		/\* Cilk_fence(); *\/ */
-	/* 		Cilk_exit_state(ws, STATE_STEALING); */
-	/* 	} */
-
-	/* 	if (USE_PARAMETER(options->yieldslice)) */
-	/* 		Cilk_raise_priority(ws); */
-
-	/* 	if (!USE_SHARED(done)) */
-	/* 		t = do_what_it_says(ws, t); */
-
-	/* 	/\*  */
-	/* 	 * if provably-good steals happened, t will contain */
-	/* 	 * the next closure to execute */
-	/* 	 *\/ */
-	/* } */
-
-	Cilk_exit_state(ws, STATE_BATCH;
+	batch_scheduler(ws, t);
+	Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
 
 	return;
 }
@@ -1779,7 +1803,7 @@ void Batch_scheduler(CilkWorkerState *const ws)
 void Cilk_scheduler_init(CilkContext *const context)
 {
 	CILK_CHECK(USE_PARAMETER1(active_size) > 0,
-			   (context, NULL, "Partition size must be positive\n"));
+		   (context, NULL, "Partition size must be positive\n"));
 	create_deques(context);
 	Cilk_internal_malloc_global_init(context);
 	Cilk_internal_malloc_global_init_2(context);
@@ -1811,7 +1835,7 @@ void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws)
 
 	ws->cache.stack = 
 		Cilk_malloc_fixed(USE_PARAMETER(options->stackdepth) *
-						  sizeof(CilkStackFrame *));
+				  sizeof(CilkStackFrame *));
 	ws->stackdepth = USE_PARAMETER(options->stackdepth);
 	Cilk_reset_stack_depth_stats(ws);
 
@@ -1833,7 +1857,7 @@ void Cilk_scheduler_per_worker_terminate(CilkWorkerState *const ws)
  * a complete inlet.
  */
 static void make_exit_inlet_closure(CilkWorkerState *const ws, 
-									Closure *cl, int res)
+				    Closure *cl, int res)
 {
 	struct InletClosure *p;
 

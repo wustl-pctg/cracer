@@ -222,7 +222,7 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
       ++i;
       CHECK(i < *argc, "argument missing");
       options->dsprob = atof(argv[i]);
-      CHECK(options->dsprob <= 1.0, "invalid ds-stealing probability");
+      CHECK(options->dsprob < 1.0, "invalid ds-stealing probability");
       CHECK(options->dsprob >= 0.0, "invalid ds-stealing probability");
       break;
     case STACK:

@@ -137,6 +137,7 @@ void Cilk_create_children(CilkContext *const context,
 
      /* Create thread-id array */
      USE_SHARED1(tid) = Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(pthread_t));
+     USE_SHARED1(ds_work_array) = Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(BatchOp));
      CILK_CHECK(USE_SHARED1(tid), (context, NULL, "could not malloc tid\n"));
 
      /* allocate and init the params sent to the children*/

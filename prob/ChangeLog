@@ -1,3 +1,11 @@
+2013-01-29  rob  <rob@rob-macbook>
+
+	* runtime/sched.c (create_deques): Initializing the batch_owner mutex. I'm not sure this is really where
+	it should be, but I think it will work.
+	(free_deques): Destory the batch_owner mutex here.
+	Created the batch_scheduler function to execute batch DS work, possibly stealing from other DS workers. Also,
+	batch_operation possibly starts a batch and calls batch_scheduler.
+
 2013-01-28  Rob  <rob@Liquid>
 
 	* runtime/sched.c: Changed all deque_* functions to take an additional
@@ -11,7 +19,8 @@
 	* runtime/sched.c (create_deques): Create the data structure deques.
 	(free_deques): Free the data structure deques.
 	(init_deques): Initialize the data structure deques.
-	(Cilk_scheduler): Added the logic for deciding whether to steal from the data-structure-level of deques, based on dsprob. It doesn't do anything for now.
+	(Cilk_scheduler): Added the logic for deciding whether to steal from the data-structure-level of deques,
+	based on dsprob. It doesn't do anything for now.
 
 	* runtime/cilk.h (struct): Changed CilkReadOnlyParams to contain the ReadyDeque for the DS deques.
 

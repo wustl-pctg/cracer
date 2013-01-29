@@ -74,7 +74,10 @@ static const struct state_desc {
 		"Stealing a DS operations", STATE_DS_STEALING
 	},
 	{
-		"Total batch execution time", STATE_BATCH
+		"Total batch execution time", STATE_BATCH_TOTAL
+	},
+	{
+		"Time for starting batches", STATE_BATCH_START
 	},
 	{
 		"Stealing", STATE_STEALING

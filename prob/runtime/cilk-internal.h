@@ -190,6 +190,9 @@ struct CilkGlobalState_s{
 	Cilk_time total_work;
 	int done; /* current calculation */
 	int batch_in_progress; /* is there a batch operation in progress */
+	BatchOp *ds_work_array;
+	int batch_owner;
+	Cilk_mutex batch_lock;
 	int terminating; /* Cilk_terminate was called */
 	Cilk_mutex barrier_lock;
 	volatile int barrier_counter;
@@ -337,7 +340,8 @@ enum {
 	STATE_WAITING_FOR_LOCK,
 	STATE_DS_WORKING,
 	STATE_DS_STEALING,
-	STATE_BATCH,
+	STATE_BATCH_TOTAL,
+	STATE_BATCH_START,
 	STATE_STEALING,
 	STATE_RETURNING,
 	STATE_ABORT_RECURSIVE,

@@ -269,6 +269,22 @@ typedef struct {
 
 } CilkReadOnlyParams;
 
+typedef struct BatchOp{
+
+  void      (*operation)(void*, size_t); 
+  void      *data;
+  size_t    size;
+  int       status;
+
+} BatchOp;   
+  
+//BatchOp *ds_work_array;
+/* typedef struct { */
+/*   int       nprocs; */
+/*   BatchOp*  array;   */
+/* } work_array; */
+
+/* work_array ds_work_array; */
 
 typedef struct CilkGlobalState_s CilkGlobalState; /* Forward declaration*/
 
