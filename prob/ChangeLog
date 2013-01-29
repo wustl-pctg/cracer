@@ -1,3 +1,11 @@
+2013-01-28  Rob  <rob@Liquid>
+
+	* runtime/sched.c: Changed all deque_* functions to take an additional
+	parameter "deque_pool" which species the pool (level) of deques to
+	use. Further modified all calls to these functions to supply the
+	parameter USE_PARAMETER(deques), though some of these may change later
+	to USE_PARAMETER(ds_deques).
+
 2013-01-21  rob  <rob@rob-macbook>
 
 	* runtime/sched.c (create_deques): Create the data structure deques.
