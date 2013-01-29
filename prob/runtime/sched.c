@@ -1707,6 +1707,72 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 	return;
 }
 
+/*********************************************************
+ * Batch scheduler for data structure operations
+ *********************************************************/
+void Batch_scheduler(CilkWorkerState *const ws)
+{
+	Cilk_enter_state(ws, STATE_BATCH);
+
+	// join a batch if there is a batch op in progress
+	// need to use a barrier (?) to synchronize - make sure
+	// one worker doesn't get stuck
+	while (USE_SHARED(batch_in_progress)) {
+		// work on the batch
+	}
+
+	// Now attempt to get lock on batch array
+	// if success, start a batch and work until completion
+	// else, join a batch again and work until completion
+
+	/* 	if (!t) { */
+	/* 		/\* try to get work from our local queue *\/ */
+	/* 		deque_lock(ws, ws->self, USE_PARAMETER(deques)); */
+	/* 		t = deque_xtract_bottom(ws, ws->self, USE_PARAMETER(deques)); */
+	/* 		deque_unlock(ws, ws->self, USE_PARAMETER(deques)); */
+	/* 	} */
+
+	/* 	while (!t && !USE_SHARED(done)) { */
+	/* 		/\* otherwise, steal *\/ */
+	/* 		Cilk_enter_state(ws, STATE_STEALING); */
+	
+	/* 		// Decide where to steal from */
+	/* 		if ((rts_rand(ws) % 100) < (USE_PARAMETER(dsprob)*100)) { */
+	/* 			// data structure steal */
+
+	/* 		} else { // regular steal *\/ */
+	/* 			victim = rts_rand(ws) % USE_PARAMETER(active_size); */
+	/* 			if (victim != ws->self) { */
+	/* 				t = Closure_steal(ws, victim); */
+	/* 				if (!t && USE_PARAMETER(options->yieldslice) && */
+	/* 					!USE_SHARED(done)) { */
+	/* 					Cilk_lower_priority(ws); */
+	/* 				} */
+	/* 			} */
+	/* 		} */
+	/* 		/\* Cilk_fence(); *\/ */
+	/* 		Cilk_exit_state(ws, STATE_STEALING); */
+	/* 	} */
+
+	/* 	if (USE_PARAMETER(options->yieldslice)) */
+	/* 		Cilk_raise_priority(ws); */
+
+	/* 	if (!USE_SHARED(done)) */
+	/* 		t = do_what_it_says(ws, t); */
+
+	/* 	/\*  */
+	/* 	 * if provably-good steals happened, t will contain */
+	/* 	 * the next closure to execute */
+	/* 	 *\/ */
+	/* } */
+
+	Cilk_exit_state(ws, STATE_BATCH;
+
+	return;
+}
+
+
+
 /*
  * initialization of the scheduler. 
  */
