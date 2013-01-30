@@ -54,6 +54,7 @@ FILE_IDENTITY(ident,
 #ifndef OFRA_MAIN_ATTEMPT
 int main(int argc, char *argv[])
 {
+     //BSS45
      extern int Cilk_start(int (*main)(void *const ws, int argc, char *argv[]),
 			   int argc, char *argv[]);
      extern int cilk_main(void *const ws, int argc, char *argv[]);

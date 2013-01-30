@@ -342,6 +342,11 @@ static void Cilk_child_main(CilkChildParams *const childParams)
     if(! local_terminating){
       if (id == 0)
 	Cilk_scheduler(ws, USE_PARAMETER(invoke_main));
+    
+      //BSS45
+      else if (id == USE_PARAMETER(num_real_workers))
+    Cilk_scheduler(ws, USE_PARAMETER(invoke_ds_main));
+ 
       else 
 	Cilk_scheduler(ws, (Closure *) NULL);
 
@@ -408,10 +413,11 @@ CilkContext* Cilk_init( int* argc, char *argv[] )
   return context;
 }
 
+//BSS45
 void Cilk_start(CilkContext *const context,
 		void (*main)(CilkWorkerState *const ws, void *args),
 		void *args,
-		int return_size )
+		int return_size)
 {
   Cilk_global_init_2(context);
 
@@ -420,6 +426,12 @@ void Cilk_start(CilkContext *const context,
 
   USE_PARAMETER1(invoke_main) =
     Cilk_create_initial_thread(context, main, args, return_size);
+  
+  //extern void ds_main(void *const ws);
+  void ds_main(void *const ws) __attribute__((weak));
+
+  if (ds_main) USE_PARAMETER1(invoke_ds_main) =
+    Cilk_create_initial_thread(context, ds_main, NULL, 0);
 
   /*When this returns we are done */
   Cilk_wakeup_workers(context);
@@ -430,6 +442,28 @@ void Cilk_start(CilkContext *const context,
   Cilk_scheduler_terminate_2(context);
 
 }
+//void Cilk_start(CilkContext *const context,
+//		void (*main)(CilkWorkerState *const ws, void *args),
+//		void *args,
+//		int return_size )
+//{
+//  Cilk_global_init_2(context);
+//
+//  /* initialize the scheduler */
+//  Cilk_scheduler_init_2(context);
+//
+//  USE_PARAMETER1(invoke_main) =
+//    Cilk_create_initial_thread(context, main, args, return_size);
+//
+//  /*When this returns we are done */
+//  Cilk_wakeup_workers(context);
+//
+//  Cilk_internal_malloc_global_cleanup(context);
+//
+//  /* clean scheduler */
+//  Cilk_scheduler_terminate_2(context);
+//
+//}
 
 void Cilk_really_exit_1(CilkWorkerState *const ws,
 			int res) {

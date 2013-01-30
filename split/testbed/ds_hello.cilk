@@ -7,7 +7,9 @@
 
 //#include <ds_api.h>
 
-cilk int cilk_ds_main() {
+cilk void ds_main() {
+
+    printf("entering ds_main.\n");
 
     int i=0, j=0; 
     size_t size=0;
@@ -52,7 +54,7 @@ cilk int cilk_ds_main() {
         }
     }            
 
-    return 0;
+    //return 0;
 }
 
 

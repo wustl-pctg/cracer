@@ -269,6 +269,8 @@ typedef struct {
   Cilk_time start_time;
 
   Closure *invoke_main;
+  //BSS45
+  Closure *invoke_ds_main;
 
   /* declaration of the various hooks */
   HookList *Cilk_init_global_hooks;
@@ -539,12 +541,16 @@ static int Cilk_check_flags_at_link_time_hack(void) {
   return *Cilk_check_flags_at_link_time;
 }
 
+//BSS45
 void Cilk_start(CilkContext *const context,
 		void (*main)(CilkWorkerState *const ws, void *args),
 		void *args,
 		int return_size );
+
 void Cilk_free(void *);
 void *Cilk_malloc_fixed(size_t);
+
+
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__
