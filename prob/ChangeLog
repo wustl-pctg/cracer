@@ -4,7 +4,7 @@
 	it should be, but I think it will work.
 	(free_deques): Destory the batch_owner mutex here.
 	Created the batch_scheduler function to execute batch DS work, possibly stealing from other DS workers. Also,
-	batch_operation possibly starts a batch and calls batch_scheduler.
+	batch_operation possibly starts a batch and calls batch_schedule
 
 2013-01-28  Rob  <rob@Liquid>
 
