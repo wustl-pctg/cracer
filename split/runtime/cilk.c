@@ -428,10 +428,13 @@ void Cilk_start(CilkContext *const context,
     Cilk_create_initial_thread(context, main, args, return_size);
   
   //extern void ds_main(void *const ws);
-  void ds_main(void *const ws) __attribute__((weak));
+  void ds_main(CilkWorkerState *const ws, void *hack) __attribute__((weak));
+
+  if (ds_main)
+    printf("Found ds_main.\n");
 
   if (ds_main) USE_PARAMETER1(invoke_ds_main) =
-    Cilk_create_initial_thread(context, ds_main, NULL, 0);
+    Cilk_create_initial_ds_thread(context, ds_main, args, return_size);
 
   /*When this returns we are done */
   Cilk_wakeup_workers(context);

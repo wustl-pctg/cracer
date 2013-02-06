@@ -5,6 +5,7 @@ all: ds_hello
 
 ds_hello: ds_api.h ds_hello.cilk cilkclocal
 	${CILK} ${CFLAGS} -o ds_hello ds_hello.cilk
+	cp ds_hello.cilkc ds_hello.c
 
 clean:
 	rm -f ds_hello

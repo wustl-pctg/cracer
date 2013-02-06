@@ -142,6 +142,8 @@ Closure *Cilk_create_initial_ds_thread(
 {
      Closure *t;
      struct invoke_main_frame *f;
+     
+     printf("Entered Cilk_create_initial_ds_thread\n");
 
      /* create a frame for invoke_cilk_main */
      t = Cilk_Closure_create_malloc(context, NULL);
@@ -165,9 +167,9 @@ Closure *Cilk_create_initial_ds_thread(
      USE_SHARED1(invoke_main_ds_sig)[0].size = sizeof(int);
      USE_SHARED1(invoke_main_ds_sig)[0].index 
          = sizeof(struct invoke_main_frame);
-     USE_SHARED1(invoke_main_ds_sig)[0].inlet = NULL;
+     USE_SHARED1(invoke_main_ds_sig)[0].inlet = invoke_main_slow;
      USE_SHARED1(invoke_main_ds_sig)[1].size = sizeof(int);
-     USE_SHARED1(invoke_main_ds_sig)[1].inlet = NULL;
+     USE_SHARED1(invoke_main_ds_sig)[1].inlet = invoke_main_catch_inlet;
      USE_SHARED1(invoke_main_ds_sig)[1].argsize = return_size;
 
      return t;
@@ -181,6 +183,8 @@ Closure *Cilk_create_initial_thread(
 {
      Closure *t;
      struct invoke_main_frame *f;
+
+     printf("Entered Cilk_create_initial_thread\n");
 
      /* create a frame for invoke_cilk_main */
      t = Cilk_Closure_create_malloc(context, NULL);
