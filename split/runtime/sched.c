@@ -1636,8 +1636,8 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 	       deque_unlock(ws, ws->self);
 	  }
 
-      num_ds = USE_PARAMETER(active_size)*USE_PARAMETER(dsratio);
-      num_main = USE_PARAMETER(active_size)-num_ds;
+      num_ds = USE_PARAMETER(num_ds_workers);
+      num_main = USE_PARAMETER(num_real_workers);
 	  while (!t && !USE_SHARED(done)) {
 	       /* otherwise, steal */
 	       Cilk_enter_state(ws, STATE_STEALING);

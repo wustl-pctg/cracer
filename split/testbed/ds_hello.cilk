@@ -10,50 +10,31 @@
 cilk void ds_main(void* hack) {
 
     int i=0, j=0; 
-    size_t size=0;
     int nprocs = ds_work_array.nprocs;
     int batch_size=0;
-    int batch_index=0;
-    char *batch_flags = malloc(nprocs * sizeof(char));
+    void **batch_data = malloc(nprocs * sizeof(void*));
     void (*operation)(void*, size_t);
-    char *batch_data;
    
     fprintf(stderr, "Entering DS main, nprocs=%d\n", nprocs);
 
-    assert (sizeof(char) == 1);
     //NOTE: no termination condition
     for (i=0; 1; i=(i+1)%nprocs){
         if ( ds_work_array.array[i].status == DS_WAITING ) {
-            batch_size = ds_work_array.array[i].size; 
             operation = ds_work_array.array[i].operation;
-            batch_flags[i]=1;
+            batch_data[0]=ds_work_array.array[i].args;
+            batch_size=1;
             for (j=(i+1)%nprocs; j!=i; j=(j+1)%nprocs) {
                 if (ds_work_array.array[j].status == DS_WAITING
-                 && ds_work_array.array[j].operation == operation) {
-                    batch_size += ds_work_array.array[j].size;
-                    batch_flags[j]=1;
+                  && ds_work_array.array[j].operation == operation) {
+                    batch_data[batch_size]=ds_work_array.array[j].args;
+                    ++batch_size;
                 }
-            }
-            batch_index = 0;
-            //TODO: alloc and cpy here potentially really bad for performance
-            batch_data = malloc(batch_size);
-            for (j=(i+1)%nprocs; j!=i; j=(j+1)%nprocs) {
-                if ( batch_flags[j] ) {
-                    size = ds_work_array.array[j].size;
-                    memcpy(ds_work_array.array[j].data, 
-                        batch_data+batch_index, size); 
-                    batch_index+=size;
-                }    
             }
             operation (batch_data, batch_size);
             
-            free(batch_data);
-
             ds_work_array.array[i].status = DS_DONE;
         }
     }            
-
-    //return 0;
 }
 
 

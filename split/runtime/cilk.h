@@ -282,7 +282,7 @@ typedef struct {
 typedef struct BatchOp{
 
   void      (*operation)(void*, size_t); 
-  void      *data;
+  void      *args;
   size_t    size;
   int       status;
 
