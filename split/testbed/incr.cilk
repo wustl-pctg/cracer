@@ -1,0 +1,34 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <string.h>
+#include <pthread.h>
+#include <unistd.h>
+
+
+//#include <ds_api.h>
+    
+Cilk_lockvar incr_lock;
+int dummy_counter = 0;
+
+cilk void incr() {
+    Cilk_lock(incr_lock);
+    dummy_counter++;
+    Cilk_unlock(incr_lock);
+}
+
+cilk int main(int argc, char *argv[])
+{
+    int i;
+
+    for (i=0; i < 10000000; ++i) {
+        spawn incr();
+    }
+
+    sync;
+
+    exit(EXIT_SUCCESS);
+
+    return 0;
+}
