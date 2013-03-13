@@ -1,0 +1,61 @@
+#ifndef _DS_API_H
+#define _DS_API_H
+
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <string.h>
+#include <unistd.h>
+
+//NOTE: not best place for these, but used in both incr and ds_incr
+#define DUMMY_WAIT 100000 //loop iterations to wait (to simulate operation time)
+#define DUMMY_ITERS 10000 //number of times to execute operation
+
+//generalized macro to put operation and arguments into work_array then wait
+#define BATCH(f,a) ds_work_array.array[_cilk_ws->self].operation=(f); \
+    ds_work_array.array[_cilk_ws->self].args=(a); \
+    ds_work_array.array[_cilk_ws->self].status=DS_WAITING; \
+    while(ds_work_array.array[_cilk_ws->self].status==DS_WAITING) {;}
+
+//current tracks total ops performed, would be nice to get per proc
+//however, other DS threads currently aren't actually doing work
+int* op_counts;
+
+//main thread for primary DS worker to busy loop on ds_work_array
+//INPUT: void* hack - unused (makes function def match expected in runtime) 
+cilk void ds_main(void* hack) {
+    int i=0, j=0; 
+    int nprocs = ds_work_array.nprocs;
+    int batch_size=0;
+    void **batch_data = malloc(nprocs * sizeof(void*)); //args for every job
+    int *batch_indexes = malloc(nprocs * sizeof(int)); //reverse proc ptrs
+    void (*operation)(void**, size_t); //operation(args, batch_size)
+    op_counts = malloc(nprocs * sizeof(int));
+   
+    //NOTE: no termination condition
+    for (i=0; 1; i=(i+1)%nprocs){
+        if ( ds_work_array.array[i].status == DS_WAITING ) { //start new batch
+            operation = ds_work_array.array[i].operation; 
+            batch_data[0]=ds_work_array.array[i].args; 
+            batch_size=1; 
+            batch_indexes[0]=i;
+            //loop through work array again to fill batch
+            for (j=(i+1)%nprocs; j!=i; j=(j+1)%nprocs) {
+                if (ds_work_array.array[j].status == DS_WAITING
+                  && ds_work_array.array[j].operation == operation) {
+                    batch_data[batch_size]=ds_work_array.array[j].args;
+                    batch_indexes[batch_size]=j;
+                    ++batch_size;
+                }
+            }
+            //call the actual operation on batch data
+            operation (batch_data, batch_size);
+            //use reverse proc ptrs to clean up wait flags
+            for (j=0; j < batch_size; ++j) {
+                ds_work_array.array[batch_indexes[j]].status = DS_DONE;
+            }
+        }
+    }            
+}
+#endif

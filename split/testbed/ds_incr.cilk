@@ -3,97 +3,69 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include <pthread.h>
 #include <unistd.h>
 
+#include <ds_api.cilkh> //generalized DS utils + counter defaults
 
-//#include <ds_api.h>
-//#define BATCH(f,a) ds_work_array.array[_cilk_ws->self].operation=(f); \
-    printf("%d inserting in work array\n", _cilk_ws->self); \
-    ds_work_array.array[_cilk_ws->self].args=(a); \
-    ds_work_array.array[_cilk_ws->self].status=DS_WAITING; \
-    while(ds_work_array.array[_cilk_ws->self].status==DS_WAITING) { \
-        printf("ds_work_array[%d].status = %d\n", _cilk_ws->self, \
-            ds_work_array.array[_cilk_ws->self].status);}
-
-#define BATCH(f,a) ds_work_array.array[_cilk_ws->self].operation=(f); \
-    ds_work_array.array[_cilk_ws->self].args=(a); \
-    ds_work_array.array[_cilk_ws->self].status=DS_WAITING; \
-    while(1) { \
-        Cilk_lock(status_mutex); \
-        if (ds_work_array.array[_cilk_ws->self].status!=DS_WAITING) { \
-            Cilk_unlock(status_mutex); \
-            break; \
-        } \
-        Cilk_unlock(status_mutex); \
-    } \
- 
 Cilk_lockvar incr_mutex;
-Cilk_lockvar status_mutex;
 int dummy_counter = 0;
 
+//batch function for dummy DS op
+//INPUT: batch_data - list of argument lists for individual calls
+//       size - size of batch_data
 void BatchIncr(void **batch_data, size_t size) {
+    int i;
+    //cast then dereference first argument (others assumed to be the same)
+    int dummy_wait = **((int**)batch_data); 
+    //lock to mirror incr version, no actual relevent concurrency
     Cilk_lock(incr_mutex);
-    dummy_counter+=size;
+    //busy loop to simulate op
+    for (i=0; i < dummy_wait; ++i) {
+        ++i;
+        ++dummy_counter; //moved portion of global inside loop in attempt
+        //to address optimization related bug - didn't work   
+    }
+    dummy_counter+=(size-1)*dummy_wait; //fix dummy_counter for size of batch
+    op_counts[0]++; //TODO: want to loop at operations per DS worker here
     Cilk_unlock(incr_mutex);
 }
 
-cilk void ds_incr() {
-    BATCH(BatchIncr, NULL);
-}
-
-cilk void ds_main(void* hack) {
-
-    int i=0, j=0; 
-    int nprocs = ds_work_array.nprocs;
-    int batch_size=0;
-    void **batch_data = malloc(nprocs * sizeof(void*));
-    int *batch_indexes = malloc(nprocs * sizeof(int));
-    void (*operation)(void*, size_t);
-   
-    //NOTE: no termination condition
-    for (i=0; 1; i=(i+1)%nprocs){
-        if ( ds_work_array.array[i].status == DS_WAITING ) {
-            //printf("collecting batch\n");
-            operation = ds_work_array.array[i].operation;
-            batch_data[0]=ds_work_array.array[i].args;
-            batch_size=1;
-            batch_indexes[0]=i;
-            for (j=(i+1)%nprocs; j!=i; j=(j+1)%nprocs) {
-                if (ds_work_array.array[j].status == DS_WAITING
-                  && ds_work_array.array[j].operation == operation) {
-                    batch_data[batch_size]=ds_work_array.array[j].args;
-                    batch_indexes[batch_size]=j;
-                    ++batch_size;
-                }
-                //printf("batch_size=%d\n", batch_size);
-            }
-            //printf("performing batch op\n");
-            operation (batch_data, batch_size);
-            Cilk_lock(status_mutex);
-            for (j=0; j < batch_size; ++j) {
-                ds_work_array.array[batch_indexes[j]].status = DS_DONE;
-                //printf("set ds_work_array[%d].status = %d\n", batch_indexes[j], DS_DONE); 
-            }
-            Cilk_unlock(status_mutex);
-        }
-    }            
+//Concurrent function to add work to ds_work_array global via BATCH macro
+//INPUT: dummy_wait - number of increments in busy loop op simulation
+cilk void ds_incr(int dummy_wait) {
+    BATCH(BatchIncr, (void*)(&dummy_wait));
 }
 
 
+//USAGE: ds_incr [-nproc <total procs>] [-dsratio <ds:total>] [op_iters] [iters]
 cilk int main(int argc, char *argv[])
 {
-    int i;
+    int i, dummy_iters, dummy_wait;
 
-    Cilk_lock_init(incr_mutex);
-    Cilk_lock_init(status_mutex);
+    //grab some command line parameter adjustments if available
+    if (argc > 1)
+        dummy_wait = atoi(argv[1]);
+    else
+        dummy_wait = DUMMY_WAIT;
+    if (argc > 2)
+        dummy_iters = atoi(argv[2]);
+    else
+        dummy_iters = DUMMY_ITERS;
+        
 
-    for (i=0; i < 10000000; ++i) {
-        spawn ds_incr();
+    Cilk_lock_init(incr_mutex);//init lock used to mirror incr
+
+    //spawn all the operations
+    for (i=0; i < dummy_iters; ++i) {
+        spawn ds_incr(dummy_wait);
     }
 
     sync;
     
+    printf("dummy_counter:%d\n", dummy_counter);
+    for (i=0; i < ds_work_array.nprocs; ++i)
+        printf("op_counts[%d]:%d\n", i, op_counts[i]);
+
     exit(EXIT_SUCCESS);
 
     return 0;

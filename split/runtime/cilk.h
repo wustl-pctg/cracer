@@ -281,7 +281,7 @@ typedef struct {
 //BSS45 - 1/8
 typedef struct BatchOp{
 
-  void      (*operation)(void*, size_t); 
+  void      (*operation)(void**, size_t); 
   void      *args;
   size_t    size;
   int       status;

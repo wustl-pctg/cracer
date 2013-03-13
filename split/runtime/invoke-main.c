@@ -143,8 +143,6 @@ Closure *Cilk_create_initial_ds_thread(
      Closure *t;
      struct invoke_main_frame *f;
      
-     printf("Entered Cilk_create_initial_ds_thread\n");
-
      /* create a frame for invoke_cilk_main */
      t = Cilk_Closure_create_malloc(context, NULL);
      t->parent = (Closure *) NULL;
@@ -183,8 +181,6 @@ Closure *Cilk_create_initial_thread(
 {
      Closure *t;
      struct invoke_main_frame *f;
-
-     printf("Entered Cilk_create_initial_thread\n");
 
      /* create a frame for invoke_cilk_main */
      t = Cilk_Closure_create_malloc(context, NULL);
