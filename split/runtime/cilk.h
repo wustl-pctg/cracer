@@ -284,7 +284,7 @@ typedef struct BatchOp{
   void      (*operation)(void**, size_t); 
   void      *args;
   size_t    size;
-  int       status;
+  volatile int       status;
 
 } BatchOp;   
   

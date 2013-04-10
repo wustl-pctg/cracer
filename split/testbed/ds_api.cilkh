@@ -8,10 +8,6 @@
 #include <string.h>
 #include <unistd.h>
 
-//NOTE: not best place for these, but used in both incr and ds_incr
-#define DUMMY_WAIT 100000 //loop iterations to wait (to simulate operation time)
-#define DUMMY_ITERS 10000 //number of times to execute operation
-
 //generalized macro to put operation and arguments into work_array then wait
 #define BATCH(f,a) ds_work_array.array[_cilk_ws->self].operation=(f); \
     ds_work_array.array[_cilk_ws->self].args=(a); \

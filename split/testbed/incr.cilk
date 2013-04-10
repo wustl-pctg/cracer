@@ -5,46 +5,150 @@
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <getopt.h>
+#include <math.h>
 
-
-#include <ds_api.cilkh>
+#include <defaults.h>
     
 Cilk_lockvar incr_lock;
-int dummy_counter = 0;
+long long dummy_counter = 0;
 int op_count = 0;
+static int recursive_flag=1;
 
 cilk void incr(int dummy_wait) {
     int i;
     Cilk_lock(incr_lock); //lock to simulate safe DS op
-    for (i=1; i <= DUMMY_WAIT; ++i)
-        dummy_counter++;
-        op_count++;
+    for (i=1; i <= dummy_wait; ++i) {
+        __asm__ __volatile__("");
+        //++dummy_counter;
+    }
+    dummy_counter+=dummy_wait;
+    op_count++;
     Cilk_unlock(incr_lock);
 }
 
-cilk int main(int argc, char *argv[])
+void usage() {
+    printf("USAGE: incr [-nproc <total procs>] [-dsratio <ds:total>] "); 
+    printf("[-w <wait loop length>] [-i <iterations>]\n");
+
+}
+
+cilk void recursive_spawn_off(int, int, int);
+
+cilk void spawn_off(int dummy_wait, int dummy_iters, int base_size) {
+   
+    int i;
+ 
+    if (!recursive_flag || dummy_iters < base_size) {        
+        //spawn all the operations
+        for (i=0; i < dummy_iters; ++i) {
+            spawn incr(dummy_wait);
+        }
+        //sync;
+    } else {
+        spawn recursive_spawn_off(dummy_wait, dummy_iters, base_size);
+        //sync;
+    }
+    sync;
+}
+
+cilk void recursive_spawn_off(int dummy_wait, int dummy_iters, int base_size) {
+    if (dummy_iters < base_size) {
+        spawn spawn_off(dummy_wait, dummy_iters, base_size);
+    } else {
+        spawn recursive_spawn_off(dummy_wait, 
+            ceil(((float)dummy_iters)/2), base_size);
+        spawn recursive_spawn_off(dummy_wait, 
+            ceil(((float)dummy_iters)/2), base_size);
+    }
+    sync;
+}
+
+
+//USAGE: ds_incr [-nproc <total procs>] [-dsratio <ds:total>] 
+//          [-w <wait loop length>] [-i <iterations>]
+cilk int main(int argc, char *argv[]) 
 {
-    int i, dummy_iters, dummy_wait;
-
-    //grab some command line parameter adjustments if available
-    if (argc > 1)
-        dummy_wait = atoi(argv[1]);
-    else
-        dummy_wait = DUMMY_WAIT;
-    if (argc > 2)
-        dummy_iters = atoi(argv[2]);
-    else
-        dummy_iters = DUMMY_ITERS;
-
-    for (i=0; i < dummy_iters; ++i) {
-        spawn incr(dummy_wait);
+    int c;
+    int dummy_wait=DUMMY_WAIT, dummy_iters=DUMMY_ITERS, base_size=BASE_SIZE;
+    while (1) {
+        static struct option long_options[] =
+            {
+                /* These options set a flag. */
+                {"recursive",   no_argument,   &recursive_flag, 1},
+                {"serial",      no_argument,   &recursive_flag, 0},
+                /* These options don't set a flag.
+                We distinguish them by their indices. */
+                //{"add",         no_argument,       0, 'a'},
+                //{"append",      no_argument,       0, 'b'},
+                {"wait",        required_argument, 0, 'w'},
+                {"iterations",  required_argument, 0, 'i'},
+                {"base",        required_argument, 0, 'b'},
+                {0, 0, 0, 0}
+            };
+        /* getopt_long stores the option index here. */
+        int option_index = 0;
+    
+        c = getopt_long (argc, argv, "w:i:b:",
+                         long_options, &option_index);
+    
+        /* Detect the end of the options. */
+        if (c == -1)
+            break;
+    
+        switch (c) {
+            case 0:
+                /* If this option set a flag, do nothing else now. */
+                if (long_options[option_index].flag != 0)
+                    break;
+                printf ("option %s", long_options[option_index].name);
+                if (optarg)
+                    printf (" with arg %s", optarg);
+                printf ("\n");
+                break;
+    
+            case 'w':
+                printf ("option -w with value `%s'\n", optarg);
+                dummy_wait = atoi(optarg);
+                break;
+    
+            case 'i':
+                printf ("option -i with value `%s'\n", optarg);
+                dummy_iters = atoi(optarg);
+                break;
+  
+            case 'b':
+                printf ("option -b with value `%s'\n", optarg);
+                base_size = atoi(optarg);
+          
+            case '?':
+                /* getopt_long already printed an error message. */
+                break;
+    
+            default:
+                usage ();
+        }
+    }
+    
+    /* Print any remaining command line arguments (not options). */
+    if (optind < argc) {
+        printf ("non-option ARGV-elements: ");
+        while (optind < argc) {
+            printf ("%s ", argv[optind++]);
+        }
+        putchar ('\n');
     }
 
+
+
+    spawn spawn_off(dummy_wait, dummy_iters, base_size);
+    
     sync;
 
-    printf("dummy_counter:%d\nop_count:%d\n", dummy_counter, op_count);
+    printf("dummy_counter: %lld\n", dummy_counter);
 
     exit(EXIT_SUCCESS);
 
     return 0;
+
 }
