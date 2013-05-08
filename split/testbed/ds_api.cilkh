@@ -27,7 +27,9 @@ cilk void ds_main(void* hack) {
     void **batch_data = malloc(nprocs * sizeof(void*)); //args for every job
     int *batch_indexes = malloc(nprocs * sizeof(int)); //reverse proc ptrs
     void (*operation)(void**, size_t); //operation(args, batch_size)
+    printf ("nprocs = %d\n", nprocs);
     op_counts = malloc(nprocs * sizeof(int));
+    op_counts[0]=0;
    
     //NOTE: no termination condition
     for (i=0; 1; i=(i+1)%nprocs){

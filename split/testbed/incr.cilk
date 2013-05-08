@@ -14,8 +14,11 @@ Cilk_lockvar incr_lock;
 long long dummy_counter = 0;
 int op_count = 0;
 static int recursive_flag=1;
+//declare timer
+struct timeval begin, end;
+double time_spent;
 
-cilk void incr(int dummy_wait) {
+void incr(int dummy_wait) {
     int i;
     Cilk_lock(incr_lock); //lock to simulate safe DS op
     for (i=1; i <= dummy_wait; ++i) {
@@ -42,7 +45,7 @@ cilk void spawn_off(int dummy_wait, int dummy_iters, int base_size) {
     if (!recursive_flag || dummy_iters < base_size) {        
         //spawn all the operations
         for (i=0; i < dummy_iters; ++i) {
-            spawn incr(dummy_wait);
+            incr(dummy_wait);
         }
         //sync;
     } else {
@@ -139,13 +142,18 @@ cilk int main(int argc, char *argv[])
         putchar ('\n');
     }
 
-
+    gettimeofday(&begin, NULL); //start timer
 
     spawn spawn_off(dummy_wait, dummy_iters, base_size);
     
     sync;
+    
+    gettimeofday(&end, NULL); //end timer
+    time_spent = end.tv_sec*1000000 +end.tv_usec - 
+	(begin.tv_sec*1000000 + begin.tv_usec);
 
     printf("dummy_counter: %lld\n", dummy_counter);
+    printf("kernel runtime(s): %f\n", time_spent);
 
     exit(EXIT_SUCCESS);
 

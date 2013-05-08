@@ -206,6 +206,9 @@ void Cilk_wakeup_workers(CilkContext *const context)
    res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
    CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_lock: %d returned \n", res));
 
+   //BSS45 - 4/17
+   //printf("workers_mutex: %c\n", USE_SHARED1(workers_mutex));
+
    while(! USE_SHARED1(workers_are_done) ) {
 	res = pthread_cond_wait(&USE_SHARED1(workers_done_cond), &USE_SHARED1(workers_mutex));
    	CILK_CHECK(res == 0,(context, NULL,"error in pthreads_cond_wait: %d returned \n", res));

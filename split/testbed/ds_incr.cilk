@@ -6,13 +6,18 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <math.h>
+#include <sys/time.h>
 
 #include <ds_api.cilkh> //generalized DS utils + counter defaults
 #include <defaults.h>
 
+
 Cilk_lockvar incr_mutex;
 long long dummy_counter = 0;
 static int recursive_flag = 1; //Default to recursive spawning
+//declare timer
+struct timeval begin, end;
+double time_spent;
 
 //batch function for dummy DS op
 //INPUT: batch_data - list of argument lists for individual calls
@@ -61,7 +66,7 @@ cilk void spawn_off(int dummy_wait, int dummy_iters, int base_size) {
         spawn recursive_spawn_off(dummy_wait, dummy_iters, base_size);
         //sync;
     }
-    sync;
+    //sync;
 }
 
 cilk void recursive_spawn_off(int dummy_wait, int dummy_iters, int base_size) {
@@ -71,6 +76,7 @@ cilk void recursive_spawn_off(int dummy_wait, int dummy_iters, int base_size) {
         spawn recursive_spawn_off(dummy_wait, 
             ceil(((float)dummy_iters)/2), base_size);
         spawn recursive_spawn_off(dummy_wait, 
+        //recursive_spawn_off(dummy_wait, 
             ceil(((float)dummy_iters)/2), base_size);
     }
     sync;
@@ -151,14 +157,19 @@ cilk int main(int argc, char *argv[])
     }
 
 
+    gettimeofday(&begin, NULL); //start timer
 
     spawn spawn_off(dummy_wait, dummy_iters, base_size);
     
     sync;
+    
+    gettimeofday(&end, NULL); //end timer
+    time_spent = end.tv_sec*1000000 +end.tv_usec - 
+	(begin.tv_sec*1000000 + begin.tv_usec);
 
     printf("dummy_counter: %lld\n", dummy_counter);
-    //for (i=0; i < ds_work_array.nprocs; ++i)
     printf("op_counts: %d\n", op_counts[0]);
+    printf("kernel runtime(us): %f\n", time_spent);
 
     exit(EXIT_SUCCESS);
 

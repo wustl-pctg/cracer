@@ -44,6 +44,33 @@ struct invoke_main_frame {
      int retval;
 };
 
+struct invoke_main_ds_frame {
+    CilkStackFrame header;
+    void *args;
+    int return_size;
+    void (*import_main_ds)(CilkWorkerState *const ws, void *args);
+    int retval;
+};
+
+struct invoke_main_ds_catch_inlet_args {int res;};
+
+/*
+ * This inlet is created for the purpose of Cilk_exit().
+ * It sets retval to the exit value, and calls abort.
+ * So, when this inlet is excuted, the user's cilk_main
+ * should be aborted as a child of invoke_main.
+ */
+void
+invoke_main_ds_catch_inlet(CilkWorkerState *const _cilk_ws,
+			struct invoke_main_ds_frame *_cilk_frame,
+			void *inletargs,
+			void* UNUSED(inletresult))
+{
+
+     memcpy(_cilk_frame->args, inletargs, _cilk_frame->return_size);
+     CILK2C_ABORT_STANDALONE();
+}
+
 
 struct invoke_main_catch_inlet_args {int res;};
 
@@ -62,6 +89,72 @@ invoke_main_catch_inlet(CilkWorkerState *const _cilk_ws,
 
      memcpy(_cilk_frame->args, inletargs, _cilk_frame->return_size);
      CILK2C_ABORT_STANDALONE();
+}
+
+//BSS45 - 4/22
+static void invoke_main_ds_slow(CilkWorkerState *const _cilk_ws,
+			     struct invoke_main_ds_frame *_cilk_frame)
+{
+     void *args;
+     
+     CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at the end of the func.*/
+
+     CILK2C_START_THREAD_SLOW();
+     switch (_cilk_frame->header.entry) {
+     case 1:
+	  goto _sync1;
+     case 2:
+	  goto _sync2;
+     }
+
+     _cilk_ws->cp_hack = 0;
+     _cilk_ws->work_hack = 0;
+     _cilk_ws->user_work = 0;
+     _cilk_ws->user_critical_path = 0;
+     WHEN_CILK_TIMING(_cilk_frame->header.cp = (Cilk_time) 0);
+     WHEN_CILK_TIMING(_cilk_frame->header.work = (Cilk_time) 0);
+     WHEN_CILK_TIMING(_cilk_frame->header.mycp = (Cilk_time) 0);
+     WHEN_CILK_TIMING(_cilk_ws->last_cp_time = Cilk_get_time());
+
+     args = _cilk_frame->args;
+
+     _cilk_frame->header.receiver = (void *) &_cilk_frame->retval;
+     _cilk_frame->header.entry=1;
+     CILK2C_BEFORE_SPAWN_SLOW();
+     CILK2C_PUSH_FRAME(_cilk_frame);
+
+     _cilk_frame->import_main_ds(_cilk_ws, args);
+     CILK2C_XPOP_FRAME_NORESULT(_cilk_frame,/* return nothing */);
+     CILK2C_AFTER_SPAWN_SLOW();
+
+
+     if (0) {
+     _sync1:
+	  ;
+     }
+     CILK2C_AT_THREAD_BOUNDARY_SLOW();
+
+     CILK2C_BEFORE_SYNC_SLOW();
+     _cilk_frame->header.entry=2;
+     if (CILK2C_SYNC) {
+	  return;
+     _sync2:
+	  ;
+     }
+     CILK2C_AFTER_SYNC_SLOW();
+     CILK2C_AT_THREAD_BOUNDARY_SLOW();
+
+     WHEN_CILK_TIMING(USE_SHARED(critical_path) = _cilk_frame->header.mycp);
+     WHEN_CILK_TIMING(USE_SHARED(total_work) = _cilk_frame->header.work);
+
+     CILK_WMB();
+     USE_SHARED(done) = 1;
+
+     Cilk_remove_and_free_closure_and_frame(_cilk_ws,
+					    &_cilk_frame->header,
+					    _cilk_ws->self);
+
+     return;
 }
 
 
@@ -149,7 +242,7 @@ Closure *Cilk_create_initial_ds_thread(
      t->join_counter = 0;
      t->status = CLOSURE_READY;
 
-     f = Cilk_malloc(sizeof(struct invoke_main_frame));
+     f = Cilk_malloc(sizeof(struct invoke_main_ds_frame));
      f->header.entry = 0;
      f->header.sig = USE_SHARED1(invoke_main_ds_sig);
      WHEN_CILK_DEBUG(f->header.magic = CILK_STACKFRAME_MAGIC);
@@ -164,10 +257,10 @@ Closure *Cilk_create_initial_ds_thread(
      memset( USE_SHARED1(invoke_main_ds_sig), 0 , 3*sizeof(CilkProcInfo) );
      USE_SHARED1(invoke_main_ds_sig)[0].size = sizeof(int);
      USE_SHARED1(invoke_main_ds_sig)[0].index 
-         = sizeof(struct invoke_main_frame);
-     USE_SHARED1(invoke_main_ds_sig)[0].inlet = invoke_main_slow;
+         = sizeof(struct invoke_main_ds_frame);
+     USE_SHARED1(invoke_main_ds_sig)[0].inlet = invoke_main_ds_slow;
      USE_SHARED1(invoke_main_ds_sig)[1].size = sizeof(int);
-     USE_SHARED1(invoke_main_ds_sig)[1].inlet = invoke_main_catch_inlet;
+     USE_SHARED1(invoke_main_ds_sig)[1].inlet = invoke_main_ds_catch_inlet;
      USE_SHARED1(invoke_main_ds_sig)[1].argsize = return_size;
 
      return t;

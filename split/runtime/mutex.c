@@ -121,6 +121,8 @@ static inline void Cilk_mutex_wait_posix(CilkContext *const UNUSED(context),
 {
      Cilk_enter_state(ws, STATE_WAITING_FOR_LOCK);
 
+     //BSS45 4/19
+     //printf("%c\n", lock->posix);
      pthread_mutex_lock(&lock->posix);
 
      Cilk_exit_state(ws, STATE_WAITING_FOR_LOCK);

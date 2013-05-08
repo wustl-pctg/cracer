@@ -155,6 +155,12 @@ extern Closure *Cilk_create_initial_thread(
 					   void (*import_main)(CilkWorkerState *const ws, void *args),
 					   void *args,
 					   int return_size);
+//BSS45 - 4/22
+extern Closure *Cilk_create_initial_ds_thread(
+					   CilkContext *const context,
+					   void (*import_main)(CilkWorkerState *const ws, void *args),
+					   void *args,
+					   int return_size);
 extern void Cilk_scheduler(CilkWorkerState *const ws, Closure *t);
 void Cilk_remove_and_free_closure_and_frame(
 					    CilkWorkerState *const ws, CilkStackFrame *f, int pn);

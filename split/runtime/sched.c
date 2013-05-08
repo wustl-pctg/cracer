@@ -1664,9 +1664,10 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 	  if (USE_PARAMETER(options->yieldslice))
 	       Cilk_raise_priority(ws);
 
-	  if (!USE_SHARED(done))
+	  if (!USE_SHARED(done)) {
+           while (&USE_SHARED(wakeup_other_workers_cond) == NULL){printf("waiting"); continue;}
 	       t = do_what_it_says(ws, t);
-
+      }
 	  /* 
 	   * if provably-good steals happened, t will contain
 	   * the next closure to execute
