@@ -189,9 +189,10 @@ struct CilkGlobalState_s{
 	Cilk_time critical_path;
 	Cilk_time total_work;
 	int done; /* current calculation */
-	int batch_in_progress; /* is there a batch operation in progress */
-	BatchOp *ds_work_array;
+	//	int batch_in_progress; /* is there a batch operation in progress */
+	int current_batch_id; // rsu ***
 	int batch_owner;
+	work_array ds_work_array;
 	Cilk_mutex batch_lock;
 	int terminating; /* Cilk_terminate was called */
 	Cilk_mutex barrier_lock;

@@ -137,7 +137,12 @@ void Cilk_create_children(CilkContext *const context,
 
      /* Create thread-id array */
      USE_SHARED1(tid) = Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(pthread_t));
-     USE_SHARED1(ds_work_array) = Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(BatchOp));
+     USE_SHARED1(ds_work_array).array = Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(BatchOp));
+		 USE_SHARED1(ds_work_array).nprocs = USE_PARAMETER1(active_size);
+     for (i=0; i < USE_PARAMETER1(active_size); i++) {
+       USE_SHARED1(ds_work_array).array[i].status = DS_DONE;
+     }
+
      CILK_CHECK(USE_SHARED1(tid), (context, NULL, "could not malloc tid\n"));
 
      /* allocate and init the params sent to the children*/
@@ -173,7 +178,6 @@ void Cilk_create_children(CilkContext *const context,
 	  if (res)
 	       Cilk_die_internal(context, NULL, "Can't create threads\n");
      }
-
 }
 
 

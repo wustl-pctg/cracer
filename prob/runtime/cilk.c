@@ -197,8 +197,6 @@ static void init_variables(CilkContext *context)
      INIT_PARAMETER1(infofile, (FILE *)0); /*pointer to the stats. output file)*/
      INIT_PARAMETER1(pthread_stacksize, USE_PARAMETER1(options->pthread_stacksize));
 
-     printf("dsprob: %f\n", USE_PARAMETER1(dsprob));
-
      INIT_PARAMETER1(assertion_failed_msg,
 		    "Assertion failed: %s line %d file %s\n"
 		    "This is either a Cilk bug, or your program\n"
@@ -242,6 +240,8 @@ static void Cilk_global_init(CilkContext *const context)
 
      /* Initialize timing */
      Cilk_timing_init(context);
+
+		 USE_SHARED1(current_batch_id) = 0; // rsu ***
 }
 
 void Cilk_terminate(CilkContext *const context)
@@ -292,6 +292,8 @@ static CilkWorkerState *create_worker_state(CilkContext *const context, long id)
      CilkWorkerState *const ws = Cilk_malloc_fixed(sizeof(CilkWorkerState));
 
      ws->self = id;
+
+		 ws->batch_id = 0; // rsu ***
      
      ws->context = context;
 
@@ -310,7 +312,7 @@ static CilkWorkerState *create_worker_state(CilkContext *const context, long id)
      Cilk_run_hooks(USE_PARAMETER(Cilk_init_per_worker_hooks));
 
      Cilk_internal_malloc_per_worker_init(ws);
-
+     
      return ws;
 
 }

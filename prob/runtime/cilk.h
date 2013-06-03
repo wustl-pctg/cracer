@@ -269,20 +269,22 @@ typedef struct {
 
 } CilkReadOnlyParams;
 
+// rsu ***
+enum DS_STATUS { DS_WAITING, DS_DONE };
+
 typedef struct BatchOp{
 
   void      (*operation)(void*, size_t); 
-  void      *data;
+  void      *args;
   size_t    size;
   int       status;
 
 } BatchOp;   
   
-//BatchOp *ds_work_array;
-/* typedef struct { */
-/*   int       nprocs; */
-/*   BatchOp*  array;   */
-/* } work_array; */
+typedef struct {
+  int       nprocs;
+  BatchOp*  array;
+} work_array;
 
 /* work_array ds_work_array; */
 
@@ -303,6 +305,8 @@ typedef struct {
 /* worker state */
 typedef struct {
   CilkClosureCache cache;
+  CilkClosureCache ds_cache; // rsu*** Could we just make the cache point to the right deque, instead of keeping two caches?
+	int batch_id;
   int self;
   struct Cilk_im_descriptor im_descriptor [CILK_INTERNAL_MALLOC_BUCKETS];
   size_t stackdepth;
@@ -534,6 +538,10 @@ void Cilk_start(CilkContext *const context,
 		int return_size );
 void Cilk_free(void *);
 void *Cilk_malloc_fixed(size_t);
+
+// rsu
+typedef void(*Cilk_batch_operation)(CilkWorkerState*const _cilk_ws,
+																		void*,size_t,void*);
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__

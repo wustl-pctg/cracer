@@ -104,3 +104,15 @@ extern __cilksafe__ __nooutput__ __cilkonly__ CilkWorkerState *const _cilk_ws;
 #endif
 
 #endif				/* _CILK_LIB_H */
+
+/***********************************************************\
+ * Cilk_batchify
+\***********************************************************/
+
+
+/* extern void Cilk_batchify(CilkWorkerState *const ws, */
+/* 													const Cilk_batch_operation op, void *data); */
+extern void Cilk_batchify(CilkWorkerState *const ws, void *data);
+
+/* Cilk_exit */
+//#define Cilk_batchify(ws,data) Cilk_batchify(ws,data);
