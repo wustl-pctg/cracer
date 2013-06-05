@@ -1,0 +1,19 @@
+#include <cilk-lib.cilkh>
+#include <stdio.h>
+#include <cilk.h>
+
+#ifndef COUNTER_CILKH
+#define COUNTER_CILKH
+
+/*Defines the Counter type. It has only 1 item in the datastructure  - a count!*/
+typedef struct {
+	int count;
+} Counter;
+
+/*Create counter that starts at init.*/
+Counter* newCounter(int init);
+
+/*A pair of functions - the regular version will call batchify which will use the batch version.*/
+Counter* increment(Counter* counter, int change);
+cilk Counter* batch_increment(void* datastructure, void* op_array, size_t size, void* result);
+#endif
