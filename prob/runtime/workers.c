@@ -54,29 +54,29 @@
 
 static void init_sync_variables(CilkContext *const context)
 {
-    /* pthread_cond_t cond_init = PTHREAD_COND_INITIALIZER; */
-     int res;
+	/* pthread_cond_t cond_init = PTHREAD_COND_INITIALIZER; */
+	int res;
 
-     USE_SHARED1(terminating) = 0;
-     USE_SHARED1(nothing_to_do) = 1;
-     USE_SHARED1(workers_done_counter) = 0;
-     USE_SHARED1(workers_are_done) = 0;
+	USE_SHARED1(terminating) = 0;
+	USE_SHARED1(nothing_to_do) = 1;
+	USE_SHARED1(workers_done_counter) = 0;
+	USE_SHARED1(workers_are_done) = 0;
 
-     /* Create conditions and mutex*/
-     res = pthread_cond_init(&USE_SHARED1(waiting_workers_cond), NULL);
-     CILK_CHECK((res == 0), (context, NULL, "error in pthread_cond_init: %d returned \n", res));
+	/* Create conditions and mutex*/
+	res = pthread_cond_init(&USE_SHARED1(waiting_workers_cond), NULL);
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_cond_init: %d returned \n", res));
 
-      res = pthread_mutex_init(&USE_SHARED1(workers_mutex), NULL);
-     CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_init: %d returned \n", res));
+	res = pthread_mutex_init(&USE_SHARED1(workers_mutex), NULL);
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_init: %d returned \n", res));
 
-      res = pthread_cond_init(&USE_SHARED1(workers_done_cond), NULL);
-     CILK_CHECK((res == 0), (context, NULL, "error in pthread_cond_init: %d returned \n", res));
+	res = pthread_cond_init(&USE_SHARED1(workers_done_cond), NULL);
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_cond_init: %d returned \n", res));
 
-      res = pthread_cond_init(&USE_SHARED1(wakeup_first_worker_cond), NULL);
-     CILK_CHECK((res == 0), (context, NULL, "error in pthread_cond_init: %d returned \n", res));
+	res = pthread_cond_init(&USE_SHARED1(wakeup_first_worker_cond), NULL);
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_cond_init: %d returned \n", res));
 
-      res = pthread_cond_init(&USE_SHARED1(wakeup_other_workers_cond), NULL);
-     CILK_CHECK((res == 0), (context, NULL, "error in pthread_cond_init: %d returned \n", res));
+	res = pthread_cond_init(&USE_SHARED1(wakeup_other_workers_cond), NULL);
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_cond_init: %d returned \n", res));
 }
 
 /* pthread_setconcurrency appears to be in the library archives, but may not be in the header files.
@@ -88,34 +88,34 @@ extern int pthread_setconcurrency (int);
 double __cilk_perfctr_to_second_factor;
 
 struct vperfctr {
-     /* XXX: point to &vperfctr_state.cpu_state instead? */
-     volatile const struct vperfctr_state *kstate;
-     int fd;
-     unsigned char have_rdpmc;
+	/* XXX: point to &vperfctr_state.cpu_state instead? */
+	volatile const struct vperfctr_state *kstate;
+	int fd;
+	unsigned char have_rdpmc;
 };
 
 volatile const struct vperfctr_state *__cilk_vperfctr_init(int set_global_variables) {
-      struct vperfctr *vpc;
-      if (!(vpc = vperfctr_open())) {
-             perror("vperfctr_open");
-             exit(1);
-      }
-      if (set_global_variables) {
-             struct perfctr_info info;
-             if (vperfctr_info(vpc, &info) < 0) {
-                    perror("vperfctr_info");
-                    exit(1);
-             }
-             __cilk_perfctr_to_second_factor = 1e-3 / info.cpu_khz;
-      }
-      /* turn it on */
-      {
-             struct vperfctr_control control;
-             memset(&control.cpu_control, 0, sizeof control.cpu_control);
-             control.cpu_control.tsc_on = 1;
-             vperfctr_control(vpc, &control);
-      }
-      return vpc->kstate;
+	struct vperfctr *vpc;
+	if (!(vpc = vperfctr_open())) {
+		perror("vperfctr_open");
+		exit(1);
+	}
+	if (set_global_variables) {
+		struct perfctr_info info;
+		if (vperfctr_info(vpc, &info) < 0) {
+			perror("vperfctr_info");
+			exit(1);
+		}
+		__cilk_perfctr_to_second_factor = 1e-3 / info.cpu_khz;
+	}
+	/* turn it on */
+	{
+		struct vperfctr_control control;
+		memset(&control.cpu_control, 0, sizeof control.cpu_control);
+		control.cpu_control.tsc_on = 1;
+		vperfctr_control(vpc, &control);
+	}
+	return vpc->kstate;
 }
 
 #endif
@@ -123,186 +123,186 @@ volatile const struct vperfctr_state *__cilk_vperfctr_init(int set_global_variab
 
 
 void Cilk_create_children(CilkContext *const context,
-			  void (*child)(CilkChildParams *const childParams))
+													void (*child)(CilkChildParams *const childParams))
 {
-     long i;
-     int res;
-     pthread_attr_t attr;
+	long i;
+	int res;
+	pthread_attr_t attr;
 
 #ifdef CILK_USE_PERFCTR
-     __cilk_vperfctr_init(1);
+	__cilk_vperfctr_init(1);
 #endif
 	
-     init_sync_variables(context);
+	init_sync_variables(context);
 
-     /* Create thread-id array */
-     USE_SHARED1(tid) =
-			 Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(pthread_t));
-     USE_SHARED1(pending_batch).array =
-			 Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(BatchRecord));
-		 USE_SHARED1(pending_batch).nprocs = USE_PARAMETER1(active_size);
-     for (i=0; i < USE_PARAMETER1(active_size); i++) {
-       USE_SHARED1(pending_batch).array[i].status = DS_DONE;
-     }
+	/* Create thread-id array */
+	USE_SHARED1(tid) =
+		Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(pthread_t));
+	USE_SHARED1(pending_batch).array =
+		Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(BatchRecord));
+	USE_SHARED1(pending_batch).size = USE_PARAMETER1(active_size);
+	for (i=0; i < USE_PARAMETER1(active_size); i++) {
+		USE_SHARED1(pending_batch).array[i].status = DS_DONE;
+	}
 
-     CILK_CHECK(USE_SHARED1(tid), (context, NULL, "could not malloc tid\n"));
+	CILK_CHECK(USE_SHARED1(tid), (context, NULL, "could not malloc tid\n"));
 
-     /* allocate and init the params sent to the children*/
-      USE_SHARED1(thrd_params_array) =
-     			Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(CilkChildParams));
-     CILK_CHECK(USE_SHARED1(thrd_params_array), (context, NULL, "could not malloc params_array\n"));
+	/* allocate and init the params sent to the children*/
+	USE_SHARED1(thrd_params_array) =
+		Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(CilkChildParams));
+	CILK_CHECK(USE_SHARED1(thrd_params_array), (context, NULL, "could not malloc params_array\n"));
 
-     for (i = 0; i < USE_PARAMETER1(active_size); i++)
-     {
-	USE_SHARED1(thrd_params_array)[i].context = context;
-	USE_SHARED1(thrd_params_array)[i].id = i;
-     }
+	for (i = 0; i < USE_PARAMETER1(active_size); i++)
+		{
+			USE_SHARED1(thrd_params_array)[i].context = context;
+			USE_SHARED1(thrd_params_array)[i].id = i;
+		}
 
-     pthread_attr_init(&attr);
-     /* initialize attr with default attributes */
-     pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
-                              /* system-wide contention */
-     if (USE_PARAMETER1(pthread_stacksize)>0) {
-	 size_t sz = USE_PARAMETER1(pthread_stacksize);
-	 int r = pthread_attr_setstacksize(&attr, sz);
-	 if (r!=0) {
-	     Cilk_die_internal(context, NULL, "Can't set stacksize (maybe be too small or too large)\n");
-	 }
-     }
-     pthread_setconcurrency(USE_PARAMETER1(active_size));
+	pthread_attr_init(&attr);
+	/* initialize attr with default attributes */
+	pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
+	/* system-wide contention */
+	if (USE_PARAMETER1(pthread_stacksize)>0) {
+		size_t sz = USE_PARAMETER1(pthread_stacksize);
+		int r = pthread_attr_setstacksize(&attr, sz);
+		if (r!=0) {
+			Cilk_die_internal(context, NULL, "Can't set stacksize (maybe be too small or too large)\n");
+		}
+	}
+	pthread_setconcurrency(USE_PARAMETER1(active_size));
 
-     for (i = 0; i < USE_PARAMETER1(active_size); i++)
-     {
-	  res = pthread_create(USE_SHARED1(tid) + i,
-			       &attr,
-			       (void * (*) (void *)) child,
-			       (void *) &(USE_SHARED1(thrd_params_array)[i]) );
-	  if (res)
-	       Cilk_die_internal(context, NULL, "Can't create threads\n");
-     }
+	for (i = 0; i < USE_PARAMETER1(active_size); i++)
+		{
+			res = pthread_create(USE_SHARED1(tid) + i,
+													 &attr,
+													 (void * (*) (void *)) child,
+													 (void *) &(USE_SHARED1(thrd_params_array)[i]) );
+			if (res)
+				Cilk_die_internal(context, NULL, "Can't create threads\n");
+		}
 }
 
 
 void Cilk_wakeup_workers(CilkContext *const context)
 {
-   int res;
+	int res;
 
-   /* Reset to 0 nothing_to_do */
-   res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
-   CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_lock: %d returned \n", res));
+	/* Reset to 0 nothing_to_do */
+	res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_lock: %d returned \n", res));
 
-   USE_SHARED1(workers_done_counter) = 0;
-   USE_SHARED1(workers_are_done) = 0;
-   USE_SHARED1(nothing_to_do) = 0;
+	USE_SHARED1(workers_done_counter) = 0;
+	USE_SHARED1(workers_are_done) = 0;
+	USE_SHARED1(nothing_to_do) = 0;
 
-   res = pthread_mutex_unlock(&USE_SHARED1(workers_mutex));
-   CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_unlock: %d returned \n", res));
+	res = pthread_mutex_unlock(&USE_SHARED1(workers_mutex));
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_unlock: %d returned \n", res));
 
-   /* Wake up the workers who are sleeping */
-   res = pthread_cond_broadcast(&USE_SHARED1(wakeup_first_worker_cond));
-   if (res)
-       Cilk_die_internal(context, NULL, "Failed to broadcast\n");
+	/* Wake up the workers who are sleeping */
+	res = pthread_cond_broadcast(&USE_SHARED1(wakeup_first_worker_cond));
+	if (res)
+		Cilk_die_internal(context, NULL, "Failed to broadcast\n");
 
-   /* Wait till they are done */
-   res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
-   CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_lock: %d returned \n", res));
+	/* Wait till they are done */
+	res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_lock: %d returned \n", res));
 
-   while(! USE_SHARED1(workers_are_done) ) {
-	res = pthread_cond_wait(&USE_SHARED1(workers_done_cond), &USE_SHARED1(workers_mutex));
+	while(! USE_SHARED1(workers_are_done) ) {
+		res = pthread_cond_wait(&USE_SHARED1(workers_done_cond), &USE_SHARED1(workers_mutex));
    	CILK_CHECK(res == 0,(context, NULL,"error in pthreads_cond_wait: %d returned \n", res));
-   }
+	}
 
-   res = pthread_mutex_unlock(&USE_SHARED1(workers_mutex));
-   CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_unlock: %d returned \n", res));
+	res = pthread_mutex_unlock(&USE_SHARED1(workers_mutex));
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_unlock: %d returned \n", res));
 }
 
 void Cilk_worker_wait_for_invocation(CilkContext *const context, long self, int *local_terminating)
 {
-   int res;
-   pthread_cond_t *my_cond = ( self != 0 ? &USE_SHARED1(wakeup_other_workers_cond)
-   					: &USE_SHARED1(wakeup_first_worker_cond));
+	int res;
+	pthread_cond_t *my_cond = ( self != 0 ? &USE_SHARED1(wakeup_other_workers_cond)
+															: &USE_SHARED1(wakeup_first_worker_cond));
 
-   res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
-   CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_lock: %d returned \n", res));
+	res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_lock: %d returned \n", res));
 
-   while((!USE_SHARED1(terminating)) && USE_SHARED1(nothing_to_do)){
+	while((!USE_SHARED1(terminating)) && USE_SHARED1(nothing_to_do)){
    	res = pthread_cond_wait(my_cond, &USE_SHARED1(workers_mutex));
-       	CILK_CHECK((res == 0), (context, NULL, "error in pthread_cond_wait: %d returned \n", res));
-   }
+		CILK_CHECK((res == 0), (context, NULL, "error in pthread_cond_wait: %d returned \n", res));
+	}
 
-   USE_SHARED1(workers_done_counter)++;
+	USE_SHARED1(workers_done_counter)++;
 
-   *local_terminating = USE_SHARED1(terminating);
-   res = pthread_mutex_unlock(&USE_SHARED1(workers_mutex));
+	*local_terminating = USE_SHARED1(terminating);
+	res = pthread_mutex_unlock(&USE_SHARED1(workers_mutex));
 
-   if( self == 0 ) {
+	if( self == 0 ) {
    	/* Wakeup the other workers */
    	res = pthread_cond_broadcast(&USE_SHARED1(wakeup_other_workers_cond));
    	if (res)
-       		Cilk_die_internal(context, NULL, "Failed to broadcast\n");
+			Cilk_die_internal(context, NULL, "Failed to broadcast\n");
 
-   }
+	}
 
-   CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_unlock: %d returned \n", res));
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_unlock: %d returned \n", res));
 }
 
 /* Assumption:  terminating = false */
 void Cilk_worker_is_done(CilkContext *const context, int *local_terminating)
 {
-   int res;
+	int res;
 
-   /* Incrementing done_counter */
-   res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
-   CILK_CHECK(res == 0,(context, NULL,"error in pthread_mutex_lock: %d returned \n", res));
+	/* Incrementing done_counter */
+	res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
+	CILK_CHECK(res == 0,(context, NULL,"error in pthread_mutex_lock: %d returned \n", res));
 
-   USE_SHARED1(nothing_to_do) = 1;
-   USE_SHARED1(workers_done_counter)--;
+	USE_SHARED1(nothing_to_do) = 1;
+	USE_SHARED1(workers_done_counter)--;
 
-   /* Signal if all worker threads are done */
-   if(USE_SHARED1(workers_done_counter) <= 0 ) {
-        USE_SHARED1(workers_are_done) = 1;
+	/* Signal if all worker threads are done */
+	if(USE_SHARED1(workers_done_counter) <= 0 ) {
+		USE_SHARED1(workers_are_done) = 1;
    	res = pthread_cond_signal(&USE_SHARED1(workers_done_cond));
    	CILK_CHECK(res == 0,(context, NULL,"error in pthread_cond_signal: %d returned \n", res));
-   }
+	}
 
-   *local_terminating = USE_SHARED1(terminating);
-   res = pthread_mutex_unlock(&USE_SHARED1(workers_mutex));
-   CILK_CHECK(res == 0,(context, NULL,"error in pthread_mutex_unlock: %d returned \n", res));
+	*local_terminating = USE_SHARED1(terminating);
+	res = pthread_mutex_unlock(&USE_SHARED1(workers_mutex));
+	CILK_CHECK(res == 0,(context, NULL,"error in pthread_mutex_unlock: %d returned \n", res));
 }
 
 void Cilk_terminate_children(CilkContext *const context)
 {
-     long i;
-     int res;
+	long i;
+	int res;
 
-     /* wake up only those who are sleeping */
-     res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
-     CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_lock: %d returned \n", res));
+	/* wake up only those who are sleeping */
+	res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_lock: %d returned \n", res));
 
-     USE_SHARED1(terminating) = 1;
+	USE_SHARED1(terminating) = 1;
 
-     res = pthread_mutex_unlock(&USE_SHARED1(workers_mutex));
-     CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_unlock: %d returned \n", res));
+	res = pthread_mutex_unlock(&USE_SHARED1(workers_mutex));
+	CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_unlock: %d returned \n", res));
 
-     res = pthread_cond_broadcast(&USE_SHARED1(wakeup_first_worker_cond));
-     if (res)
-       Cilk_die_internal(context, NULL, "Failed to broadcast\n");
+	res = pthread_cond_broadcast(&USE_SHARED1(wakeup_first_worker_cond));
+	if (res)
+		Cilk_die_internal(context, NULL, "Failed to broadcast\n");
 
-     res = pthread_cond_broadcast(&USE_SHARED1(wakeup_other_workers_cond));
-     if (res)
-       Cilk_die_internal(context, NULL, "Failed to broadcast\n");
+	res = pthread_cond_broadcast(&USE_SHARED1(wakeup_other_workers_cond));
+	if (res)
+		Cilk_die_internal(context, NULL, "Failed to broadcast\n");
 
-     /* Now join the threads */
-     for (i = 0; i < USE_PARAMETER1(active_size); i++)
-     {
-	  res = pthread_join(USE_SHARED1(tid[i]), NULL);
-	  CILK_CHECK(res == 0,
-		     (context, NULL,
-		      "error in pthread_join: %d returned (worker %d)\n",
-		      res, i));
-     }
+	/* Now join the threads */
+	for (i = 0; i < USE_PARAMETER1(active_size); i++)
+		{
+			res = pthread_join(USE_SHARED1(tid[i]), NULL);
+			CILK_CHECK(res == 0,
+								 (context, NULL,
+									"error in pthread_join: %d returned (worker %d)\n",
+									res, i));
+		}
 
 
-     Cilk_free(USE_SHARED1(thrd_params_array));
-     Cilk_free(USE_SHARED1(tid));
+	Cilk_free(USE_SHARED1(thrd_params_array));
+	Cilk_free(USE_SHARED1(tid));
 }

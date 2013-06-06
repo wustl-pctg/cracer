@@ -1788,7 +1788,7 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 	pending.array[ws->self].status = DS_WAITING;
 
 	done =  USE_SHARED(current_batch_id) + 1;
-	printf("On batch: %i", done);
+	printf("On batch: %i\n", done);
 
 	while (USE_SHARED(current_batch_id) <= done) {
 		ws->batch_id = USE_SHARED(current_batch_id);
@@ -1798,29 +1798,31 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 			USE_SHARED(batch_owner) = ws->self;
 
 			void *workArray = Cilk_malloc_fixed(dataSize * pending.size);
-			//	dataArray = Cilk_malloc_fixed(size * numJobs);
 
 			for (i = 0; i < pending.size; i++) {
 				if (pending.array[i].status == DS_WAITING) {
-					workArray[numJobs] = pending.array[i].args;
+					memcpy(&workArray[numJobs], pending.array[i].args, dataSize);
 					numJobs++;
 				}
 			}
 
 			printf("Batch of size %i\n", numJobs);
 
-			void *result = malloc(dataSize * numJobs);
+			void *result = Cilk_malloc_fixed(dataSize * numJobs);
 			Cilk_exit_state(ws, STATE_BATCH_START);
 
 			// Could we be destructive, i.e. use same array for data and result, to save time/space?
 			op(ws, dataStruct, workArray, (size_t)numJobs, result);
 
 			// we may have had work stolen, so make sure to finished
-			if (USE_SHARED(current_batch_id) != ws->batch_id) batch_scheduler(ws, t);
+			//if (USE_SHARED(current_batch_id) != ws->batch_id) batch_scheduler(ws, t);
 			/* Is the above line really correct/necessary? Right now we're not *spawning*
 			 * Cilk_batchify, so although some ds work may be stolen, the closure for this 
 			 * function actually never gets stolen. I'm still not entirely sure how this works. */
 
+			Cilk_free(workArray);
+			Cilk_free(result);
+			USE_SHARED(current_batch_id)++;
 			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
 			break; // we got the lock, which means the batch must have contained our job - we're done
 

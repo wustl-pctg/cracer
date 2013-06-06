@@ -520,8 +520,6 @@ void Cilk_start(CilkContext *const context,
 void Cilk_free(void *);
 void *Cilk_malloc_fixed(size_t);
 
-
-// rsu ***
 /*******************************************************************************
  * BATCHER
  ******************************************************************************/
