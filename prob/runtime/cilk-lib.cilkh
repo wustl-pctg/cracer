@@ -103,16 +103,16 @@ extern __cilksafe__ __nooutput__ __cilkonly__ Cilk_time Cilk_user_critical_path;
 extern __cilksafe__ __nooutput__ __cilkonly__ CilkWorkerState *const _cilk_ws;
 #endif
 
-#endif				/* _CILK_LIB_H */
-
 /***********************************************************\
- * Cilk_batchify
+ * Batch scheduler
 \***********************************************************/
+typedef cilk void (*CilkBatchOperation)(void *dataStruct, void *data,
+																				size_t numElements, void *result);
 
+cilk void * Cilk_batchify(CilkBatchOperation op, void *dataStruct,
+												void *data, size_t dataSize)
+{
+	return Cilk_batchify_internal(_cilk_ws, op, dataStruct, data, dataSize);
+}
 
-/* extern void Cilk_batchify(CilkWorkerState *const ws, */
-/* 													const Cilk_batch_operation op, void *data); */
-extern void Cilk_batchify(CilkWorkerState *const ws, void *data);
-
-/* Cilk_exit */
-//#define Cilk_batchify(ws,data) Cilk_batchify(ws,data);
+#endif				/* _CILK_LIB_H */

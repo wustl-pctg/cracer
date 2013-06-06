@@ -355,7 +355,6 @@ static void Cilk_child_main(CilkChildParams *const childParams)
 
 CilkContext* Cilk_init( int* argc, char *argv[] )
 {
-
      CilkContext* context;
 
      Cilk_create_context(&context);

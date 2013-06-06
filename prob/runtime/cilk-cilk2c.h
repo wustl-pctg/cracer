@@ -21,7 +21,6 @@
  *  USA.
  *
  */
-
 #define Self _cilk_ws->self
 #define Cilk_user_work _cilk_ws->user_work
 #define Cilk_user_critical_path _cilk_ws->user_critical_path

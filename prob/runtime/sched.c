@@ -1771,28 +1771,24 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 	return;
 
 }	
-//									 void(*op)(const CilkWorkerState*,void*,size_t,void*),
 
 // if we don't need a result array, we should change this so it's faster
-/* void Cilk_batchify(CilkWorkerState *const ws, Cilk_batch_operation op, */
-/* 									 void *data) */
-void Cilk_batchify(CilkWorkerState *const ws, void *data)
+void * Cilk_batchify_internal(CilkWorkerState *const ws, 
+															CilkBatchOpInternal op,
+															void *dataStruct, void *data, size_t dataSize)
 {
-	printf("in batch\n");
-	Closure *t = (Closure *) NULL;
-	int numJobs, done;
+	Closure *t;
+	int numJobs = 0, done, i;
 
 	// add operation to pending array
-	work_array pending_array = USE_SHARED(ds_work_array);
-	//	pending_array.array[ws->self].operation = op;
-	pending_array.array[ws->self].args = data;
-	pending_array.array[ws->self].size = sizeof(data);
-	pending_array.array[ws->self].status = DS_WAITING;
-
-	printf("in batchify!\n");
-	return;
+	Batch pending = USE_SHARED(pending_batch);
+	pending.array[ws->self].operation = op;
+	pending.array[ws->self].args = data;
+	pending.array[ws->self].size = dataSize; 
+	pending.array[ws->self].status = DS_WAITING;
 
 	done =  USE_SHARED(current_batch_id) + 1;
+	printf("On batch: %i", done);
 
 	while (USE_SHARED(current_batch_id) <= done) {
 		ws->batch_id = USE_SHARED(current_batch_id);
@@ -1800,16 +1796,30 @@ void Cilk_batchify(CilkWorkerState *const ws, void *data)
 		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
 			Cilk_enter_state(ws, STATE_BATCH_START);
 			USE_SHARED(batch_owner) = ws->self;
-		
-			void **dataArray;
-			//			numJobs = start_batch(op, sizeof(data), dataArray);
+
+			void *workArray = Cilk_malloc_fixed(dataSize * pending.size);
+			//	dataArray = Cilk_malloc_fixed(size * numJobs);
+
+			for (i = 0; i < pending.size; i++) {
+				if (pending.array[i].status == DS_WAITING) {
+					workArray[numJobs] = pending.array[i].args;
+					numJobs++;
+				}
+			}
+
+			printf("Batch of size %i\n", numJobs);
+
+			void *result = malloc(dataSize * numJobs);
 			Cilk_exit_state(ws, STATE_BATCH_START);
 
-			// NB: Is it okay to be destructive, i.e. use dataArray as the result array?
-			//			op(ws, dataArray, (size_t)numJobs, dataArray);
+			// Could we be destructive, i.e. use same array for data and result, to save time/space?
+			op(ws, dataStruct, workArray, (size_t)numJobs, result);
 
 			// we may have had work stolen, so make sure to finished
 			if (USE_SHARED(current_batch_id) != ws->batch_id) batch_scheduler(ws, t);
+			/* Is the above line really correct/necessary? Right now we're not *spawning*
+			 * Cilk_batchify, so although some ds work may be stolen, the closure for this 
+			 * function actually never gets stolen. I'm still not entirely sure how this works. */
 
 			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
 			break; // we got the lock, which means the batch must have contained our job - we're done
@@ -1828,32 +1838,6 @@ void terminate_batch(CilkWorkerState *const ws)
 	USE_SHARED(current_batch_id)++;
 	return;
 }
-
-// assuming a homogeneous batch, i.e. 
-// all operations are the same
-int start_batch(CilkWorkerState *const ws, void (*op)(void*), size_t size, void **dataArray)
-{
-	int i;
-	work_array pending_array = USE_SHARED(ds_work_array);
-	int numJobs = 0;
-	for (i = 0; i < pending_array.nprocs; i++) {
-		if (pending_array.array[i].status == DS_WAITING) {
-			numJobs++;
-		}
-	}
-	//void **data = Cilk_malloc_fixed(size * numJobs);
-	dataArray = Cilk_malloc_fixed(size * numJobs);
-	int j = 0;
-	for (i = 0; i < pending_array.nprocs; i++) {
-		if (pending_array.array[i].status == DS_WAITING) {
-			dataArray[j] = pending_array.array[i].args;
-			j++;
-		}
-	}
-	//	op(data, (size_t)numJobs);
-	return numJobs;
-}
-
 
 /*
  * initialization of the scheduler. 
@@ -1953,4 +1937,3 @@ void Cilk_exit_from_user_main(CilkWorkerState *const ws, Closure *cl, int res)
      
 	Closure_unlock(ws, cl);
 }
-
