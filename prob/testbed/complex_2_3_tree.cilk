@@ -11,8 +11,6 @@
 /* Tyler Romero and Kefu Lu */
 
 /*-----------------------------Structs-----------------------------------------------------------------------------------------*/
-
-
 struct node23
 {
 	int left_data, right_data;
@@ -24,40 +22,72 @@ struct node23
 
 
 /*-----------------------------Function Declarations----------------------------------------------------------------------------*/
-int binary_search_function(int (*function_ptr)(int, struct node23*), struct node23* node_array, int size);				/*Returns the array index of the thing that is searched for*/
-int find_first(int index, struct node23* node_array, struct node23* target);
-int find_last(int index, struct node23* node_array, struct node23* target);
+struct node23* create_node(int node_data);									 					/*COMPLETE*/
+int binary_search_function(int (*function_ptr)(int, int, struct node23**, struct node23*), struct node23** node_array, int size, struct node23* target);	/*COMPLETE*/			/*Returns the array index of the thing that is searched for*/
+int find_first(int index, int bound, struct node23** node_array, struct node23* target); 		/*COMPLETE*/
+int find_last(int index, int bound, struct node23** node_array, struct node23* target); 		/*COMPLETE*/
+int find_insert_index(int *input_array, int size, struct node23* target);
+void complex_batch_insert(struct node23* root, int *D, int size);
+int recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, struct node23 ***result)
+
+
+
+
+
+
+/*-----------------------------Create Node----------------------------------------------------------------------------------*/
+struct node23* create_node(int node_data)	//Initializes a node with 'node_data' being 'left_data'
+{
+	struct node23* new_node = malloc(sizeof(struct node23));
+	if(new_node == NULL)
+	{
+		printf("\nError allocating memory for new node");
+		return new_node;
+	}
+	
+	new_node->left_data = node_data;
+	new_node->right_data = VOID_DATA;
+	new_node->max = VOID_DATA;
+	new_node->left = NULL;
+	new_node->middle = NULL;
+	new_node->right = NULL;
+	new_node->is_marked = unmarked;
+	return new_node;
+}
+
+
 
 
 /*---------------------------Binary Search Function-----------------------------------------------------------------*/
-int binary_search_function(int (*function_ptr)(int, struct node23*, struct node23*), struct node23* node_array, int size, struct node23* target)
+int binary_search_function(int (*function_ptr)(int, int, struct node23**, struct node23*), struct node23** node_array, int size, struct node23* target)
 {
 	int left, right, middle;
 	int search_result;
 	left = 0;
 	right = size;
-	while(right-left>0)
-	{
+	do{
 		middle = (right-left)/2+left;
-		search_result = function_ptr(middle, node_array, target);
+		search_result = function_ptr(middle, size, node_array, target);
 		
 		if (search_result == 1)
 			return middle;
-		else if(serch_result == 0)
+		else if(search_result == 0)
 		{
 			right = middle;
 		}
-		else left = middle;
-	}
+		else left = middle+1;
+		
+
+	}while(right-left>0);
 	return -1;
 	/* ^^^^^^^Take care of case where nothing is found by search*/
 }
 
-int find_first(int index, struct node23* node_array, struct node23* target) 		//Returns 1 if correct index, returns 0 if index is to left, returns 2 if index is to right
+int find_first(int index, int bound, struct node23** node_array, struct node23* target) 		//Returns 1 if correct index, returns 0 if index is to left, returns 2 if index is to right
 {
 	if(node_array[index] == target)
 	{
-		if(node_array[index-1] != target) return 1;
+		if(index == 0 || node_array[index-1] != target) return 1;
 		else return 0;
 	}
 	if(node_array[index]->left_data < target->left_data)
@@ -67,12 +97,12 @@ int find_first(int index, struct node23* node_array, struct node23* target) 		//
 	else return 0;
 }
 
-int find_last(int index, struct node23* node_array, struct node23* target) 		//Returns 1 if correct index, returns 0 if index is to left, returns 2 if index is to right
+int find_last(int index, int bound, struct node23** node_array, struct node23* target) 		//Returns 1 if correct index, returns 0 if index is to left, returns 2 if index is to right
 {
 	if(node_array[index] == target)
 	{
-		if(node_array[index+1] != target) return 1;		//The only difference between find_first and find_last is the change in this line
-		else return 0;
+		if(index == bound-1 || node_array[index+1] != target) return 1;		//The only difference between find_first and find_last is the change in this line
+		else return 2;
 	}
 	if(node_array[index]->left_data < target->left_data)
 	{
@@ -81,11 +111,162 @@ int find_last(int index, struct node23* node_array, struct node23* target) 		//R
 	else return 0;
 }
 
+int find_insert_index(int *input_array, int size, struct node23* target)
+{
+	int left, right, middle;
+	int search_result;
+	left = 0;
+	right = size;
+	
+	do{
+		middle = (right-left)/2+left;
+
+		printf("%d\n", middle);
+		
+		if (target->left_data < input_array[middle])
+			right = middle;
+		else if(target->left_data >= input_array[middle])
+		{
+			left = middle;
+		}else left = middle;
+		
+		if(right-left==1)
+			return right;
+
+	}while(right-left>0);
+	return -1;
+	/* ^^^^^^^Take care of case where nothing is found by search*/	
+}
 
 
+/*----------------------------Search and Mark---------------------------------------------------------------*/
+struct node23* searchAndMark(struct node23* current_node, int key, int mark)
+{
+    current_node->is_marked=mark;
+	if(current_node->left == NULL)
+	{
+		return current_node;
+	}
+	else{
+		if(key <= current_node->left_data)
+			return searchAndMark(current_node->left, key, mark);
+		else if(current_node->right_data == VOID_DATA)
+			return searchAndMark(current_node->middle, key, mark);
+		else if(key <= current_node->right_data)
+			return searchAndMark(current_node->middle, key, mark);
+		else if(key > current_node->right_data)
+			return searchAndMark(current_node->right, key, mark);
+		else return NULL; 								/*Hypothetically should never happen*/
+	}
+}
 
+/*----------------------------complex_batch_insert-------------------------------------------------------*/
+void complex_batch_insert(struct node23* root, int *input_integers, int size) /*Takes in a pointer to the root of a tree, an array of keys to insert, and the size of that array*/
+{
+	int i;
+	struct node23 **result_array = calloc(size, sizeof(struct node23*));
+	struct node23 **result;
 
+	for(i=0; i<size; ++i)
+	{
+		result_array[i] = searchAndMark(root, input_integers[i], 1);
+	}
 
+    recursive_split(root, result_array, input_integers, size, &result);
+	
+	free(result_array);
+}
+
+int recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, struct node23 ***result) //Edits result, but returns the size of result
+{
+	//struct node23 **result; /*The array of parent nodes that we will return*/
+	int first, insert, last;
+	int size_a, size_b, size_c, size_total;
+	struct node23 **node_array_a, **node_array_b, **node_array_c; //a, b, and c refer to the left, middle, or right parts of the parent node
+	int i;
+	
+	if(current_node==NULL || current_node->is_marked == unmarked)	/*If current_node doesnt exist/is not marked, return NULL*/
+		return 0;
+	
+	if(current_node->left == NULL)									/*If current_node IS a leaf ----> generate a sub-array of nodes that correspond to that leaf; return that node array*/
+	{
+		first = binary_search_function(find_first, search_array, size, current_node);
+		last = binary_search_function(find_last, search_array, size, current_node);
+		insert = find_insert_index(input_integers, size, current_node);
+		
+		*result = calloc(2+last-first, sizeof(struct node23*)); /*Allocate a sub-array for each of the leafs*/
+		
+		if(insert > last) /*Fill the sub-arrays using the integer inputs - Normal case*/
+		{
+			for(i = 0; i < 1+last-first; ++i) 											//PARALLEL FOR
+			{
+				*result[i] = create_node(input_integers[i+first]);
+			}
+			*result[1+last-first] = current_node;
+		}else			 /*Exception - the node does not go on the end of the sub-array*/
+		{
+			for(i=0; i<insert-first; ++i) //Fills up the sub-array before the node			//PARALLEL FOR
+				*result[i] = create_node(input_integers[i+first]);
+			*result[insert-first] = current_node; //Inserts the node
+			for(i=insert-first+1; i<1+last-first; ++i) //Fills up the sub-array after the node*/		//PARALLEL FOR
+				*result[i] = create_node(input_integers[i+first-1]);
+		}
+		return 2+last-first;
+	}
+	else															/*If current_node is NOT a leaf ----> call recursive split and generate new nodes?*/
+	{
+		size_a = recursive_split(current_node->left, search_array, input_integers, size, node_array_a);
+		size_b = recursive_split(current_node->middle, search_array, input_integers, size, node_array_b);
+		size_c = recursive_split(current_node->right, search_array, input_integers, size, node_array_c);
+	}
+	
+	
+	/*------------------------Regroup the node_arrays, and create new parent nodes as needed-----------------------------------*/
+	
+	size_total = size_a+size_b+size_c;
+	if(size_total%3 == 0) //<-------------------------If size is a multiple of 3
+	{
+		*result = calloc(size_total/3, sizeof(struct node23*)); /*Allocate a sub-array for each of the leafs*/
+		for(i=0; i<size_total/3; ++i)
+		{
+			*result[i] = create_node(VOID_DATA);		//Parent node
+		}
+		for(i=0; i<size_total; ++i)
+		{
+			struct node23** temp;
+			if (i%3==0) {
+				temp=&(*result[i/3]->left);
+			} else if (i%3==1){
+				temp=&(*result[i/3]->middle);
+			}
+			else {
+				temp=&(*result[i/3]->right);
+			}
+			
+			if(i<size_a)
+			{
+				*temp = node_array_a[i];
+
+			}else if(i<size_a+size_b)
+			{
+				*temp = node_array_b[i-size_a];
+			}else
+			{
+				*temp = node_array_c[i-size_a-size_b];
+			}
+		}
+	}
+	//<-----------------NEED TO DO IF SIZE IS NOT A MULTIPLE OF 3
+	
+	/*-----------------------------------------------------------------------------------------------------------------------*/
+	
+	
+}
+
+struct node23* fix_root(struct node23** node_array)
+{
+
+}
 
 
 
