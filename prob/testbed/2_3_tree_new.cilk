@@ -1,0 +1,405 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+#define VOID_DATA (int)-INFINITY
+#define PARALLEL_CUTOFF 5
+
+/* 2-3 Tree that supports parallel operations */
+/* Tyler Romero and Kefu Lu */
+
+/*-----------------------------Structs-----------------------------------------------------------------------------------------*/
+
+/*Each node of a 2-3 Tree contains up to two data fields, and 0, 2,or 3 children, depending on the number of data fields and its position in the tree
+  Each data field used as the root of a sub-tree is greater than or equal to all of the values stored in its subtree
+  Any single data item is stored in the left side of the node
+  All data items are found in the leaves, data items not in leaves are for locating data in leaves*/
+  
+struct node23
+{
+	int left_data, right_data;
+	int max;
+	struct node23 *left, *middle, *right;
+	enum mark_status{unmarked, marked} is_marked;
+};
+
+struct tree23
+{
+	struct node23 *root;
+	int leaf_count;           //NEVER USED
+};
+
+
+
+
+/*-----------------------------Function Declarations----------------------------------------------------------------------------*/
+struct node23* create_node(int node_data); 					/*COMPLETE*/		/* "Initializes" Node, returns pointer */
+struct tree23* create_tree(int node_data); 					/*COMPLETE*/		/* "Initializes" Tree, returns pointer */
+void delete_tree_helper();									/*COMPLETE*/
+void delete_tree();											/*COMPLETE*/
+void print_tree(struct node23 *current_node, int space_count);
+struct node23* search(struct node23 *current_node, int key); /*COMPLETE*/
+struct node23* searchAndMark(struct node23* current_node, int key, int mark);
+cilk void search_and_insert(struct node23* root, int* D, int index);
+cilk void parallel_for_search_call(struct node23* root, int* D, int start, int end);
+cilk void simplified_batch_insert(struct tree23 *tree, int *D, int m);
+cilk struct node23* recursive_split(struct node23* current_node, int depth);
+int merge_nodes(struct node23 **array);						/*COMPLETE*/
+void insert();
+void delete();
+void batch_insert();
+void batch_delete();
+int set_max(struct node23 *node); /*COMPLETE*/
+void fix_node_values(struct node23 *node); /*This sets the nodes to have correct left_data and right_data according to children.*/
+void rewire_nodes(int size, struct node23** node_array, struct node23* current_node, struct node23* new_node); //Write this later
+struct node23* fix_tree_root(struct node23* nodeL, struct node23* nodeM); /*Fixes the tree root*/
+
+
+
+
+
+/*-----------------------------create_node and create_tree-------------------------------------------------------------------------*/
+struct node23* create_node(int node_data)	//Initializes a node with 'node_data' being 'left_data'
+{
+	struct node23* new_node = malloc(sizeof(struct node23));
+	if(new_node == NULL)
+	{
+		printf("\nError allocating memory for new node");
+		return new_node;
+	}
+	
+	new_node->left_data = node_data;
+	new_node->right_data = VOID_DATA;
+	new_node->max = VOID_DATA;
+	new_node->left = NULL;
+	new_node->middle = NULL;
+	new_node->right = NULL;
+	new_node->is_marked = unmarked;
+	return new_node;
+}
+
+int set_max(struct node23 *node) {
+    if (node==NULL) {
+        return VOID_DATA;
+    }
+    if (node->left==NULL){
+        node->max=node->left_data;
+    }
+    else {
+        if (node->right==NULL){
+            node->max=node->middle->max;
+        }
+        else {
+            node->max=node->right->max;
+        }
+    }
+    return node->max;
+}
+
+void fix_node_values(struct node23 *node) {
+    if (node==NULL){
+        return;
+    }
+    
+    node->left_data = node->left->max;
+    node->right_data=node->middle->max;
+    if (node->right==NULL){
+        node->right_data=VOID_DATA;
+    }
+    set_max(node);
+}
+
+struct tree23* create_tree(int node_data)
+{
+	struct tree23* new_tree = malloc(sizeof(struct tree23));
+	if(new_tree == NULL)
+	{
+		printf("\nError allocating memory for new tree");
+		return new_tree;
+	}
+	
+	new_tree->root = create_node(node_data);
+	new_tree->leaf_count = 1;
+	return new_tree;
+}
+
+/*----------------------------delete_tree-----------------------------------------------------------------*/
+void delete_tree_helper(struct node23 *dead_node)
+{
+	if(dead_node->left != NULL)
+		delete_tree_helper(dead_node->left);
+	if(dead_node->middle != NULL)
+		delete_tree_helper(dead_node->middle);
+	if(dead_node->right != NULL)
+		delete_tree_helper(dead_node->right);
+
+	free(dead_node);
+	return;	
+}
+
+void delete_tree(struct tree23 *dead_tree)
+{
+	delete_tree_helper(dead_tree->root);
+	free(dead_tree);
+}
+
+
+
+/*---------------------------print_tree---------------------------------------------------------*/
+void print_tree(struct node23 *current_node, int i)
+{   
+    int j;
+    if (current_node==NULL) {
+        printf("NULL SUBTREE\n");
+        return;
+    }
+	if(current_node->left != NULL) {
+		print_tree(current_node->left, i+1);
+    }
+	
+    for (j=0;j<i;j++){
+        printf("\t\t");
+    }
+    printf("[%d, %d] {%d} ", current_node->left_data,current_node->right_data, current_node->max);
+	printf("\n");
+    
+	if(current_node->middle != NULL){
+        //printf("M ");
+		print_tree(current_node->middle, i+1);
+    }
+	if(current_node->right != NULL){
+       // printf("R ");
+		print_tree(current_node->right, i+1);
+    }
+		
+	return;	
+}
+
+
+/*-----------------------------search---------------------------------------------------------------------------------------------*/
+struct node23* search(struct node23* current_node, int key) //Searches for the value of key in the tree, does not mark anything
+{
+    return searchAndMark(current_node, key, 0);
+}
+
+struct node23* searchAndMark(struct node23* current_node, int key, int mark)
+{
+    current_node->is_marked=mark;
+	if(current_node->left == NULL)
+	{
+		return current_node;
+	}
+	else{
+		if(key <= current_node->left_data)
+			return searchAndMark(current_node->left, key, mark);
+		else if(current_node->right_data == VOID_DATA)
+			return searchAndMark(current_node->middle, key, mark);
+		else if(key <= current_node->right_data)
+			return searchAndMark(current_node->middle, key, mark);
+		else if(key > current_node->right_data)
+			return searchAndMark(current_node->right, key, mark);
+		else return NULL; 								/*Hypothetically should never happen*/
+	}
+}
+
+cilk void search_and_insert(struct node23* root, int* D, int index) {
+    searchAndMark(root,D[index],1)->right_data=D[index];
+}
+
+cilk void parallel_for_search_call(struct node23* root, int* D, int start, int end) {
+    int i;
+    if (end-start<=PARALLEL_CUTOFF) {
+        for (i=start; i <end; i++) {
+            spawn search_and_insert(root, D, i);
+        }
+    }
+    else {
+        spawn parallel_for_search_call(root, D, start, start+(end-start)/2);
+        spawn parallel_for_search_call(root, D, start+(end-start)/2 + 1, end);
+        spawn search_and_insert(root, D, i);
+    }
+    sync;
+}
+/*----------------------------simplified_batch_insert--------------------------------------*/
+cilk void simplified_batch_insert(struct tree23 *tree, int *D, int m) /*Takes in a tree, an array of keys to insert, and the size of that array*/
+{
+	int i;
+	struct node23 *target_node;
+    
+    spawn parallel_for_search_call(tree->root, D, 0, m);
+    //print_tree(tree->root, 0);
+    sync;
+    tree->root = spawn recursive_split(tree->root, 0);
+    sync;
+}
+
+cilk struct node23* recursive_split(struct node23* current_node, int depth)
+{
+	struct node23 *result = create_node(VOID_DATA); /*add a field*/
+	struct node23 *new_node = NULL;
+	struct node23 *node_array[6]; /*There are a maximum of 6 children from one parent.*/
+    int i;
+	int size;
+	
+	if(current_node==NULL || current_node->is_marked == unmarked)	/*If current_node doesnt exist/is not marked, return NULL*/
+	{	
+		free(result);
+		return NULL;
+	}
+	if(current_node->left == NULL)									/*If current_node IS a leaf ----> split this node in two, the new node is result*/
+	{
+        if (current_node->right_data==VOID_DATA) {
+            free (result);
+            return NULL;
+        }
+        else {
+            result->left_data = current_node->right_data;
+            current_node->right_data = VOID_DATA;
+            return result;
+        }
+	}
+	else															/*If current_node is NOT a leaf ----> generate array and call recursive_splits*/
+	{
+		node_array[0] = current_node->left;
+		node_array[1] = current_node->middle;
+		node_array[2] = current_node->right;
+		node_array[3] = spawn recursive_split(current_node->left, depth+1);
+		node_array[4] = spawn recursive_split(current_node->middle, depth+1);
+		node_array[5] = spawn recursive_split(current_node->right, depth+1);
+        sync;
+	}
+	
+   /* for (i=0;i<6;i++){
+        if (node_array[i]==NULL) {
+            printf("NULL\n");
+        }
+        else { 
+            printf("[%d, %d]{%d}", node_array[i]->left_data,node_array[i]->right_data, node_array[i]->max);
+            printf("\n");
+        }
+    }*/
+    
+    //printf("merge\n");
+	size = merge_nodes(node_array);
+    for (i=0;i<6;i++){
+        set_max(node_array[i]);
+        /*if (node_array[i]==NULL) {
+            printf("NULL\n");
+        }
+        else { 
+            printf("[%d, %d]{%d}", node_array[i]->left_data,node_array[i]->right_data, node_array[i]->max);
+            printf("\n");
+        }
+    `*/
+    }
+    //printf("merge is done\n");
+    //printf("make new node? %d\n", size);
+    /*THINGS TO FIX:
+        -set parents in node-array stuff.
+        -make size things less ugly
+    */
+	if(size>3)		/*Determine if a new parent node is needed and makes accordingly*/
+	{
+		new_node = create_node(node_array[size/2]->left_data);
+	}
+
+    rewire_nodes(size, node_array, current_node, new_node);
+
+    //Call some fix root method.
+    if (depth==0){
+       return fix_tree_root(current_node,new_node);
+    }
+
+	return new_node;
+}
+
+struct node23* fix_tree_root(struct node23* nodeL, struct node23* nodeM) {
+    struct node23* new_root=NULL;
+    if (nodeM==NULL) {
+        return nodeL;
+    }
+    else {
+        new_root=create_node(VOID_DATA);
+        new_root->left = nodeL;
+        new_root->middle = nodeM;
+        fix_node_values(new_root);
+        return new_root;
+    }
+}
+
+void rewire_nodes(int size, struct node23** node_array, struct node23* current_node, struct node23* new_node) {
+
+
+    if(size<=3)		/*Determine how children are distributed*/
+	{
+		current_node->left = node_array[0];
+		current_node->middle = node_array[1];
+		current_node->right = node_array[2];
+	}
+	if(size==4)
+	{
+		current_node->left = node_array[0];
+		current_node->middle = node_array[1];
+        current_node->right=NULL;
+		new_node->left = node_array[2];
+		new_node->middle = node_array[3];
+	}
+	if(size>4)
+	{
+		current_node->left = node_array[0];
+		current_node->middle = node_array[1];
+		current_node->right = node_array[2];
+		new_node->left = node_array[3];
+		new_node->middle = node_array[4];
+		new_node->right = node_array[5];
+	}
+	
+    fix_node_values(current_node);
+    fix_node_values(new_node);
+    current_node->is_marked = unmarked;
+    
+}
+
+int merge_nodes(struct node23 **node_array) 		/*array size 7 ----> [left,middle,right,new_child1,new_child2,new_child3,temp]*/
+{
+	int i;
+	int j;
+	int counter=0;
+	struct node23* temp;
+	for(i=0; i<6; ++i)
+	{
+		if(node_array[i])	/*If the node pointer in the array is not null*/
+		{
+			++counter;
+			temp = node_array[i];
+			for(j=i; j>=0; --j)
+			{
+				if(j==0 || (node_array[j-1] != NULL && temp->left_data > node_array[j-1]->left_data))
+				{
+					node_array[j] = temp;
+					break;
+				}
+				else
+				{
+					node_array[j] = node_array[j-1];
+				}
+			}
+		}
+	}
+	return counter;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

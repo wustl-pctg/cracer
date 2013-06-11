@@ -1,0 +1,66 @@
+#include "2_3_tree_new.cilk"
+
+cilk int main()
+{
+	struct node23 *result;
+	int test_numbers[2] = {120, 170};
+	int test_numbers2[5] = {90, 110, 130, 160, 230};
+	int test_numbers3[1] = {155};
+	int test_numbers4[3] = {85,95,105};
+    int test_numbers5[3] = {115,125,135};
+    int test_numbers6[3] = {84,89,94};
+    //115,125,135,153,157,165,175,235};
+    
+	
+	struct tree23 *test_tree = create_tree(100);
+	test_tree->root->right_data = 150;
+	test_tree->root->left = create_node(100);
+	test_tree->root->middle = create_node(150);
+	test_tree->root->right = create_node(200);
+	
+	//test_tree->root->left->parent = test_tree->root;
+	//test_tree->root->middle->parent = test_tree->root;
+	//test_tree->root->right->parent = test_tree->root;
+	
+	print_tree(test_tree->root, 0);
+    printf("---------------------------------------------------------------------------------\n");
+	spawn simplified_batch_insert(test_tree, test_numbers, 2);
+    sync;
+    print_tree(test_tree->root, 0);
+    
+	spawn simplified_batch_insert(test_tree, test_numbers2, 5);
+    sync;
+    printf("----------------------------------------------------------------------------\n");
+	print_tree(test_tree->root, 0);
+    
+    printf("-------------------------------------------------------------------------\n");
+	spawn simplified_batch_insert(test_tree, test_numbers3, 1);
+    sync;
+	print_tree(test_tree->root, 0);
+    
+    printf("---------------------------------------------------------------------------\n");
+	spawn simplified_batch_insert(test_tree, test_numbers4, 3);
+    sync;
+	print_tree(test_tree->root, 0);
+    
+    printf("------------------------------------------------------------------------------\n");
+	spawn simplified_batch_insert(test_tree, test_numbers5, 3);
+    sync;
+	print_tree(test_tree->root, 0);
+ 
+    printf("----------------------------------------------------------------------------\n");
+	spawn simplified_batch_insert(test_tree, test_numbers6, 3);
+    sync;
+	print_tree(test_tree->root, 0);
+
+
+	
+	
+
+	
+	//result = search(test_tree->root, 4);
+	
+	//printf("pointer to searched number: %d\n", result);
+	//printf("Contents of that pointer: %d\n", result->left_data);
+    return 0;
+}
