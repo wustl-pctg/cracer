@@ -2,26 +2,43 @@
 #include "complex_2_3_tree.cilk"
 
 *main() {
-   int size=5;
+   int size=10;
    int i;
-   struct node23** test_array = calloc(size,sizeof(struct node23*);
-   struct node23* a= create_node(5);
-   struct node23* b=create_node(10);
-   struct node23* c=create_node(15);
+   int insert, last;
+   int *int_test_array = calloc(size,sizeof(int));
+   struct node23** test_array = calloc(size,sizeof(struct node23*));
+   struct node23* a = create_node(5);
+   struct node23* b = create_node(10);
+   struct node23* c = create_node(15);
+   
+   
+   
    for (i=0;i<size;i++){
-      if (i<size/3) {
+      if (i<size/2) {
       	 test_array[i]=a;
+		 int_test_array[i]=5;
      }
      else {
      	 test_array[i]=c;
+		 int_test_array[i]=15;
      }
    }
    for (i=0;i<size;i++){
-       printf("node pointer: %d\n",test_array[i]);
+       printf("node pointer: %d\n",int_test_array[i]);
    }
    printf("\n");
    
    
-
+   
+    insert = find_insert_index(int_test_array, size, b);
+	last = binary_search_function(find_last, test_array, size, b);
+	
+	printf("Insert: %d\n", insert);
+	printf("Last: %d\n", last);
+   
    free(test_array);
+   free(int_test_array);
+   free(a);
+   free(b);
+   free(c);
 }
