@@ -1,0 +1,94 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+#define VOID_DATA (int)-INFINITY
+#define PARALLEL_CUTOFF 5
+
+
+/* 2-3 Tree that supports parallel operations */
+/* The insertion function will allow any amount of data to be inserted */
+/* Tyler Romero and Kefu Lu */
+
+/*-----------------------------Structs-----------------------------------------------------------------------------------------*/
+
+
+struct node23
+{
+	int left_data, right_data;
+	int max;
+	struct node23 *left, *middle, *right;
+	enum mark_status{unmarked, marked} is_marked;
+};
+
+
+
+/*-----------------------------Function Declarations----------------------------------------------------------------------------*/
+int binary_search_function(int (*function_ptr)(int, struct node23*), struct node23* node_array, int size);				/*Returns the array index of the thing that is searched for*/
+int find_first(int index, struct node23* node_array, struct node23* target);
+int find_last(int index, struct node23* node_array, struct node23* target);
+
+
+/*---------------------------Binary Search Function-----------------------------------------------------------------*/
+int binary_search_function(int (*function_ptr)(int, struct node23*, struct node23*), struct node23* node_array, int size, struct node23* target)
+{
+	int left, right, middle;
+	int search_result;
+	left = 0;
+	right = size;
+	while(right-left>0)
+	{
+		middle = (right-left)/2+left;
+		search_result = function_ptr(middle, node_array, target);
+		
+		if (search_result == 1)
+			return middle;
+		else if(serch_result == 0)
+		{
+			right = middle;
+		}
+		else left = middle;
+	}
+	return -1;
+	/* ^^^^^^^Take care of case where nothing is found by search*/
+}
+
+int find_first(int index, struct node23* node_array, struct node23* target) 		//Returns 1 if correct index, returns 0 if index is to left, returns 2 if index is to right
+{
+	if(node_array[index] == target)
+	{
+		if(node_array[index-1] != target) return 1;
+		else return 0;
+	}
+	if(node_array[index]->left_data < target->left_data)
+	{
+		return 2;
+	}
+	else return 0;
+}
+
+int find_last(int index, struct node23* node_array, struct node23* target) 		//Returns 1 if correct index, returns 0 if index is to left, returns 2 if index is to right
+{
+	if(node_array[index] == target)
+	{
+		if(node_array[index+1] != target) return 1;		//The only difference between find_first and find_last is the change in this line
+		else return 0;
+	}
+	if(node_array[index]->left_data < target->left_data)
+	{
+		return 2;
+	}
+	else return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
