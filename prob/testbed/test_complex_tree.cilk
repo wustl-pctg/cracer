@@ -1,0 +1,27 @@
+#include <stdio.h>
+#include "complex_2_3_tree.cilk"
+
+*main() {
+   int size=5;
+   int i;
+   struct node23** test_array = calloc(size,sizeof(struct node23*);
+   struct node23* a= create_node(5);
+   struct node23* b=create_node(10);
+   struct node23* c=create_node(15);
+   for (i=0;i<size;i++){
+      if (i<size/3) {
+      	 test_array[i]=a;
+     }
+     else {
+     	 test_array[i]=c;
+     }
+   }
+   for (i=0;i<size;i++){
+       printf("node pointer: %d\n",test_array[i]);
+   }
+   printf("\n");
+   
+   
+
+   free(test_array);
+}

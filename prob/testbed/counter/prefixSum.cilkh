@@ -1,13 +1,10 @@
-#include <cilk-lib.cilkh>
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
 
+#ifndef PREFIXSUM_H
+#define PREFIXSUM_H
+
+#include "standardHeaders.cilkh"
 #define FasterToSerialLoop 2
-#define SIZE 15
 
-#ifndef PREFIXSUM_CILKH
-#define PREFIXSUM_CILKH
 int print_array(int array[],int size) {
     int i;
     printf("\nBegin array of size %d\n",size);

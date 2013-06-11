@@ -1,6 +1,4 @@
-#include <stdlib.h>
-
-#include "upCounter.cilk"
+#include "upCounter.cilkh"
 
 #define testSize 20
 
@@ -11,7 +9,6 @@ cilk int main(int argc, char* argv[]) {
     Counter* counter_p = newCounter(0);
     int i;
     int increments[testSize];
-    size_t s = testSize;
     if (counter_p==0){
        printf("Err, you are out of memory. Stop trying parallel datastructures with no memory. . .");
        return -1;
@@ -24,8 +21,8 @@ cilk int main(int argc, char* argv[]) {
     
     printf("count %d\n",counter_p->count);
     //There are several casts to simulate what batchify would change the types of the inputs to.
-    counter_p = spawn batch_increment((void*)(counter_p), (void*)increments, s, (void*)increments);
-    sync;
+    //counter_p = spawn batch_increment((void*)(counter_p), (void*)increments, s, (void*)increments);
+   // sync;
     printf("count %d\n",counter_p->count);
     
     
