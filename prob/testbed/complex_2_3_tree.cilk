@@ -22,7 +22,7 @@ struct node23
 struct tree23
 {
 	struct node23 *root;
-}
+};
 
 
 
@@ -38,11 +38,12 @@ int find_last(int index, int bound, struct node23** node_array, struct node23* t
 int find_insert_index(int *input_array, int size, struct node23* target);
 
 	//Batch Insert Function and helper functions
-void complex_batch_insert(struct node23* root, int *D, int size);
+void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size);
 struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size);
 struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c);
 
-
+	//Print Tree
+void print_tree(struct node23 *current_node, int i);
 
 
 
@@ -143,7 +144,7 @@ int find_insert_index(int *input_array, int size, struct node23* target)
 	do{
 		middle = (right-left)/2+left;
 
-		printf("%d\n", middle);
+		printf("middle: %d\n", middle);
 		
 		if (target->left_data < input_array[middle])
 			right = middle;
@@ -153,8 +154,11 @@ int find_insert_index(int *input_array, int size, struct node23* target)
 		}else left = middle;
 		
 		if(right-left==1)
+		{
+			printf("right: %d\n", right);
 			return right;
-
+		}
+	
 	}while(right-left>0);
 	return -1;
 	/* ^^^^^^^Take care of case where nothing is found by search*/	
@@ -203,14 +207,15 @@ void complex_batch_insert(struct tree23* current_tree, int *input_integers, int 
 		
 	while(number_of_children>1)
 	{
+		result = create_and_link_parent_nodes(number_of_children, 0, 0, result, NULL, NULL);
+		
 		if(number_of_children%3==0)	//Return the size of the result array
 			number_of_children = number_of_children/3;
 		else
 			number_of_children = (number_of_children/3)+1;
-		result = create_and_link_parent_nodes(number_of_children, 0, 0, result, NULL, NULL);
 	}
 	
-	current_tree->root = result;
+	current_tree->root = *result;
 	
 	free(result_array);
 	free(result);
@@ -225,16 +230,26 @@ struct node23** recursive_split(struct node23* current_node, struct node23** sea
 	int i;
 	struct node23 **result;
 	
-	if(current_node==NULL || current_node->is_marked == unmarked)	/*If current_node doesnt exist/is not marked, return NULL*/
+	if(current_node==NULL)	/*If current_node doesnt exist return NULL*/
 	{
 		*return_size = 0;
 		return NULL;
+	}
+	else if(current_node->is_marked == unmarked) //If current_node is not marked, return size 1 and the current node
+	{
+		*return_size = 1;
+		result = malloc(sizeof(struct node23*));
+		*result = current_node;
+		return result;
 	}
 	else if(current_node->left == NULL)									/*If current_node IS a leaf ----> generate a sub-array of nodes that correspond to that leaf; return that node array*/
 	{
 		first = binary_search_function(find_first, search_array, size, current_node);
 		last = binary_search_function(find_last, search_array, size, current_node);
+		printf("current_node->left_data: %d\n", current_node->left_data);
 		insert = find_insert_index(input_integers, size, current_node);
+		
+		printf("first: %d, last: %d, insert: %d\n", first, last, insert);
 		
 		result = calloc(2+last-first, sizeof(struct node23*)); /*Allocate a sub-array for each of the leafs*/
 		
@@ -245,7 +260,8 @@ struct node23** recursive_split(struct node23* current_node, struct node23** sea
 				result[i] = create_node(input_integers[i+first]);
 			}
 			result[1+last-first] = current_node;
-		}else			 /*Exception - the node does not go on the end of the sub-array*/
+		}
+		else			 /*Exception - the node does not go on the end of the sub-array*/
 		{
 			for(i=0; i<insert-first; ++i) //Fills up the sub-array before the node			//PARALLEL FOR
 				result[i] = create_node(input_integers[i+first]);
@@ -264,10 +280,11 @@ struct node23** recursive_split(struct node23* current_node, struct node23** sea
 	}
 
 	if((size_a+size_b+size_c)%3==0)	//Return the size of the result array
-		*return_size = size_a+size_b+size_c;
+		*return_size = (size_a+size_b+size_c)/3;
 	else
-		*return_size = size_a+size_b+size_c+1;
+		*return_size = (size_a+size_b+size_c)/3+1;
 		
+	
 	result = create_and_link_parent_nodes(size_a, size_b, size_c, node_array_a, node_array_b, node_array_c);
 	
 	free(node_array_a);
@@ -285,6 +302,8 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 	int triplet_counter;
 	struct node23** result;
 	struct node23** temp;
+	
+	printf("size_total: %d\n", size_total);
 	
 	if(size_total%3 == 0) //<-------------------------If size is a multiple of 3
 	{
@@ -320,7 +339,12 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 	}
 	else		//If size_total is not a multiple of three
 	{
-		*result = calloc((size_total/3)+1, sizeof(struct node23*)); /*Allocate a sub-array that will be the parent nodes*/
+		result = calloc((size_total/3)+1, sizeof(struct node23*)); /*Allocate a sub-array that will be the parent nodes*/
+		if(result == NULL)
+		{
+			printf("Failure Allocating Memory");
+		}
+		
 		for(i=0; i<(size_total/3)+1; ++i)
 		{
 			result[i] = create_node(VOID_DATA);		//Create the parent nodes
@@ -330,7 +354,7 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 			triplet_counter = size_total-4;		//<---two pairs of two leafs will be added to the end (After this next for loop)
 		else
 			triplet_counter = size_total-2;		//<---one pair of two leafs will be added to the end (After this next for loop)
-			
+		
 		for(i=0; i<triplet_counter; ++i)		//Linking the parent nodes for the groups of three children
 		{
 			if (i%3==0) 
@@ -390,15 +414,33 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 	return result;
 }
 
-/*
-struct node23* fix_root(struct node23** node_array)
-{
-
-
-
+/*------------------------- print_tree ---------------------------------------------------------------------------------*/
+void print_tree(struct node23 *current_node, int i)
+{   
+    int j;
+    if (current_node==NULL) {
+        printf("NULL SUBTREE\n");
+        return;
+    }
+	if(current_node->left != NULL) {
+		print_tree(current_node->left, i+1);
+    }
+	
+    for (j=0;j<i;j++){
+        printf("\t\t");
+    }
+    printf("[%d, %d] {%d} ", current_node->left_data,current_node->right_data, current_node->max);
+	printf("\n");
+    
+	if(current_node->middle != NULL){
+		print_tree(current_node->middle, i+1);
+    }
+	if(current_node->right != NULL){
+		print_tree(current_node->right, i+1);
+    }
+		
+	return;	
 }
-*/
-
 
 
 

@@ -1,44 +1,47 @@
-#include <stdio.h>
 #include "complex_2_3_tree.cilk"
 
-*main() {
-   int size=10;
-   int i;
-   int insert, last;
-   int *int_test_array = calloc(size,sizeof(int));
-   struct node23** test_array = calloc(size,sizeof(struct node23*));
-   struct node23* a = create_node(5);
-   struct node23* b = create_node(10);
-   struct node23* c = create_node(15);
-   
-   
-   
-   for (i=0;i<size;i++){
-      if (i<size/2) {
-      	 test_array[i]=a;
-		 int_test_array[i]=5;
-     }
-     else {
-     	 test_array[i]=c;
-		 int_test_array[i]=15;
-     }
-   }
-   for (i=0;i<size;i++){
-       printf("node pointer: %d\n",int_test_array[i]);
-   }
-   printf("\n");
-   
-   
-   
-    insert = find_insert_index(int_test_array, size, b);
-	last = binary_search_function(find_last, test_array, size, b);
+int main()
+{
+	struct node23 *result;
+	int test_numbers[1] = {120};
+	int test_numbers2[5] = {90, 110, 130, 160, 230};
+	int test_numbers3[1] = {155};
+	int test_numbers4[3] = {85,95,105};
+    int test_numbers5[3] = {115,125,135};
+    int test_numbers6[3] = {84,89,94};
+    
+	//115,125,135,153,157,165,175,235};
+    
 	
-	printf("Insert: %d\n", insert);
-	printf("Last: %d\n", last);
-   
-   free(test_array);
-   free(int_test_array);
-   free(a);
-   free(b);
-   free(c);
+	struct tree23 *test_tree = create_tree(100);
+	test_tree->root->right_data = 150;
+	test_tree->root->left = create_node(100);
+	test_tree->root->middle = create_node(150);
+	test_tree->root->right = create_node(200);
+	
+	print_tree(test_tree->root, 0);
+	printf("-------------------------------------------------------");
+
+	complex_batch_insert(test_tree, test_numbers, 1);
+
+    
+	/*spawn simplified_batch_insert(test_tree, test_numbers2, 5);
+    sync;
+    
+	spawn simplified_batch_insert(test_tree, test_numbers3, 1);
+    sync;
+    
+	spawn simplified_batch_insert(test_tree, test_numbers4, 3);
+    sync;
+    
+	spawn simplified_batch_insert(test_tree, test_numbers5, 3);
+    sync;
+
+	spawn simplified_batch_insert(test_tree, test_numbers6, 3);
+    sync;
+	*/
+	
+	print_tree(test_tree->root, 0);
+
+    return 0;
 }
