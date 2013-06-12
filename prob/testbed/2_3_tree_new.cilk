@@ -236,9 +236,6 @@ cilk void parallel_for_search_call(struct node23* root, int* D, int start, int e
 /*----------------------------simplified_batch_insert--------------------------------------*/
 cilk void simplified_batch_insert(struct tree23 *tree, int *D, int m) /*Takes in a tree, an array of keys to insert, and the size of that array*/
 {
-	int i;
-	struct node23 *target_node;
-    
     spawn parallel_for_search_call(tree->root, D, 0, m);
 
     sync;
@@ -283,9 +280,9 @@ cilk struct node23* recursive_split(struct node23* current_node, int depth)
 	}
 	
 	size = merge_nodes(node_array);
-    for (i=0;i<6;i++){
+    for (i=0;i<6;i++)
+	{
         set_max(node_array[i]);
-       
     }
    
 	if(size>3)		/*Determine if a new parent node is needed and makes accordingly*/
@@ -295,7 +292,8 @@ cilk struct node23* recursive_split(struct node23* current_node, int depth)
 
     rewire_nodes(size, node_array, current_node, new_node);
 
-    if (depth==0){
+    if (depth==0)
+	{
        return fix_tree_root(current_node,new_node);
     }
 

@@ -22,13 +22,19 @@ struct node23
 
 
 /*-----------------------------Function Declarations----------------------------------------------------------------------------*/
+	//Initialization Functions
 struct node23* create_node(int node_data);									 					/*COMPLETE*/
+
+	//Special Search Functions
 int binary_search_function(int (*function_ptr)(int, int, struct node23**, struct node23*), struct node23** node_array, int size, struct node23* target);	/*COMPLETE*/			/*Returns the array index of the thing that is searched for*/
 int find_first(int index, int bound, struct node23** node_array, struct node23* target); 		/*COMPLETE*/
 int find_last(int index, int bound, struct node23** node_array, struct node23* target); 		/*COMPLETE*/
 int find_insert_index(int *input_array, int size, struct node23* target);
+
+	//Batch Insert Function and helper functions
 void complex_batch_insert(struct node23* root, int *D, int size);
-int recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, struct node23 ***result)
+int recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, struct node23 ***result);
+struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c);
 
 
 
@@ -114,7 +120,6 @@ int find_last(int index, int bound, struct node23** node_array, struct node23* t
 int find_insert_index(int *input_array, int size, struct node23* target)
 {
 	int left, right, middle;
-	int search_result;
 	left = 0;
 	right = size;
 	
@@ -173,6 +178,7 @@ void complex_batch_insert(struct node23* root, int *input_integers, int size) /*
 	}
 
     recursive_split(root, result_array, input_integers, size, &result);
+	//fix_root - to group the array of nodes returned
 	
 	free(result_array);
 }
@@ -181,14 +187,13 @@ int recursive_split(struct node23* current_node, struct node23** search_array, i
 {
 	//struct node23 **result; /*The array of parent nodes that we will return*/
 	int first, insert, last;
-	int size_a, size_b, size_c, size_total;
+	int size_a, size_b, size_c;
 	struct node23 **node_array_a, **node_array_b, **node_array_c; //a, b, and c refer to the left, middle, or right parts of the parent node
 	int i;
 	
 	if(current_node==NULL || current_node->is_marked == unmarked)	/*If current_node doesnt exist/is not marked, return NULL*/
 		return 0;
-	
-	if(current_node->left == NULL)									/*If current_node IS a leaf ----> generate a sub-array of nodes that correspond to that leaf; return that node array*/
+	else if(current_node->left == NULL)									/*If current_node IS a leaf ----> generate a sub-array of nodes that correspond to that leaf; return that node array*/
 	{
 		first = binary_search_function(find_first, search_array, size, current_node);
 		last = binary_search_function(find_last, search_array, size, current_node);
@@ -215,59 +220,140 @@ int recursive_split(struct node23* current_node, struct node23** search_array, i
 	}
 	else															/*If current_node is NOT a leaf ----> call recursive split and generate new nodes?*/
 	{
-		size_a = recursive_split(current_node->left, search_array, input_integers, size, node_array_a);
-		size_b = recursive_split(current_node->middle, search_array, input_integers, size, node_array_b);
-		size_c = recursive_split(current_node->right, search_array, input_integers, size, node_array_c);
+		size_a = recursive_split(current_node->left, search_array, input_integers, size, &node_array_a);
+		size_b = recursive_split(current_node->middle, search_array, input_integers, size, &node_array_b);
+		size_c = recursive_split(current_node->right, search_array, input_integers, size, &node_array_c);
 	}
 	
+	*result = create_and_link_parent_nodes(size_a, size_b, size_c, node_array_a, node_array_b, node_array_c);
 	
-	/*------------------------Regroup the node_arrays, and create new parent nodes as needed-----------------------------------*/
+	if((size_a+size_b+size_c)%3==0)	//Return the size of the result array
+		return size_a+size_b+size_c;
+	else
+		return size_a+size_b+size_c+1;
+}
+
+struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c) /*Regroup the node_arrays, and create new parent nodes as needed*/
+{
+	int size_total = size_a+size_b+size_c;
+	int i;
+	int pair_counter;
+	int triplet_counter;
+	struct node23** result;
+	struct node23** temp;
 	
-	size_total = size_a+size_b+size_c;
 	if(size_total%3 == 0) //<-------------------------If size is a multiple of 3
 	{
 		*result = calloc(size_total/3, sizeof(struct node23*)); /*Allocate a sub-array for each of the leafs*/
 		for(i=0; i<size_total/3; ++i)
 		{
-			*result[i] = create_node(VOID_DATA);		//Parent node
+			result[i] = create_node(VOID_DATA);		//Parent nodes
 		}
-		for(i=0; i<size_total; ++i)
+		for(i=0; i<size_total; ++i)		//Creating the parent nodes for the groups of three children
 		{
-			struct node23** temp;
 			if (i%3==0) {
-				temp=&(*result[i/3]->left);
+				temp=&(result[i/3]->left);
 			} else if (i%3==1){
-				temp=&(*result[i/3]->middle);
+				temp=&(result[i/3]->middle);
 			}
 			else {
-				temp=&(*result[i/3]->right);
+				temp=&(result[i/3]->right);
 			}
 			
-			if(i<size_a)
+			if(i<size_a)							//Assign temp with pointer magic
 			{
 				*temp = node_array_a[i];
-
-			}else if(i<size_a+size_b)
+			}
+			else if(i<size_a+size_b)
 			{
 				*temp = node_array_b[i-size_a];
-			}else
+			}
+			else
 			{
 				*temp = node_array_c[i-size_a-size_b];
 			}
 		}
 	}
-	//<-----------------NEED TO DO IF SIZE IS NOT A MULTIPLE OF 3
-	
-	/*-----------------------------------------------------------------------------------------------------------------------*/
-	
-	
+	else		//If size_total is not a multiple of three
+	{
+		*result = calloc((size_total/3)+1, sizeof(struct node23*)); /*Allocate a sub-array that will be the parent nodes*/
+		for(i=0; i<(size_total/3)+1; ++i)
+		{
+			result[i] = create_node(VOID_DATA);		//Create the parent nodes
+		}
+		
+		if(size_total%3 == 1)
+			triplet_counter = size_total-4;		//<---two pairs of two leafs will be added to the end (After this next for loop)
+		else
+			triplet_counter = size_total-2;		//<---one pair of two leafs will be added to the end (After this next for loop)
+			
+		for(i=0; i<triplet_counter; ++i)		//Linking the parent nodes for the groups of three children
+		{
+			if (i%3==0) 
+			{
+				temp = &(result[i/3]->left);
+			}
+			else if (i%3==1)
+			{
+				temp = &(result[i/3]->middle);
+			}
+			else
+			{
+				temp = &(result[i/3]->right);
+			}
+			
+			if(i<size_a)							//Assign temp with pointer magic
+			{
+				*temp = node_array_a[i];
+
+			}
+			else if(i<size_a+size_b)
+			{
+				*temp = node_array_b[i-size_a];
+			}
+			else
+			{
+				*temp = node_array_c[i-size_a-size_b];
+			}
+		}
+		
+		++i; //<-----This is to make the pairs added to the end not overwrite the triplets;
+		for(pair_counter = 0; (pair_counter + i) < size_total; ++pair_counter)	//Linking the parent nodes for the groups of two children
+		{
+			if (pair_counter%2 == 0) 
+			{
+				temp=&(result[i/3 + pair_counter/2]->left);
+			}
+			else
+			{
+				temp=&(result[i/3 + pair_counter/2]->middle);
+			}
+
+			if(i<size_a)		//Assign temp with pointer magic
+			{
+				*temp = node_array_a[i+pair_counter];
+			}
+			else if(i<size_a+size_b)
+			{
+				*temp = node_array_b[(i+pair_counter)-size_a];
+			}
+			else
+			{
+				*temp = node_array_c[(i+pair_counter)-size_a-size_b];
+			}
+		}
+	}
+	return result;
 }
 
+/*
 struct node23* fix_root(struct node23** node_array)
 {
 
-}
 
+
+}
+*/
 
 
 
