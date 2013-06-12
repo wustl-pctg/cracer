@@ -541,6 +541,17 @@ typedef struct {
   BatchRecord  *array;
 } Batch;
 
+// rsu ***
+typedef struct {
+	CilkStackFrame header;
+	struct {
+		void *dataStruct;
+		void *data;
+		size_t size;
+		void* result;
+	}scope0;
+} BatchOpFrame;
+
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__

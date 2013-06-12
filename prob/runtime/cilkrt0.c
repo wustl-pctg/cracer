@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 
     /* null context also when using -help flag */
     if(context == NULL)
-	return 0;
+			return 0;
     
     EXPORT(cilk_main)(context, argc, argv);
 

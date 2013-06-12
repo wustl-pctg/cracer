@@ -1,0 +1,87 @@
+#include <cilk-lib.cilkh>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+#define FasterToSerialLoop 2
+#define SIZE 15
+
+#ifndef PREFIXSUM_CILKH
+#define PREFIXSUM_CILKH
+int print_array(int array[],int size) {
+    int i;
+    printf("\nBegin array of size %d\n",size);
+    for (i=0; i<size; i++) {
+       printf("%3d\t",array[i]);
+    }
+    return 0;
+}
+
+cilk int addFunction(int* array, int i, int step){
+    array[i] = array[i] + array[i-step/2];
+    return 0;
+}
+
+cilk int combine(int* array, int i, int step){
+    int temp;
+    temp = array[i];
+    array[i] = array[i] + array[i-step/2];
+    array[i-step/2]=temp;
+    return 0;
+}
+
+cilk int par_for_store(cilk int (*func)(int*, int, int), int array[], int start, int end, int step){
+     int i,j,k,mid;
+     #ifdef debug
+        printf("start %d, end %d | ",start,end); 
+     #endif
+     if (end-start<FasterToSerialLoop){
+     	for (i=start;i<end;i+=step){
+            if (i%step ==step-1){
+                j = spawn(*func)(array,i, step);
+            }
+        } 
+     }
+     else {
+     	mid = start+(end-start)/2;
+        i=spawn par_for_store(func,array, start,mid, step);
+        j=spawn par_for_store(func,array, mid+1,end, step);
+        if((mid%step)==(step-1)) {
+            k=spawn (*func)(array,mid, step);
+        }
+     }
+     sync;
+     return 0;
+}
+
+cilk int prefix_sum(int array[], int size){
+    int maxDepth = (int)log2(size);
+    int depth;
+    int i, start, step, offset, temp;
+    
+    start=1;
+    for (depth=0; depth<=maxDepth;depth++) {
+        step = (int)pow(2,depth);
+        i =spawn par_for_store(&addFunction, array, start, size, 2*step);
+        sync;
+        start+=2*step;
+    }
+    
+    start = 0;
+    array[size-1]=0;
+    for (depth=maxDepth; depth>=0;depth--) {
+        step = (int)pow(2,depth);
+        offset = size%step;
+        if (offset!=0) {
+            start=size-1;
+            temp=array[start];
+            array[start]+=array[start-offset];
+            array[start-offset]=temp;
+            start=0;
+        }
+        i =spawn par_for_store(&combine, array, start, size, 2*step);
+        sync;
+    }
+    return 0;
+}
+#endif

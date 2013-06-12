@@ -100,4 +100,3 @@ void *Cilk_valloc(size_t size)
      /*printf("valloc\n");*/
      return valloc(size);
 }
-

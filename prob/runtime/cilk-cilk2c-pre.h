@@ -23,7 +23,6 @@ FILE_IDENTITY(ident_cilk_cilk2c_pre,
  *
  */
 
-
 /*************************************************************
  * internal malloc 
  *************************************************************/
@@ -125,13 +124,18 @@ static inline void *Cilk_cilk2c_init_frame(CilkWorkerState *const ws,
 	void *f;
 
 	f = Cilk_create_frame(ws, s, signat);
-	//     t = ws->cache.tail;
-	t = ws->batch_id ? ws->ds_cache.tail : ws->cache.tail; // rsu ***
+	t = ws->cache.tail;
+
+	// this may not actually be right, since the frame is actually in the regular deque?
+	//	t = ws->batch_id ? ws->ds_cache.tail : ws->cache.tail; // rsu ***
+
 	CILK_COMPLAIN((CilkStackFrame **) t < ws->cache.stack + ws->stackdepth,
 								(ws->context, ws, USE_PARAMETER(stack_overflow_msg)));
+
 	*t = (CilkStackFrame *) f;
 	Cilk_membar_StoreStore();
 	ws->cache.tail = t + 1;
+
 	return f;
 }
 
@@ -142,6 +146,7 @@ static inline int Cilk_cilk2c_pop_check(CilkWorkerState *const ws)
 {
 	volatile CilkStackFrame **t;
 	t = ws->cache.tail;
+	//t = ws->batch_id ? ws->ds_cache.tail : ws->cache.tail;
 	Cilk_membar_StoreLoad();
 	return (ws->cache.exception >= t);
 }
@@ -149,6 +154,7 @@ static inline int Cilk_cilk2c_pop_check(CilkWorkerState *const ws)
 static inline void Cilk_cilk2c_pop(CilkWorkerState *const ws)
 {
 	--ws->cache.tail;
+	//	ws->batch_id ? --ws->ds_cache.tail : --ws->cache.tail;
 }
 
 static inline void
@@ -174,6 +180,7 @@ static inline void Cilk_cilk2c_before_return_fast(CilkWorkerState *const ws,
 	WHEN_CILK_DEBUG(frame->magic = ~CILK_STACKFRAME_MAGIC);
 	Cilk_destroy_frame_fast(ws, (CilkStackFrame *) frame, size);
 	--ws->cache.tail;
+	//	ws->batch_id ? --ws->ds_cache.tail : --ws->cache.tail;
 }
 
 static inline void Cilk_cilk2c_before_return_slow(CilkWorkerState *const ws,
