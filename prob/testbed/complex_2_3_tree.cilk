@@ -385,16 +385,15 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 			}
 		}
 		
-		++i; //<-----This is to make the pairs added to the end not overwrite the triplets;
 		for(pair_counter = 0; (pair_counter + i) < size_total; ++pair_counter)	//Linking the parent nodes for the groups of two children
 		{
 			if (pair_counter%2 == 0) 
 			{
-				temp=&(result[i/3 + pair_counter/2]->left);
+				temp=&(result[(i+1)/3 + pair_counter/2]->left);
 			}
 			else
 			{
-				temp=&(result[i/3 + pair_counter/2]->middle);
+				temp=&(result[(i+1)/3 + pair_counter/2]->middle);
 			}
 
 			if(i<size_a)		//Assign temp with pointer magic
