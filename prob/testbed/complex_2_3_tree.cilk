@@ -19,11 +19,17 @@ struct node23
 	enum mark_status{unmarked, marked} is_marked;
 };
 
+struct tree23
+{
+	struct node23 *root;
+}
+
 
 
 /*-----------------------------Function Declarations----------------------------------------------------------------------------*/
 	//Initialization Functions
 struct node23* create_node(int node_data);									 					/*COMPLETE*/
+struct tree23* create_tree(int node_data);
 
 	//Special Search Functions
 int binary_search_function(int (*function_ptr)(int, int, struct node23**, struct node23*), struct node23** node_array, int size, struct node23* target);	/*COMPLETE*/			/*Returns the array index of the thing that is searched for*/
@@ -33,7 +39,7 @@ int find_insert_index(int *input_array, int size, struct node23* target);
 
 	//Batch Insert Function and helper functions
 void complex_batch_insert(struct node23* root, int *D, int size);
-int recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, struct node23 ***result);
+struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size);
 struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c);
 
 
@@ -61,7 +67,18 @@ struct node23* create_node(int node_data)	//Initializes a node with 'node_data' 
 	return new_node;
 }
 
-
+struct tree23* create_tree(int node_data)
+{
+	struct tree23* new_tree = malloc(sizeof(struct tree23));
+	if(new_tree == NULL)
+	{
+		printf("\nError allocating memory for new tree");
+		return new_tree;
+	}
+	
+	new_tree->root = create_node(node_data);
+	return new_tree;
+}
 
 
 /*---------------------------Binary Search Function-----------------------------------------------------------------*/
@@ -166,71 +183,98 @@ struct node23* searchAndMark(struct node23* current_node, int key, int mark)
 }
 
 /*----------------------------complex_batch_insert-------------------------------------------------------*/
-void complex_batch_insert(struct node23* root, int *input_integers, int size) /*Takes in a pointer to the root of a tree, an array of keys to insert, and the size of that array*/
+void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size) /*Takes in a pointer to a tree, an array of keys to insert, and the size of that array*/
 {
 	int i;
 	struct node23 **result_array = calloc(size, sizeof(struct node23*));
 	struct node23 **result;
+	int number_of_children=0;
 
 	for(i=0; i<size; ++i)
 	{
-		result_array[i] = searchAndMark(root, input_integers[i], 1);
+		result_array[i] = searchAndMark(current_tree->root, input_integers[i], 1);
 	}
 
-    recursive_split(root, result_array, input_integers, size, &result);
-	//fix_root - to group the array of nodes returned
+    result = recursive_split(current_tree->root, result_array, input_integers, size, &number_of_children);
+	
+	//fix root - to group the array of nodes returned
+	if(number_of_children == 0)
+		printf("There is a problem with the number_of_children variable");
+		
+	while(number_of_children>1)
+	{
+		if(number_of_children%3==0)	//Return the size of the result array
+			number_of_children = number_of_children/3;
+		else
+			number_of_children = (number_of_children/3)+1;
+		result = create_and_link_parent_nodes(number_of_children, 0, 0, result, NULL, NULL);
+	}
+	
+	current_tree->root = result;
 	
 	free(result_array);
+	free(result);
 }
 
-int recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, struct node23 ***result) //Edits result, but returns the size of result
+struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size) //Edits result, but returns the size of result
 {
 	//struct node23 **result; /*The array of parent nodes that we will return*/
 	int first, insert, last;
 	int size_a, size_b, size_c;
 	struct node23 **node_array_a, **node_array_b, **node_array_c; //a, b, and c refer to the left, middle, or right parts of the parent node
 	int i;
+	struct node23 **result;
 	
 	if(current_node==NULL || current_node->is_marked == unmarked)	/*If current_node doesnt exist/is not marked, return NULL*/
-		return 0;
+	{
+		*return_size = 0;
+		return NULL;
+	}
 	else if(current_node->left == NULL)									/*If current_node IS a leaf ----> generate a sub-array of nodes that correspond to that leaf; return that node array*/
 	{
 		first = binary_search_function(find_first, search_array, size, current_node);
 		last = binary_search_function(find_last, search_array, size, current_node);
 		insert = find_insert_index(input_integers, size, current_node);
 		
-		*result = calloc(2+last-first, sizeof(struct node23*)); /*Allocate a sub-array for each of the leafs*/
+		result = calloc(2+last-first, sizeof(struct node23*)); /*Allocate a sub-array for each of the leafs*/
 		
 		if(insert > last) /*Fill the sub-arrays using the integer inputs - Normal case*/
 		{
 			for(i = 0; i < 1+last-first; ++i) 											//PARALLEL FOR
 			{
-				*result[i] = create_node(input_integers[i+first]);
+				result[i] = create_node(input_integers[i+first]);
 			}
-			*result[1+last-first] = current_node;
+			result[1+last-first] = current_node;
 		}else			 /*Exception - the node does not go on the end of the sub-array*/
 		{
 			for(i=0; i<insert-first; ++i) //Fills up the sub-array before the node			//PARALLEL FOR
-				*result[i] = create_node(input_integers[i+first]);
-			*result[insert-first] = current_node; //Inserts the node
+				result[i] = create_node(input_integers[i+first]);
+			result[insert-first] = current_node; //Inserts the node
 			for(i=insert-first+1; i<1+last-first; ++i) //Fills up the sub-array after the node*/		//PARALLEL FOR
-				*result[i] = create_node(input_integers[i+first-1]);
+				result[i] = create_node(input_integers[i+first-1]);
 		}
-		return 2+last-first;
+		*return_size = 2+last-first;
+		return result;
 	}
 	else															/*If current_node is NOT a leaf ----> call recursive split and generate new nodes?*/
 	{
-		size_a = recursive_split(current_node->left, search_array, input_integers, size, &node_array_a);
-		size_b = recursive_split(current_node->middle, search_array, input_integers, size, &node_array_b);
-		size_c = recursive_split(current_node->right, search_array, input_integers, size, &node_array_c);
+		node_array_a = recursive_split(current_node->left, search_array, input_integers, size, &size_a);
+		node_array_b = recursive_split(current_node->middle, search_array, input_integers, size, &size_b);
+		node_array_c = recursive_split(current_node->right, search_array, input_integers, size, &size_c);
 	}
-	
-	*result = create_and_link_parent_nodes(size_a, size_b, size_c, node_array_a, node_array_b, node_array_c);
-	
+
 	if((size_a+size_b+size_c)%3==0)	//Return the size of the result array
-		return size_a+size_b+size_c;
+		*return_size = size_a+size_b+size_c;
 	else
-		return size_a+size_b+size_c+1;
+		*return_size = size_a+size_b+size_c+1;
+		
+	result = create_and_link_parent_nodes(size_a, size_b, size_c, node_array_a, node_array_b, node_array_c);
+	
+	free(node_array_a);
+	free(node_array_b);
+	free(node_array_c);
+	
+	return result;
 }
 
 struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c) /*Regroup the node_arrays, and create new parent nodes as needed*/
