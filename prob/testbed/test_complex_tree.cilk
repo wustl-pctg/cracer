@@ -4,8 +4,8 @@ int main()
 {
 	struct node23 *result;
     int init[2] ={150,200};
-	int test_numbers[3] = {120, 125,130};
-	int test_numbers2[11] = {90,95, 110, 130,140,151, 160, 230, 240,250, 255};
+	int test_numbers[6] = {125,120,130,95,1000,105};
+	int test_numbers2[19] = {90, 93,95, 100, 105, 110, 115, 135, 140, 150, 151, 160, 200, 230, 240, 250, 255, 100000, 20000000};
 	int test_numbers3[1] = {155};
 	int test_numbers4[3] = {85,95,105};
     int test_numbers5[3] = {115,125,135};
@@ -16,16 +16,15 @@ int main()
 	
 	struct tree23 *test_tree = create_tree(100);
     printf("sizes: %d",sizeof(struct node23));
-    complex_batch_insert(test_tree, init, 2);
+
 	
 	print_tree(test_tree->root, 0);
 	printf("-------------------------------------------------------\n");
 
-	complex_batch_insert(test_tree, test_numbers2, 11);
+	complex_batch_insert(test_tree, init, 2);
+	complex_batch_insert(test_tree, test_numbers, 6);
 
     
-    complex_batch_insert(test_tree, test_numbers2, 11);
-   
     /*
 	spawn simplified_batch_insert(test_tree, test_numbers3, 1);
     sync;

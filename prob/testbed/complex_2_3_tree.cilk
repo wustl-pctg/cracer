@@ -45,6 +45,8 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 	//Print Tree
 void print_tree(struct node23 *current_node, int i);
 
+	//Other
+int compare_integers(const void *A, const void *B);
 
 
 
@@ -211,6 +213,8 @@ void complex_batch_insert(struct tree23* current_tree, int *input_integers, int 
 	struct node23 **result;
 	int number_of_children=0;
 
+	qsort((void*)input_integers, size, sizeof(int), compare_integers);
+	
 	for(i=0; i<size; ++i)
 	{
 		result_array[i] = searchAndMark(current_tree->root, input_integers[i], 1);
@@ -486,6 +490,25 @@ void print_tree(struct node23 *current_node, int i)
 		
 	return;	
 }
+
+/*-----------------------------Other----------------------------------------------------------*/
+int compare_integers(const void *A, const void *B)
+{
+	return *(int*)A - *(int*)B;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
