@@ -553,7 +553,6 @@ typedef struct {
 	}scope0;
 } BatchOpFrame;
 
-
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__
 #pragma nd +

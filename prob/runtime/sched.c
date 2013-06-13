@@ -1772,19 +1772,17 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 	return;
 
 }	
-
+#include <stdio.h> // rsu ***
 // if we don't need a result array, we should change this so it's faster
 void * Cilk_batchify_internal(CilkWorkerState *const ws,
-															CilkBatchOpInternal op, CilkBatchOpInternal opSlow,
+															CilkBatchOpInternal op,
 															void *dataStruct, void *data, size_t dataSize)
 {
 	Closure *t = NULL;
-	BatchOpFrame *f;
-	CilkProcInfo batch_sig;
+	/* BatchOpFrame *f; */
+	/* CilkProcInfo *batch_sig; */
 	void *workArray, *result, *thisWorkerResult;
 	int numJobs = 0, done, i;
-
-	thisWorkerResult = malloc(dataSize);
 
 	// I think this is the easiest thing to do, rather than change everything to use ds_cache
 	CilkClosureCache tempCache = ws->cache;
@@ -1829,31 +1827,34 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 
 			//			result = Cilk_malloc(dataSize * numJobs);
 
-			t = Cilk_Closure_create_malloc(ws->context, NULL);
-			t->parent = (Closure *) NULL;
-			t->join_counter = 0;
-			t->status = CLOSURE_READY;
+			/* t = Cilk_Closure_create_malloc(ws->context, NULL); */
+			/* t->parent = (Closure *) NULL; */
+			/* t->join_counter = 0; */
+			/* t->status = CLOSURE_READY; */
 
-			batch_sig.size = sizeof(void);
-			batch_sig.index = sizeof(BatchOpFrame);
-			// How to set to slow version of batch function? Will need to change. rsu ***
-			batch_sig.inlet = opSlow;
-			batch_sig.argsize = 0;
-			batch_sig.argindex = 0;
+			/* batch_sig = Cilk_malloc(sizeof(CilkProcInfo)); */
+			/* batch_sig->size = sizeof(void); */
+			/* batch_sig->index = sizeof(BatchOpFrame); */
+			/* // How to set to slow version of batch function? Will need to change. rsu *** */
+			/* batch_sig->inlet = opSlow; */
+			/* batch_sig->argsize = 0; */
+			/* batch_sig->argindex = 0; */
 
-			f = Cilk_malloc(sizeof(BatchOpFrame));
-			f->header.entry = 0;
-			f->scope0.dataStruct = dataStruct;
-			f->scope0.data = workArray;
-			f->scope0.size = numJobs;
-			f->scope0.result = result;
-			f->header.sig = &batch_sig;
-			t->frame = &f->header;
-			Cilk_exit_state(ws, STATE_BATCH_START);
+			/* f = Cilk_malloc(sizeof(BatchOpFrame)); */
+			/* f->header.entry = 0; */
+			/* f->scope0.dataStruct = dataStruct; */
+			/* f->scope0.data = workArray; */
+			/* f->scope0.size = (size_t)numJobs; */
+			/* f->scope0.result = result; */
+			/* f->header.sig = batch_sig; */
+			/* t->frame = &(f->header); */
+			/* Cilk_exit_state(ws, STATE_BATCH_START); */
 
 			// Could we be destructive, i.e. use same array for data and result, to save time/space?
-			batch_scheduler(ws, t);
+			//			batch_scheduler(ws, t);
 
+			ws->cache.tail = &ws->cache.stack[0];
+			op(ws, dataStruct, workArray, numJobs, result);
 			ws->batch_id = 0;
 			break; // we got the lock, which means the batch must have contained our job - we're done
 
@@ -1862,6 +1863,7 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 		batch_scheduler(ws, t);
 	}
 
+	thisWorkerResult = Cilk_malloc(dataSize);
 	ws->cache = tempCache;
 	memcpy(thisWorkerResult,
 				 &result[pending.array[ws->self].packedIndex], dataSize);
@@ -1876,8 +1878,9 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 		//		Cilk_free(result);
 		Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
 	}
-	
-	return thisWorkerResult; // rsu *** must free this memory location upon return
+	printf("In batchify, pointer %i with value %i\n", thisWorkerResult, *(int*)thisWorkerResult);
+
+	return result; // rsu *** must free this memory location upon return
 	// is there a better way to do this?
 }
 
