@@ -144,6 +144,8 @@ void Cilk_create_children(CilkContext *const context,
 	for (i=0; i < USE_PARAMETER1(active_size); i++) {
 		USE_SHARED1(pending_batch).array[i].status = DS_DONE;
 	}
+	USE_SHARED1(batch_work_array) = NULL;
+	USE_SHARED1(batch_result_array) = NULL;
 
 	CILK_CHECK(USE_SHARED1(tid), (context, NULL, "could not malloc tid\n"));
 

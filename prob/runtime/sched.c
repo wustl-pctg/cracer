@@ -1730,10 +1730,8 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 {
 	int victim;
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
-	printf("In batch scheduler\n");
-	// *** this doesn't really work - a batch could end and another could start,
-	// but this may not see that!
-	while (USE_SHARED(current_batch_id) == ws->batch_id) { 
+
+	while (USE_SHARED(current_batch_id) == ws->batch_id) {
 	  if (!t) {
 			/* try to get work from the local ds queue */
 			deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
@@ -1786,7 +1784,6 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 	void *workArray, *result, *thisWorkerResult;
 	int numJobs = 0, done, i;
 
-	//thisWorkerResult = alloca(dataSize); // allocate stack space for the result
 	thisWorkerResult = malloc(dataSize);
 
 	// I think this is the easiest thing to do, rather than change everything to use ds_cache
@@ -1800,6 +1797,9 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 	pending.array[ws->self].size = dataSize; 
 	pending.array[ws->self].status = DS_WAITING;
 
+	workArray = USE_SHARED(batch_work_array);
+	result = USE_SHARED(batch_result_array);
+
 	done =  USE_SHARED(current_batch_id) + 1;
 
 	while (USE_SHARED(current_batch_id) <= done) {
@@ -1810,16 +1810,24 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 			USE_SHARED(batch_owner) = ws->self;
 			printf("Worker %i is starting batch %i\n", ws->self, ws->batch_id);
 
-			workArray = Cilk_malloc(dataSize * pending.size);
+			if (sizeof(workArray) != dataSize * pending.size) {
+				Cilk_free(workArray);
+				workArray = Cilk_malloc(dataSize * pending.size);
+			}
+			if (sizeof(result) != dataSize * pending.size) {
+				Cilk_free(result);
+				result = Cilk_malloc(dataSize * pending.size);
+			}
 
 			for (i = 0; i < pending.size; i++) {
 				if (pending.array[i].status == DS_WAITING) {
 					memcpy(&workArray[numJobs], pending.array[i].args, dataSize);
+					pending.array[i].packedIndex = numJobs;
 					numJobs++;
 				}
 			}
 
-			result = Cilk_malloc(dataSize * numJobs);
+			//			result = Cilk_malloc(dataSize * numJobs);
 
 			t = Cilk_Closure_create_malloc(ws->context, NULL);
 			t->parent = (Closure *) NULL;
@@ -1835,6 +1843,10 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 
 			f = Cilk_malloc(sizeof(BatchOpFrame));
 			f->header.entry = 0;
+			f->scope0.dataStruct = dataStruct;
+			f->scope0.data = workArray;
+			f->scope0.size = numJobs;
+			f->scope0.result = result;
 			f->header.sig = &batch_sig;
 			t->frame = &f->header;
 			Cilk_exit_state(ws, STATE_BATCH_START);
@@ -1842,11 +1854,7 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 			// Could we be destructive, i.e. use same array for data and result, to save time/space?
 			batch_scheduler(ws, t);
 
-			Cilk_free(workArray);
-			// How do we make sure the result memory is freed AFTER the actual results are returned?
 			ws->batch_id = 0;
-			//			Cilk_free(result);
-			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
 			break; // we got the lock, which means the batch must have contained our job - we're done
 
 		}
@@ -1854,17 +1862,23 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 		batch_scheduler(ws, t);
 	}
 
-	// How to make sure the "result" memory array is freed AFTER the actual results are returned?
-	// One option is to stack allocate a void pointer at the top of this function.
-	// Right here we'll assign it to the correct memory location, then increment a shared counter.
-	// Once the counter reaches the same number as the batch size, check if we were the previous
-	// batch owner. If so, we can release the memory.
-	// Finally, everyone return your respective result.
-	// Do we need a runtime system result array, or, alternatively, an array that specifies the result array index?
 	ws->cache = tempCache;
-	memcpy(thisWorkerResult, &result[ws->self], dataSize); // rsu *** this index is not right!
-	Cilk_free(result);
-	return thisWorkerResult;
+	memcpy(thisWorkerResult,
+				 &result[pending.array[ws->self].packedIndex], dataSize);
+	pending.array[ws->self].status = DS_DONE;
+	
+	if (USE_SHARED(batch_owner) == ws->self) {
+		/* while (1) { */
+		/* 	for (i = 0; i < pending.size; i++) { */
+		/* 		if (pending.array[i].status != DS_DONE) break; */
+		/* 	} */
+		/* } */
+		//		Cilk_free(result);
+		Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
+	}
+	
+	return thisWorkerResult; // rsu *** must free this memory location upon return
+	// is there a better way to do this?
 }
 
 void terminate_batch(CilkWorkerState *const ws)

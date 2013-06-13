@@ -1,10 +1,4 @@
-#include <cilk-lib.cilkh>
-#include <stdio.h>
-#include <cilk.h>
-
 #include "upCounter.cilkh"
-#include "prefixSum.cilkh"
-
 
 Counter* newCounter(int init) {
     Counter* result = malloc(sizeof(Counter));
@@ -13,8 +7,10 @@ Counter* newCounter(int init) {
 }
 
 /*Counter can be incremented. Merely change their value by the amount passed in. This function returns the counter to allow for nested stuff*/
-Counter* increment(Counter* counter, int change){
-    //Cilk_batchify(_cilk_ws, &change);
+cilk Counter* increment(Counter* counter, int change){
+    /*void* i;
+    i=spawn Cilk_batchify(&batch_increment, (void*)counter, (void*)&change, sizeof(change));
+    sync;*/
     return counter;
 }
 
@@ -22,7 +18,7 @@ Counter* increment(Counter* counter, int change){
 /*Increment, this time in batch. */
 /*Input must correspond to the input that batchify will give the operation.*/
 /* This assumes an exclusive prefix sum*/
-cilk Counter* batch_increment(void* datastructure, void* op_array, size_t size, void* result) {
+cilk void batch_increment(void* datastructure, void* op_array, size_t size, void* result) {
       //Several casts to make nicer types (from the void* that batchify gives).
       int* increments = (int*)op_array;
       int numIncrements = (int) size;
@@ -33,5 +29,5 @@ cilk Counter* batch_increment(void* datastructure, void* op_array, size_t size, 
       i=spawn prefix_sum(increments, numIncrements);
       sync;
       counter->count+=increments[numIncrements-1];
-      return counter;
+      return;
 }

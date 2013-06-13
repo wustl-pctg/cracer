@@ -534,6 +534,7 @@ typedef struct {
   void      *args;
   size_t    size;
   int       status;
+	int packedIndex;
 } BatchRecord;
 
 typedef struct {
