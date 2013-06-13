@@ -225,7 +225,7 @@ cilk void parallel_for_search_call(struct node23* root, int* D, int start, int e
     else {
         spawn parallel_for_search_call(root, D, start, start+(end-start)/2);
         spawn parallel_for_search_call(root, D, start+(end-start)/2 + 1, end);
-        spawn search_and_insert(root, D, i);
+		spawn search_and_insert(root, D, start+(end-start)/2);
     }
     sync;
 }

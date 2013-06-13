@@ -1,6 +1,6 @@
 #include "complex_2_3_tree.cilk"
 
-int main()
+cilk int main()
 {
 	struct node23 *result;
     int init[2] ={150,200};
@@ -21,9 +21,10 @@ int main()
 	print_tree(test_tree->root, 0);
 	printf("-------------------------------------------------------\n");
 
-	complex_batch_insert(test_tree, init, 2);
-	complex_batch_insert(test_tree, test_numbers, 6);
-
+	spawn complex_batch_insert(test_tree, init, 2);
+	sync;
+	spawn complex_batch_insert(test_tree, test_numbers2, 19);
+	sync;
     
     /*
 	spawn simplified_batch_insert(test_tree, test_numbers3, 1);

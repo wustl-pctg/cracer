@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 #define VOID_DATA (int)-INFINITY
-#define PARALLEL_CUTOFF 5
+#define PARALLEL_CUTOFF 2
 
 
 /* 2-3 Tree that supports parallel operations */
@@ -28,25 +28,40 @@ struct tree23
 
 /*-----------------------------Function Declarations----------------------------------------------------------------------------*/
 	//Initialization Functions
-struct node23* create_node(int node_data);									 					/*COMPLETE*/
-struct tree23* create_tree(int node_data);
+struct node23* create_node(int node_data);	/*COMPLETE*/
+struct tree23* create_tree(int node_data);	/*COMPLETE*/
 
 	//Special Search Functions
 int binary_search_function(int (*function_ptr)(int, int, struct node23**, struct node23*), struct node23** node_array, int size, struct node23* target);	/*COMPLETE*/			/*Returns the array index of the thing that is searched for*/
 int find_first(int index, int bound, struct node23** node_array, struct node23* target); 		/*COMPLETE*/
 int find_last(int index, int bound, struct node23** node_array, struct node23* target); 		/*COMPLETE*/
-int find_insert_index(int *input_array, int size, struct node23* target);
+int find_insert_index(int *input_array, int size, struct node23* target);						/*COMPLETE*/
 
+	//Search and Mark
+struct node23* searchAndMark(struct node23* current_node, int key, int mark);	
+cilk struct node23* callSearchAndMark(struct node23* root, int key, int mark);
+	
 	//Batch Insert Function and helper functions
-void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size);
-struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size);
-struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c);
+cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size);
+cilk struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size);
+cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c);
 
 	//Print Tree
-void print_tree(struct node23 *current_node, int i);
+void print_tree(struct node23 *current_node, int i);	/*COMPLETE*/
 
 	//Other
-int compare_integers(const void *A, const void *B);
+int compare_integers(const void *A, const void *B);		/*COMPLETE*/
+
+	//Parallel Functions
+cilk void basic_parallel_for(int start, int end, int first, int insert, int last, struct node23** result, int *input_integers, cilk void (*function_ptr)(struct node23**,int*,int,int,int,int));
+cilk void parallel_for_mark(struct node23* root, int* input_integers, struct node23** result_array, int start, int end);
+cilk void create_node_array(struct node23** result, int* input_integers, int first, int insert, int last, int index);
+cilk void create_node_array_2(struct node23** result, int* input_integers, int first, int insert, int last, int index);
+cilk void parallel_for_parent_creator(int start, int end, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b,
+										struct node23** node_array_c, cilk void (*function_ptr)(int, int, int, int, struct node23**, struct node23**, struct node23**, struct node23**));
+cilk void triplet_parent_creator(int i, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b, struct node23** node_array_c);
+cilk void pair_parent_creator(int pair_counter, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b, struct node23** node_array_c);
+
 
 
 
@@ -163,24 +178,6 @@ int find_insert_index(int *input_array, int size, struct node23* target)
         }
     }
     return -5;
-	/*do{
-		middle = (right-left)/2+left;
-
-		printf("middle: %d\n", middle);
-		
-        if (middle==left) {
-            return -1;
-        }
-		else if (target->left_data < input_array[middle] && target->left_data >= input_array[middle-1])
-			return middle;
-		else if(target->left_data >= input_array[middle])
-		{
-			left=middle;
-		}else {
-            right=middle;
-        }
-	}while(right-left>0);*/
-	/* ^^^^^^^Take care of case where nothing is found by search*/	
 }
 
 
@@ -205,8 +202,13 @@ struct node23* searchAndMark(struct node23* current_node, int key, int mark)
 	}
 }
 
+cilk struct node23* callSearchAndMark(struct node23* root, int key, int mark)
+{
+	return searchAndMark(root,key,mark);
+}
+
 /*----------------------------complex_batch_insert-------------------------------------------------------*/
-void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size) /*Takes in a pointer to a tree, an array of keys to insert, and the size of that array*/
+cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size) /*Takes in a pointer to a tree, an array of keys to insert, and the size of that array*/
 {
 	int i;
 	struct node23 **result_array = calloc(size, sizeof(struct node23*));
@@ -215,12 +217,14 @@ void complex_batch_insert(struct tree23* current_tree, int *input_integers, int 
 
 	qsort((void*)input_integers, size, sizeof(int), compare_integers);
 	
-	for(i=0; i<size; ++i)
+	/*for(i=0; i<size; ++i)	
 	{
 		result_array[i] = searchAndMark(current_tree->root, input_integers[i], 1);
-	}
+	}*/
+	spawn parallel_for_mark(current_tree->root, input_integers, result_array, 0, size);
 
-    result = recursive_split(current_tree->root, result_array, input_integers, size, &number_of_children);
+    result = spawn recursive_split(current_tree->root, result_array, input_integers, size, &number_of_children);
+	sync;
 	
 	//fix root - to group the array of nodes returned
 	if(number_of_children == 0)
@@ -228,8 +232,8 @@ void complex_batch_insert(struct tree23* current_tree, int *input_integers, int 
 		
 	while(number_of_children>1)
 	{
-		result = create_and_link_parent_nodes(number_of_children, 0, 0, result, NULL, NULL);
-		
+		result = spawn create_and_link_parent_nodes(number_of_children, 0, 0, result, NULL, NULL);
+		sync;
 		if(number_of_children%3==0)	//Return the size of the result array
 			number_of_children = number_of_children/3;
 		else
@@ -242,9 +246,8 @@ void complex_batch_insert(struct tree23* current_tree, int *input_integers, int 
 	free(result);
 }
 
-struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size) //Edits result, but returns the size of result
+cilk struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size) //Edits return_size to be the size of the return array
 {
-	//struct node23 **result; /*The array of parent nodes that we will return*/
 	int first, insert, last;
 	int size_a, size_b, size_c;
 	struct node23 **node_array_a, **node_array_b, **node_array_c; //a, b, and c refer to the left, middle, or right parts of the parent node
@@ -276,19 +279,25 @@ struct node23** recursive_split(struct node23* current_node, struct node23** sea
 		
 		if(insert > last) /*Fill the sub-arrays using the integer inputs - Normal case*/
 		{
-			for(i = 0; i < 1+last-first; ++i) 											//PARALLEL FOR
+			/*for(i = 0; i < 1+last-first; ++i)
 			{
 				result[i] = create_node(input_integers[i+first]);
-			}
+			}*/
+			
+			spawn basic_parallel_for(0, 1+last-first, first, insert, last, result, input_integers, create_node_array);
 			result[1+last-first] = current_node;
+			sync;
 		}
 		else			 /*Exception - the node does not go on the end of the sub-array*/
 		{
-			for(i=0; i<insert-first; ++i) //Fills up the sub-array before the node			//PARALLEL FOR
-				result[i] = create_node(input_integers[i+first]);
+			/*for(i=0; i<insert-first; ++i) //Fills up the sub-array before the node
+				result[i] = create_node(input_integers[i+first]);*/
+			spawn basic_parallel_for(0, insert-first, first, insert, last, result, input_integers, create_node_array);
 			result[insert-first] = current_node; //Inserts the node
-			for(i=insert-first+1; i<2+last-first; ++i) //Fills up the sub-array after the node*/		//PARALLEL FOR
-				result[i] = create_node(input_integers[i+first-1]);
+			/*for(i=insert-first+1; i<2+last-first; ++i) //Fills up the sub-array after the node		//PARALLEL FOR
+				result[i] = create_node(input_integers[i+first-1]);*/
+			spawn basic_parallel_for(insert-first+1, 2+last-first, first, insert, last, result, input_integers, create_node_array_2);
+			sync;
 		}
 		*return_size = 2+last-first;
         current_node->is_marked=unmarked;
@@ -296,9 +305,11 @@ struct node23** recursive_split(struct node23* current_node, struct node23** sea
 	}
 	else															/*If current_node is NOT a leaf ----> call recursive split and generate new nodes?*/
 	{
-		node_array_a = recursive_split(current_node->left, search_array, input_integers, size, &size_a);
-		node_array_b = recursive_split(current_node->middle, search_array, input_integers, size, &size_b);
-		node_array_c = recursive_split(current_node->right, search_array, input_integers, size, &size_c);
+		printf("Test recursive split\n");
+		node_array_a = spawn recursive_split(current_node->left, search_array, input_integers, size, &size_a);
+		node_array_b = spawn recursive_split(current_node->middle, search_array, input_integers, size, &size_b);
+		node_array_c = spawn recursive_split(current_node->right, search_array, input_integers, size, &size_c);
+		sync;
 	}
 
 	if((size_a+size_b+size_c)%3==0)	//Return the size of the result array
@@ -307,7 +318,8 @@ struct node23** recursive_split(struct node23* current_node, struct node23** sea
 		*return_size = (size_a+size_b+size_c)/3+1;
 		
 	
-	result = create_and_link_parent_nodes(size_a, size_b, size_c, node_array_a, node_array_b, node_array_c);
+	result = spawn create_and_link_parent_nodes(size_a, size_b, size_c, node_array_a, node_array_b, node_array_c);
+	sync;
 	
 	free(node_array_a);
 	free(node_array_b);
@@ -317,7 +329,7 @@ struct node23** recursive_split(struct node23* current_node, struct node23** sea
 	return result;
 }
 
-struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c) /*Regroup the node_arrays, and create new parent nodes as needed*/
+cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c) /*Regroup the node_arrays, and create new parent nodes as needed*/
 {
 	int size_total = size_a+size_b+size_c;
 	int i;
@@ -336,7 +348,7 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 		{
 			result[i] = create_node(VOID_DATA);		//Parent nodes
 		}
-		for(i=0; i<size_total; ++i)		//Creating the parent nodes for the groups of three children
+		/*for(i=0; i<size_total; ++i)		//Creating the parent nodes for the groups of three children
 		{
 			if (i%3==0) {
 				temp=&(result[i/3]->left);
@@ -359,8 +371,11 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 			{
 				*temp = node_array_c[i-size_a-size_b];
 			}
-		}
-        for (i=0;i<size_total/3;++i){
+		}*/
+		spawn parallel_for_parent_creator(0, size_total, size_a, size_b, 0, result, node_array_a, node_array_b, node_array_c, triplet_parent_creator);
+		sync;
+        for (i=0;i<size_total/3;++i)
+		{
             result[i]->max = result[i]->right->max;
             result[i]->left_data=result[i]->left->max;
             result[i]->right_data=result[i]->middle->max;
@@ -387,7 +402,7 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 			triplet_counter = size_total-2;		//<---one pair of two leafs will be added to the end (After this next for loop)
 		
         printf("TEST2\n");
-		for(i=0; i<triplet_counter; ++i)		//Linking the parent nodes for the groups of three children
+		/*for(i=0; i<triplet_counter; ++i)		//Linking the parent nodes for the groups of three children
 		{
 			if (i%3==0) 
 			{
@@ -402,7 +417,7 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 				temp = &(result[i/3]->right);
 			}
 			
-			if(i<size_a)							//Assign temp with pointer magic
+			if(i<size_a)						//Assign temp with pointer magic
 			{
 				*temp = node_array_a[i];
 
@@ -415,11 +430,12 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 			{
 				*temp = node_array_c[i-size_a-size_b];
 			}
-		}
+		}*/
 		
+		spawn parallel_for_parent_creator(0, triplet_counter, size_a, size_b, 0, result, node_array_a, node_array_b, node_array_c, triplet_parent_creator);
         
         printf("TEST3\n");
-		for(pair_counter = 0; (pair_counter + i) < size_total; ++pair_counter)	//Linking the parent nodes for the groups of two children
+		/*for(pair_counter = 0; (pair_counter + i) < size_total; ++pair_counter)	//Linking the parent nodes for the groups of two children
 		{
 			if (pair_counter%2 == 0) 
 			{
@@ -443,7 +459,8 @@ struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c,
 				*temp = node_array_c[(i+pair_counter)-size_a-size_b];
 			}
 		}
-        printf("TEST4\n");
+        printf("TEST4\n");*/
+		spawn parallel_for_parent_creator(0, size_total-triplet_counter, size_a, size_b, triplet_counter, result, node_array_a, node_array_b, node_array_c, pair_parent_creator);
         for (i=0;i<(size_total/3)+1;i++){
             printf("TEST10\n");
             if (result[i]->right==NULL){
@@ -499,17 +516,126 @@ int compare_integers(const void *A, const void *B)
 
 
 
+/*---------------------------Parallel Functions-------------------------------------------------*/
+
+cilk void basic_parallel_for(int start, int end, int first, int insert, int last, struct node23** result, int *input_integers, cilk void (*function_ptr)(struct node23**,int*,int,int,int,int))
+{
+	int middle = start+(end-start)/2;
+	if (end-start<=PARALLEL_CUTOFF) {
+		for (start; start < end; ++start) {
+            spawn function_ptr(result, input_integers, first,insert,last,start);
+		}
+    }
+	else
+	{		
+		spawn basic_parallel_for(start,middle,first,insert,last,result, input_integers, function_ptr);
+		spawn basic_parallel_for(middle+1,end,first,insert,last,result, input_integers, function_ptr);
+		spawn function_ptr(result, input_integers, first,insert,last,middle);
+	}
+}
 
 
+cilk void parallel_for_mark(struct node23* root, int* input_integers, struct node23** result_array, int start, int end)
+{
+    int i;
+    if (end-start<=PARALLEL_CUTOFF) {
+        for (i=start; i <end; i++) {
+            result_array[i] = spawn callSearchAndMark(root, input_integers[start+(end-start)/2], 1);
+        }
+    }
+    else {
+        spawn parallel_for_mark(root, input_integers, result_array, start, start+(end-start)/2);
+        spawn parallel_for_mark(root, input_integers, result_array, start+(end-start)/2 + 1, end);
+        result_array[start+(end-start)/2] = spawn callSearchAndMark(root, input_integers[start+(end-start)/2], 1);
+    }
+    sync;
+}
+
+cilk void create_node_array(struct node23** result, int* input_integers, int first,int insert,int last, int index)
+{
+	result[index] = create_node(input_integers[index+first]);
+}
+
+cilk void create_node_array_2(struct node23** result, int* input_integers, int first,int insert,int last, int index)
+{
+	result[index] = create_node(input_integers[index+first-1]);
+}
 
 
+cilk void parallel_for_parent_creator(int start, int end, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b, struct node23** node_array_c,
+										cilk void (*function_ptr)(int, int, int, int, struct node23**, struct node23**, struct node23**, struct node23**))
+{	//function_ptr(index,size_a,size_b,constant,result,node_array_a,...)
+	int middle = start+(end-start)/2;
+	if(end-start<=PARALLEL_CUTOFF)
+		for(start;start<end;++start)
+		{
+			spawn function_ptr(start,size_a,size_b,constant,result,node_array_a,node_array_b,node_array_c);
+		}
+	else
+	{
+		spawn parallel_for_parent_creator(start, middle,size_a,size_b,constant,result,node_array_a,node_array_b,node_array_c, function_ptr);
+		spawn parallel_for_parent_creator(middle+1,end, size_a,size_b,constant,result,node_array_a,node_array_b,node_array_c, function_ptr);
+		spawn function_ptr(middle,size_a,size_b,constant,result,node_array_a,node_array_b,node_array_c);
+	}
+}
 
+cilk void triplet_parent_creator(int i, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b, struct node23** node_array_c)
+{
+	struct node23** temp;
+	
+	if (i%3==0) {
+		temp=&(result[i/3]->left);
+	} else if (i%3==1){
+		temp=&(result[i/3]->middle);
+	}
+	else {
+		temp=&(result[i/3]->right);
+	}
+	
+	if(i<size_a)							//Assign temp with pointer magic
+	{
+		*temp = node_array_a[i];
+	}
+	else if(i<size_a+size_b)
+	{
+		*temp = node_array_b[i-size_a];
+	}
+	else
+	{
+		*temp = node_array_c[i-size_a-size_b];
+	}
+}
 
+cilk void pair_parent_creator(int pair_counter, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b, struct node23** node_array_c)
+{
+	struct node23** temp;
+	
+	if (pair_counter%2 == 0) 
+	{
+		temp=&(result[constant/3 + pair_counter/2]->left);
+	}
+	else
+	{
+		temp=&(result[constant/3 + pair_counter/2]->middle);
+	}
 
-
-
-
-
-
-
-
+	if((constant+pair_counter)<size_a)		//Assign temp with pointer magic
+	{
+		*temp = node_array_a[constant+pair_counter];
+	}
+	else if((constant+pair_counter)<size_a+size_b)
+	{
+		*temp = node_array_b[(constant+pair_counter)-size_a];
+	}
+	else
+	{
+		*temp = node_array_c[(constant+pair_counter)-size_a-size_b];
+	}
+}
+	
+	
+	
+	
+	
+	
+	
