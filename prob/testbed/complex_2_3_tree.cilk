@@ -10,6 +10,11 @@
 /* The insertion function will allow any amount of data to be inserted */
 /* Tyler Romero and Kefu Lu */
 
+//To do: add the batchify function
+//To do: the 'delete' function
+
+
+
 /*-----------------------------Structs-----------------------------------------------------------------------------------------*/
 struct node23
 {
@@ -497,19 +502,19 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
         sync;
 		
 		for (i=0;i<(size_total/3)+1;i++){	//sets the max data field for every new node
-            printf("TEST10\n");
+            //printf("TEST10\n");
             if (result[i]->right==NULL){
-                printf("Just before middle is dereferenced: i is %d: {%d,%d}\n",i, result[i]->left,result[i]->middle);
+                //printf("Just before middle is dereferenced: i is %d: {%d,%d}\n",i, result[i]->left,result[i]->middle);
                 result[i]->max = result[i]->middle->max;								//Seg fault where middle is NULL, and it is dereferenced here, starts occuring when line 434 is added
                 result[i]->left_data=result[i]->left->max;
             }
             else {
-                printf("i is %d: {%d,%d, %d}\n",i, result[i]->left,result[i]->middle, result[i]->right);
+                //printf("i is %d: {%d,%d, %d}\n",i, result[i]->left,result[i]->middle, result[i]->right);
                 result[i]->max = result[i]->right->max;
                 result[i]->left_data=result[i]->left->max;
                 result[i]->right_data=result[i]->middle->max;
             }
-            printf("TEST11\n");
+            //printf("TEST11\n");
         }
 	}
 	return result;

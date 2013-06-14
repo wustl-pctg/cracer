@@ -1,10 +1,13 @@
 #include "complex_2_3_tree.cilk"
 
+#define TEST_SIZE 700000
+
 cilk int main()
 {
+	int large_test[TEST_SIZE];
 	int test_numbers[14];
 	struct tree23 *test_tree = create_tree(100);
-	int test_numbers_2[5] = {130, 124, 189, 367, 33};
+	int i;
 	
 	test_numbers[0] = 125;
 	test_numbers[1] = 115;
@@ -20,6 +23,11 @@ cilk int main()
 	test_numbers[11] = 65;
 	test_numbers[12] = 185;
 	test_numbers[13] = 195;
+	
+	for(i=0; i<TEST_SIZE; ++i)
+	{
+		large_test[i] = i*10;
+	}
     
 	//115,125,135,153,157,165,175,235};
     
@@ -27,18 +35,11 @@ cilk int main()
 
     printf("Start\nsizes: %d\n",sizeof(struct node23));
 
-	
-	print_tree(test_tree->root, 0);
-	
-	printf("-------------------------------------------------------\n");
 	spawn complex_batch_insert(test_tree, test_numbers, 14);
 	sync;
-	print_tree(test_tree->root, 0);
 	
-	printf("-------------------------------------------------------\n");
-	spawn complex_batch_insert(test_tree, test_numbers_2, 5);
+	spawn complex_batch_insert(test_tree, large_test, TEST_SIZE);
 	sync;
-	print_tree(test_tree->root, 0);
 	
 	delete_tree(test_tree);
     return 0;
