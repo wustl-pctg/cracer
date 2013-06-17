@@ -247,10 +247,11 @@ cilk struct node23* callSearchAndMark(struct node23* root, int key, int mark)
 
 int search_mark_and_height(struct node23* current_node, int key, int height)
 {
+    current_node->is_marked = marked;
 	if(current_node->left == NULL)
 	{
-		if(current_node->left_data == key)
-			current_node->is_marked = marked;
+		if(current_node->left_data != key)
+			current_node->is_marked = unmarked;
 		return height;
 	}
 	else{
@@ -313,7 +314,7 @@ cilk struct node23** recursive_split(struct node23* current_node, struct node23*
 	int first, insert, last;
 	int size_a, size_b, size_c;
 	struct node23 **node_array_a, **node_array_b, **node_array_c; //a, b, and c refer to the left, middle, or right parts of the parent node
-	struct node23 **result;
+	struct node23 **result; /*The array of parent nodes that we will return*/
 	
 	if(current_node==NULL)	/*If current_node doesnt exist return NULL*/
 	{
@@ -400,7 +401,9 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 	
 	printf("size_total: %d\n", size_total);
     printf("from sizes: {%d,%d,%d}\n",size_a,size_b,size_c);
-	
+	if (size_total==0) {
+        return NULL;
+    }
 	if(size_total%3 == 0) //<-------------------------If size is a multiple of 3
 	{
 		printf("multiple of 3\n");
@@ -531,6 +534,9 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 		
 		for (i=0;i<(size_total/3)+1;i++){	//sets the max data field for every new node
             //printf("TEST10\n");
+            if (result[i]->middle==NULL){
+                printf("This should never happen!");
+            }
             if (result[i]->right==NULL){
                 //printf("Just before middle is dereferenced: i is %d: {%d,%d}\n",i, result[i]->left,result[i]->middle);
                 result[i]->max = result[i]->middle->max;								//Seg fault where middle is NULL, and it is dereferenced here, starts occuring when line 434 is added
@@ -570,9 +576,24 @@ cilk void complex_batch_remove(struct tree23* current_tree, int *input_integers,
 	
 	if(count_children(current_tree->root) < 2)		//If root has less than two children, re-assign root
 	{
+        printf("reassign root\n");
+        printf("root: %p\n",current_tree->root);
+        printf("res: %p\n",result);
+        printf("res stuff: %p, %p, %p\n",result->left,result->middle,result->right);
 		current_tree->root = result->left;
 		free(result);
 	}
+     if (current_tree->root->right==NULL){
+        printf("get over here!\n");
+        current_tree->root->max = current_tree->root->middle->max;		
+        current_tree->root->left_data=current_tree->root->left->max;
+        current_tree->root->right_data=VOID_DATA;
+    }
+    else {
+        current_tree->root->max  = current_tree->root->right->max;
+        current_tree->root->left_data=current_tree->root->left->max;
+        current_tree->root->right_data=current_tree->root->middle->max;
+    }
 	//If root has more than two children, do nothing
 }
 
@@ -592,6 +613,7 @@ cilk struct node23* recursive_combine(struct node23* current_node, int sub_tree_
 		if(sub_tree_height == 0)						//If current node is a Marked Leaf
 		{
 			//delete
+            printf("delete a node: %d\n",current_node->left_data);
 			free(current_node);
 			return NULL;
 		}
@@ -605,7 +627,6 @@ cilk struct node23* recursive_combine(struct node23* current_node, int sub_tree_
 			sync;
 			
 			fix_children(current_node, result_array);							//Shifts children left and unmarkes current_node if it has more than one child
-			
 			if(current_node->left == NULL)						//If current_node has no remaining children
 			{
 				free(current_node);
@@ -613,9 +634,10 @@ cilk struct node23* recursive_combine(struct node23* current_node, int sub_tree_
 			}
 			
 			//RESTRUCTURE A and B using IF statements
+			printf("fix\n");
 			spawn restructure_children(current_node);
 			sync;
-			
+            printf("fixed\n");
 			return current_node;
 		}
 	}
@@ -656,10 +678,12 @@ cilk void restructure_children(struct node23* current_node)
 	int size_c=count_children(current_node->right);
 	int size_total = size_a+size_b+size_c;
 	int i;
-	
+    if (size_total==0){
+        return;
+    }
 	result_array = spawn create_and_link_parent_nodes(size_a,size_b,size_c,(struct node23**)current_node->left, (struct node23**)current_node->middle, (struct node23**)current_node->right);
 	sync;
-	
+    
 	if (size_total%3==0){
 		size_total/=3;
 	}
@@ -667,9 +691,16 @@ cilk void restructure_children(struct node23* current_node)
 		size_total/=3;
 		++size_total;
 	}
-	
-	for (i=0;i<size_total;++i){
-		*((struct node23**)(current_node) + i) = result_array[i];
+    
+    printf("%d,%d,%d \n",size_a,size_b,size_c);
+    printf("size total %d from node %d\n",size_total,current_node->left_data);
+	for (i=0;i<3;++i){
+        if (i<size_total){
+            *((struct node23**)(current_node) + i) = result_array[i];
+        }
+        else {
+            *((struct node23**)(current_node) + i) = NULL;
+        }
 	}
 	
 	if(size_total<=1)
@@ -681,8 +712,10 @@ cilk void restructure_children(struct node23* current_node)
 int count_children(struct node23* current_node)
 {
 	int counter = 0;
-
-	if(current_node->left)
+    if (current_node==NULL) {
+        return 0;
+    }
+	if(current_node->left!=NULL)
 	{
 		++counter;
 	}

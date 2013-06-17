@@ -1,6 +1,6 @@
 #include "complex_2_3_tree.cilk"
 
-#define TEST_SIZE 20
+#define TEST_SIZE 30
 
 cilk int main()
 {
@@ -16,12 +16,12 @@ cilk int main()
 	
 	for(i=0; i<TEST_SIZE/2; ++i)
 	{
-		test_numbers[i] = i*20;
+		test_numbers[i] = i*10;
 	}
     
 	//115,125,135,153,157,165,175,235};
     
-	    printf("Start\nsizes: %d\n",sizeof(struct node23));
+    printf("Start\nsizes: %d\n",sizeof(struct node23));
 
 	spawn complex_batch_insert(test_tree, large_test, TEST_SIZE);
 	sync;
