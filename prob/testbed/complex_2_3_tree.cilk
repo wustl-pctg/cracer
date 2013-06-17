@@ -466,7 +466,9 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 			triplet_counter = size_total-4;		//<---two pairs of two leafs will be added to the end (After this next for loop)
 		else
 			triplet_counter = size_total-2;		//<---one pair of two leafs will be added to the end (After this next for loop)
-		
+		if (triplet_counter<0) {
+            triplet_counter=0;
+        }
 		printf("triplet_counter: %d\n", triplet_counter);
 		
 		/*for(i=0; i<triplet_counter; ++i)		//Linking the parent nodes for the groups of three children
@@ -531,19 +533,19 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 		//Creating the parent nodes for the groups of three children
 		spawn parallel_for_parent_creator(0, size_total-triplet_counter, size_a, size_b, triplet_counter, result, node_array_a, node_array_b, node_array_c, pair_parent_creator); //No seg fault when isolated
         sync;
-		
 		for (i=0;i<(size_total/3)+1;i++){	//sets the max data field for every new node
             //printf("TEST10\n");
             if (result[i]->middle==NULL){
-                printf("This should never happen!");
+                printf("This should never happen!\n");
+                result[i]->max=result[i]->left->max;
             }
-            if (result[i]->right==NULL){
+            else if (result[i]->right==NULL){
                 //printf("Just before middle is dereferenced: i is %d: {%d,%d}\n",i, result[i]->left,result[i]->middle);
                 result[i]->max = result[i]->middle->max;								//Seg fault where middle is NULL, and it is dereferenced here, starts occuring when line 434 is added
                 result[i]->left_data=result[i]->left->max;
             }
             else {
-                //printf("i is %d: {%d,%d, %d}\n",i, result[i]->left,result[i]->middle, result[i]->right);
+                //printf("i is %d: {%d,%d, %d}\n",i, result[i]->left,result[i]->middle, result[i]->right)
                 result[i]->max = result[i]->right->max;
                 result[i]->left_data=result[i]->left->max;
                 result[i]->right_data=result[i]->middle->max;
@@ -574,6 +576,7 @@ cilk void complex_batch_remove(struct tree23* current_tree, int *input_integers,
 	sync;
 	//Fix Root
 	
+    /*There is a lot of stuff to do in the root. Must think of a way to do it without increasing time complexity.*/
 	if(count_children(current_tree->root) < 2)		//If root has less than two children, re-assign root
 	{
         printf("reassign root\n");
@@ -634,10 +637,8 @@ cilk struct node23* recursive_combine(struct node23* current_node, int sub_tree_
 			}
 			
 			//RESTRUCTURE A and B using IF statements
-			printf("fix\n");
 			spawn restructure_children(current_node);
 			sync;
-            printf("fixed\n");
 			return current_node;
 		}
 	}
@@ -681,9 +682,12 @@ cilk void restructure_children(struct node23* current_node)
     if (size_total==0){
         return;
     }
+    
+    printf("size total %d for node {%d,%d,%d}\n",size_total,current_node->left_data,current_node->right_data,current_node->max);
+    printf("with node {%d,%d,%d}\n",size_a,size_b,size_c);
 	result_array = spawn create_and_link_parent_nodes(size_a,size_b,size_c,(struct node23**)current_node->left, (struct node23**)current_node->middle, (struct node23**)current_node->right);
 	sync;
-    
+    printf("call helper fine\n");
 	if (size_total%3==0){
 		size_total/=3;
 	}
@@ -692,8 +696,6 @@ cilk void restructure_children(struct node23* current_node)
 		++size_total;
 	}
     
-    printf("%d,%d,%d \n",size_a,size_b,size_c);
-    printf("size total %d from node %d\n",size_total,current_node->left_data);
 	for (i=0;i<3;++i){
         if (i<size_total){
             *((struct node23**)(current_node) + i) = result_array[i];
@@ -707,6 +709,7 @@ cilk void restructure_children(struct node23* current_node)
 		current_node->is_marked = marked;
 	else
 		current_node->is_marked = unmarked;
+    printf("end node {%d,%d,%d}\n",current_node->left_data,current_node->right_data,current_node->max);
 }
 
 int count_children(struct node23* current_node)
