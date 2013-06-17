@@ -106,18 +106,14 @@ extern __cilksafe__ __nooutput__ __cilkonly__ CilkWorkerState *const _cilk_ws;
 /***********************************************************\
  * BATCHER
 \***********************************************************/
-//#define GET_SLOW(op) _cilk_ ## op ## _slow
 typedef cilk void (*CilkBatchOperation)(void *dataStruct, void *data,
 																				size_t numElements, void *result);
-#include <stdlib.h>
+
 static inline cilk void * Cilk_batchify(CilkBatchOperation op,
 																				void *dataStruct,
 																				void *data, size_t dataSize)
 {
-	// any way to get rid of the _cilk_fastSum_slow hack?
-	int * temp = (int*)Cilk_batchify_internal(_cilk_ws, op,dataStruct, data, dataSize);
-	printf("Pointer %i with val %i\n", temp, temp[0]);
-	return temp;
+	return Cilk_batchify_internal(_cilk_ws, op,dataStruct, data, dataSize);
 }
 
 

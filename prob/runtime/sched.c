@@ -843,12 +843,13 @@ static void Closure_make_ready(Closure *cl)
  * Returns the child.
  */
 static Closure *promote_child(CilkWorkerState *const ws,
-															Closure *parent, int victim)
+															Closure *parent, int victim,
+															ReadyDeque *const deque_pool)
 {
 	Closure *child = Closure_create(ws);
 
 	Closure_assert_ownership(ws, parent);
-	deque_assert_ownership(ws, victim, USE_PARAMETER(deques));
+	deque_assert_ownership(ws, victim, deque_pool); // rsu ***
 	CILK_ASSERT(ws, parent->status == CLOSURE_RUNNING);
 	CILK_ASSERT(ws, parent->owner_ready_deque == victim);
 	CILK_ASSERT(ws, parent->next_ready == (Closure *) NULL);
@@ -864,10 +865,11 @@ static Closure *promote_child(CilkWorkerState *const ws,
 
 	/* setup the frame of the child closure */
 	CLOSURE_HEAD(child)++;
+	printf("Closure head pointer: %p\n", CLOSURE_HEAD(child));
 	child->frame = (CilkStackFrame*)*CLOSURE_HEAD(child);
 
 	/* insert the closure on the victim processor's deque */
-	deque_add_bottom(ws, child, victim, USE_PARAMETER(deques)); // change for batcher***
+	deque_add_bottom(ws, child, victim, deque_pool); // rsu ***
 
 	/* at this point the child can be freely executed */
 	return child;
@@ -941,7 +943,7 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim, ReadyDeque 
 		     * the child to a full closure, and steal
 		     * the parent
 		     */
-		    child = promote_child(ws, cl, victim);
+		    child = promote_child(ws, cl, victim, deque_pool);
 
 		    /* detach the parent */
 		    res = deque_xtract_top(ws, victim, deque_pool);
@@ -1019,7 +1021,7 @@ static void signal_abort_from_inlet(CilkWorkerState *const ws, Closure *cl)
 	  deque_assert_ownership(ws, ws->self, USE_PARAMETER(deques));
 
 	  /* promote the child frame, and detach the parent from deque */
-	  child = promote_child(ws, cl, ws->self);
+	  child = promote_child(ws, cl, ws->self, USE_PARAMETER(deques)); // rsu ***?
 	  finish_promote(ws, cl, child);
 	  
 	  /*
@@ -1559,7 +1561,7 @@ static Closure *setup_for_execution(CilkWorkerState *const ws, Closure *t)
 
 	t->status = CLOSURE_RUNNING;
 	t->cache = &ws->cache;
-
+	printf("in setup for execution\n");
 	CLOSURE_STACK(t)[0] = t->frame;	/* push the first frame on the stack */
 	CLOSURE_HEAD(t) = (volatile CilkStackFrame**)CLOSURE_STACK(t);
 	CLOSURE_TAIL(t) = (volatile CilkStackFrame**)CLOSURE_STACK(t)+1;
@@ -1587,7 +1589,7 @@ static Closure *return_value(CilkWorkerState *const ws, Closure *t)
  * execute the closure. If the closure is returning, take care of the
  * result.
  */
-static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t)
+static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t, ReadyDeque *const deque_pool)
 {
 	Closure *res = NULL;
 	CilkStackFrame *f;
@@ -1614,9 +1616,9 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t)
 			 * MUST unlock the closure before locking the queue 
 			 * (rule A in file PROTOCOLS)
 			 */
-			deque_lock(ws, ws->self, USE_PARAMETER(deques));
-			deque_add_bottom(ws, t, ws->self, USE_PARAMETER(deques));
-			deque_unlock(ws, ws->self, USE_PARAMETER(deques));
+			deque_lock(ws, ws->self, deque_pool); // rsu ***
+			deque_add_bottom(ws, t, ws->self, deque_pool);// rsu ***
+			deque_unlock(ws, ws->self, deque_pool);// rsu ***
 
 			/* now execute it */
 			if (ws->batch_id) {
@@ -1692,10 +1694,14 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 
 			} else { // regular steal */
 		    victim = rts_rand(ws) % USE_PARAMETER(active_size);
-		    if (victim != ws->self) {
+		    if (victim != ws->self && USE_SHARED(pending_batch).array[victim].status == DS_DONE) {
 					// check if the victim is doing BATCH work!***
 					// otherwise we'll steal an empty closure and simply wait
+					/* if (USE_SHARED(pending_batch).array[victim].status != DS_DONE) { // rsu *** */
+					/* 	t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques)); */
+					/* } else { */
 					t = Closure_steal(ws, victim, USE_PARAMETER(deques));
+						//					}
 					if (!t && USE_PARAMETER(options->yieldslice) &&
 							!USE_SHARED(done)) {
 			      Cilk_lower_priority(ws);
@@ -1710,7 +1716,7 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			Cilk_raise_priority(ws);
 
 	  if (!USE_SHARED(done))
-			t = do_what_it_says(ws, t);
+			t = do_what_it_says(ws, t, USE_PARAMETER(deques));
 
 	  /* 
 	   * if provably-good steals happened, t will contain
@@ -1763,7 +1769,7 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 			Cilk_raise_priority(ws);
 
 	  if (!USE_SHARED(done))
-			t = do_what_it_says(ws, t);
+			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
 
 	}
 
@@ -1779,8 +1785,6 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 															void *dataStruct, void *data, size_t dataSize)
 {
 	Closure *t = NULL;
-	/* BatchOpFrame *f; */
-	/* CilkProcInfo *batch_sig; */
 	void *workArray, *result, *thisWorkerResult;
 	int numJobs = 0, done, i;
 
@@ -1795,8 +1799,8 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 	pending.array[ws->self].size = dataSize; 
 	pending.array[ws->self].status = DS_WAITING;
 
-	workArray = USE_SHARED(batch_work_array);
-	result = USE_SHARED(batch_result_array);
+	/* workArray = USE_SHARED(batch_work_array); */
+	/* result = USE_SHARED(batch_result_array); */
 
 	done =  USE_SHARED(current_batch_id) + 1;
 
@@ -1806,16 +1810,17 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
 			Cilk_enter_state(ws, STATE_BATCH_START);
 			USE_SHARED(batch_owner) = ws->self;
-			printf("Worker %i is starting batch %i\n", ws->self, ws->batch_id);
+			//			printf("Worker %i is starting batch %i\n", ws->self, ws->batch_id);
 
-			if (sizeof(workArray) != dataSize * pending.size) {
-				Cilk_free(workArray);
+			/* if (sizeof(workArray) != dataSize * pending.size || workArray == NULL) { */
+			/* 	Cilk_free(workArray); */
 				workArray = Cilk_malloc(dataSize * pending.size);
-			}
-			if (sizeof(result) != dataSize * pending.size) {
-				Cilk_free(result);
+				/* } */
+
+			/* if (sizeof(result) != dataSize * pending.size || result == NULL) { */
+			/* 	Cilk_free(result); */
 				result = Cilk_malloc(dataSize * pending.size);
-			}
+			/* } */
 
 			for (i = 0; i < pending.size; i++) {
 				if (pending.array[i].status == DS_WAITING) {
@@ -1824,7 +1829,7 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 					numJobs++;
 				}
 			}
-
+			//			printf("Malloced memory, numbjobs: %i\n", numJobs);
 			//			result = Cilk_malloc(dataSize * numJobs);
 
 			/* t = Cilk_Closure_create_malloc(ws->context, NULL); */
@@ -1859,28 +1864,30 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 			break; // we got the lock, which means the batch must have contained our job - we're done
 
 		}
-
+		//		printf("Worker %i didn't get the lock; going to scheduler\n", ws->self);
 		batch_scheduler(ws, t);
 	}
 
-	thisWorkerResult = Cilk_malloc(dataSize);
+	/* thisWorkerResult = malloc(dataSize); */
 	ws->cache = tempCache;
-	memcpy(thisWorkerResult,
-				 &result[pending.array[ws->self].packedIndex], dataSize);
+	/* memcpy(thisWorkerResult, */
+	/* 			 &result[pending.array[ws->self].packedIndex], dataSize); */
 	pending.array[ws->self].status = DS_DONE;
-	
+	//	printf("Worker %i now done, unless owner\n", ws->self);
 	if (USE_SHARED(batch_owner) == ws->self) {
 		/* while (1) { */
 		/* 	for (i = 0; i < pending.size; i++) { */
 		/* 		if (pending.array[i].status != DS_DONE) break; */
 		/* 	} */
 		/* } */
-		//		Cilk_free(result);
+		Cilk_free(result);
+		Cilk_free(workArray);
+		//		printf("Freed the arrays\n");
 		Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
 	}
-	printf("In batchify, pointer %i with value %i\n", thisWorkerResult, *(int*)thisWorkerResult);
 
-	return result; // rsu *** must free this memory location upon return
+	//return thisWorkerResult; // rsu *** must free this memory location upon return
+	return NULL;
 	// is there a better way to do this?
 }
 
