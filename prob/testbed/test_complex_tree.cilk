@@ -6,13 +6,17 @@ cilk int main()
 {
 	int large_test[TEST_SIZE];
 	int test_numbers[TEST_SIZE/2];
+    int test_2[10] = {-10, -5, -2, -1};
 	struct tree23 *test_tree = create_tree(100);
+	struct tree23 *test_tree2 = create_tree(-3);
 	int i;
 	
 	for(i=0; i<TEST_SIZE; ++i)
 	{
 		large_test[i] = i*10;
 	}
+	spawn complex_batch_insert(test_tree2, test_2, 4);
+	sync;
 	
 	for(i=0; i<TEST_SIZE/2; ++i)
 	{
@@ -28,9 +32,13 @@ cilk int main()
 	
 	print_tree(test_tree->root,0);
 	
-	spawn complex_batch_remove(test_tree, test_numbers, TEST_SIZE/2);
+    merge_trees(test_tree, test_tree2);
+	//spawn complex_batch_remove(test_tree, test_numbers, TEST_SIZE/2);
+	/*spawn complex_batch_insert(test_tree,test_numbers,TEST_SIZE/2);
 	sync;
-	
+	spawn complex_batch_insert(test_tree,test_numbers,TEST_SIZE/2);*/
+	sync;
+    
 	printf("--------------------------------------------------\n");
 	print_tree(test_tree->root,0);
 	

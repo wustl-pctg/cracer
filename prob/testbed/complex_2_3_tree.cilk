@@ -21,6 +21,7 @@ struct node23
 	struct node23 *left, *middle, *right;
 	int left_data, right_data;
 	int max;
+    int height;
 	enum mark_status{unmarked, marked} is_marked;
 };
 
@@ -99,6 +100,7 @@ struct node23* create_node(int node_data)	//Initializes a node with 'node_data' 
 	new_node->middle = NULL;
 	new_node->right = NULL;
 	new_node->is_marked = unmarked;
+    new_node->height=0;
 	return new_node;
 }
 
@@ -446,6 +448,7 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
             result[i]->max = result[i]->right->max;
             result[i]->left_data=result[i]->left->max;
             result[i]->right_data=result[i]->middle->max;
+            result[i]->height=result[i]->left->height+1;
         }
 	}
 	else		//If size_total is not a multiple of three
@@ -550,6 +553,7 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
                 result[i]->left_data=result[i]->left->max;
                 result[i]->right_data=result[i]->middle->max;
             }
+            result[i]->height=result[i]->left->height+1;
             //printf("TEST11\n");
         }
 	}
@@ -733,10 +737,177 @@ int count_children(struct node23* current_node)
 	return counter;
 }
 
+/*
+struct node23* combine_tree(struct node23* left, struct node23* right) {
+    struct node23* big, small, branch_place;
+    struct node23** top_array;
+    if (left==NULL || right==NULL) {
+        printf("left or right is null\n");
+        return NULL;
+    }
+    if (left->height > right->height){
+        big=left;
+        small=right;
+    }
+    else if (left->height==right->height) {
+        big = create_node(left->max);
+        big->left=left;
+        big->middle = right;
+        big->max= right->max;
+        big->height=left->height +1;
+    }
+    else {
+        small=left;
+        big=right;
+    }
+    
+    top_array = recursive_merge_tree(big, small, int size, int *return_size);
+    branch_place = search_for_tree(big, small); //Search for small in big.
+    if (small==left){ //Small goes to the left of every child of branch_place.
+        merge_array={small, branch_place->left, branch_place->middle, branch_place->right};
+    }
+    else {
+        merge_array{branch_place->left, branch_place->middle, branch_place->right, small};
+    }
+    merge_children(merge_array);
+}*/
 
-
-
-
+struct node23** recursive_merge_tree(struct node23* current_node, struct node23* target_node, int *return_size) {
+    struct node23** result = calloc(2,sizeof(struct node23*));
+    struct node23* targetL=NULL;
+    struct node23* targetM=NULL;
+    struct node23* targetR=NULL;
+    struct node23** result_a, **result_b, **result_c;
+    int size_a,size_b,size_c;
+    int i;
+    
+    if (target_node==NULL ){
+        if (current_node!=NULL){
+            *return_size = 1;
+            result[0]=current_node;
+            return result;
+        }
+        else {
+            *return_size=0;
+            return result;
+        }
+    }
+    if (current_node->height == target_node->height){
+        *return_size=2;
+        if (current_node->left_data < target_node->left_data){
+            result[0]=current_node;
+            result[1]=target_node;
+        }
+        else {
+            result[0]=target_node;
+            result[1]=current_node;
+        }
+        return result;
+    }
+    else {
+        if(target_node->left_data < current_node->left_data) {
+            targetL=target_node;
+        }
+        else if(current_node->right_data == VOID_DATA)
+            targetM=target_node;
+        else if(target_node->left_data < current_node->right_data)
+            targetM=target_node;
+        else if(target_node->left_data > current_node->right_data)
+            targetR=target_node;
+        else {
+            printf("somehow target is equal to this node\n");
+            return NULL;
+        }
+        result_a = recursive_merge_tree(current_node->left, targetL, &size_a);
+        result_b = recursive_merge_tree(current_node->middle, targetM, &size_b);
+        result_c = recursive_merge_tree(current_node->right, targetR, &size_c);
+        
+        if (size_a+size_b+size_c <=3) {
+            for (i=0;i<3;++i){
+                if (i<size_a){
+                    *((struct node23**)(current_node) + i) = result_a[i];
+                }
+                else if (i<size_a+size_b){
+                    *((struct node23**)(current_node) + i) = result_b[i-size_a];
+                }
+                else {
+                    *((struct node23**)(current_node) + i) = result_c[i-size_a-size_b];
+                }
+            }
+            *return_size = 1;
+            result[0]=current_node;
+            return result;
+        }
+        if (size_a+size_b+size_c ==4) {
+            result[0]=current_node;
+            result[1]=create_node(VOID_DATA);
+            if (size_a>1) {
+                result[0]->left=result_a[0];
+                result[0]->middle=result_a[1];
+                result[1]->left=result_b[0];
+                result[1]->middle=result_c[0];
+            }
+            else if (size_c>1) {
+                result[0]->left=result_a[0];
+                result[0]->middle=result_b[0];
+                result[1]->left=result_c[0];
+                result[1]->middle=result_c[1];
+            }
+            else {
+                printf("%d,%d,%d\n",size_a,size_b,size_c);
+                printf("something bad here\n");
+            }
+            *return_size=2;
+            return result;
+        }
+        else {
+            printf("something bad happened\n");
+        }
+    }
+    printf("-1 returned\n");
+    return -1;
+}
+void merge_trees(struct tree23* tree1, struct tree23* tree2) {
+    int i=0;
+    struct node23** results;
+   results= recursive_merge_tree(tree1->root, tree2->root, &i);
+   if (i==1) {
+        printf("no root problem\n");
+        tree1->root = results[0];
+   }
+   else {
+    tree1->root = create_node(VOID_DATA);
+    tree1->root->left=results[0];
+    tree1->root->right=results[1];
+   }
+}
+/*
+struct node23* search_for_tree(struct node23* current_node, struct node23* target)
+{
+    if (current_node->height-1==target->height) {
+        return current_node;
+    }
+    else if(current_node->left == NULL)
+	{
+		printf("this should not happen\n");
+        return NULL;
+	}
+	else{
+		if(target->left_data < current_node->left_data)
+			return search_for_tree(current_node->left, target);
+		else if(current_node->right_data == VOID_DATA)
+			return search_for_tree(current_node->middle, target);
+		else if(key < current_node->right_data)
+			return search_for_tree(current_node->middle, target);
+		else if(key > current_node->right_data)
+			return search_for_tree(current_node->right, target);
+		else {
+            printf("somehow target is equal to a node\n");
+            return NULL;
+        } 								
+	}
+}
+*/
 /*------------------------- print_tree ---------------------------------------------------------------------------------*/
 void print_tree(struct node23 *current_node, int i)
 {   
@@ -752,7 +923,7 @@ void print_tree(struct node23 *current_node, int i)
     for (j=0;j<i;j++){
         printf("\t\t");
     }
-    printf("[%d, %d] {%d} ", current_node->left_data,current_node->right_data, current_node->max);
+    printf("[%d, %d] {%d} (%d)", current_node->left_data,current_node->right_data, current_node->max, current_node->height);
 	printf("\n");
     
 	if(current_node->middle != NULL){
