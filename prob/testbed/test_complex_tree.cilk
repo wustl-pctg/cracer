@@ -6,34 +6,37 @@ cilk int main()
 {
 	int large_test[TEST_SIZE];
 	int test_numbers[TEST_SIZE/2];
-    int test_2[10] = {-10, -5, -2, -1};
+   	 int test_2[10] = {-10, -5, -2, -1};
 	struct tree23 *test_tree = create_tree(100);
-	struct tree23 *test_tree2 = create_tree(-3);
+	//struct tree23 *test_tree2 = create_tree(-3);
 	int i;
 	
 	for(i=0; i<TEST_SIZE; ++i)
 	{
 		large_test[i] = i*10;
 	}
-	spawn complex_batch_insert(test_tree2, test_2, 4);
+	spawn complex_batch_insert(test_tree, test_2, 4);
 	sync;
 	
-	for(i=0; i<TEST_SIZE/2; ++i)
+	for(i=0; i<TEST_SIZE/2-1; ++i)
 	{
 		test_numbers[i] = i*10;
 	}
-    
+	test_numbers[TEST_SIZE/2-1]=12;    	
+
 	//115,125,135,153,157,165,175,235};
     
-    printf("Start\nsizes: %d\n",sizeof(struct node23));
+	printf("Start\nsizes: %d\n",sizeof(struct node23));
 
 	spawn complex_batch_insert(test_tree, large_test, TEST_SIZE);
 	sync;
 	
 	print_tree(test_tree->root,0);
 	
-    //merge_trees(test_tree->root, test_tree2->root);
+    	//merge_trees(test_tree->root, test_tree2->root);
 	spawn complex_batch_remove(test_tree, test_numbers, TEST_SIZE/2);
+	sync;
+	spawn complex_batch_remove(test_tree,test_2,4);
 	/*spawn complex_batch_insert(test_tree,test_numbers,TEST_SIZE/2);
 	sync;
 	spawn complex_batch_insert(test_tree,test_numbers,TEST_SIZE/2);*/
@@ -43,5 +46,5 @@ cilk int main()
 	print_tree(test_tree->root,0);
 	
 	delete_tree(test_tree);
-    return 0;
+	return 0;
 }

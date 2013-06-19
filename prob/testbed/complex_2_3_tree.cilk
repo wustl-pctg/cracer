@@ -34,28 +34,29 @@ struct tree23
 
 /*-----------------------------Function Declarations----------------------------------------------------------------------------*/
 	//Initialization Functions
-struct node23* create_node(int node_data);	/*COMPLETE*/
-struct tree23* create_tree(int node_data);	/*COMPLETE*/
+struct node23* create_node(int node_data);
+struct tree23* create_tree(int node_data);	
 
 	//Delete Tree
-void delete_tree_helper(struct node23 *dead_node);	/*COMPLETE*/
-void delete_tree(struct tree23 *dead_tree);			/*COMPLETE*/
+void delete_tree_helper(struct node23 *dead_node);
+void delete_tree(struct tree23 *dead_tree);			
 
 	//Special Search Functions
-int binary_search_function(int (*function_ptr)(int, int, struct node23**, struct node23*), struct node23** node_array, int size, struct node23* target);	/*COMPLETE*/			/*Returns the array index of the thing that is searched for*/
-int find_first(int index, int bound, struct node23** node_array, struct node23* target); 		/*COMPLETE*/
-int find_last(int index, int bound, struct node23** node_array, struct node23* target); 		/*COMPLETE*/
-int find_insert_index(int *input_array, int size, struct node23* target);						/*COMPLETE*/
+int binary_search_function(int (*function_ptr)(int, int, struct node23**, struct node23*), struct node23** node_array, int size, struct node23* target);
+int find_first(int index, int bound, struct node23** node_array, struct node23* target); 		
+int find_last(int index, int bound, struct node23** node_array, struct node23* target); 		
+int find_insert_index(int *input_array, int size, struct node23* target);				
 
 	//Search and Mark
-struct node23* searchAndMark(struct node23* current_node, int key, int mark);					/*COMPLETE*/
-cilk struct node23* callSearchAndMark(struct node23* root, int key, int mark);					/*COMPLETE*/
+struct node23* searchAndMark(struct node23* current_node, int key, int mark);					
+cilk struct node23* callSearchAndMark(struct node23* root, int key, int mark);					
 int search_mark_and_height(struct node23* current_node, int key, int height);
+cilk void search_for_delet(struct node23* root, int key);
 	
 	//Batch Insert Function and helper functions
-cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size);		/*COMPLETE*/
-cilk struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size);	/*COMPLETE*/
-cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c);	/*COMPELTE*/
+cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size);
+cilk struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size);
+cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c);
 	
 	//Batch Remove Function and helper functions
 cilk void complex_batch_remove(struct tree23* current_tree, int *input_integers, int size);
@@ -67,11 +68,11 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
 struct node23* merge_trees(struct node23* tree1, struct node23* tree2);
 void fix_node_values(struct node23* node);
 
-	//Print Tree
-void print_tree(struct node23 *current_node, int i);	/*COMPLETE*/
+	//Print Tree using an in-order tree-walk.
+void print_tree(struct node23 *current_node, int i);	
 
 	//Other
-int compare_integers(const void *A, const void *B);		/*COMPLETE*/
+int compare_integers(const void *A, const void *B);		//Needed for the sort in the insertion.
 
 	//Parallel Functions
 cilk void basic_parallel_for(int start, int end, int first, int insert, int last, struct node23** result, int *input_integers, cilk void (*function_ptr)(struct node23**,int*,int,int,int,int));
@@ -82,7 +83,7 @@ cilk void parallel_for_parent_creator(int start, int end, int size_a, int size_b
 										struct node23** node_array_c, cilk void (*function_ptr)(int, int, int, int, struct node23**, struct node23**, struct node23**, struct node23**));
 cilk void triplet_parent_creator(int i, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b, struct node23** node_array_c);
 cilk void pair_parent_creator(int pair_counter, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b, struct node23** node_array_c);
-
+cilk void mark_for_delete(struct node23* root, int* input, int first, int last);
 
 
 
@@ -103,7 +104,7 @@ struct node23* create_node(int node_data)	//Initializes a node with 'node_data' 
 	new_node->middle = NULL;
 	new_node->right = NULL;
 	new_node->is_marked = unmarked;
-    new_node->height=0;
+	new_node->height=0;
 	return new_node;
 }
 
@@ -241,7 +242,7 @@ struct node23* searchAndMark(struct node23* current_node, int key, int mark)
 			return searchAndMark(current_node->middle, key, mark);
 		else if(key > current_node->right_data)
 			return searchAndMark(current_node->right, key, mark);
-		else return NULL; 								/*Hypothetically should never happen*/
+		else return NULL; 								/*This should never happen*/
 	}
 }
 
@@ -252,14 +253,14 @@ cilk struct node23* callSearchAndMark(struct node23* root, int key, int mark)
 
 int search_mark_and_height(struct node23* current_node, int key, int height)
 {
-    current_node->is_marked = marked;
 	if(current_node->left == NULL)
 	{
-		if(current_node->left_data != key)
-			current_node->is_marked = unmarked;
+		if(current_node->left_data == key)
+			current_node->is_marked = marked;
 		return height;
 	}
 	else{
+		current_node->is_marked=marked;
 		if(key <= current_node->left_data)
 			return search_mark_and_height(current_node->left, key, height+1);
 		else if(current_node->right_data == VOID_DATA)
@@ -268,8 +269,12 @@ int search_mark_and_height(struct node23* current_node, int key, int height)
 			return search_mark_and_height(current_node->middle, key, height+1);
 		else if(key > current_node->right_data)
 			return search_mark_and_height(current_node->right, key, height+1);
-		else return height;							/*Hypothetically, this should never happen*/
+		else return height;							/*This should never happen*/
 	}
+}
+
+cilk void search_for_delete(struct node23* root, int key){
+     search_mark_and_height(root,key,0);
 }
 
 
@@ -279,19 +284,13 @@ cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers,
 	struct node23 **result_array = calloc(size, sizeof(struct node23*));
 	struct node23 **result;
 	int number_of_children=0;
-	int i;
-
-	qsort((void*)input_integers, size, sizeof(int), compare_integers); //Find a faster sort?
 	
-	/*for(i=0; i<size; ++i)	
-	{
-		result_array[i] = searchAndMark(current_tree->root, input_integers[i], 1);
-	}*/
+	qsort((void*)input_integers, size, sizeof(int), compare_integers); //Find a faster sort?
 	
 	spawn parallel_for_mark(current_tree->root, input_integers, result_array, 0, size); //Should sync on its own at the end of the function
 	sync;
 	
-    result = spawn recursive_split(current_tree->root, result_array, input_integers, size, &number_of_children);
+    	result = spawn recursive_split(current_tree->root, result_array, input_integers, size, &number_of_children);
 	sync;
 	
 	//fix root - to group the array of nodes returned
@@ -337,10 +336,10 @@ cilk struct node23** recursive_split(struct node23* current_node, struct node23*
 	{
         first = binary_search_function(find_first, search_array, size, current_node);
 		last = binary_search_function(find_last, search_array, size, current_node);
-		printf("current_node->left_data: %d\n", current_node->left_data);
+		//printf("current_node->left_data: %d\n", current_node->left_data);
 		insert = find_insert_index(input_integers, size, current_node);
 		
-		printf("first: %d, last: %d, insert: %d\n", first, last, insert);
+		//printf("first: %d, last: %d, insert: %d\n", first, last, insert);
 		
 		result = calloc(2+last-first, sizeof(struct node23*)); /*Allocate a sub-array for each of the leafs*/
 		
@@ -376,7 +375,7 @@ cilk struct node23** recursive_split(struct node23* current_node, struct node23*
 		node_array_b = spawn recursive_split(current_node->middle, search_array, input_integers, size, &size_b);
 		node_array_c = spawn recursive_split(current_node->right, search_array, input_integers, size, &size_c);
 		sync;
-		printf("Test post-recursive split\n");
+		//printf("Test post-recursive split\n");
 	}
 
 	if((size_a+size_b+size_c)%3==0)	//Return the size of the result array
@@ -400,18 +399,17 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 {
 	int size_total = size_a+size_b+size_c;
 	int i;
-	int triplet_counter, pair_counter;
+	int triplet_counter;
 	struct node23** result;
-	struct node23** temp;
 	
-	printf("size_total: %d\n", size_total);
-    printf("from sizes: {%d,%d,%d}\n",size_a,size_b,size_c);
+	//printf("size_total: %d\n", size_total);
+   // printf("from sizes: {%d,%d,%d}\n",size_a,size_b,size_c);
 	if (size_total==0) {
         return NULL;
     }
 	if(size_total%3 == 0) //<-------------------------If size is a multiple of 3
 	{
-		printf("multiple of 3\n");
+		//printf("multiple of 3\n");
 		result = calloc(size_total/3, sizeof(struct node23*)); /*Allocate a sub-array for each of the leafs*/
 		for(i=0; i<size_total/3; ++i)
 		{
@@ -456,7 +454,7 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 	}
 	else		//If size_total is not a multiple of three
 	{     
-		printf("NOT a multiple of 3\n");
+		//printf("NOT a multiple of 3\n");
 		result = calloc((size_total/3)+1, sizeof(struct node23*)); /*Allocate a sub-array that will be the parent nodes*/
 		if(result == NULL)
 		{
@@ -475,7 +473,7 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 		if (triplet_counter<0) {
             triplet_counter=0;
         }
-		printf("triplet_counter: %d\n", triplet_counter);
+		//printf("triplet_counter: %d\n", triplet_counter);
 		
 		/*for(i=0; i<triplet_counter; ++i)		//Linking the parent nodes for the groups of three children
 		{
@@ -568,35 +566,23 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 /*---------------------------complex_batch_remove---------------------------------------------------------*/
 cilk void complex_batch_remove(struct tree23* current_tree, int *input_integers, int size)
 {
-	int i;
 	int height;
 	struct node23* result;
 	
 	height = search_mark_and_height(current_tree->root, input_integers[0],0);
-	
-	for(i=1; i<size; ++i)			//PARALLEL FOR
-	{
-		search_mark_and_height(current_tree->root, input_integers[i],0);
-	}
-	
+	spawn mark_for_delete(current_tree->root, input_integers, 1, size); //This is a parallel-for loop.
+	sync;					  
 	result = spawn recursive_combine(current_tree->root, height);
 	sync;
+
 	//Fix Root
-	
-    /*There is a lot of stuff to do in the root. Must think of a way to do it without increasing time complexity.*/
-	
-    /*
-    if (current_tree->root->right==NULL){
-        printf("get over here!\n");
-        fix_node_values(current_tree->root);
-    }
-    else {
-        current_tree->root->max  = current_tree->root->right->max;
-        current_tree->root->left_data=current_tree->root->left->max;
-        current_tree->root->right_data=current_tree->root->middle->max;
-    }*/
-    current_tree->root=result;
-	//If root has more than two children, do nothing
+        if (current_tree->root==result){
+	   return;
+	}
+	else {
+	     //free(current_tree->root);
+	     current_tree->root=result;
+	}
 }
 
 
@@ -615,7 +601,7 @@ cilk struct node23* recursive_combine(struct node23* current_node, int sub_tree_
 		if(sub_tree_height == 0)						//If current node is a Marked Leaf
 		{
 			//delete
-            printf("delete a node: %d\n",current_node->left_data);
+			printf("delete a node: %d\n",current_node->left_data);
 			free(current_node);
 			return NULL;
 		}
@@ -664,13 +650,12 @@ void fix_children(struct node23* current_node, struct node23** result_array)		//
 			++counter;
 		}
 	}
-	
-	//SET MAX
+//	fix_node_values(current_node);
 }
 
 cilk void restructure_children(struct node23** current_node)
 {
-	struct node23* node;
+    struct node23* node;
     if ((*current_node)->middle==NULL) {
         node = *current_node;
         *current_node=(*current_node)->left;
@@ -678,10 +663,18 @@ cilk void restructure_children(struct node23** current_node)
         return;
     }
     else {
-        node = merge_trees((*current_node)->left,(*current_node)->middle);
+        printf("merge1\n");
+	printf("%p, %d | %p, %d\n",(*current_node)->left,(*current_node)->left->left_data,(*current_node)->middle,(*current_node)->middle->left_data);
+	print_tree((*current_node)->left, 0);
+	printf("sadf\n");
+	print_tree((*current_node)->middle,0);
+	node = merge_trees((*current_node)->left,(*current_node)->middle);
         if ((*current_node)->right!=NULL){
-            node = merge_trees((*current_node)->right,node);
-        }
+            printf("merge2\n");
+	    node = merge_trees((*current_node)->right,node);
+            printf("endM2\n");
+	}
+	printf("endM1\n");
         (*current_node)=node;
     }
 }
@@ -707,50 +700,21 @@ int count_children(struct node23* current_node)
 	return counter;
 }
 
-/*
-struct node23* combine_tree(struct node23* left, struct node23* right) {
-    struct node23* big, small, branch_place;
-    struct node23** top_array;
-    if (left==NULL || right==NULL) {
-        printf("left or right is null\n");
-        return NULL;
-    }
-    if (left->height > right->height){
-        big=left;
-        small=right;
-    }
-    else if (left->height==right->height) {
-        big = create_node(left->max);
-        big->left=left;
-        big->middle = right;
-        big->max= right->max;
-        big->height=left->height +1;
-    }
-    else {
-        small=left;
-        big=right;
-    }
-    
-    top_array = recursive_merge_tree(big, small, int size, int *return_size);
-    branch_place = search_for_tree(big, small); //Search for small in big.
-    if (small==left){ //Small goes to the left of every child of branch_place.
-        merge_array={small, branch_place->left, branch_place->middle, branch_place->right};
-    }
-    else {
-        merge_array{branch_place->left, branch_place->middle, branch_place->right, small};
-    }
-    merge_children(merge_array);
-}*/
-
 struct node23** recursive_merge_tree(struct node23* current_node, struct node23* target_node, int *return_size) {
     struct node23** result = calloc(2,sizeof(struct node23*));
     struct node23* targetL=NULL;
     struct node23* targetM=NULL;
     struct node23* targetR=NULL;
-    struct node23** result_a, **result_b, **result_c;
+    struct node23** result_a,**result_b,**result_c;
     int size_a,size_b,size_c;
     int i;
-    
+    /*
+    printf("merging:\n");
+    print_tree(current_node,0);
+    printf("and\n");
+    print_tree(target_node,0);
+    printf("together.\n");
+    */
     if (target_node==NULL ){
         if (current_node!=NULL){
             *return_size = 1;
@@ -776,21 +740,24 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
     }
     else {
         if(target_node->left_data < current_node->left_data) {
-            targetL=target_node;
-        }
+	  targetL=target_node;
+  //         result_a = recursive_merge_tree(current_node->left, target_node, &size_a);
+     	}
         else if(current_node->right_data == VOID_DATA)
-            targetM=target_node;
+           targetM=target_node;
         else if(target_node->left_data < current_node->right_data)
-            targetM=target_node;
+           targetM=target_node;
+//	   result_b = recursive_merge_tree(current_node->middle, target_node, &size_b);
         else if(target_node->left_data > current_node->right_data)
-            targetR=target_node;
+           targetR=target_node;
+//	   result_c = recursive_merge_tree(current_node->right, target_node, &size_c);
         else {
-            printf("somehow target is equal to this node\n");
             return NULL;
         }
-        result_a = recursive_merge_tree(current_node->left, targetL, &size_a);
+	result_a = recursive_merge_tree(current_node->left, targetL, &size_a);
         result_b = recursive_merge_tree(current_node->middle, targetM, &size_b);
-        result_c = recursive_merge_tree(current_node->right, targetR, &size_c);
+	result_c = recursive_merge_tree(current_node->right, targetR, &size_c);
+
         
         if (size_a+size_b+size_c <=3) {
             for (i=0;i<3;++i){
@@ -806,12 +773,13 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
             }
             *return_size = 1;
             result[0]=current_node;
-            return result;
+	    fix_node_values(result[0]);
         }
-        if (size_a+size_b+size_c ==4) {
+        else if (size_a+size_b+size_c ==4) {
             result[0]=current_node;
             result[1]=create_node(VOID_DATA);
-            if (size_a>1) {
+            printf("wiring nodes with %d,%d,%d\n",size_a,size_b,size_c);
+	    if (size_a>1) {
                 result[0]->left=result_a[0];
                 result[0]->middle=result_a[1];
                 result[0]->right=NULL;
@@ -826,19 +794,21 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
                 result[1]->middle=result_c[1];
             }
             else {
-                printf("%d,%d,%d\n",size_a,size_b,size_c);
-                printf("something bad here\n");
+	    	 //Should never happen.
             }
+	    fix_node_values(result[0]);
             fix_node_values(result[1]);
-            *return_size=2;
-            return result;
+            printf("wired noes\n");
+	    *return_size=2;
         }
         else {
-            printf("something bad happened\n");
+            //printf("something bad happened\n");
         }
+	free(result_a);
+	free(result_b);
+	free(result_c);
+	return result;
     }
-    printf("-1 returned\n");
-    return -1;
 }
 struct node23* merge_trees(struct node23* tree1, struct node23* tree2) {
     int i=0;
@@ -858,15 +828,15 @@ struct node23* merge_trees(struct node23* tree1, struct node23* tree2) {
         return results[0];
     }
     else {
-        printf("a problem has occured in the root. . .\n");
-        printf("useful info %d,%d\n", results[0]->max, results[1]->max);
+       // printf("a problem has occured in the root. . .\n");
+        //printf("useful info %d,%d\n", results[0]->max, results[1]->max);
         big=create_node(VOID_DATA);
         big->left=results[0];
         big->middle=results[1];
         fix_node_values(big);
-        printf("asdfasdfasf\n");
-        print_tree(big,0);
-        printf("asdfasdfasf\n");
+        //printf("asdfasdfasf\n");
+        //print_tree(big,0);
+       // printf("asdfasdfasf\n");
         return big;
     }
 }
@@ -912,7 +882,7 @@ void print_tree(struct node23 *current_node, int i)
     for (j=0;j<i;j++){
         printf("\t\t");
     }
-    printf("[%d, %d] {%d} (%d) *%p", current_node->left_data,current_node->right_data, current_node->max, current_node->height,current_node);
+    printf("[%d, %d] {%d} (%d) (?%d) %p", current_node->left_data,current_node->right_data, current_node->max, current_node->height,current_node->is_marked,current_node);
 	printf("\n");
     
 	if(current_node->middle != NULL){
@@ -953,6 +923,21 @@ cilk void basic_parallel_for(int start, int end, int first, int insert, int last
 	//return;				//Removing this didnt cause seg faults or anything
 }
 
+//Marks for deletion things that are in key array.
+cilk void mark_for_delete(struct node23* root, int* keys, int start, int end){
+     int middle = start+(end-start)/2;
+     if (end-start<=PARALLEL_CUTOFF){
+     	for (start; start<end; ++start){
+	    spawn search_for_delete(root, keys[start]);
+	}
+     } 
+     else {
+     	  spawn mark_for_delete(root,keys,start,middle);
+	  spawn mark_for_delete(root,keys,middle+1,end);
+	  spawn search_for_delete(root, keys[middle]);
+     }
+}
+
 	//When included along with the basic_parallel_for, seg faults occured occasionally
 cilk void parallel_for_mark(struct node23* root, int* input_integers, struct node23** result_array, int start, int end)
 {
@@ -970,7 +955,6 @@ cilk void parallel_for_mark(struct node23* root, int* input_integers, struct nod
         spawn parallel_for_mark(root, input_integers, result_array, middle + 1, end);
         result_array[middle] = spawn callSearchAndMark(root, input_integers[middle], 1);
     }
-	//sync;			//I think this is unneccissary
 }
 
 cilk void create_node_array(struct node23** result, int* input_integers, int first,int insert,int last, int index)
@@ -999,7 +983,6 @@ cilk void parallel_for_parent_creator(int start, int end, int size_a, int size_b
 		spawn parallel_for_parent_creator(middle+1,end, size_a,size_b,constant,result,node_array_a,node_array_b,node_array_c, function_ptr);
 		spawn function_ptr(middle,size_a,size_b,constant,result,node_array_a,node_array_b,node_array_c);
 	}
-	//return;					//removing this did not cause any seg faults
 }
 
 cilk void triplet_parent_creator(int i, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b, struct node23** node_array_c)
@@ -1058,6 +1041,7 @@ cilk void pair_parent_creator(int pair_counter, int size_a, int size_b, int cons
 	
 
 void fix_node_values(struct node23* node) {
+    printf("node: %p with %p, %p\n",node,node->left,node->middle);
     node->left_data = node->left->max;
     node->height=node->left->height+1;
     if (node->right==NULL){
