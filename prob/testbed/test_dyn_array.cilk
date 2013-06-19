@@ -1,0 +1,25 @@
+#include "parallel_dynamic_array.cilk"
+#define TEST_SIZE 50
+#define TEST_CYCLES 30000
+cilk int main()
+{
+	dyn_array* test_array = create_array();
+	int input[TEST_SIZE];
+	int i;
+	
+	for(i=0; i<TEST_SIZE; ++i)
+	{
+		input[i] = i*10;
+	}
+	
+	
+	for(i=0; i<TEST_CYCLES; ++i)
+	{
+		spawn batch_push_back(test_array, input, TEST_SIZE);
+		sync;
+		//print_array(test_array);
+	}
+	
+	delete_array(test_array);
+	return 0;
+}
