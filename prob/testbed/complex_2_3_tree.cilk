@@ -63,7 +63,9 @@ cilk struct node23* recursive_combine(struct node23* current_node, int sub_tree_
 void fix_children(struct node23* current_node, struct node23** result_array);
 cilk void restructure_children(struct node23* current_node);
 int count_children(struct node23* current_node);
-	
+struct node23** recursive_merge_tree(struct node23* current_node, struct node23* target_node, int *return_size);
+struct node23* merge_trees(struct node23* tree1, struct node23* tree2);
+
 	//Print Tree
 void print_tree(struct node23 *current_node, int i);	/*COMPLETE*/
 
@@ -639,9 +641,8 @@ cilk struct node23* recursive_combine(struct node23* current_node, int sub_tree_
 				free(current_node);
 				return NULL;
 			}
-			
 			//RESTRUCTURE A and B using IF statements
-			spawn restructure_children(current_node);
+			spawn restructure_children(&current_node);
 			sync;
 			return current_node;
 		}
@@ -674,46 +675,25 @@ void fix_children(struct node23* current_node, struct node23** result_array)		//
 	//SET MAX
 }
 
-cilk void restructure_children(struct node23* current_node)
+cilk void restructure_children(struct node23** current_node)
 {
-	struct node23** result_array;
-	//find out how many things in array
-	int size_a=count_children(current_node->left);
-	int size_b=count_children(current_node->middle);
-	int size_c=count_children(current_node->right);
-	int size_total = size_a+size_b+size_c;
-	int i;
-    if (size_total==0){
-        return;
-    }
-    
-    printf("size total %d for node {%d,%d,%d}\n",size_total,current_node->left_data,current_node->right_data,current_node->max);
-    printf("with node {%d,%d,%d}\n",size_a,size_b,size_c);
-	result_array = spawn create_and_link_parent_nodes(size_a,size_b,size_c,(struct node23**)current_node->left, (struct node23**)current_node->middle, (struct node23**)current_node->right);
-	sync;
-    printf("call helper fine\n");
-	if (size_total%3==0){
-		size_total/=3;
-	}
-	else {
-		size_total/=3;
-		++size_total;
-	}
-    
-	for (i=0;i<3;++i){
-        if (i<size_total){
-            *((struct node23**)(current_node) + i) = result_array[i];
+	struct node23* node;
+    if ((*current_node)->right==NULL) {
+        if ((*current_node)->middle==NULL) {
+            node = *current_node;
+            *current_node=(*current_node)->left;
+            free(node);
+            return;
         }
         else {
-            *((struct node23**)(current_node) + i) = NULL;
+            node = merge_trees((*current_node)->left,(*current_node)->middle);
+            
         }
-	}
-	
-	if(size_total<=1)
-		current_node->is_marked = marked;
-	else
-		current_node->is_marked = unmarked;
-    printf("end node {%d,%d,%d}\n",current_node->left_data,current_node->right_data,current_node->max);
+    }
+    else {
+    
+    
+    }
 }
 
 int count_children(struct node23* current_node)
@@ -867,19 +847,33 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
     printf("-1 returned\n");
     return -1;
 }
-void merge_trees(struct tree23* tree1, struct tree23* tree2) {
+struct node23* merge_trees(struct node23* tree1, struct node23* tree2) {
     int i=0;
     struct node23** results;
-   results= recursive_merge_tree(tree1->root, tree2->root, &i);
-   if (i==1) {
-        printf("no root problem\n");
-        tree1->root = results[0];
-   }
-   else {
-    tree1->root = create_node(VOID_DATA);
-    tree1->root->left=results[0];
-    tree1->root->right=results[1];
-   }
+    struct node23* big;
+    struct node23* small;
+    if (tree1->height>=tree2->height){
+        big=tree1;
+        small=tree2;
+    }
+    else {
+        big=tree2;
+        small=tree1;
+    }
+   results=recursive_merge_tree(big->root, small->root, &i);
+   if (i<2){
+        return results[0];
+    }
+    else {
+        printf("a problem has occured in the root. . .\n");
+        big=create_node(VOID_DATA);
+        big->left=result[0];
+        big->middle=result[1];
+        big->max=result[1]->max;
+        big->left_data=result[0]->max;
+        big->height=result[0]->height+1;
+        return big;
+    }
 }
 /*
 struct node23* search_for_tree(struct node23* current_node, struct node23* target)
