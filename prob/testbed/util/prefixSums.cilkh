@@ -1,0 +1,65 @@
+#include <cilk-lib.cilkh>
+
+#include "parfor.cilkh"
+
+#define left(i,d) i
+#define right(i,d) i + d < size ? i + d : size - 1
+
+int size;
+int *sums;
+
+void upSweep(int i, void *data)
+{
+	int d = *((int*)data);
+	if (i != size) sums[right(i,d)] += sums[left(i,d)];
+}
+
+void downSweep(int i, void *data)
+{
+	int temp;
+	int d = *((int*)data);
+
+	if (i != size) {
+		temp = sums[right(i,d)];
+		sums[right(i,d)] += sums[left(i,d)];
+		sums[left(i,d)] = temp;
+	}
+}
+
+cilk void prefixSumsInc(int *nums, size_t size, int *result)
+{
+	// how to do without much extra work?
+	// could simply call exclusive prefix sums, and remember last value
+  // then shift everything to the right
+	// but the shift is sequential b/c of race conditions
+}
+
+cilk void prefixSumsExc(int *nums, size_t n, int *result)
+{
+	int i,d;
+	size = n;
+	sums = result;
+
+	if (nums != sums) {
+		for (i = 0; i < size; i++) {
+			sums[i] = nums[i];
+		}
+	}
+
+	// Up-Sweep (Reduce)
+	// for d = 0 to log_2 n-1
+	for (d = 1; d <= size; d <<= 1) {
+		spawn parfor(d-1, size-1, upSweep, &d, d << 1);
+		sync;
+	}
+
+	// clear last element
+	sums[size-1] = 0;
+
+	// Down-Sweep
+	// for d= log_2 n-1 down to 0
+	for (d >>= 1; d > 0; d >>= 1) {
+		spawn parfor(d - 1, size - 1, downSweep, &d, d << 1);
+		sync;
+	}
+}
