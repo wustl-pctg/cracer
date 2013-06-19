@@ -61,7 +61,7 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 cilk void complex_batch_remove(struct tree23* current_tree, int *input_integers, int size);
 cilk struct node23* recursive_combine(struct node23* current_node, int sub_tree_height);
 void fix_children(struct node23* current_node, struct node23** result_array);
-cilk void restructure_children(struct node23* current_node);
+cilk void restructure_children(struct node23** current_node);
 int count_children(struct node23* current_node);
 struct node23** recursive_merge_tree(struct node23* current_node, struct node23* target_node, int *return_size);
 struct node23* merge_trees(struct node23* tree1, struct node23* tree2);
@@ -678,21 +678,18 @@ void fix_children(struct node23* current_node, struct node23** result_array)		//
 cilk void restructure_children(struct node23** current_node)
 {
 	struct node23* node;
-    if ((*current_node)->right==NULL) {
-        if ((*current_node)->middle==NULL) {
-            node = *current_node;
-            *current_node=(*current_node)->left;
-            free(node);
-            return;
-        }
-        else {
-            node = merge_trees((*current_node)->left,(*current_node)->middle);
-            
-        }
+    if ((*current_node)->middle==NULL) {
+        node = *current_node;
+        *current_node=(*current_node)->left;
+        free(node);
+        return;
     }
     else {
-    
-    
+        node = merge_trees((*current_node)->left,(*current_node)->middle);
+        if ((*current_node)->right!=NULL){
+            node = merge_trees((*current_node)->right,node);
+        }
+        (*current_node)=node;
     }
 }
 
@@ -860,18 +857,18 @@ struct node23* merge_trees(struct node23* tree1, struct node23* tree2) {
         big=tree2;
         small=tree1;
     }
-   results=recursive_merge_tree(big->root, small->root, &i);
+   results=recursive_merge_tree(big, small, &i);
    if (i<2){
         return results[0];
     }
     else {
         printf("a problem has occured in the root. . .\n");
         big=create_node(VOID_DATA);
-        big->left=result[0];
-        big->middle=result[1];
-        big->max=result[1]->max;
-        big->left_data=result[0]->max;
-        big->height=result[0]->height+1;
+        big->left=results[0];
+        big->middle=results[1];
+        big->max=results[1]->max;
+        big->left_data=results[0]->max;
+        big->height=results[0]->height+1;
         return big;
     }
 }
