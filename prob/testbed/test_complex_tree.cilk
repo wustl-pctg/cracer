@@ -32,8 +32,8 @@ cilk int main()
 	
 	print_tree(test_tree->root,0);
 	
-    //merge_trees(test_tree, test_tree2);
-	//spawn complex_batch_remove(test_tree, test_numbers, TEST_SIZE/2);
+    //merge_trees(test_tree->root, test_tree2->root);
+	spawn complex_batch_remove(test_tree, test_numbers, TEST_SIZE/2);
 	/*spawn complex_batch_insert(test_tree,test_numbers,TEST_SIZE/2);
 	sync;
 	spawn complex_batch_insert(test_tree,test_numbers,TEST_SIZE/2);*/

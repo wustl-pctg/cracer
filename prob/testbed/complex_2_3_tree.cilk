@@ -65,6 +65,7 @@ cilk void restructure_children(struct node23** current_node);
 int count_children(struct node23* current_node);
 struct node23** recursive_merge_tree(struct node23* current_node, struct node23* target_node, int *return_size);
 struct node23* merge_trees(struct node23* tree1, struct node23* tree2);
+void fix_node_values(struct node23* node);
 
 	//Print Tree
 void print_tree(struct node23 *current_node, int i);	/*COMPLETE*/
@@ -583,26 +584,18 @@ cilk void complex_batch_remove(struct tree23* current_tree, int *input_integers,
 	//Fix Root
 	
     /*There is a lot of stuff to do in the root. Must think of a way to do it without increasing time complexity.*/
-	if(count_children(current_tree->root) < 2)		//If root has less than two children, re-assign root
-	{
-        printf("reassign root\n");
-        printf("root: %p\n",current_tree->root);
-        printf("res: %p\n",result);
-        printf("res stuff: %p, %p, %p\n",result->left,result->middle,result->right);
-		current_tree->root = result->left;
-		free(result);
-	}
-     if (current_tree->root->right==NULL){
+	
+    /*
+    if (current_tree->root->right==NULL){
         printf("get over here!\n");
-        current_tree->root->max = current_tree->root->middle->max;		
-        current_tree->root->left_data=current_tree->root->left->max;
-        current_tree->root->right_data=VOID_DATA;
+        fix_node_values(current_tree->root);
     }
     else {
         current_tree->root->max  = current_tree->root->right->max;
         current_tree->root->left_data=current_tree->root->left->max;
         current_tree->root->right_data=current_tree->root->middle->max;
-    }
+    }*/
+    current_tree->root=result;
 	//If root has more than two children, do nothing
 }
 
@@ -821,12 +814,14 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
             if (size_a>1) {
                 result[0]->left=result_a[0];
                 result[0]->middle=result_a[1];
+                result[0]->right=NULL;
                 result[1]->left=result_b[0];
                 result[1]->middle=result_c[0];
             }
             else if (size_c>1) {
                 result[0]->left=result_a[0];
                 result[0]->middle=result_b[0];
+                result[0]->right=NULL;
                 result[1]->left=result_c[0];
                 result[1]->middle=result_c[1];
             }
@@ -834,6 +829,7 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
                 printf("%d,%d,%d\n",size_a,size_b,size_c);
                 printf("something bad here\n");
             }
+            fix_node_values(result[1]);
             *return_size=2;
             return result;
         }
@@ -863,12 +859,14 @@ struct node23* merge_trees(struct node23* tree1, struct node23* tree2) {
     }
     else {
         printf("a problem has occured in the root. . .\n");
+        printf("useful info %d,%d\n", results[0]->max, results[1]->max);
         big=create_node(VOID_DATA);
         big->left=results[0];
         big->middle=results[1];
-        big->max=results[1]->max;
-        big->left_data=results[0]->max;
-        big->height=results[0]->height+1;
+        fix_node_values(big);
+        printf("asdfasdfasf\n");
+        print_tree(big,0);
+        printf("asdfasdfasf\n");
         return big;
     }
 }
@@ -914,7 +912,7 @@ void print_tree(struct node23 *current_node, int i)
     for (j=0;j<i;j++){
         printf("\t\t");
     }
-    printf("[%d, %d] {%d} (%d)", current_node->left_data,current_node->right_data, current_node->max, current_node->height);
+    printf("[%d, %d] {%d} (%d) *%p", current_node->left_data,current_node->right_data, current_node->max, current_node->height,current_node);
 	printf("\n");
     
 	if(current_node->middle != NULL){
@@ -1058,7 +1056,20 @@ cilk void pair_parent_creator(int pair_counter, int size_a, int size_b, int cons
 	//return;
 }
 	
-	
+
+void fix_node_values(struct node23* node) {
+    node->left_data = node->left->max;
+    node->height=node->left->height+1;
+    if (node->right==NULL){
+        node->max=node->middle->max;
+        node->right_data=VOID_DATA;
+        return;
+    }
+    else {
+        node->max=node->right->max;
+        node->right_data=node->middle->max;
+    }
+}
 	
 	
 	
