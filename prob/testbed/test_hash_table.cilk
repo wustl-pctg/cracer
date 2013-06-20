@@ -1,5 +1,35 @@
 #include "hash_table.cilk"
 
+#define TEST_SIZE 20
+
+int printints(void* input){
+    hashTableItem* ptr;
+    if (input==NULL) {
+        printf("nil\n");
+    }
+    else {
+        ptr=input;
+        do {
+            printf("%d -> %d |",ptr->key,*(int*)(ptr->data));
+            ptr=ptr->next;
+        }
+        while (ptr!=NULL);
+        printf("\n");
+    }
+}
+
 int main() {
-    printf("hello wood\n");
-} 
+    hashTable* table1 = hashTable_create(15);
+    int i;
+    int array[TEST_SIZE];
+    struct hashTableInsertion* test[TEST_SIZE];
+    for (i=0;i<TEST_SIZE;i++){
+        array[i]=-1;
+    }   
+    for (i=0;i<TEST_SIZE;i++){
+        test[i]=hashTable_createInsertion(i,&array[i]);
+    }
+    
+    hashTable_batchInsert(table1,test,NULL,TEST_SIZE);
+    hashTable_print(table1,printints);
+}

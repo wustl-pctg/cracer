@@ -1,24 +1,102 @@
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
+
+#define ab(j) (j<0)?-j:j
+
+typedef struct itemsss{
+    int key;
+    void* data;
+    struct itemsss* prev, *next;
+} hashTableItem;
 
 typedef struct {
-    int size;
     void** slots;
+    int size;
+    int load;
 } hashTable;
 
+struct hashTableInsertion{
+    int key;
+    void* item;
+};
+
+//Creates a hash table of input size.
 hashTable* hashTable_create(int size){
-    hastTable* result = malloc(sizeof(struct hashTable));
+    hashTable* result = malloc(sizeof(hashTable));
     result->size=size;
     result->slots=calloc(size,sizeof(void*));
+    result->load=0;
     return result;
 }
 
-int hashTable_insert(hashTable* table, int key, void* data) {
-    int slot = hashTable_hash(key);
-    table->slots[slot]=data;
+//Creates an insertion operation struct.
+struct hashTableInsertion* hashTable_createInsertion(int key, void* data){
+    struct hashTableInsertion* result = malloc(sizeof(struct hashTableInsertion));
+    result->key=key;
+    result->item=data;
+    return result;
+};
+
+//Creates a table item, that is, a linked list item, with key and data.
+hashTableItem* hashTable_createItem(int key, void* data){
+    hashTableItem* result = malloc(sizeof(hashTableItem));
+    result->key=key;
+    result->data=data;
+    result->prev=NULL;
+    result->next=NULL;
+    return result;
 }
 
+//Insert a key-data pair into the input table.
+int hashTable_insert(hashTable* table, int key, void* data) {
+    int slot = hashTable_hash(table->size, key);
+    hashTableItem* ptr;
+    hashTableItem* dataItem = hashTable_createItem(key,data);
+    if (table->slots[slot]==NULL){ //No list
+        table->slots[slot]=dataItem;
+    }
+    else {
+        ptr = table->slots[slot]; //Start at the head of the list.
+        while(ptr->next!=NULL) {
+            ptr=ptr->next;
+        }
+        ptr->next=dataItem;
+        ptr->next->prev=ptr;
+    }
+    table->load++;
+}
+
+int hashTable_batchInsert(hashTable* table, void* insertions, void* results, int size){
+    //Insertions will always be a int key followed by a void*
+    struct hashTableInsertion** inputs = (struct hashTableInsertion**)insertions;
+    int i;
+    //Parallel operation must be done.
+    //Essentially:
+        for (i=0;i<size;i++) {
+            hashTable_insert(table,inputs[i]->key,inputs[i]->item); //Probably need to handle collisions cleverly.
+        }
+}
+
+//Hash the input key based on size. 
 int hashTable_hash(int size, int key) {
     //Use a simple multiplicative hashing for now?
+    double k = (double) key;
+    double magic_number = (sqrt(5)-1)/2;
+    int spot;
+    spot = floor(size *(ab(k*magic_number - floor(k*magic_number))));
+    return spot;
+}
 
+//Prints out the hash table given the print function.
+void hashTable_print(hashTable* table, int (*printfunct)(void*)){
+    int i;
+    for (i=0;i<table->size;i++){
+        if (table->slots[i]==NULL){
+            printfunct(NULL);
+        }
+        else { 
+            printfunct(table->slots[i]);
+        }
+    }
 }
