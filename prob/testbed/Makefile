@@ -1,4 +1,4 @@
-CILK = ../support/cilkc
+CILK = ../support/cilkclocal
 CFLAGS = -g -save-temps
 MAKEDEPEND = $(CILK) -MM
 #SRCS = $(shell find . -name "*.cilk" | sed 's/.\///g')

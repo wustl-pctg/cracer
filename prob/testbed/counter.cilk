@@ -37,8 +37,9 @@ cilk void batchIncrement(int i, void* nums)
 	/* temp = spawn Cilk_batchify(fastSum, &counter, (void*)&((int*)nums)[i], sizeof(int)); */
 	/* sync; */
 	//Cilk_free(temp);
-	temp = spawn Cilk_batchify(fastSum, &counter, (void*)&((int*)nums)[i], sizeof(int));
-	sync;
+	/* temp = spawn Cilk_batchify(fastSum, &counter, (void*)&((int*)nums)[i], sizeof(int)); */
+	/* sync; */
+  Cilk_batchify_internal(_cilk_ws, fastSum, &counter, (void*)&((int*)nums)[i], sizeof(int));
 }
 
 cilk void parallelIncrement(int *nums, size_t size)
