@@ -6,7 +6,7 @@
 #define DEFAULT_SIZE 10
 #define PARALLEL_CUTOFF 5
 
-/*Dynamically Resizing Array that supports resizing in parallel*/
+/*Dynamically Resizing Array that supports copying and inserting in parallel*/
 //Tyler Romero
 
 /*-----------------------Structs------------------------------------------------*/
@@ -19,6 +19,8 @@ struct dyn_array
 typedef struct dyn_array dyn_array;
 
 
+
+
 /*-----------------------Function Declarations----------------------------------*/
 dyn_array* create_array();		//Initializes a new dynamic array
 cilk void resize(dyn_array* current_array, int new_size);
@@ -29,6 +31,9 @@ void print_array(dyn_array* current_array);
 cilk void parallel_for(dyn_array* current_array, int* other_array, cilk void(*parallel_function)(dyn_array*,int*,int), int start, int end);
 cilk void copy(dyn_array* current_array, int* temp, int i);
 cilk void insert(dyn_array* current_array, int* input, int i);
+
+
+
 
 /*----------------------create_array and delete_array-----------------------------------------*/
 dyn_array* create_array()
@@ -74,7 +79,7 @@ cilk void resize(dyn_array* current_array, int new_size)		//Sets the size of cur
 	/*for(i=0; i<current_array->used; ++i){		//PARALLEL FOR
 		temp[i] = current_array->array[i];
 	}*/
-	spawn parallel_for(current_array, temp, copy, 0, current_array->used);
+	spawn parallel_for(current_array, temp, copy, 0, current_array->used);		//Copy to new array in parallel
 	sync;
 	
 	free(current_array->array);
@@ -98,7 +103,7 @@ cilk void batch_push_back(dyn_array* current_array, int* input, int input_size)
 	/*for(i=0; i<input_size; ++i){				//PARALLEL_FOR
 		current_array->array[current_array->used + i] = input[i];
 	}*/
-	spawn parallel_for(current_array, input, insert, 0, input_size);
+	spawn parallel_for(current_array, input, insert, 0, input_size);	//Insert input into current_array in parallel
 	sync;
 
 	current_array->used = current_array->used + input_size;		//Update the current amout of used space
@@ -160,17 +165,16 @@ cilk void parallel_for(dyn_array* current_array, int* other_array, cilk void(*pa
 	{		
 		spawn parallel_for(current_array, other_array, parallel_function, start, middle); 	//start -> middle-1
 		spawn parallel_for(current_array, other_array, parallel_function, middle+1, end); 	//middle+1 -> end-1
-		spawn parallel_function(current_array, other_array, middle);							//middle
+		spawn parallel_function(current_array, other_array, middle);						//middle
 	}
-	//return;				//Removing this didnt cause seg faults or anything
 }
 
-cilk void copy(dyn_array* current_array, int* temp, int i)
+cilk void copy(dyn_array* current_array, int* temp, int i)	//Used by parallel_for
 {
 	temp[i] = current_array->array[i];
 }
 
-cilk void insert(dyn_array* current_array, int* input, int i)
+cilk void insert(dyn_array* current_array, int* input, int i)	//Used by parallel_for
 {
 	current_array->array[current_array->used + i] = input[i];
 }
