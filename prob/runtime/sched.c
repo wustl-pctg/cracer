@@ -485,12 +485,13 @@ static struct InletClosure
 
 	f = parent->frame;
 
-	if (entry >= 0) 
+	if (entry >= 0) {
 	  /* get the special exit closure */
 	  info = get_CilkProcInfo(ws, f->sig, entry);
-	else
+	}	else {
+		printf("Entry from frame: %i\n", f->entry);
 	  info = get_CilkProcInfo(ws, f->sig, f->entry);
-     
+	}
 	/* if no index is statically specified, get it from the frame */
 	if (info->index == -1)
 	  p->receiver = f->receiver;
@@ -864,8 +865,9 @@ static Closure *promote_child(CilkWorkerState *const ws,
 	child->status = CLOSURE_RUNNING;
 
 	/* setup the frame of the child closure */
+	printf("Closure head pointer after: %p\n", CLOSURE_HEAD(child));
 	CLOSURE_HEAD(child)++;
-	printf("Closure head pointer: %p\n", CLOSURE_HEAD(child));
+	printf("Closure head pointer after: %p\n", CLOSURE_HEAD(child));
 	child->frame = (CilkStackFrame*)*CLOSURE_HEAD(child);
 
 	/* insert the closure on the victim processor's deque */
