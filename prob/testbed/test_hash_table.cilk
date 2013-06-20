@@ -1,0 +1,5 @@
+#include "hash_table.cilk"
+
+int main() {
+    printf("hello wood\n");
+} 

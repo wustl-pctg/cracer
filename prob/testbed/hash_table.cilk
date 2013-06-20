@@ -1,0 +1,24 @@
+#include <stdio.h>
+#include <math.h>
+
+typedef struct {
+    int size;
+    void** slots;
+} hashTable;
+
+hashTable* hashTable_create(int size){
+    hastTable* result = malloc(sizeof(struct hashTable));
+    result->size=size;
+    result->slots=calloc(size,sizeof(void*));
+    return result;
+}
+
+int hashTable_insert(hashTable* table, int key, void* data) {
+    int slot = hashTable_hash(key);
+    table->slots[slot]=data;
+}
+
+int hashTable_hash(int size, int key) {
+    //Use a simple multiplicative hashing for now?
+
+}
