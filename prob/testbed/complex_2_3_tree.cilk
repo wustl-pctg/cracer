@@ -63,7 +63,6 @@ cilk void complex_batch_remove(struct tree23* current_tree, int *input_integers,
 cilk struct node23* recursive_combine(struct node23* current_node, int sub_tree_height);
 void fix_children(struct node23* current_node, struct node23** result_array);
 cilk void restructure_children(struct node23** current_node);
-int count_children(struct node23* current_node);
 struct node23** recursive_merge_tree(struct node23* current_node, struct node23* target_node, int *return_size);
 struct node23* merge_trees(struct node23* tree1, struct node23* tree2);
 void fix_node_values(struct node23* node);
@@ -601,16 +600,13 @@ cilk struct node23* recursive_combine(struct node23* current_node, int sub_tree_
 		if(sub_tree_height == 0)						//If current node is a Marked Leaf
 		{
 			//delete
-			printf("delete a node: %d\n",current_node->left_data);
 			free(current_node);
 			return NULL;
 		}
 		else											//If current node is Marked but NOT a Leaf
 		{
 			result_array[0] = spawn recursive_combine(current_node->left, sub_tree_height-1);
-			sync;
 			result_array[1] = spawn recursive_combine(current_node->middle, sub_tree_height-1);
-			sync;
 			result_array[2] = spawn recursive_combine(current_node->right, sub_tree_height-1);
 			sync;
 			
@@ -620,13 +616,13 @@ cilk struct node23* recursive_combine(struct node23* current_node, int sub_tree_
 				free(current_node);
 				return NULL;
 			}
-			//RESTRUCTURE A and B using IF statements
+            //Rebalance if necessary.
 			spawn restructure_children(&current_node);
 			sync;
 			return current_node;
 		}
 	}
-	else										//If the current_node is NOT marked
+	else										//If the current_node is NOT marked, then do nothing.
 	{
 		return current_node;
 	}
@@ -641,7 +637,6 @@ void fix_children(struct node23* current_node, struct node23** result_array)		//
 	current_node->right = NULL;
 	current_node->middle = NULL;
 	
-	
 	for(i=0; i<3; ++i)
 	{
 		if(result_array[i] != NULL)	//Shifts all children as far left as possible
@@ -650,7 +645,6 @@ void fix_children(struct node23* current_node, struct node23** result_array)		//
 			++counter;
 		}
 	}
-//	fix_node_values(current_node);
 }
 
 cilk void restructure_children(struct node23** current_node)
@@ -679,52 +673,15 @@ cilk void restructure_children(struct node23** current_node)
     }
 }
 
-int count_children(struct node23* current_node)
-{
-	int counter = 0;
-    if (current_node==NULL) {
-        return 0;
-    }
-	if(current_node->left!=NULL)
-	{
-		++counter;
-	}
-	if(current_node->middle)
-	{
-		++counter;
-	}
-	if(current_node->right)
-	{
-		++counter;
-	}
-	return counter;
-}
-
 struct node23** recursive_merge_tree(struct node23* current_node, struct node23* target_node, int *return_size) {
     struct node23** result = calloc(2,sizeof(struct node23*));
-    struct node23* targetL=NULL;
-    struct node23* targetM=NULL;
-    struct node23* targetR=NULL;
     struct node23** result_a,**result_b,**result_c;
     int size_a,size_b,size_c;
     int i;
-    /*
-    printf("merging:\n");
-    print_tree(current_node,0);
-    printf("and\n");
-    print_tree(target_node,0);
-    printf("together.\n");
-    */
     if (target_node==NULL ){
-        if (current_node!=NULL){
-            *return_size = 1;
-            result[0]=current_node;
-            return result;
-        }
-        else {
-            *return_size=0;
-            return result;
-        }
+        result[0]=current_node;
+        (*return_size)=(current_node==NULL)?0:1;
+        return result;
     }
     if (current_node->height == target_node->height){
         *return_size=2;
@@ -739,59 +696,75 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
         return result;
     }
     else {
+        //Make recursive call to either left, right, or middle.
         if(target_node->left_data < current_node->left_data) {
-	  targetL=target_node;
-  //         result_a = recursive_merge_tree(current_node->left, target_node, &size_a);
+           result_b = calloc(1,sizeof(struct node23*));
+           *result_b = current_node->middle;
+           size_b=(current_node->middle==NULL)?0:1;
+           result_c = calloc(1,sizeof(struct node23*));
+           *result_c = current_node->right;
+           size_c=(current_node->right==NULL)?0:1;
+           
+          result_a = recursive_merge_tree(current_node->left, target_node, &size_a);
      	}
-        else if(current_node->right_data == VOID_DATA)
-           targetM=target_node;
-        else if(target_node->left_data < current_node->right_data)
-           targetM=target_node;
-//	   result_b = recursive_merge_tree(current_node->middle, target_node, &size_b);
-        else if(target_node->left_data > current_node->right_data)
-           targetR=target_node;
-//	   result_c = recursive_merge_tree(current_node->right, target_node, &size_c);
+        else if(current_node->right_data == VOID_DATA || target_node->left_data < current_node->right_data) {
+           result_a = calloc(1,sizeof(struct node23*));
+           *result_a = current_node->left;
+           size_a=(current_node->left==NULL)?0:1;
+           result_c = calloc(1,sizeof(struct node23*));
+           *result_c = current_node->right;
+           size_c=(current_node->right==NULL)?0:1;
+           
+            result_b = recursive_merge_tree(current_node->middle, target_node, &size_b);
+        }
+        else if(target_node->left_data > current_node->right_data) {
+           result_a = calloc(1,sizeof(struct node23*));
+           *result_a = current_node->left;
+           size_a=(current_node->left==NULL)?0:1;
+           result_b = calloc(1,sizeof(struct node23*));
+           *result_b = current_node->middle;
+           size_b=(current_node->middle==NULL)?0:1;
+           
+           result_c = recursive_merge_tree(current_node->right, target_node, &size_c);
+       }
         else {
             return NULL;
         }
-	result_a = recursive_merge_tree(current_node->left, targetL, &size_a);
-        result_b = recursive_merge_tree(current_node->middle, targetM, &size_b);
-	result_c = recursive_merge_tree(current_node->right, targetR, &size_c);
-
         
+        //Creates extra node if necessary.
         if (size_a+size_b+size_c <=3) {
             for (i=0;i<3;++i){
                 if (i<size_a){
-                    *((struct node23**)(current_node) + i) = result_a[i];
+                    *((struct node23**)(current_node) + i) = *(result_a+i);
                 }
                 else if (i<size_a+size_b){
-                    *((struct node23**)(current_node) + i) = result_b[i-size_a];
+                    *((struct node23**)(current_node) + i) = *(result_b+(i-size_a));
                 }
                 else {
-                    *((struct node23**)(current_node) + i) = result_c[i-size_a-size_b];
+                    *((struct node23**)(current_node) + i) = *(result_c+(i-size_a-size_b));
                 }
             }
             *return_size = 1;
             result[0]=current_node;
-	    fix_node_values(result[0]);
+            fix_node_values(result[0]);
         }
         else if (size_a+size_b+size_c ==4) {
             result[0]=current_node;
             result[1]=create_node(VOID_DATA);
             printf("wiring nodes with %d,%d,%d\n",size_a,size_b,size_c);
 	    if (size_a>1) {
-                result[0]->left=result_a[0];
-                result[0]->middle=result_a[1];
+                result[0]->left=*result_a;
+                result[0]->middle=*(result_a+1);
                 result[0]->right=NULL;
-                result[1]->left=result_b[0];
-                result[1]->middle=result_c[0];
+                result[1]->left=*result_b;
+                result[1]->middle=*result_c;
             }
             else if (size_c>1) {
-                result[0]->left=result_a[0];
-                result[0]->middle=result_b[0];
+                result[0]->left=*result_a;
+                result[0]->middle=*result_b;
                 result[0]->right=NULL;
-                result[1]->left=result_c[0];
-                result[1]->middle=result_c[1];
+                result[1]->left=*result_c;
+                result[1]->middle=*(result_c+1);
             }
             else {
 	    	 //Should never happen.
@@ -800,10 +773,7 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
             fix_node_values(result[1]);
             printf("wired noes\n");
 	    *return_size=2;
-        }
-        else {
-            //printf("something bad happened\n");
-        }
+    }
 	free(result_a);
 	free(result_b);
 	free(result_c);
@@ -811,7 +781,7 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
     }
 }
 struct node23* merge_trees(struct node23* tree1, struct node23* tree2) {
-    int i=0;
+    int result_size=0;
     struct node23** results;
     struct node23* big;
     struct node23* small;
@@ -823,20 +793,19 @@ struct node23* merge_trees(struct node23* tree1, struct node23* tree2) {
         big=tree2;
         small=tree1;
     }
-   results=recursive_merge_tree(big, small, &i);
-   if (i<2){
-        return results[0];
+   results=recursive_merge_tree(big, small, &result_size);
+   if (result_size<2){
+        big = results[0];
+        free(results);
+        return big;
     }
     else {
-       // printf("a problem has occured in the root. . .\n");
-        //printf("useful info %d,%d\n", results[0]->max, results[1]->max);
+       //Create a node ontop if necessary.
         big=create_node(VOID_DATA);
         big->left=results[0];
         big->middle=results[1];
         fix_node_values(big);
-        //printf("asdfasdfasf\n");
-        //print_tree(big,0);
-       // printf("asdfasdfasf\n");
+        free(results);
         return big;
     }
 }
