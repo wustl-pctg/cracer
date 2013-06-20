@@ -7,13 +7,11 @@
 
 
 /* 2-3 Tree that supports parallel operations */
-/* The insertion function will allow any amount of data to be inserted */
 /* Tyler Romero and Kefu Lu */
-
-//To do: add the batchify function
-//To do: the 'remove' function
-
-
+/*
+    TODO: Use a Parallel sort from the cilk library instead of just calling qsort from the C library
+    TODO: Use batchify - need to finalize syntax for that first though.
+*/
 
 /*-----------------------------Structs-----------------------------------------------------------------------------------------*/
 struct node23
@@ -51,7 +49,7 @@ int find_insert_index(int *input_array, int size, struct node23* target);
 struct node23* searchAndMark(struct node23* current_node, int key, int mark);					
 cilk struct node23* callSearchAndMark(struct node23* root, int key, int mark);					
 int search_mark_and_height(struct node23* current_node, int key, int height);
-cilk void search_for_delet(struct node23* root, int key);
+cilk void search_for_delete(struct node23* root, int key);
 	
 	//Batch Insert Function and helper functions
 cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size);
@@ -335,32 +333,21 @@ cilk struct node23** recursive_split(struct node23* current_node, struct node23*
 	{
         first = binary_search_function(find_first, search_array, size, current_node);
 		last = binary_search_function(find_last, search_array, size, current_node);
-		//printf("current_node->left_data: %d\n", current_node->left_data);
 		insert = find_insert_index(input_integers, size, current_node);
 		
-		//printf("first: %d, last: %d, insert: %d\n", first, last, insert);
 		
 		result = calloc(2+last-first, sizeof(struct node23*)); /*Allocate a sub-array for each of the leafs*/
 		
 		if(insert > last) /*Fill the sub-arrays using the integer inputs - Normal case*/
 		{
-			/*for(i = 0; i < 1+last-first; ++i)
-			{
-				result[i] = create_node(input_integers[i+first]);
-			}*/
-			
 			spawn basic_parallel_for(0, 1+last-first, first, insert, last, result, input_integers, create_node_array);
 			sync;
 			result[1+last-first] = current_node;
 		}
-		else			 /*Exception - the node does not go on the end of the sub-array*/
+		else			 
 		{
-			/*for(i=0; i<insert-first; ++i) //Fills up the sub-array before the node
-				result[i] = create_node(input_integers[i+first]);*/
 			spawn basic_parallel_for(0, insert-first, first, insert, last, result, input_integers, create_node_array);
 			result[insert-first] = current_node; //Inserts the node
-			/*for(i=insert-first+1; i<2+last-first; ++i) //Fills up the sub-array after the node		//PARALLEL FOR
-				result[i] = create_node(input_integers[i+first-1]);*/
 			spawn basic_parallel_for(insert-first+1, 2+last-first, first, insert, last, result, input_integers, create_node_array_2);
 			sync;
 		}
@@ -374,7 +361,6 @@ cilk struct node23** recursive_split(struct node23* current_node, struct node23*
 		node_array_b = spawn recursive_split(current_node->middle, search_array, input_integers, size, &size_b);
 		node_array_c = spawn recursive_split(current_node->right, search_array, input_integers, size, &size_c);
 		sync;
-		//printf("Test post-recursive split\n");
 	}
 
 	if((size_a+size_b+size_c)%3==0)	//Return the size of the result array
@@ -401,44 +387,16 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 	int triplet_counter;
 	struct node23** result;
 	
-	//printf("size_total: %d\n", size_total);
-   // printf("from sizes: {%d,%d,%d}\n",size_a,size_b,size_c);
 	if (size_total==0) {
         return NULL;
     }
 	if(size_total%3 == 0) //<-------------------------If size is a multiple of 3
 	{
-		//printf("multiple of 3\n");
 		result = calloc(size_total/3, sizeof(struct node23*)); /*Allocate a sub-array for each of the leafs*/
 		for(i=0; i<size_total/3; ++i)
 		{
 			result[i] = create_node(VOID_DATA);		//Parent nodes
 		}
-		/*for(i=0; i<size_total; ++i)		//Creating the parent nodes for the groups of three children
-		{
-			if (i%3==0) {
-				temp=&(result[i/3]->left);
-			} else if (i%3==1){
-				temp=&(result[i/3]->middle);
-			}
-			else {
-				temp=&(result[i/3]->right);
-			}
-			
-			if(i<size_a)							//Assign temp with pointer magic
-			{
-				*temp = node_array_a[i];
-			}
-			else if(i<size_a+size_b)
-			{
-				*temp = node_array_b[i-size_a];
-			}
-			else
-			{
-				*temp = node_array_c[i-size_a-size_b];
-			}
-		}*/
-		
 		//Creating the parent nodes for the groups of three children
 		spawn parallel_for_parent_creator(0, size_total, size_a, size_b, 0, result, node_array_a, node_array_b, node_array_c, triplet_parent_creator); //This did not give seg faults when isolated
 		sync;
@@ -453,7 +411,6 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 	}
 	else		//If size_total is not a multiple of three
 	{     
-		//printf("NOT a multiple of 3\n");
 		result = calloc((size_total/3)+1, sizeof(struct node23*)); /*Allocate a sub-array that will be the parent nodes*/
 		if(result == NULL)
 		{
@@ -472,89 +429,16 @@ cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int si
 		if (triplet_counter<0) {
             triplet_counter=0;
         }
-		//printf("triplet_counter: %d\n", triplet_counter);
-		
-		/*for(i=0; i<triplet_counter; ++i)		//Linking the parent nodes for the groups of three children
-		{
-			if (i%3==0) 
-			{
-				temp = &(result[i/3]->left);
-			}
-			else if (i%3==1)
-			{
-				temp = &(result[i/3]->middle);
-			}
-			else
-			{
-				temp = &(result[i/3]->right);
-			}
-			
-			if(i<size_a)						//Assign temp with pointer magic
-			{
-				*temp = node_array_a[i];
-
-			}
-			else if(i<size_a+size_b)
-			{
-				*temp = node_array_b[i-size_a];
-			}
-			else
-			{
-				*temp = node_array_c[i-size_a-size_b];
-			}
-		}*/
-		
 		//Creating the parent nodes for the groups of three children
 		spawn parallel_for_parent_creator(0, triplet_counter, size_a, size_b, 0, result, node_array_a, node_array_b, node_array_c, triplet_parent_creator);		//The cause of one of the seg faults
 		sync;
 		
-		/*for(pair_counter = 0; (pair_counter + i) < size_total; ++pair_counter)	//Linking the parent nodes for the groups of two children
-		{
-			if (pair_counter%2 == 0) 
-			{
-				temp=&(result[i/3 + pair_counter/2]->left);
-			}
-			else
-			{
-				temp=&(result[i/3 + pair_counter/2]->middle);
-			}
-
-			if((i+pair_counter)<size_a)		//Assign temp with pointer magic
-			{
-				*temp = node_array_a[i+pair_counter];
-			}
-			else if((i+pair_counter)<size_a+size_b)
-			{
-				*temp = node_array_b[(i+pair_counter)-size_a];
-			}
-			else
-			{
-				*temp = node_array_c[(i+pair_counter)-size_a-size_b];
-			}
-		}*/
-		
 		//Creating the parent nodes for the groups of three children
 		spawn parallel_for_parent_creator(0, size_total-triplet_counter, size_a, size_b, triplet_counter, result, node_array_a, node_array_b, node_array_c, pair_parent_creator); //No seg fault when isolated
         sync;
-		for (i=0;i<(size_total/3)+1;i++){	//sets the max data field for every new node
-            //printf("TEST10\n");
-            if (result[i]->middle==NULL){
-                printf("This should never happen!\n");
-                result[i]->max=result[i]->left->max;
-            }
-            else if (result[i]->right==NULL){
-                //printf("Just before middle is dereferenced: i is %d: {%d,%d}\n",i, result[i]->left,result[i]->middle);
-                result[i]->max = result[i]->middle->max;								//Seg fault where middle is NULL, and it is dereferenced here, starts occuring when line 434 is added
-                result[i]->left_data=result[i]->left->max;
-            }
-            else {
-                //printf("i is %d: {%d,%d, %d}\n",i, result[i]->left,result[i]->middle, result[i]->right)
-                result[i]->max = result[i]->right->max;
-                result[i]->left_data=result[i]->left->max;
-                result[i]->right_data=result[i]->middle->max;
-            }
-            result[i]->height=result[i]->left->height+1;
-            //printf("TEST11\n");
+        
+		for (i=0;i<(size_total/3)+1;i++){	//sets the data fields for every new node, TODO need to be parallel for?
+            fix_node_values(result[i]);
         }
 	}
 	return result;
@@ -574,12 +458,11 @@ cilk void complex_batch_remove(struct tree23* current_tree, int *input_integers,
 	result = spawn recursive_combine(current_tree->root, height);
 	sync;
 
-	//Fix Root
-        if (current_tree->root==result){
+    if (current_tree->root==result){
 	   return;
 	}
 	else {
-	     //free(current_tree->root);
+	     free(current_tree->root);
 	     current_tree->root=result;
 	}
 }
@@ -657,18 +540,10 @@ cilk void restructure_children(struct node23** current_node)
         return;
     }
     else {
-        printf("merge1\n");
-	printf("%p, %d | %p, %d\n",(*current_node)->left,(*current_node)->left->left_data,(*current_node)->middle,(*current_node)->middle->left_data);
-	print_tree((*current_node)->left, 0);
-	printf("sadf\n");
-	print_tree((*current_node)->middle,0);
-	node = merge_trees((*current_node)->left,(*current_node)->middle);
-        if ((*current_node)->right!=NULL){
-            printf("merge2\n");
-	    node = merge_trees((*current_node)->right,node);
-            printf("endM2\n");
-	}
-	printf("endM1\n");
+        node = merge_trees((*current_node)->left,(*current_node)->middle);
+            if ((*current_node)->right!=NULL){
+                node = merge_trees((*current_node)->right,node);
+            }
         (*current_node)=node;
     }
 }
@@ -751,7 +626,6 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
         else if (size_a+size_b+size_c ==4) {
             result[0]=current_node;
             result[1]=create_node(VOID_DATA);
-            printf("wiring nodes with %d,%d,%d\n",size_a,size_b,size_c);
 	    if (size_a>1) {
                 result[0]->left=*result_a;
                 result[0]->middle=*(result_a+1);
@@ -769,10 +643,9 @@ struct node23** recursive_merge_tree(struct node23* current_node, struct node23*
             else {
 	    	 //Should never happen.
             }
-	    fix_node_values(result[0]);
-            fix_node_values(result[1]);
-            printf("wired noes\n");
-	    *return_size=2;
+        fix_node_values(result[0]);
+        fix_node_values(result[1]);
+        *return_size=2;
     }
 	free(result_a);
 	free(result_b);
@@ -809,33 +682,7 @@ struct node23* merge_trees(struct node23* tree1, struct node23* tree2) {
         return big;
     }
 }
-/*
-struct node23* search_for_tree(struct node23* current_node, struct node23* target)
-{
-    if (current_node->height-1==target->height) {
-        return current_node;
-    }
-    else if(current_node->left == NULL)
-	{
-		printf("this should not happen\n");
-        return NULL;
-	}
-	else{
-		if(target->left_data < current_node->left_data)
-			return search_for_tree(current_node->left, target);
-		else if(current_node->right_data == VOID_DATA)
-			return search_for_tree(current_node->middle, target);
-		else if(key < current_node->right_data)
-			return search_for_tree(current_node->middle, target);
-		else if(key > current_node->right_data)
-			return search_for_tree(current_node->right, target);
-		else {
-            printf("somehow target is equal to a node\n");
-            return NULL;
-        } 								
-	}
-}
-*/
+
 /*------------------------- print_tree ---------------------------------------------------------------------------------*/
 void print_tree(struct node23 *current_node, int i)
 {   
@@ -1005,12 +852,10 @@ cilk void pair_parent_creator(int pair_counter, int size_a, int size_b, int cons
 	{
 		*temp = node_array_c[(constant+pair_counter)-size_a-size_b];
 	}
-	//return;
 }
 	
 
-void fix_node_values(struct node23* node) {
-    printf("node: %p with %p, %p\n",node,node->left,node->middle);
+void fix_node_values(struct node23* node) { //Fixes the left_data,right_data, max, and height of each node
     node->left_data = node->left->max;
     node->height=node->left->height+1;
     if (node->right==NULL){
