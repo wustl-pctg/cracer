@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <cilk-lib.cilkh>
 
 #define PARALLEL_CUTOFF 2
 #define ab(j) (j<0)?-j:j
@@ -15,6 +16,7 @@ typedef struct {
     void** slots;
     int size;
     int load;
+    Cilk_lockvar lock;
 } hashTable;
 
 struct hashTableInsertion{
@@ -41,6 +43,7 @@ cilk void copy(hashTable* current_table, void** temp, int i);
 //Creates a hash table of input size.
 hashTable* hashTable_create(int size){
     hashTable* result = malloc(sizeof(hashTable));		//Allocate hashtable space
+    Cilk_lock_init(result->lock);
     result->size=size;
     result->slots=calloc(size,sizeof(void*));			//Allocate containter space
     result->load=0;
@@ -72,6 +75,7 @@ cilk void hashTable_insert(hashTable* table, int key, void* data) {
     int slot = hashTable_hash(table->size, key);
     hashTableItem* ptr;
     hashTableItem* dataItem = hashTable_createItem(key,data);
+    Cilk_lock(table->lock);
     if (table->slots[slot]==NULL){ //No list
         table->slots[slot]=dataItem;
     }
@@ -84,6 +88,7 @@ cilk void hashTable_insert(hashTable* table, int key, void* data) {
         ptr->next->prev=ptr;
     }
     table->load++;
+    Cilk_unlock(table->lock);
 }
 
 cilk void hashTable_batchInsert(hashTable* table, void* insertions, void* results, int input_size){
@@ -93,8 +98,8 @@ cilk void hashTable_batchInsert(hashTable* table, void* insertions, void* result
 	
 	if(input_size+table->load > table->size)	//If current_array needs more space
 	{
-		spawn resize(table, 2*(table->load+input_size));
-		sync;
+		//spawn resize(table, 2*(table->load+input_size));
+		//sync;
 	}
 
     //Parallel operation must be done.
