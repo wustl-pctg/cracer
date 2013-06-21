@@ -18,18 +18,22 @@ int printints(void* input){
     }
 }
 
-int main() {
+cilk int main() {
     hashTable* table1 = hashTable_create(15);
     int i;
     int array[TEST_SIZE];
     struct hashTableInsertion* test[TEST_SIZE];
+	
     for (i=0;i<TEST_SIZE;i++){
-        array[i]=-1;
-    }   
+        array[i] = -1;
+    }
+	
     for (i=0;i<TEST_SIZE;i++){
-        test[i]=hashTable_createInsertion(i,&array[i]);
+        test[i] = hashTable_createInsertion(i,&array[i]);
     }
     
-    hashTable_batchInsert(table1,test,NULL,TEST_SIZE);
+    spawn hashTable_batchInsert(table1,test,NULL,TEST_SIZE);
+	sync;
+	
     hashTable_print(table1,printints);
 }
