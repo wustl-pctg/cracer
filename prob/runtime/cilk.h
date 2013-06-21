@@ -42,7 +42,7 @@
 #include <cilk-sysdep.h>
 
 FILE_IDENTITY(cilk_h_ident,
-							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk.h $ $LastChangedBy: bradley $ $Rev: 2672 $ $Date: 2005-12-20 13:30:02 -0500 (Tue, 20 Dec 2005) $");
+	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk.h $ $LastChangedBy: bradley $ $Rev: 2672 $ $Date: 2005-12-20 13:30:02 -0500 (Tue, 20 Dec 2005) $");
 
 /***********************************************************\
  * Cilk configuration options (profiling, etc)
@@ -119,8 +119,8 @@ extern __CILKSAFE__ HookList *Cilk_init_per_worker_hooks;
  * type of disjoint set data structure for the Nondeterminator
  */
 WHEN_CILK_ND(
-						 typedef unsigned int DisjointSetMemberT;
-						 )
+	     typedef unsigned int DisjointSetMemberT;
+	     )
 
 /* 
  * a stack frame consists of this header and of a procedure-specific
@@ -129,7 +129,7 @@ WHEN_CILK_ND(
 typedef struct {
   int entry;
   void *receiver;   /* pointer to the receiver of the outstanding spawn,
-											 unless otherwise specified in CilkProcInfo->index */
+		       unless otherwise specified in CilkProcInfo->index */
   CilkProcInfo *sig;
   WHEN_CILK_ALLOCA(struct cilk_alloca_header *alloca_h;)
   WHEN_CILK_TIMING(Cilk_time mycp;)
@@ -285,9 +285,10 @@ typedef struct {
 
 /* worker state */
 typedef struct {
+  CilkClosureCache *current_cache;
   CilkClosureCache cache;
   CilkClosureCache ds_cache; // rsu*** Could we just make the cache point to the right deque, instead of keeping two caches?
-	int batch_id;
+  int batch_id;
   int self;
   struct Cilk_im_descriptor im_descriptor [CILK_INTERNAL_MALLOC_BUCKETS];
   size_t stackdepth;
@@ -320,7 +321,7 @@ typedef struct{
 extern void Cilk_dprintf(CilkWorkerState *const ws, const char *fmt,...);
 extern void Cilk_die_internal(CilkContext *const context, CilkWorkerState *const ws, const char *fmt,...);
 extern void Cilk_unalloca_internal(CilkWorkerState *const ws,
-																	 CilkStackFrame *f);
+				   CilkStackFrame *f);
 
 /*
  * Functions defined by the scheduler and used in Cilk programs
@@ -450,14 +451,14 @@ static inline void Cilk_membar_StoreLoad(void)
 extern int Cilk_sync(CilkWorkerState *const ws);
 extern int Cilk_exception_handler(CilkWorkerState *const ws, void *, int);
 extern void Cilk_set_result(CilkWorkerState *const ws, 
-														void *resultp, int size);
+			    void *resultp, int size);
 extern void Cilk_after_sync_slow_cp(CilkWorkerState *const ws,
-																		Cilk_time *work, Cilk_time *cp);
+				    Cilk_time *work, Cilk_time *cp);
 extern void Cilk_abort_standalone(CilkWorkerState *const ws);
 extern void Cilk_abort_slow(CilkWorkerState *const ws);
 extern void Cilk_event_new_thread(CilkWorkerState *const ws);
 extern void Cilk_destroy_frame(CilkWorkerState *const ws,
-															 CilkStackFrame *f, size_t size);
+			       CilkStackFrame *f, size_t size);
 
 /***********************************************************
  *  cilk2c-only stuff
@@ -498,12 +499,12 @@ extern void Cilk_destroy_frame(CilkWorkerState *const ws,
 #define CILK_NAME_STATS NOSTATS
 #endif
 
-#define CILK_MAGIC_NAME_MAGIC(a,b,c)																	\
+#define CILK_MAGIC_NAME_MAGIC(a,b,c)					\
   Cilk_flags_are_wrong_ ## a ## _ ## b ## _ ## c ## _please_recompile
 #define CILK_MAGIC_NAME_MORE_MAGIC(a,b,c) CILK_MAGIC_NAME_MAGIC(a,b,c)
-#define CILK_MAGIC_NAME																					\
+#define CILK_MAGIC_NAME						\
   CILK_MAGIC_NAME_MORE_MAGIC(CILK_NAME_DEBUG, CILK_NAME_TIMING, \
-														 CILK_NAME_STATS)
+			     CILK_NAME_STATS)
 
 extern __CILKSAFE__ int CILK_MAGIC_NAME;
 static __CILKSAFE__ int *Cilk_check_flags_at_link_time =  &CILK_MAGIC_NAME;
@@ -514,9 +515,9 @@ static int Cilk_check_flags_at_link_time_hack(void) {
 }
 
 void Cilk_start(CilkContext *const context,
-								void (*main)(CilkWorkerState *const ws, void *args),
-								void *args,
-								int return_size );
+		void (*main)(CilkWorkerState *const ws, void *args),
+		void *args,
+		int return_size );
 void Cilk_free(void *);
 void *Cilk_malloc_fixed(size_t);
 
@@ -524,17 +525,17 @@ void *Cilk_malloc_fixed(size_t);
  * BATCHER
  ******************************************************************************/
 typedef void (*CilkBatchOpInternal)(CilkWorkerState*const _cilk_ws,
-																		 void *dataStruct, void *data,
-																		 size_t numElements, void *result);
+				    void *dataStruct, void *data,
+				    size_t numElements, void *result);
 
 enum DS_STATUS { DS_WAITING, DS_DONE };
 
 typedef struct {
-	CilkBatchOpInternal operation;
+  CilkBatchOpInternal operation;
   void      *args;
   size_t    size;
   int       status;
-	int packedIndex;
+  int packedIndex;
 } BatchRecord;
 
 typedef struct {
@@ -544,13 +545,13 @@ typedef struct {
 
 // rsu ***
 typedef struct {
-	CilkStackFrame header;
-	struct {
-		void *dataStruct;
-		void *data;
-		size_t size;
-		void* result;
-	}scope0;
+  CilkStackFrame header;
+  struct {
+    void *dataStruct;
+    void *data;
+    size_t size;
+    void* result;
+  }scope0;
 } BatchOpFrame;
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */

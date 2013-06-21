@@ -1,5 +1,5 @@
 CILK = ../support/cilkclocal
-CFLAGS = -g -save-temps
+CFLAGS = -O0 -g -save-temps
 MAKEDEPEND = $(CILK) -MM
 #SRCS = $(shell find . -name "*.cilk" | sed 's/.\///g')
 SRCS = $(wildcard *.cilk)
@@ -32,6 +32,7 @@ all: cilk tests
 
 cilk:
 	cd ..; make
+	make clean
 
 .PHONY: clean cilk-clean check-syntax
 clean:
