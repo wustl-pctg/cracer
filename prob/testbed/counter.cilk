@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <cilk-lib.cilkh>
+#include <time.h>
 
 #include "util/parfor.cilkh"
 #include "util/prefixSums.cilkh"
@@ -11,9 +12,13 @@
 Cilk_lockvar lock_counter;
 int counter = 0;
 
+/* extern void Cilk_batchify(CilkWorkerState *const ws, */
+/* 			  CilkBatchOpInternal op, */
+/* 			  void *dataStruct, void *data, size_t dataSize, void *indvResult); */
+extern void Cilk_terminate_batch(CilkWorkerState *const ws);
+
 cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)
 {
-  int i;
   int *nums = (int*)data;
   int temp = nums[size-1];
   int *count = (int*)dataStruct;
@@ -23,16 +28,13 @@ cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)
 
   result = data;
   *count += temp + nums[size-1];
-  terminate_batch(_cilk_ws);
+  Cilk_terminate_batch(_cilk_ws);
   return;
 }
 
 cilk void batchIncrement(int i, void* nums)
 {
-  /* temp = spawn Cilk_batchify(fastSum, &counter, (void*)&((int*)nums)[i], sizeof(int)); */
-  /* sync; */
-  //Cilk_free(temp);
-  Cilk_batchify_internal(_cilk_ws, fastSum, &counter, (void*)&((int*)nums)[i], sizeof(int));
+  Cilk_batchify(_cilk_ws, fastSum, &counter, &((int*)nums)[i], sizeof(int), NULL);
 }
 
 cilk void parallelIncrement(int *nums, size_t size)

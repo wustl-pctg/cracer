@@ -1800,16 +1800,14 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 }	
 
 // if we don't need a result array, we should change this so it's faster
-void * Cilk_batchify_internal(CilkWorkerState *const ws,
-			      CilkBatchOpInternal op,
-			      void *dataStruct, void *data, size_t dataSize)
+void Cilk_batchify(CilkWorkerState *const ws,
+		   CilkBatchOpInternal op,
+		   void *dataStruct, void *data, size_t dataSize, void *indvResult)
 {
-  Closure *t = NULL;
   //void *workArray;
   int *workArray; // need to fix this ***
-  void *result, *thisWorkerResult;
+  void *result;
   int numJobs = 0, done, i;
-  CilkClosureCache tempCache;
   Batch pending;
 
   // add operation to pending array
@@ -1823,7 +1821,6 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
   /* result = USE_SHARED(batch_result_array); */
 
   done =  USE_SHARED(current_batch_id) + 1;
-  //  printf("Worker %i entered batch %i with data %i\n", ws->self, done-1, *(int*)data);
 
   while (USE_SHARED(current_batch_id) <= done) {
     ws->batch_id = USE_SHARED(current_batch_id);
@@ -1854,13 +1851,9 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 	  memcpy(&workArray[numJobs], pending.array[i].args, dataSize);
 	  pending.array[i].packedIndex = numJobs;
 	  numJobs++;
-	  pending.array[i].status = DS_DONE;
+	  pending.array[i].status = DS_IN_PROGRESS;
 	}
       }
-      //      printf("Worker %i is starting batch %i with %i elements\n", ws->self, ws->batch_id, numJobs);
-
-      // Could we be destructive, i.e. use same array for data and result, to save time/space?
-      //			batch_scheduler(ws, t);
 
       Cilk_exit_state(ws, STATE_BATCH_START);
       op(ws, dataStruct, workArray, numJobs, result);
@@ -1869,33 +1862,33 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
       break; // we got the lock, which means the batch must have contained our job - we're done
 
     }
-    //		printf("Worker %i didn't get the lock; going to scheduler\n", ws->self);
-    batch_scheduler(ws, t);
+    batch_scheduler(ws, NULL);
   }
 
-  /* thisWorkerResult = malloc(dataSize); */
-  /* memcpy(thisWorkerResult, */
-  /* 			 &result[pending.array[ws->self].packedIndex], dataSize); */
-  //  pending.array[ws->self].status = DS_DONE;
-  //	printf("Worker %i now done, unless owner\n", ws->self);
+  if (indvResult) {
+    memcpy(indvResult, &result[pending.array[ws->self].packedIndex], dataSize);
+  }
+  pending.array[ws->self].status = DS_DONE;
+
   if (USE_SHARED(batch_owner) == ws->self) {
-    /* while (1) { */
-    /* 	for (i = 0; i < pending.size; i++) { */
-    /* 		if (pending.array[i].status != DS_DONE) break; */
-    /* 	} */
-    /* } */
+    i = 0;
+    while (i < pending.size) {
+      if (pending.array[i].status == DS_IN_PROGRESS) {
+	printf("%i isn't done yet (%i)\n", i, ws->self);
+	i = 0;
+	continue;
+      }
+      i++;
+    }
     Cilk_free(result);
     Cilk_free(workArray);
-    //		printf("Freed the arrays\n");
     Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
   }
 
-  //return thisWorkerResult; // rsu *** must free this memory location upon return
-  return NULL;
-  // is there a better way to do this?
+  return;
 }
 
-void terminate_batch(CilkWorkerState *const ws)
+inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 {
   USE_SHARED(current_batch_id)++;
 }

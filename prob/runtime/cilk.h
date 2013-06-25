@@ -528,7 +528,7 @@ typedef void (*CilkBatchOpInternal)(CilkWorkerState*const _cilk_ws,
 				    void *dataStruct, void *data,
 				    size_t numElements, void *result);
 
-enum DS_STATUS { DS_WAITING, DS_DONE };
+enum DS_STATUS { DS_WAITING, DS_IN_PROGRESS, DS_DONE };
 
 typedef struct {
   CilkBatchOpInternal operation;
