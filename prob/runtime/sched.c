@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include <stdio.h> // rsu ***
+#include <assert.h> /// rsu ***
 
 FILE_IDENTITY(ident,
 	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/sched.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
@@ -997,7 +998,6 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim, ReadyDeque 
     deque_unlock(ws, victim, deque_pool);
     Cilk_event(ws, EVENT_STEAL_EMPTY_DEQUE);
   }
-
   return res;
 }
 
@@ -1785,8 +1785,9 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
     if (USE_PARAMETER(options->yieldslice))
       Cilk_raise_priority(ws);
 
-    if (!USE_SHARED(done))
+    if (USE_SHARED(current_batch_id) == ws->batch_id) {
       t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
+    }
 
   }
 
@@ -1804,14 +1805,12 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 			      void *dataStruct, void *data, size_t dataSize)
 {
   Closure *t = NULL;
-  void *workArray, *result, *thisWorkerResult;
+  //void *workArray;
+  int *workArray; // need to fix this ***
+  void *result, *thisWorkerResult;
   int numJobs = 0, done, i;
   CilkClosureCache tempCache;
   Batch pending;
-
-  // I think this is the easiest thing to do, rather than change everything to use ds_cache
-  //  CilkClosureCache tempCache = ws->cache;
-  //  ws->cache = ws->ds_cache;
 
   // add operation to pending array
   pending = USE_SHARED(pending_batch);
@@ -1824,14 +1823,13 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
   /* result = USE_SHARED(batch_result_array); */
 
   done =  USE_SHARED(current_batch_id) + 1;
+  //  printf("Worker %i entered batch %i with data %i\n", ws->self, done-1, *(int*)data);
 
   while (USE_SHARED(current_batch_id) <= done) {
     ws->batch_id = USE_SHARED(current_batch_id);
 		
     if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
 
-      /* tempCache = ws->cache; */
-      /* ws->cache = ws->ds_cache; */
       ws->current_cache = &ws->ds_cache;
       ws->current_cache->tail = &ws->ds_cache.stack[0]; // do we need these?
       ws->current_cache->head = &ws->ds_cache.stack[0];
@@ -1840,16 +1838,15 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
       Cilk_enter_state(ws, STATE_BATCH_START);
 
       USE_SHARED(batch_owner) = ws->self;
-      //			printf("Worker %i is starting batch %i\n", ws->self, ws->batch_id);
 
       /* if (sizeof(workArray) != dataSize * pending.size || workArray == NULL) { */
-      /* 	Cilk_free(workArray); */
-      workArray = Cilk_malloc(dataSize * pending.size);
+      /* 	if (workArray != NULL) Cilk_free(workArray); */
+      	workArray = Cilk_malloc(dataSize * pending.size);
       /* } */
 
       /* if (sizeof(result) != dataSize * pending.size || result == NULL) { */
-      /* 	Cilk_free(result); */
-      result = Cilk_malloc(dataSize * pending.size);
+      /* 	if (result != NULL) Cilk_free(result); */
+      	result = Cilk_malloc(dataSize * pending.size);
       /* } */
 
       for (i = 0; i < pending.size; i++) {
@@ -1857,16 +1854,16 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
 	  memcpy(&workArray[numJobs], pending.array[i].args, dataSize);
 	  pending.array[i].packedIndex = numJobs;
 	  numJobs++;
+	  pending.array[i].status = DS_DONE;
 	}
       }
+      //      printf("Worker %i is starting batch %i with %i elements\n", ws->self, ws->batch_id, numJobs);
 
       // Could we be destructive, i.e. use same array for data and result, to save time/space?
       //			batch_scheduler(ws, t);
 
-      //      ws->cache.tail = &ws->cache.stack[0];
       Cilk_exit_state(ws, STATE_BATCH_START);
       op(ws, dataStruct, workArray, numJobs, result);
-      //ws->cache = tempCache;
       ws->current_cache = &ws->cache;
       ws->batch_id = 0;
       break; // we got the lock, which means the batch must have contained our job - we're done
@@ -1877,10 +1874,9 @@ void * Cilk_batchify_internal(CilkWorkerState *const ws,
   }
 
   /* thisWorkerResult = malloc(dataSize); */
-  //  ws->cache = tempCache;
   /* memcpy(thisWorkerResult, */
   /* 			 &result[pending.array[ws->self].packedIndex], dataSize); */
-  pending.array[ws->self].status = DS_DONE;
+  //  pending.array[ws->self].status = DS_DONE;
   //	printf("Worker %i now done, unless owner\n", ws->self);
   if (USE_SHARED(batch_owner) == ws->self) {
     /* while (1) { */

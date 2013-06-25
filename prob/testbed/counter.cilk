@@ -15,20 +15,16 @@ cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)
 {
   int i;
   int *nums = (int*)data;
-  //	int temp = nums[size-1];
+  int temp = nums[size-1];
+  int *count = (int*)dataStruct;
 
-  for (i = 0; i < size; i++) {
-    (*(int*)dataStruct) += nums[i];
-    ((int*)result)[i] = nums[i];
-  }
+  spawn prefixSumsExc(nums, size, nums);
+  sync;
 
   result = data;
+  *count += temp + nums[size-1];
   terminate_batch(_cilk_ws);
   return;
-  /* spawn prefixSumsExc(nums, size, nums); */
-  /* sync; */
-  /* counter += temp + nums[size-1]; */
-
 }
 
 cilk void batchIncrement(int i, void* nums)
@@ -79,22 +75,16 @@ cilk int main(int argc, char *argv[])
     nNums = atoi(argv[1]);
   }
 
-  printf("Pointers: \n");
-  printf("cilk_main_slow: %p\n", main);
-  printf("fastSum_slow: %p\n", fastSum);
-  printf("batchIncrement_slow: %p\n", batchIncrement);
-  printf("parallelIncrement_slow: %p\n", parallelIncrement);
-  printf("parforpar_1_slow: %p\n", parforpar_1);
-  printf("Address of worker %i cache: %p\n", _cilk_ws->self, &(_cilk_ws->cache));
-  printf("Address of worker %i ds_cache: %p\n", _cilk_ws->self, &(_cilk_ws->ds_cache));
-
   data = malloc(nNums*sizeof(int));
 
   srand(time(NULL));
+  //  printf("Original sequence: ");
   for (i = 0; i < nNums; i++) {
     // want -MAX_NUM to MAX_NUM range
     data[i] = rand() % (2*MAX_NUM) - MAX_NUM;
+    //printf("%i ", data[i]);
   }
+  //  printf("\n");
 
   /* startTimer(); */
   /* sequentialIncrement(data, nNums); */
@@ -125,7 +115,10 @@ cilk int main(int argc, char *argv[])
   stopTimer();
   printf("Parallel (Batch) wall time: %lf ms\n", getWallTime());
   printf("Parallel (Batch) process time: %lf ms\n", getProcTime());
-  assert(counter == sum);
+  if (counter != sum) {
+    printf("counter: %i, actual sum: %i\n", counter, sum);
+    assert(counter == sum);
+  }
 
   free(data);
 
