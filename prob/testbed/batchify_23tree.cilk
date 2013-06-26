@@ -1,0 +1,36 @@
+#include "complex_2_3_tree.cilk"
+
+#define TEST_SIZE 30
+
+
+cilk void parallel_for(int start, int end, struct tree23* tree, int* input, cilk void (*function_ptr)(struct tree23*,int))
+{	//function_ptr(index,size_a,size_b,constant,result,node_array_a,...)
+	int middle = start+(end-start)/2;
+	if(end-start<=5)
+		for(start;start<end;++start)
+		{
+			spawn function_ptr(tree,input[start]);
+		}
+	else
+	{
+		spawn parallel_for(start, middle,size_a,size_b,constant,result,node_array_a,node_array_b,node_array_c, function_ptr);
+		spawn parallel_for(middle+1,end, size_a,size_b,constant,result,node_array_a,node_array_b,node_array_c, function_ptr);
+		spawn function_ptr(middle,size_a,size_b,constant,result,node_array_a,node_array_b,node_array_c);
+	}
+}
+
+cilk int main()
+{
+	//int large_test[TEST_SIZE];
+	//int test_numbers[TEST_SIZE/2];
+   	// int test_2[10] = {-10, -5, -2, -1};
+	struct tree23 *test_tree = create_tree(100);
+    
+    
+    spawn insert_item(test_tree,23);
+    sync;
+    
+    print_tree(test_tree->root,0);
+	delete_tree(test_tree);
+	return 0;
+}

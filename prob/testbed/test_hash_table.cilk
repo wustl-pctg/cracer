@@ -13,7 +13,7 @@ int printints(void* input){
         ptr=input;
         printf("{");
         do {
-            printf("[%d -> %d]",ptr->key,*(int*)(ptr->data));
+            printf("[%d->%d]",ptr->key,*(int*)(ptr->data));
             ptr=ptr->next;
             count++;
         }
