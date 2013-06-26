@@ -1,6 +1,6 @@
-#include "hash_table_chaining2.cilk"
+#include "hash_table_ints.cilk"
 
-#define TEST_SIZE 500
+#define TEST_SIZE 50000
 
 static int count;
 
@@ -13,7 +13,7 @@ int printints(void* input){
         ptr=input;
         printf("{");
         do {
-            printf("[%d->%d]",ptr->key,*(int*)(ptr->data));
+            printf("%d ",ptr->key);
             ptr=ptr->next;
             count++;
         }
@@ -32,29 +32,15 @@ cilk int main() {
 	
     count=0;
     for (i=0;i<TEST_SIZE;i++){
-        array[i] = rand()%100;
+        array[i] = i;
     }
     for (i=0;i<TEST_SIZE;i++){
-        test[i] = hashTable_createInsertion(i,&array[i]);
+        spawn hashTable_insertItem(table1,array[i]);
+        sync;
     }
-    
-    spawn hashTable_batchInsert(table1,test,NULL,TEST_SIZE/2);
-	sync;
-    spawn hashTable_batchInsert(table1,&test[TEST_SIZE/2-1],NULL,TEST_SIZE/2);
-	sync;
-	
-    hashTable_print(table1,printints);
-    printf("\ncount: %d\n",count);
-    
-    printf("search for stuff:\n");
-    for (i=0;i<200;i++){
-        items[i] = spawn hashTable_search(table1,i);
-    }
-    sync;
-    printf("remove stuff:\n");
-    spawn hashTable_batchRemove(table1,items,NULL,200);
-	sync;
-    count=0;
-    hashTable_print(table1,printints);
-    printf("\ncount: %d\n",count);
+    //spawn hashTable_batchInsert(table1,array,NULL,TEST_SIZE);
+   // sync;
+    //hashTable_print(table1,printints);
+    //printf("\ncount: %d\n",count);
+    printf("load: %d\n", table1->load);
 }

@@ -1,39 +1,51 @@
 #include "complex_2_3_tree.cilk"
+#include "util/timer.h"
+#include "util/parfor.cilkh"
 
-#define TEST_SIZE 30
+#define TEST_SIZE 500
 
+typedef struct in {
+   void* ds;
+   int input;
+} dsInput;
 
-cilk void parallel_for(int start, int end, struct tree23* tree, int* input, cilk void (*function_ptr)(struct tree23*,int))
-{	
-	int middle = start+(end-start)/2;
-	if(end-start<=5)
-		for(start;start<end;++start)
-		{
-			spawn function_ptr(tree,input[start]);
-		}
-	else
-	{
-		spawn parallel_for(start, middle,tree, input,function_ptr);
-		spawn parallel_for(middle+1,end, tree, input,function_ptr);
-		spawn function_ptr(tree,input[middle]);
-	}
+cilk void testInsert(int index, void* data){
+    dsInput* input = data;
+    spawn insert_item(input[index].ds, input[index].input);
+    sync;
 }
 
+void reset(struct tree23** tree){
+    delete_tree(*tree);
+    *tree=create_tree(50);
+}
 cilk int main()
 {
-	//int large_test[TEST_SIZE];
-	//int test_numbers[TEST_SIZE/2];
-   	// int test_2[10] = {-10, -5, -2, -1};
-	struct tree23 *test_tree = create_tree(100);
-    int input[TEST_SIZE];
+	struct tree23 *test_tree = create_tree(50);
+    dsInput input[TEST_SIZE];
     int i;
     for (i=0;i<TEST_SIZE;i++){
-        input[i]=i;
+        input[i].input=i;
+        input[i].ds=test_tree;
     }
-    spawn parallel_for(0,TEST_SIZE,test_tree,input,&insert_item);
+    /*printf("Start seq run\n");
+    startTimer();
+    reset(&test_tree);
+    for (i=0;i<TEST_SIZE;i++){
+        spawn insert_item(test_tree,input[i].input);
+        sync;
+    }
+    stopTimer();
+    printf("Wall time: %lf ms\n", getWallTime());
+    printf("Proc time: %lf ms\n", getProcTime());
+    */
+    printf("Start parallel run\n");
+    startTimer();
+    spawn parforpar_1(0,TEST_SIZE-1,&testInsert,input);
     sync;
-    
-    print_tree(test_tree->root,0);
+    stopTimer();
+    printf("Wall time: %lf ms\n", getWallTime());
+    printf("Proc time: %lf ms\n", getProcTime());
 	delete_tree(test_tree);
 	return 0;
 }

@@ -6,14 +6,24 @@
 #define PARALLEL_CUTOFF 2
 
 
-/* 2-3 Tree that supports parallel operations */
+/*! \file 
+    \brief A 2-3 Tree that supports parallel operations.
+*/
 /* Tyler Romero and Kefu Lu */
 /*
     TODO: Use a Parallel sort from the cilk library instead of just calling qsort from the C library
     TODO: Use batchify - need to finalize syntax for that first though.
 */
 
-/*-----------------------------Structs-----------------------------------------------------------------------------------------*/
+/*! \struct node23
+    \brief A node in a 2-3 tree.
+    Contains member variables:
+        Left, middle and right pointers.
+        Relevant data: the max of the left, the max of the middle, and the max of the entire node.
+        Height: by definition leafs have a height of 0.
+        mark_status is used in the insert/delete algorithms to mark nodes.
+
+*/
 struct node23
 {
 	struct node23 *left, *middle, *right;
@@ -23,11 +33,13 @@ struct node23
 	enum mark_status{unmarked, marked} is_marked;
 };
 
+/*! \struct tree23
+    \brief A 2-3 Tree. It has a root.
+*/
 struct tree23
 {
 	struct node23 *root;
 };
-
 
 
 /*-----------------------------Function Declarations----------------------------------------------------------------------------*/
@@ -52,7 +64,7 @@ int search_mark_and_height(struct node23* current_node, int key, int height);
 cilk void search_for_delete(struct node23* root, int key);
 	
 	//Batch Insert Function and helper functions
-cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size);
+cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size, void*useless);
 cilk struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size);
 cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c);
 	
@@ -283,20 +295,22 @@ cilk void insert_item(struct tree23* tree, int input){
 
 
 /*----------------------------complex_batch_insert-------------------------------------------------------*/
-cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size) /*Takes in a pointer to a tree, an array of keys to insert, and the size of that array*/
+cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size, void* useless) /*Takes in a pointer to a tree, an array of keys to insert, and the size of that array*/
 {
 	struct node23 **result_array = calloc(size, sizeof(struct node23*));
 	struct node23 **result;
 	int number_of_children=0;
-	
+	int i;
+    printf("starting with:\n");
+    for (i=0;i<size;i++){
+        printf("%d ", input_integers[i]);
+    }
 	qsort((void*)input_integers, size, sizeof(int), compare_integers); //Find a faster sort?
 	
 	spawn parallel_for_mark(current_tree->root, input_integers, result_array, 0, size); //Should sync on its own at the end of the function
 	sync;
-	
-    	result = spawn recursive_split(current_tree->root, result_array, input_integers, size, &number_of_children);
+    result = spawn recursive_split(current_tree->root, result_array, input_integers, size, &number_of_children);
 	sync;
-	
 	//fix root - to group the array of nodes returned
 	if(number_of_children == 0)
 		printf("There is a problem with the number_of_children variable");
@@ -312,10 +326,10 @@ cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers,
 	}
 	
 	current_tree->root = *result;
-	
 	free(result_array);
 	free(result);
-    Cilk_terminate_batch(_cilk_ws);
+    //Cilk_terminate_batch(_cilk_ws);
+    printf("finished\n");
 }
 
 cilk struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size) //Edits return_size to be the size of the return array

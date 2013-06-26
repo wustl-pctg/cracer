@@ -6,7 +6,7 @@ cilk int main()
 {
 	int large_test[TEST_SIZE];
 	int test_numbers[TEST_SIZE/2];
-   	 int test_2[10] = {-10, -5, -2, -1};
+   	 int test_2[10] = {0, 1, -2, -1};
 	struct tree23 *test_tree = create_tree(100);
 	//struct tree23 *test_tree2 = create_tree(-3);
 	int i;
@@ -15,7 +15,7 @@ cilk int main()
 	{
 		large_test[i] = i*10;
 	}
-	spawn complex_batch_insert(test_tree, test_2, 4);
+	spawn complex_batch_insert(test_tree, test_2, 2, NULL);
 	sync;
 	
 	for(i=0; i<TEST_SIZE/2-1; ++i)
@@ -28,7 +28,7 @@ cilk int main()
     
 	printf("Start\nsizes: %d\n",sizeof(struct node23));
 
-	spawn complex_batch_insert(test_tree, large_test, TEST_SIZE);
+	spawn complex_batch_insert(test_tree, large_test, TEST_SIZE, NULL);
 	sync;
 	
 	print_tree(test_tree->root,0);

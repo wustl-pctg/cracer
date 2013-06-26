@@ -14,8 +14,8 @@ cilk void parforpar_1(const int begin, const int end,
 	if (end - begin <= PARFOR_THRESHOLD) {
 		for (i = begin; i <= end; i++) {
 			spawn body(i, data);
-			sync;
-		}
+		}			
+        sync;
 	} else {
 		i = begin+(end-begin)/2;
 		spawn parforpar_1(begin, i, body, data);
@@ -23,7 +23,6 @@ cilk void parforpar_1(const int begin, const int end,
 		sync;
 	}
 }
-
 
 cilk void parfor_1(const int begin, const int end,
 									 const loopBodyFunc body, void *data)
