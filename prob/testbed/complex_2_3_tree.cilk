@@ -315,6 +315,7 @@ cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers,
 	
 	free(result_array);
 	free(result);
+    Cilk_terminate_batch(_cilk_ws);
 }
 
 cilk struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size) //Edits return_size to be the size of the return array
@@ -705,8 +706,9 @@ void print_tree(struct node23 *current_node, int i)
     for (j=0;j<i;j++){
         printf("\t\t");
     }
+    
     printf("[%d, %d] {%d} (%d) (?%d) %p", current_node->left_data,current_node->right_data, current_node->max, current_node->height,current_node->is_marked,current_node);
-	printf("\n");
+    printf("\n");
     
 	if(current_node->middle != NULL){
 		print_tree(current_node->middle, i+1);
