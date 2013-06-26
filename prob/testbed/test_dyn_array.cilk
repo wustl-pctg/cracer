@@ -1,26 +1,30 @@
-#include "par_dyn_array_generic.cilk"
-#define TEST_SIZE 3000
-#define TEST_CYCLES 3
+#include "util/timer.h"
+#include "parallel_dynamic_array.cilk"
+#define TEST_SIZE 100000
 
 cilk int main()
 {
-	dyn_array* test_array = create_array("short");
-	short input[TEST_SIZE];
-	int i;
+	dyn_array* test_array = create_array();
+	int input[TEST_SIZE];
+	int i,j;
 	
 	
 	for(i=0; i<TEST_SIZE; ++i)
 	{
 		input[i] = i;
 	}
+	printf("Input created\n");
 	
+	startTimer();
+	spawn parallel_push_back(test_array, input, TEST_SIZE);	//Check for race conditions
+	sync;
+	stopTimer();
 	
-	for(i=0; i<TEST_CYCLES; ++i)
-	{		
-		spawn batch_push_back(test_array, input, TEST_SIZE);
-		sync;
-		//print_array(test_array);
-	}
+	print_array(test_array);
+	printf("Parallel (Batch) wall time: %lf ms\n", getWallTime());
+	printf("Parallel (Batch) process time: %lf ms\n", getProcTime());
+	
+
 	
 	delete_array(test_array);
 	return 0;

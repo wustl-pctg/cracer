@@ -4,12 +4,18 @@
 #include <math.h>
 #define VOID_DATA (int)-INFINITY
 #define DEFAULT_SIZE 10
-#define PARALLEL_CUTOFF 5
+#define PARALLEL_CUTOFF 100
 
-/*Dynamically Resizing Array that supports copying and inserting in parallel*/
+/*! \file
+	\brief Dynamically Resizing Array that supports copying and inserting in parallel
+*/
+
 //Tyler Romero
 
 /*-----------------------Structs------------------------------------------------*/
+/*!	\struct A dynamic array
+	\brief A dynamically resizing array that supports parallel resizing and insertion
+*/
 struct dyn_array
 {
 	int* array;
@@ -23,9 +29,12 @@ typedef struct dyn_array dyn_array;
 
 /*-----------------------Function Declarations----------------------------------*/
 dyn_array* create_array();		//Initializes a new dynamic array
+void delete_array(dyn_array* dead_array);
 cilk void resize(dyn_array* current_array, int new_size);
-cilk void batch_push_back(dyn_array* current_array, int* input, int input_size);	//Adds input array to the end of dynamic array
-cilk void push_back(dyn_array* current_array, int input);		//Adds integer to the end of the dynamic array
+cilk void batch_push_back(void* array, void* data, size_t input_size, void* result);	//Adds input array to the end of dynamic array
+cilk void push_back_iterator(dyn_array* current_array, int* input, int i);
+cilk void push_back(dyn_array* current_array, int* input);		//Adds integer to the end of the dynamic array
+cilk void parallel_push_back(dyn_array* current_array, int* input, size_t size);
 int safe_access(dyn_array* current_array, int index);		//Gives an error and returns VOID_DATA if index is out of range
 void print_array(dyn_array* current_array);
 cilk void parallel_for(dyn_array* current_array, int* other_array, cilk void(*parallel_function)(dyn_array*,int*,int), int start, int end);
@@ -90,9 +99,13 @@ cilk void resize(dyn_array* current_array, int new_size)		//Sets the size of cur
 
 
 /*----------------------push_back------------------------------------------------*/
-cilk void batch_push_back(dyn_array* current_array, int* input, int input_size)
+cilk void batch_push_back(void* array, void* data, size_t input_size, void* result)
 {
 	//int i;
+	dyn_array* current_array = (dyn_array*)array;
+	int* input = (int*)data;
+	int* output = (int*)result;
+	
 	
 	if(input_size+current_array->used > current_array->size)	//If current_array needs more space
 	{
@@ -106,12 +119,24 @@ cilk void batch_push_back(dyn_array* current_array, int* input, int input_size)
 	spawn parallel_for(current_array, input, insert, 0, input_size);	//Insert input into current_array in parallel
 	sync;
 
-	current_array->used = current_array->used + input_size;		//Update the current amout of used space
+	current_array->used = current_array->used + input_size;		//Update the current amount of used space
+	Cilk_terminate_batch(_cilk_ws);
+	return;
 }
 
-cilk void push_back(dyn_array* current_array, int input)
+cilk void push_back_iterator(dyn_array* current_array, int* input, int i)
 {
-	spawn batch_push_back(current_array, &input, 1);		//Need to implement with batchify function
+	Cilk_batchify(_cilk_ws, batch_push_back, current_array, &(input[i]), sizeof(int), NULL);
+}
+
+cilk void push_back(dyn_array* current_array, int* input)
+{
+	spawn push_back_iterator(current_array, input, 0);
+}
+
+cilk void parallel_push_back(dyn_array* current_array, int* input, size_t size)
+{
+	spawn parallel_for(current_array, input, push_back_iterator, 0, size);
 	sync;
 }
 
