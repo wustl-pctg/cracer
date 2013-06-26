@@ -25,9 +25,10 @@ cilk int main()
 	//int test_numbers[TEST_SIZE/2];
    	// int test_2[10] = {-10, -5, -2, -1};
 	struct tree23 *test_tree = create_tree(100);
-    
-    
-    spawn insert_item(test_tree,23);
+    int i;
+    for (i=0;i<200;i++){
+        spawn insert_item(test_tree,i);
+    }
     sync;
     
     print_tree(test_tree->root,0);
