@@ -1871,15 +1871,15 @@ void Cilk_batchify(CilkWorkerState *const ws,
   pending.array[ws->self].status = DS_DONE;
 
   if (USE_SHARED(batch_owner) == ws->self) {
-    i = 0;
-    while (i < pending.size) {
-      if (pending.array[i].status == DS_IN_PROGRESS) {
-	printf("%i isn't done yet (%i)\n", i, ws->self);
-	i = 0;
-	continue;
-      }
-      i++;
-    }
+    /* i = 0; */
+    /* while (i < pending.size) { */
+    /*   if (pending.array[i].status == DS_IN_PROGRESS) { */
+    /* 	printf("%i isn't done yet (%i)\n", i, ws->self); */
+    /* 	i = 0; */
+    /* 	continue; */
+    /*   } */
+    /*   i++; */
+    /* } */
     Cilk_free(result);
     Cilk_free(workArray);
     Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
