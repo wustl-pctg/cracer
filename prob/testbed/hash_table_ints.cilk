@@ -29,6 +29,8 @@ typedef struct {
 /*-----------------------------------Declarations---------------------------------------------------*/
 hashTable* hashTable_create(int size);
 hashTableItem* hashTable_createItem(int key);
+void hashTable_delete(hashTable* dead_table);
+void hashTable_deleteItems(hashTableItem* dead_item);
 cilk void hashTable_insert(hashTable* table, int key);
 cilk void hashTable_batchInsert(hashTable* table, void* insertions, int size, void* results);
 int hashTable_hash(int size, int key);
@@ -72,6 +74,30 @@ hashTableItem* hashTable_createItem(int key){
     return result;
 }
 
+/*-----------------------------------Delete/Free things---------------------------------------------------*/
+void hashTable_delete(hashTable* dead_table)
+{
+	int i;
+	for(i=0; i<dead_table->size; ++i)
+	{
+		hashTable_deleteItems(dead_table->slots[i]);
+	}
+	free(dead_table->slots);
+	free(dead_table->locks);
+	free(dead_table);
+}
+
+void hashTable_deleteItems(hashTableItem* dead_item)
+{
+	hashTableItem* temp;
+	if(dead_item == NULL)
+		return;
+	else
+	{
+		hashTable_deleteItems(dead_item->next);
+		free(dead_item);
+	}
+}
 
 /*--------------------------------------Insert----------------------------------------------*/
 //!Insert a key-data pair into the input table.
