@@ -3,19 +3,26 @@
 #include <stdlib.h>
 #include <cilk-lib.cilkh>
 
-#define PARALLEL_CUTOFF 2
-#define ab(j) (j<0)?-j:j
+#define PARALLEL_CUTOFF 100	//!<The cutoff for converting from a parallel_for loop to a sequential for loop
+#define ab(j) (j<0)?-j:j	//!<A generic absolute value function
+/*! \file
+	\brief A dynamically resizing hash table that deals with collisions through chaining. Supports parallel insertion and resizing.
+*/
 
-typedef struct itemsss{
-    int key;
-    struct itemsss* prev, *next;
+
+//! A data item in a hash table
+/*! A linked list component
+*/
+typedef struct tableItem{
+    int key;						//!<The actuall data being stored
+    struct tableItem* prev, *next;	//!<Pointers to the previous and next items in the linked list
 } hashTableItem;
 
-
+//! A hash table
 typedef struct {
-    hashTableItem** slots;
-    int size;
-    int load;
+    hashTableItem** slots;	//!<The array of items that have been hashed
+    int size;				//!<The amount of memory allocated to the hash table in terms of integers
+    int load;				//!<The number of integer items in the hash table
     Cilk_lockvar* locks;
 } hashTable;
 
@@ -35,7 +42,10 @@ cilk hashTableItem* hashTable_search(hashTable* table, int key); //search for th
 
 
 /*-----------------------------------Create/Initialize Things---------------------------------------*/
-//Creates a hash table of input size.
+//!Creates a hash table of input size.
+/*! \param size the size of the new hash table
+	\return a pointer to the new hash table
+*/
 hashTable* hashTable_create(int size){
     int i;
     hashTable* result = malloc(sizeof(hashTable));		//Allocate hashtable space
@@ -49,9 +59,11 @@ hashTable* hashTable_create(int size){
     return result;
 }
 
-//Creates an insertion operation struct.
-
-//Creates a table item, that is, a linked list item, with key and data.
+//!Creates a hash table item, 
+/*!Initializes a linked list item, with key and NULL pointers.
+	\param	key the data to be stored
+	\return A pointer to the hash table item created
+*/
 hashTableItem* hashTable_createItem(int key){
     hashTableItem* result = malloc(sizeof(hashTableItem));
     result->key=key;
@@ -62,7 +74,12 @@ hashTableItem* hashTable_createItem(int key){
 
 
 /*--------------------------------------Insert----------------------------------------------*/
-//Insert a key-data pair into the input table.
+//!Insert a key-data pair into the input table.
+/*!	A parallel function to insert keys into a hash table
+	\param table the table to insert into
+	\param key the data to insert
+	\sa hashTable_hash(), parallel_for1(), hashTable_insertItem()
+*/
 cilk void hashTable_insert(hashTable* table, int key) {
     int slot = hashTable_hash(table->size, key);
     hashTableItem* ptr;
@@ -84,10 +101,23 @@ cilk void hashTable_insert(hashTable* table, int key) {
     Cilk_unlock(table->locks[slot]);
 }
 
+//!Insert a single item into the Hash Table
+/*! This is the function that calls Cilk_batchify
+	\param table the hash table to insert into
+	\param key the data to insert
+*/
 cilk void hashTable_insertItem(hashTable* table, int key){
     Cilk_batchify(_cilk_ws, &hashTable_batchInsert, table, &key, sizeof(int), NULL);
 }
 
+//! Insert an array of items into the Hash Table in parallel
+/*! Called by Cilk_batchify
+	\param table the hash table to insert into
+	\param insertions the array of data to insert
+	\param input_size the size of the insertions array
+	\param results a neccessary parameter for Cilk_batchify, pass in NULL
+	\sa hashTable_insertItem(), hashTable_insert()
+*/
 cilk void hashTable_batchInsert(hashTable* table, void* insertions, int input_size,void* results){
     //Insertions will always be a int key followed by a void*
 	int* inputs = insertions;
@@ -107,6 +137,13 @@ cilk void hashTable_batchInsert(hashTable* table, void* insertions, int input_si
 	sync;
 }
 
+
+//---------------------------Search-------------------------------------------------
+//! Search the hash table for a given key
+/*! \param table the table to search
+	\param key the key to serch for
+	\return The hash table item with the given key. If no such item is found, return NULL
+*/
 cilk hashTableItem* hashTable_search(hashTable* table, int key) {
     int slot;
     hashTableItem* ptr;
@@ -129,6 +166,12 @@ cilk hashTableItem* hashTable_search(hashTable* table, int key) {
     return NULL;
 }
 
+//----------------------------Remove-----------------------------------------------------
+//! Remove an item from a hashtable
+/*! \param table the hash table to remove from
+	\param item a pointer to the item to remove
+	\sa hashTable_batchRemove()
+*/
 cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
     int slot;
     if (item==NULL){
@@ -157,7 +200,14 @@ cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
     }
 }
 
-cilk void hashTable_batchRemove(hashTable* table, void* removals, void* results, int input_size){
+//!Remove multiple items from a hash table
+/*! \param table the table to remove from
+	\param removals an array of pointers to items to be removed
+	\param input_size The size of the removals array
+	\param results A parameter required by Cilk_batchify. Pass in NULL
+	\sa hashTable_Remove()
+*/
+cilk void hashTable_batchRemove(hashTable* table, void* removals, int input_size, void* results){
     //Insertions will always be a int key followed by a void*
 	hashTableItem** inputs = (hashTableItem**)removals;
     int i;
@@ -171,8 +221,16 @@ cilk void hashTable_batchRemove(hashTable* table, void* removals, void* results,
 	sync;
 }
 
+//NEED TO WRITE A FUNCTION TO CALL BATCHIFY on batch_Remove
+
 /*--------------------------------Other--------------------------------------------*/
-//Hash the input key based on size. 
+//!Hash the input key based on size.
+/*! A multiplicateive hash function based on the golden ratio
+	\param size the current size of the hash table
+	\param key the key to insert
+	\return the corresponding index of the hash table
+	\sa hashTable_remove(), hashTable_insert(), hashTable_search()
+*/
 int hashTable_hash(int size, int key) {
     //Use a simple multiplicative hash for now
     double k = (double) key;
@@ -184,7 +242,10 @@ int hashTable_hash(int size, int key) {
     return spot;
 }
 
-//Prints out the hash table given the print function.
+//!Prints out the hash table given the print function.
+/*! \param table the table to print
+	\param printfunct a function to print out the hash table with (corresponds to the data type in the hash table)
+*/
 void hashTable_print(hashTable* table, int (*printfunct)(void*)){
     int i;
 	
@@ -199,6 +260,11 @@ void hashTable_print(hashTable* table, int (*printfunct)(void*)){
 	printf("Load: %d\t Size: %d\n", table->load, table->size);
 }
 
+//! Sets the size of current_array to new_size
+/*! Allocates memory for a new array, copies the old array in parallel, frees the old array, and assignes the nw array to the current_array
+	\param current_array The array to resize
+	\param new_size the size to set the current array to. Must be greater than the aray's current size
+*/
 cilk void resize(hashTable* current_table, int new_size)		//Sets the size of current_array to new_size
 {
 	int i;
@@ -231,7 +297,14 @@ cilk void resize(hashTable* current_table, int new_size)		//Sets the size of cur
 
 
 /*-------------------------Parallel Functions--------------------------------------*/
-//A standard parallel_for loop
+//!A parallel_for loop for functions with arguements (hastTable*,int)
+/*! \param current_table the table to edit
+	\param inputs an array of integers to edit the table with
+	\param parallel_function A parallel function with arguements (hashTable*,int)
+	\param start the startin point of the for loop: for(i=0;i<end;++i)
+	\param end the ending point of the for loop: for(i=start;i<end;++i)
+	\sa hashTable_insert(), hashTable_batchInsert()
+*/
 cilk void parallel_for1(hashTable* current_table, int* inputs, cilk void(*parallel_function)(hashTable*,int), int start, int end)
 {
 	int middle = start+(end-start)/2;
@@ -248,7 +321,14 @@ cilk void parallel_for1(hashTable* current_table, int* inputs, cilk void(*parall
 	}
 }
 
-//A parallel for loop that copies.
+//!A parallel_for loop for functions with arguements (hastTable*,hashTable*,int)
+/*! \param current_table the table to edit
+	\param temp a pointer to a temporary hash table
+	\param parallel_function A parallel function with arguements (hashTable*, hashTable*,int)
+	\param start the startin point of the for loop: for(i=0;i<end;++i)
+	\param end the ending point of the for loop: for(i=start;i<end;++i)
+	\sa resize(), copy()
+*/
 cilk void parallel_for2(hashTable* current_table, hashTable* temp, cilk void(*parallel_function)(hashTable*,hashTable*,int), int start, int end)
 {
 	int middle = start+(end-start)/2;
@@ -265,7 +345,14 @@ cilk void parallel_for2(hashTable* current_table, hashTable* temp, cilk void(*pa
 	}
 }
 
-//A parallel for loop that removes
+//!A parallel_for loop for functions with arguements (hastTable*,hashTableItem*)
+/*! \param current_table the table to edit
+	\param inputs an array of pointers to hashTableItems
+	\param parallel_function A parallel function with arguements (hashTable*,hashTableItem*)
+	\param start the startin point of the for loop: for(i=0;i<end;++i)
+	\param end the ending point of the for loop: for(i=start;i<end;++i)
+	\sa hashTable_remobe(), hashTable_batchRemove()
+*/
 cilk void parallel_for_remove(hashTable* current_table, hashTableItem** inputs, cilk void(*parallel_function)(hashTable*,hashTableItem*), int start, int end)
 {
 	int middle = start+(end-start)/2;
@@ -281,6 +368,12 @@ cilk void parallel_for_remove(hashTable* current_table, hashTableItem** inputs, 
 		spawn parallel_function(current_table, inputs[middle]);	//middle
 	}
 }
+
+//! A parallel function for copying a hashTable
+/*! \param current_table the hash table to copy FROM
+	\param temp the hash table to copy TO
+	\param i the index in the hash table of the item being copied
+*/
 cilk void copy(hashTable* current_table, hashTable* temp, int i)
 {
     hashTableItem* item = current_table->slots[i];

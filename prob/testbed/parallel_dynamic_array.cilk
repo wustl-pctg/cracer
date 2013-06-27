@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <math.h>
 #define VOID_DATA (int)-INFINITY
-#define DEFAULT_SIZE 10
-#define PARALLEL_CUTOFF 100
+#define DEFAULT_SIZE 10			//!<The default size to initalize a dynamic array to
+#define PARALLEL_CUTOFF 100		//!<The cutoff for converting from a parallel_for loop to a sequential for loop
 
 /*! \file
 	\brief Dynamically Resizing Array that supports copying and inserting in parallel
