@@ -524,35 +524,31 @@ void *Cilk_malloc_fixed(size_t);
 /*******************************************************************************
  * BATCHER
  ******************************************************************************/
-typedef void (*CilkBatchOpInternal)(CilkWorkerState*const _cilk_ws,
+typedef void (*CilkBatchOp)(CilkWorkerState*const _cilk_ws,
 				    void *dataStruct, void *data,
 				    size_t numElements, void *result);
 
 enum DS_STATUS { DS_WAITING, DS_IN_PROGRESS, DS_DONE };
 
 typedef struct {
-  CilkBatchOpInternal operation;
-  void      *args;
-  size_t    size;
-  int       status;
-  int packedIndex;
+  CilkBatchOp operation;
+  void*       args;
+  size_t      size;
+  enum DS_STATUS   status;
+  int         packedIndex;
+  void*       result;
 } BatchRecord;
 
 typedef struct {
-  int size; // i.e. nprocs
+  size_t size;
+  size_t dataSize;
+  CilkBatchOp operation;
   BatchRecord  *array;
 } Batch;
 
-// rsu ***
-typedef struct {
-  CilkStackFrame header;
-  struct {
-    void *dataStruct;
-    void *data;
-    size_t size;
-    void* result;
-  }scope0;
-} BatchOpFrame;
+// rsu *** could also have a BatchResult, which would contain a
+// void* array pointer for result values and a
+// void* array pointer for integer indices
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__
