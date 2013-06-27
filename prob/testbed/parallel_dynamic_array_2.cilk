@@ -1,0 +1,275 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+#define VOID_DATA (int)-INFINITY
+#define DEFAULT_SIZE 10
+#define PARALLEL_CUTOFF 100
+
+/*! \file
+	\brief Dynamically Resizing Array that supports copying and inserting in parallel
+*/
+
+//Tyler Romero
+
+/*-----------------------Structs------------------------------------------------*/
+//!	A Dynamically Resizing Array that supports parallel resizing and inserting
+/*! Holds integers
+*/
+struct dyn_array
+{
+	int* array;			//!<The actual array used to store data
+	size_t size;		//!<The total memory allocated to the array, in terms of integers
+	size_t used;		//!<The current number of intergs held in the array
+};
+typedef struct dyn_array dyn_array;
+
+
+
+
+/*-----------------------Function Declarations----------------------------------*/
+dyn_array* create_array();		//Initializes a new dynamic array
+void delete_array(dyn_array* dead_array);
+cilk void resize(dyn_array* current_array, int new_size);
+cilk void batch_push_back(void* array, void* data, size_t input_size, void* result);	//Adds input array to the end of dynamic array
+cilk void push_back_iterator(dyn_array* current_array, int* input, int i);
+cilk void push_back(dyn_array* current_array, int* input);		//Adds integer to the end of the dynamic array
+cilk void parallel_push_back(dyn_array* current_array, int* input, size_t size);
+int safe_access(dyn_array* current_array, int index);		//Gives an error and returns VOID_DATA if index is out of range
+void print_array(dyn_array* current_array);
+cilk void parallel_for(dyn_array* current_array, int* other_array, cilk void(*parallel_function)(dyn_array*,int*,int), int start, int end);
+cilk void copy(dyn_array* current_array, int* temp, int i);
+cilk void insert(dyn_array* current_array, int* input, int i);
+
+
+
+
+/*----------------------create_array and delete_array-----------------------------------------*/
+//!Creates a dynamic array
+/*!Allocates memory for a new dynamic array and initalizes its members
+	\return A pointer to the new dynamic array
+	\sa delete_array()
+*/
+dyn_array* create_array()
+{
+	dyn_array* new_array = malloc(sizeof(dyn_array));
+	if(new_array == NULL)
+	{
+		printf("\nError allocating memory for new array");
+		return new_array;
+	}
+	
+	//Initializations
+	new_array->size = DEFAULT_SIZE;
+	new_array->used = 0;
+	new_array->array = (int*)malloc(DEFAULT_SIZE*sizeof(int));
+	return new_array;
+}
+
+//!Deletes the input array
+/*!Frees the input dynamic array's members, along with the actual array
+	\param dead_array The array to free
+	\sa create_array()
+*/
+void delete_array(dyn_array* dead_array)
+{
+	free(dead_array->array);
+	free(dead_array);
+}
+
+
+
+
+/*----------------------resize--------------------------------------------------*/
+//! Sets the size of current_array to new_size
+/*! Allocates memory for a new array, copies the old array in parallel, frees the old array, and assignes the nw array to the current_array
+	\param current_array The array to resize
+	\param new_size the size to set the current array to. Must be greater than the aray's current size
+*/
+cilk void resize(dyn_array* current_array, int new_size)		//Sets the size of current_array to new_size
+{
+	//int i;
+	int* temp;
+	
+	if(current_array->size > new_size)
+	{
+		printf("Error: Sizing Problem");
+		return;
+	}
+	
+	current_array->size = new_size;
+	temp = (int*)malloc(current_array->size * sizeof(int));		//Reserve a new chunk of memory
+	
+	/*for(i=0; i<current_array->used; ++i){		//PARALLEL FOR
+		temp[i] = current_array->array[i];
+	}*/
+	spawn parallel_for(current_array, temp, copy, 0, current_array->used);		//Copy to new array in parallel
+	sync;
+	
+	free(current_array->array);
+	current_array->array = temp;
+}
+
+
+
+
+/*----------------------push_back------------------------------------------------*/
+//!Adds a batch of integers to the end of a dynamic array
+/*! Adds integers to the end of a dynamic array in parallel, resizes if it needs to.
+	DONT CALL THIS, call push_back or parallel_push_back
+	\sa parallel_push_back(), push_back()
+*/
+cilk void batch_push_back(void* array, void* data, size_t input_size, void* result)
+{
+	//int i;
+	dyn_array* current_array = (dyn_array*)array;
+	int* input = (int*)data;
+	int* output = (int*)result;
+	
+	
+	if(input_size+current_array->used > current_array->size)	//If current_array needs more space
+	{
+		spawn resize(current_array, 2*(current_array->used+input_size));
+		sync;
+	}
+	
+	/*for(i=0; i<input_size; ++i){				//PARALLEL_FOR
+		current_array->array[current_array->used + i] = input[i];
+	}*/
+	spawn parallel_for(current_array, input, insert, 0, input_size);	//Insert input into current_array in parallel
+	sync;
+
+	current_array->used = current_array->used + input_size;		//Update the current amount of used space
+	Cilk_terminate_batch(_cilk_ws);
+	return;
+}
+
+//! DONT CALL THIS, Call push_back or parallel_push_back instead
+/*! Ultimatel, this is the function that calls Cilk_batchify, but it is not user friendly
+	\sa parallel_push_back(), push_back(), parallel_for()
+*/
+cilk void push_back_iterator(dyn_array* current_array, int* input, int i)
+{
+	Cilk_batchify(_cilk_ws, batch_push_back, current_array, &(input[i]), sizeof(int), NULL);
+}
+
+//!Adds a single item to the end of a dynamic array
+/*! This may be slow because it is implemented with cilk commands, a non-parallel push_back would be better
+	\param current_array the dynamic array to edit
+	\param input pointer to a single integer
+	\sa parallel_push_back()
+*/
+cilk void push_back(dyn_array* current_array, int* input)
+{
+	spawn push_back_iterator(current_array, input, 0);
+}
+
+//!Adds multiple items to the end of a dynamic array, in parallel
+/*!Problem: The input data will not be in hte same order when it is added to the dynamic array
+	\param current_array the dynamic array to edit
+	\param input an array of input data
+	\param size the number of items being pushed back
+	\sa push_back()
+*/
+cilk void parallel_push_back(dyn_array* current_array, int* input, size_t size)
+{
+	spawn parallel_for(current_array, input, push_back_iterator, 0, size);
+	sync;
+}
+
+
+
+
+/*---------------------safe_access-----------------------------------------------------*/
+//!Safe acces to elements of the array
+/*! Range Checks the index of the array give, prints an error message if the index is out of range
+	\param current_array the array to access
+	\param index the index of the dynamic array to access
+	\return the cuntents of the index given. If the index is out of range, VOID DATA is returned
+*/
+int safe_access(dyn_array* current_array, int index)
+{
+	if(index < current_array->used)
+	{
+		return current_array->array[index];
+	}
+	else
+	{
+		printf("Error: index is out of range\n");
+		return VOID_DATA;
+	}
+}
+
+
+
+
+/*-----------------------print_array----------------------------------------------*/
+//! Prints out the dynamic array
+/*! Prints out the contents of the array, along with the size allocated and the amount of that size being used
+	\param current_array The array to print
+*/
+void print_array(dyn_array* current_array)
+{
+	int i;
+	printf("\n[  ");
+	for(i=0; i<current_array->used; ++i)
+	{
+		if(!(i%20) && !(i==0)) printf("\n   ");
+		
+		printf("%d  ", current_array->array[i]);
+	}
+	printf("]\n");
+	printf("Size: %d\tUsed: %d\n", current_array->size, current_array->used);
+}
+
+
+
+/*----------------------parallel_for-----------------------------------------------*/
+//!A parallel for loop
+/*! A paralle for loop that suports functions with the arguements (dyn_array*, int*, int). Works recursively.
+	\param current_array the array to perform a parallel operation on
+	\param other_array a seperate array to help perform the parallel operation
+	\param parallel_function A function pointer with the arguements (dyn_array*,int*,int)
+	\param start the startin point of the for loop: for(i=0;i<end;++i)
+	\param end the ending point of the for loop: for(i=start;i<end;++i)
+	\sa copy(), insert(), push_back_iterator()
+*/
+cilk void parallel_for(dyn_array* current_array, int* other_array, cilk void(*parallel_function)(dyn_array*,int*,int), int start, int end)
+{
+	int middle = start+(end-start)/2;
+	if (end-start<=PARALLEL_CUTOFF) {
+		for (start; start < end; ++start) {
+            spawn parallel_function(current_array, other_array, start);
+		}
+    }
+	else
+	{		
+		spawn parallel_for(current_array, other_array, parallel_function, start, middle); 	//start -> middle-1
+		spawn parallel_for(current_array, other_array, parallel_function, middle+1, end); 	//middle+1 -> end-1
+		spawn parallel_function(current_array, other_array, middle);						//middle
+	}
+}
+
+//!Copys an array
+/*!A parallel function used by parallel_for to copy an array
+	\param current_array the array to copy FROM
+	\param temp the array to copy TO
+	\param i the index being copied
+	\sa parallel_for, insert()
+*/
+cilk void copy(dyn_array* current_array, int* temp, int i)	//Used by parallel_for
+{
+	temp[i] = current_array->array[i];
+}
+
+//!Inserts an array into a dynamic array
+/*!A parallel function used by parallel_for to insert an array onto the END of a dynamic array
+	\param current_array the array to insert into
+	\param input the array to insert
+	\param i the index being inserted
+*/
+cilk void insert(dyn_array* current_array, int* input, int i)	//Used by parallel_for
+{
+	current_array->array[current_array->used + i] = input[i];
+}
+
