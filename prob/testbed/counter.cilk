@@ -84,30 +84,26 @@ cilk int main(int argc, char *argv[])
   for (i = 0; i < nNums; i++) {
     // want -MAX_NUM to MAX_NUM range
     data[i] = rand() % (2*MAX_NUM) - MAX_NUM;
-    //printf("%i ", data[i]);
+    //    printf("%i ", data[i]);
   }
   //  printf("\n");
 
-  /* startTimer(); */
-  /* sequentialIncrement(data, nNums); */
-  /* stopTimer(); */
-  /* sum = counter; */
-  /* printf("Sum: %i\n", sum); */
-  /* printf("Sequential wall time: %lf ms\n", getWallTime()); */
-  /* printf("Sequential process time: %lf ms\n", getProcTime()); */
+  startTimer();
+  sequentialIncrement(data, nNums);
+  stopTimer();
+  sum = counter;
+  printf("Sum: %i\n", sum);
+  printf("Sequential wall time: %lf ms\n", getWallTime());
+  printf("Sequential process time: %lf ms\n", getProcTime());
 
-  /* counter = 0; */
-  /* startTimer(); */
-  /* spawn concurrentIncrement(data, nNums); */
-  /* sync; */
-  /* stopTimer(); */
-  /* printf("Concurrent (Locks) wall time: %lf ms\n", getWallTime()); */
-  /* printf("Concurrent (Locks) process time: %lf ms\n", getProcTime()); */
-  /* assert(counter == sum); */
-  sum = 0;
-  for (i = 0; i < nNums; i++) {
-    sum += data[i];
-  }
+  counter = 0;
+  startTimer();
+  spawn concurrentIncrement(data, nNums);
+  sync;
+  stopTimer();
+  printf("Concurrent (Locks) wall time: %lf ms\n", getWallTime());
+  printf("Concurrent (Locks) process time: %lf ms\n", getProcTime());
+  assert(counter == sum);
 
   startTimer();
   counter = 0;
