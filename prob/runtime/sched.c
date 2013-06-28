@@ -1672,13 +1672,8 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t, ReadyDequ
 void batch_scheduler(CilkWorkerState *const ws, Closure *t);
 void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 {
-  /* 
-   * t contains 'the next thing to do'.  Initially, the
-   * scheduler on proc 0 executes the main closure.
-   */
   int victim;
 
-  /*Cilk_internal_malloc_per_worker_init(context, ws); - moved to child_main*/
   CILK_ASSERT(ws, ws->self >= 0);
   rts_srand(ws, ws->self * 162347);
 
@@ -1697,26 +1692,27 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
       Cilk_enter_state(ws, STATE_STEALING);
 	
       // Decide where to steal from
-      if ((rts_rand(ws) % 100) < (USE_PARAMETER(dsprob)*100)) {
-	// data structure steal
-	batch_scheduler(ws, (Closure *) NULL);
+      /* if ((rts_rand(ws) % 100) < (USE_PARAMETER(dsprob)*100)) { */
+      /* 	// data structure steal */
+      /* 	ws->batch_id = USE_SHARED(current_batch_id); */
+      /* 	batch_scheduler(ws, (Closure *) NULL); */
 
-      } else { // regular steal */
+      /* } else { // regular steal *\/ */
 	victim = rts_rand(ws) % USE_PARAMETER(active_size);
-	if (victim != ws->self && USE_SHARED(pending_batch).array[victim].status == DS_DONE) {
+	if (victim != ws->self ){ //&& USE_SHARED(pending_batch).array[victim].status == DS_DONE) {
 	  // check if the victim is doing BATCH work!***
 	  // otherwise we'll steal an empty closure and simply wait
 	  /* if (USE_SHARED(pending_batch).array[victim].status != DS_DONE) { // rsu *** */
 	  /* 	t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques)); */
 	  /* } else { */
 	  t = Closure_steal(ws, victim, USE_PARAMETER(deques));
-	  //					}
+	  /* } */
 	  if (!t && USE_PARAMETER(options->yieldslice) &&
 	      !USE_SHARED(done)) {
 	    Cilk_lower_priority(ws);
 	  }
 	}
-      }
+      /* } */
       /* Cilk_fence(); */
       Cilk_exit_state(ws, STATE_STEALING);
     }
@@ -1797,7 +1793,7 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
     }
 
   }
-
+  ws->batch_id = 0;
   ws->current_cache = &ws->cache;
   Cilk_exit_state(ws, STATE_BATCH_TOTAL);
 

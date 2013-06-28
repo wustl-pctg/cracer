@@ -822,7 +822,7 @@ declaring.list: /*P*/
 	    }
         | declaring.list ',' declarator
             { 
-	      $$ = AppendDecl($1, $3, Redecl);
+	      $<L>$ = AppendDecl($1, $3, Redecl);
 	    }
           asm.opt { SetDeclAsm($3, $5); }
           attributes.opt { SetDeclAttribs($3, $7.tq); }
@@ -888,7 +888,7 @@ default.declaring.list:  /*P*/ /* Can't  redeclare typedef names */
               $$ = MakeNewList(SetDeclInit($2, $6)); 
 	    }
         | default.declaring.list ',' identifier.declarator
-            { $$ = AppendDecl($1, $3, NoRedecl); }
+            { $<L>$ = AppendDecl($1, $3, NoRedecl); }
           attributes.opt { SetDeclAttribs($3, $5.tq); }
 	  initializer.opt
             { SetDeclInit($3, $7); }
@@ -1640,11 +1640,18 @@ struct.default.declaring.list: /*P*/
 /*                        */    /* ? */ /* ?.?.? */
 struct.declaring.list:  /*P*/       
           type.specifier struct.declarator
-            { $$ = MakeNewList(SetDeclType($2, $1, SU)); }
+            { $$ = MakeNewList(SetDeclType($2, $1, SU)); }        
         | type.specifier.nosue attributes struct.declarator
           {
 	       SetDeclAttribs($3, $2.tq);
 	       $$ = MakeNewList(SetDeclType($3, $1, SU));
+	  }
+	  /* Jim: Adding this grammar rule to allow
+	     unnamed bitfields to pass through without causing errors.  */ 
+        | type.specifier bit.field.size
+	  {
+	    Node *d = MakeDecl(NULL, TQ_SU_DECL, $1, NULL, $2);
+	    $$ = MakeNewList(d);
 	  }
         | struct.or.union '{' struct.declaration.list '}'
             {
@@ -1664,7 +1671,17 @@ struct.declarator: /*P*/
           declarator bit.field.size.opt attributes.opt
             { SetDeclAttribs($1, $3.tq);
               $$ = SetDeclBitSize($1, $2); }
-        ;
+    ;
+
+
+
+/* struct.unnamed.bitfield: */
+/*       type.specifier bit.field.size ';'  */
+/*       {  */
+/*         Node *d = MakeDecl(NULL, EMPTY_TQ, $1, NULL, $2);  */
+/*         $$ = SetDeclType(d, $1, SU);  */
+/*       }  */
+/*    ;  */
 
 /*                        */    /* ? */ /* ?.?.? */
 struct.identifier.declarator: /*P*/
