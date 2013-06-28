@@ -33,6 +33,9 @@ void hashTable_delete(hashTable* dead_table);
 void hashTable_deleteItems(hashTableItem* dead_item);
 cilk void hashTable_insert(hashTable* table, int key);
 cilk void hashTable_batchInsert(hashTable* table, void* insertions, int size, void* results);
+hashTableItem* hashTable_search(hashTable* table, int key); //search for the key, returns the dataItem.
+cilk void hashTable_remove(hashTable* table, hashTableItem* item);
+cilk void hashTable_batchRemove(hashTable* table, void* removals, int input_size, void* results);
 int hashTable_hash(int size, int key);
 void hashTable_print(hashTable* table, int (*printfunct)(void*));
 cilk void resize(hashTable* current_table, int new_size);
@@ -40,13 +43,14 @@ cilk void parallel_for1(hashTable* current_table, int* inputs, cilk void(*parall
 cilk void parallel_for2(hashTable* current_table, hashTable* temp, cilk void(*parallel_function)(hashTable*,hashTable*,int), int start, int end);
 cilk void parallel_for_remove(hashTable* current_table, hashTableItem** inputs, cilk void(*parallel_function)(hashTable*,hashTableItem*), int start, int end);
 cilk void copy(hashTable* current_table, hashTable* temp, int i);
-cilk hashTableItem* hashTable_search(hashTable* table, int key); //search for the key, returns the dataItem.
+cilk void parallel_delete(hashTable* current_table, hashTable* place_holder, int i);
 
 
 /*-----------------------------------Create/Initialize Things---------------------------------------*/
 //!Creates a hash table of input size.
 /*! \param size the size of the new hash table
 	\return a pointer to the new hash table
+	\sa hashTable_delete(), hashTable_deleteItems(), hashTable_createItem()
 */
 hashTable* hashTable_create(int size){
     int i;
@@ -65,6 +69,7 @@ hashTable* hashTable_create(int size){
 /*!Initializes a linked list item, with key and NULL pointers.
 	\param	key the data to be stored
 	\return A pointer to the hash table item created
+	\sa hashTable_delete(), hashTable_deleteItems(), hashTable_create()
 */
 hashTableItem* hashTable_createItem(int key){
     hashTableItem* result = malloc(sizeof(hashTableItem));
@@ -75,6 +80,9 @@ hashTableItem* hashTable_createItem(int key){
 }
 
 /*-----------------------------------Delete/Free things---------------------------------------------------*/
+//!Free every part of a Hash Table
+/*! \sa hashTable_deleteItems(), hashTable_create(), hashTable_createItem()
+*/
 void hashTable_delete(hashTable* dead_table)
 {
 	int i;
@@ -87,9 +95,11 @@ void hashTable_delete(hashTable* dead_table)
 	free(dead_table);
 }
 
+//!Free all items in a slot
+/*! \sa hashTable_delete(), hashTable_create(), hashTable_createItem()
+*/
 void hashTable_deleteItems(hashTableItem* dead_item)
 {
-	hashTableItem* temp;
 	if(dead_item == NULL)
 		return;
 	else
@@ -147,7 +157,6 @@ cilk void hashTable_insertItem(hashTable* table, int key){
 cilk void hashTable_batchInsert(hashTable* table, void* insertions, int input_size,void* results){
     //Insertions will always be a int key followed by a void*
 	int* inputs = insertions;
-    int i;
 	
 	if(input_size+table->load > (table->size * 0.7))	//If current_array needs more space
 	{
@@ -155,12 +164,40 @@ cilk void hashTable_batchInsert(hashTable* table, void* insertions, int input_si
 		sync;
 	}
     table->load+=input_size;
-    //Parallel operation must be done.
-	/* for (i=0;i<size;i++) {
-		hashTable_insert(table,inputs[i]->key,inputs[i]->item); //Probably need to handle collisions cleverly.
-	}*/
+	
 	spawn parallel_for1(table, inputs, hashTable_insert, 0, input_size);
 	sync;
+	
+	Cilk_terminate_batch(_cilk_ws);
+}
+
+//!A sequetial insert function
+
+void hashTable_sequentialInsert(hashTable* table, int key) {
+    
+	int slot = hashTable_hash(table->size, key);
+    hashTableItem* ptr;
+    hashTableItem* dataItem = hashTable_createItem(key);
+	if(table->load > (table->size * 0.7))	//If current_array needs more space
+	{
+		table->slots = (hashTableItem**)realloc(table->slots, 2*(table->size));
+		table->size *= 2;
+	}
+	printf("2\n");
+    if (table->slots[slot]==NULL){ //No list
+        table->slots[slot]=dataItem;
+        dataItem->next=NULL;
+        dataItem->prev=NULL;
+    }
+    else {
+        ptr = table->slots[slot]; //Start at the head of the list.
+        while(ptr->next!=NULL) {
+            ptr=ptr->next;
+        }
+        ptr->next=dataItem;
+        ptr->next->prev=ptr;
+    }
+	table->load++;
 }
 
 
@@ -170,7 +207,7 @@ cilk void hashTable_batchInsert(hashTable* table, void* insertions, int input_si
 	\param key the key to serch for
 	\return The hash table item with the given key. If no such item is found, return NULL
 */
-cilk hashTableItem* hashTable_search(hashTable* table, int key) {
+hashTableItem* hashTable_search(hashTable* table, int key) {
     int slot;
     hashTableItem* ptr;
     slot = hashTable_hash(table->size, key);
@@ -199,29 +236,29 @@ cilk hashTableItem* hashTable_search(hashTable* table, int key) {
 	\sa hashTable_batchRemove()
 */
 cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
-    int slot;
+    int slot = 0;
     if (item==NULL){
-        return; //Do nothing.
+		return; //Do nothing.
     }
     else {
-        slot= hashTable_hash(table->size, item->key);
-        Cilk_lock(table->locks[slot]);
-        if (item->prev==NULL) {
-            if (item->next==NULL){
-                table->slots[slot]=NULL;
+		slot = hashTable_hash(table->size, item->key);
+		Cilk_lock(table->locks[slot]);
+		if (item->prev==NULL) {			//If item is the first in the slot
+            if (item->next==NULL){			//If item is the only item in the slot
+				table->slots[slot]=NULL;
             }
-            else {
-                table->slots[slot]=item->next;
-                item->next->prev=NULL;
-            }
-        }
-        else {
-            item->prev->next=item->next;
-            if (item->next!=NULL){
-                item->next->prev=item->prev;
+            else {							//If item is NOT the only item in the slot
+				table->slots[slot]=item->next;
+				item->next->prev=NULL;
             }
         }
-        free(item);
+        else {							//If item is NOT the first in the slot
+			item->prev->next=item->next;		//<----------Cut the item out of the list
+            if (item->next!=NULL){			//If item is the last item in the list
+				item->next->prev=item->prev;
+            }
+        }
+		free(item);
         Cilk_unlock(table->locks[slot]);
     }
 }
@@ -245,9 +282,14 @@ cilk void hashTable_batchRemove(hashTable* table, void* removals, int input_size
 	}*/
 	spawn parallel_for_remove(table, inputs, hashTable_remove, 0, input_size);
 	sync;
+	Cilk_terminate_batch(_cilk_ws);
 }
 
-//NEED TO WRITE A FUNCTION TO CALL BATCHIFY on batch_Remove
+//segfaults when this is called, however, Robert thinks it is a problem with batchify and not my code
+// hashTable_batchRemove works on its own.
+cilk void hashTable_removeItem(hashTable* table, hashTableItem* item){
+    Cilk_batchify(_cilk_ws, hashTable_batchRemove, table, item, sizeof(hashTableItem), NULL);
+}
 
 /*--------------------------------Other--------------------------------------------*/
 //!Hash the input key based on size.
@@ -276,13 +318,10 @@ void hashTable_print(hashTable* table, int (*printfunct)(void*)){
     int i;
 	
     for (i=0;i<table->size;i++){
-        if (table->slots[i]==NULL){
-            printfunct(NULL);
-        }
-        else { 
-            printfunct(table->slots[i]);
-        }
+		printf("6\n");
+		printfunct(table->slots[i]);	//Our current print function is in test_hash_table.cilk
     }
+	printf("5\n");
 	printf("Load: %d\t Size: %d\n", table->load, table->size);
 }
 
@@ -291,15 +330,15 @@ void hashTable_print(hashTable* table, int (*printfunct)(void*)){
 	\param current_array The array to resize
 	\param new_size the size to set the current array to. Must be greater than the aray's current size
 */
-cilk void resize(hashTable* current_table, int new_size)		//Sets the size of current_array to new_size
+cilk void resize(hashTable* current_table, int new_size)
 {
 	int i;
-	hashTableItem** temp;
+	//hashTableItem** temp;
     hashTable* newTable;
 	
 	if(current_table->size > new_size)
 	{
-		printf("Error: Sizing Problem");
+		printf("Error: Sizing Problem\n");
 		return;
 	}
 	newTable = hashTable_create(new_size);
@@ -311,14 +350,22 @@ cilk void resize(hashTable* current_table, int new_size)		//Sets the size of cur
 	}*/
 	spawn parallel_for2(current_table, newTable, copy, 0, current_table->size);		//Copy to new array in parallel
 	sync;
+	
+	/*for(i=0; i<current_table->size; ++i)		//PARALLEL FOR
+	{
+		hashTable_deleteItems(current_table->slots[i]);
+	}*/
+	spawn parallel_for2(current_table, NULL, parallel_delete, 0, current_table->size);
+	sync;
+	
+	free(current_table->locks);
+	free(current_table->slots);
+	
 	current_table->size=newTable->size;
     current_table->load=newTable->load;
-    free(current_table->locks);
-	free(current_table->slots);
     current_table->locks = newTable->locks;
-    current_table->slots=newTable->slots;
+    current_table->slots = newTable->slots;
     free(newTable);
-    
 }
 
 
@@ -377,7 +424,7 @@ cilk void parallel_for2(hashTable* current_table, hashTable* temp, cilk void(*pa
 	\param parallel_function A parallel function with arguements (hashTable*,hashTableItem*)
 	\param start the startin point of the for loop: for(i=0;i<end;++i)
 	\param end the ending point of the for loop: for(i=start;i<end;++i)
-	\sa hashTable_remobe(), hashTable_batchRemove()
+	\sa hashTable_remove(), hashTable_batchRemove()
 */
 cilk void parallel_for_remove(hashTable* current_table, hashTableItem** inputs, cilk void(*parallel_function)(hashTable*,hashTableItem*), int start, int end)
 {
@@ -411,4 +458,15 @@ cilk void copy(hashTable* current_table, hashTable* temp, int i)
         temp->load++;
         item=ptr;
     }
+}
+
+//! A parallel function to used in resize()
+/*! Deletes the contents of the old hash table
+	\param current_table the table to delete things from
+	\param place_holder A place holder for parallel_for2, pass in NULL
+	\param i the current index
+*/
+cilk void parallel_delete(hashTable* current_table, hashTable* place_holder, int i)
+{
+	hashTable_deleteItems(current_table->slots[i]);
 }

@@ -1,29 +1,31 @@
 #include "hash_table_ints.cilk"
 
-#define TEST_SIZE 5000
+#define TEST_SIZE 20
 
 static int count;
 
-int printints(void* input){
-    hashTableItem* ptr;
+int printints(void* input){	//This doesnt mix with sequential insert for some reason
+	hashTableItem* ptr;
     if (input==NULL) {
-        printf("{nil}");
+        printf("{nil}\n");
     }
     else {
-        ptr=input;
+        ptr=(hashTableItem*)input;
         printf("{");
         do {
-            printf("%d ",ptr->key);
+            printf("ptr: %p\n", ptr);
+			printf("key: %d\n",ptr->key);
             ptr=ptr->next;
             count++;
         }
         while (ptr!=NULL);
-        printf("}");
+        printf("}\n");
     }
 }
 
 cilk int main() {
     hashTable* table1 = hashTable_create(15);
+	hashTableItem* search_array[TEST_SIZE/4];
     int i;
     int array[TEST_SIZE];
 	
@@ -35,10 +37,30 @@ cilk int main() {
         spawn hashTable_insertItem(table1,array[i]);
         sync;
     }
-    //spawn hashTable_batchInsert(table1,array,NULL,TEST_SIZE);
-   // sync;
-    //hashTable_print(table1,printints);
-    //printf("\ncount: %d\n",count);
+	
+	for(i=100; i<105; ++i){
+		hashTable_sequentialInsert(table1, i);
+	}
+	printf("table1->size: %d\n", table1->size);
+	hashTable_print(table1,printints);
+	printf("\ncount: %d\n",count);
+    printf("load: %d\n", table1->load);
+	printf("-----------------------------------------------\n");
+	
+	for(i=0;i<TEST_SIZE/4;++i)
+	{
+		search_array[i] = hashTable_search(table1, array[i]);	//Items to remove
+	}
+	
+	/*for (i=0;i<TEST_SIZE/4;i++){		
+		spawn hashTable_removeItem(table1,search_array[i]);		//Actually remove items
+		sync;
+	}*/
+	spawn hashTable_batchRemove(table1, search_array, TEST_SIZE/4, NULL);
+	sync;
+	
+    hashTable_print(table1,printints);
+    printf("\ncount: %d\n",count);
     printf("load: %d\n", table1->load);
 	hashTable_delete(table1);
 }
