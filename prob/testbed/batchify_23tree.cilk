@@ -2,7 +2,7 @@
 #include "util/timer.h"
 #include "util/parfor.cilkh"
 
-#define TEST_SIZE 20
+#define TEST_SIZE 5000
 
 typedef struct in {
    void* ds;
@@ -46,7 +46,7 @@ cilk int main()
     stopTimer();
     printf("Wall time: %lf ms\n", getWallTime());
     printf("Proc time: %lf ms\n", getProcTime());
-    print_tree(test_tree->root,0);
+    //print_tree(test_tree->root,0);
 	delete_tree(test_tree);
 	return 0;
 }

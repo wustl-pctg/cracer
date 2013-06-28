@@ -339,15 +339,18 @@ cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers,
     void* temp;
 	int number_of_children=0;
 	int i;
-    printf("starting with:\n");
+    printf("starting with %d:\n",size);
     for (i=0;i<size;i++){
         printf("%d \n", input_integers[i]);
     }
     
+    printf("start sort\n");
 	qsort((void*)input_integers, size, sizeof(int), compare_integers); //Find a faster sort? This is currently the standard c library's quicksort. 
+    printf("start mark\n");
 	
 	spawn parallel_for_mark(current_tree->root, input_integers, result_array, 0, size); //Searches through the tree to find a place to insert each node. Mark the paths.
 	sync;
+    printf("start split\n");
     
     result = spawn recursive_split(current_tree->root, result_array, input_integers, size, &number_of_children); //Split the tree according to marked paths.
 	sync;
@@ -355,6 +358,7 @@ cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers,
         The root of the tree may also need to be fixed - it is possible that the recursive split does not end up with only 1 node at the top.
         In such a case, simply build upwards a bit.
     */
+    printf("start root fix\n");
 	if(number_of_children == 0)
 		printf("There is a problem with the number_of_children variable");
 		
@@ -373,6 +377,7 @@ cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers,
     
 	current_tree->root = *result;
     //Free the temporary memory that has been used.
+    printf("free memory\n");
 	free(result_array);
 	free(result);
     Cilk_terminate_batch(_cilk_ws);
