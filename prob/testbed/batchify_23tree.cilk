@@ -28,17 +28,16 @@ cilk int main()
         input[i].input=i;
         input[i].ds=test_tree;
     }
-    /*printf("Start seq run\n");
+    printf("Start seq run\n");
     startTimer();
     reset(&test_tree);
     for (i=0;i<TEST_SIZE;i++){
-        spawn insert_item(test_tree,input[i].input);
-        sync;
+        sequential_insert(test_tree,input[i].input);
     }
     stopTimer();
     printf("Wall time: %lf ms\n", getWallTime());
     printf("Proc time: %lf ms\n", getProcTime());
-    */
+    
     printf("Start parallel run\n");
     startTimer();
     spawn parforpar_1(0,TEST_SIZE-1,&testInsert,input);

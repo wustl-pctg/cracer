@@ -1,0 +1,44 @@
+#include <stdio.h>
+#include <cilk-lib.cilkh>
+#include "util/parfor.cilkh"
+#include "util/timer.h"
+
+#define TEST_SIZE 1000
+#define WRITE_SIZE 500
+cilk void do_work(int writes) {
+    //does a number of writes/moves some registers back and forth
+    int j, k;
+    for (j=0; j < writes; j++){
+        __asm__ __volatile("movl %1, %%eax;\n\t addl $5, %%eax;\n\t movl %%eax, %0;":"=r"(k):"r"(j):"%eax");
+    } //This should compile.
+}
+
+cilk void do_arbitrary_work(int index, void* writes) {
+    int* works = writes;
+    spawn do_work(works[index]);
+    sync;
+}
+
+cilk void batch_labor(void* ds, int *input, int size, void* useless) {
+    spawn parforpar_1(0,size-1,&do_arbitrary_work,input);
+    sync;
+    Cilk_terminate_batch(_cilk_ws);
+}
+
+cilk void labor(void* datastructure, int work){
+    Cilk_batchify(_cilk_ws, &batch_labor, datastructure, &work, sizeof(int), NULL);
+}
+
+cilk int main() {
+    int i;
+    
+    startTimer();
+    for (i=0;i<TEST_SIZE;i++){
+        spawn labor(NULL,WRITE_SIZE);
+    }
+    sync;
+    stopTimer();
+    printf("Wall time: %lf ms\n", getWallTime());
+    printf("Proc time: %lf ms\n", getProcTime());
+    return 0;
+}
