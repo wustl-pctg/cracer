@@ -22,6 +22,7 @@ cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)	//bat
   int *nums = (int*)data;
   int temp = nums[size-1];
   int *count = (int*)dataStruct;
+  int i;
 
   spawn prefixSumsExc(nums, size, nums);
   sync;
