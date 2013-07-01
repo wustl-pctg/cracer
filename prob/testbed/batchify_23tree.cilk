@@ -2,7 +2,7 @@
 #include "util/timer.h"
 #include "util/parfor.cilkh"
 
-#define TEST_SIZE 5000
+#define TEST_SIZE 100000
 
 typedef struct in {
    void* ds;
@@ -15,9 +15,15 @@ cilk void testInsert(int index, void* data){
     sync;
 }
 
+cilk void testSeqInsert(int index, void* data){
+    dsInput* input = data;
+    spawn sequential_insert(input[index].ds, input[index].input);
+    sync;
+}
+
 void reset(struct tree23** tree){
     delete_tree(*tree);
-    *tree=create_tree(50);
+    *tree=create_tree(TEST_SIZE/2);
 }
 cilk int main()
 {
@@ -29,15 +35,16 @@ cilk int main()
         input[i].ds=test_tree;
     }
     printf("Start seq run\n");
-    startTimer();
     reset(&test_tree);
-    for (i=0;i<TEST_SIZE;i++){
-        sequential_insert(test_tree,input[i].input);
-    }
+    startTimer();
+    spawn parforpar_1(0,TEST_SIZE-1,&testSeqInsert,input);
+    sync;
     stopTimer();
     printf("Wall time: %lf ms\n", getWallTime());
     printf("Proc time: %lf ms\n", getProcTime());
+    //print_tree(test_tree->root,0);
     
+    reset(&test_tree);
     printf("Start parallel run\n");
     startTimer();
     spawn parforpar_1(0,TEST_SIZE-1,&testInsert,input);

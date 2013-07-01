@@ -42,6 +42,7 @@ struct node23
 struct tree23
 {
 	struct node23 *root;
+    Cilk_lockvar lock;
 };
 
 
@@ -62,7 +63,7 @@ int find_insert_index(int *input_array, int size, struct node23* target);
 
     //Datastructure functions (to act like a concurrent datastructure)
 cilk void insert_item(struct tree23* tree, int input);
-void sequential_insert(struct tree23* tree, int input);
+cilk void sequential_insert(struct tree23* tree, int input);
 struct node23* sequential_insert_helper(struct node23* node, struct node23* insert);
 
 	//Search and Mark
@@ -147,6 +148,7 @@ struct tree23* create_tree(int node_data)
 	}
 	
 	new_tree->root = create_node(node_data);
+    Cilk_lock_init(new_tree->lock);
 	return new_tree;
 }
 
@@ -327,10 +329,15 @@ cilk void insert_item(struct tree23* tree, int input){
     Cilk_batchify(_cilk_ws, &complex_batch_insert, tree, &input, sizeof(int), NULL);
 }
 
-
-void sequential_insert(struct tree23* tree, int input) {
+/*! \brief Inserts the input item into the given tree.
+    
+     This needs a lock on the tree before it does any sort of re-arranging.
+     It also moves up the tree and fixes values.
+*/
+cilk void sequential_insert(struct tree23* tree, int input) {
     struct node23* node = create_node(input);
     struct node23* new_node;
+    Cilk_lock(tree->lock);
     searchAndMark(tree->root,input,marked);
     new_node = sequential_insert_helper(tree->root, node);
     if (new_node!=NULL){
@@ -342,13 +349,19 @@ void sequential_insert(struct tree23* tree, int input) {
             node->left=new_node;
             node->middle=tree->root;
         }
-        
+        tree->root=node;
+        fix_node_values(tree->root);
     }
+    Cilk_unlock(tree->lock);
 }
+/*! \brief A recursive helper function for the insert.
 
+*/
 struct node23* sequential_insert_helper(struct node23* node, struct node23* insert) {
     struct node23* subResult;
-    int i;
+    struct node23* result=NULL;
+    int magic;
+    int leafcount=0;
     if (node==NULL) { //If NULL node
         return NULL;
     }
@@ -361,16 +374,68 @@ struct node23* sequential_insert_helper(struct node23* node, struct node23* inse
         return insert;
     }
     else { //Marked but not leaf.
-        for (i=0;i<3;i++){
-            subResult = sequential_insert_helper(node->left,insert);
+        for (magic=0;magic<3;magic++){
+            subResult = sequential_insert_helper(((struct node23**)node)[magic],insert);
             if (subResult!=NULL){
+                magic++;
                 break;
             }
         }
-        if (i<45){
-            printf("too low\n");
+        leafcount+=(node->left!=NULL)+(node->middle!=NULL)+(node->right!=NULL);
+        if (subResult==NULL){
+            return NULL;
         }
-        return insert;
+        if (leafcount==2){
+           if (magic==2){
+                if (subResult->max>node->middle->max){
+                    node->right=subResult;
+                }
+                else {
+                    node->right=node->middle;
+                    node->middle=subResult;
+                }
+            }
+            else {
+                node->right=node->middle;
+                node->middle=node->left;
+                node->left=subResult;
+            }
+            fix_node_values(node);
+            return NULL;
+        }
+        else if (leafcount==3){
+            result = create_node(VOID_DATA);
+            if (magic==3){
+                if (subResult->max>node->right->max){
+                    result->left=node->right;
+                    result->middle=subResult;
+                }
+                else {
+                    result->middle=node->right;
+                    result->left=subResult;
+                }
+                node->right=NULL;
+            }
+            else if (magic==2){
+                result->left=node->middle;
+                result->middle=node->right;
+                node->middle=subResult;
+                node->right=NULL;
+            }
+            else {
+                result->left=node->middle;
+                result->middle=node->right;
+                node->middle=node->left;
+                node->right=NULL;
+                node->left=subResult;
+            }
+            fix_node_values(result);
+            fix_node_values(node);
+            return result;
+        }
+        else {
+            printf("unexpected leaf count\n");
+        }
     }
 }
 /*----------------------------complex_batch_insert-------------------------------------------------------*/

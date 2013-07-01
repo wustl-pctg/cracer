@@ -1,11 +1,17 @@
 #include <stdio.h>
 #include <cilk-lib.cilkh>
+#include <getopt.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include "util/parfor.cilkh"
 #include "util/timer.h"
 
-#define TEST_SIZE 1000
-#define WRITE_SIZE 500
-cilk void do_work(int writes) {
+#define DEFAULT_WORK 1000
+#define DEFAULT_COUNT 500
+#define DEFAULT_ITERS 1
+void ds_work(int writes);
+
+void ds_work(int writes) {
     //does a number of writes/moves some registers back and forth
     int j, k;
     for (j=0; j < writes; j++){
@@ -13,32 +19,117 @@ cilk void do_work(int writes) {
     } //This should compile.
 }
 
-cilk void do_arbitrary_work(int index, void* writes) {
+cilk void work_function(int index, void* writes) { //KL this is so that the ds_work method can keep its signature of only 1 writes argument.
     int* works = writes;
-    spawn do_work(works[index]);
+    ds_work(works[index]);
     sync;
 }
 
-cilk void batch_labor(void* ds, int *input, int size, void* useless) {
-    spawn parforpar_1(0,size-1,&do_arbitrary_work,input);
+cilk void batch_function(void* ds, int *input, int size, void* useless) {
+    spawn parforpar_1(0,size-1,&work_function,input);
     sync;
     Cilk_terminate_batch(_cilk_ws);
 }
 
-cilk void labor(void* datastructure, int work){
-    Cilk_batchify(_cilk_ws, &batch_labor, datastructure, &work, sizeof(int), NULL);
+cilk void ds_function(void* datastructure, int work){
+    Cilk_batchify(_cilk_ws, &batch_function, datastructure, &work, sizeof(int), NULL);
 }
 
-cilk int main() {
-    int i;
-    
-    startTimer();
-    for (i=0;i<TEST_SIZE;i++){
-        spawn labor(NULL,WRITE_SIZE);
+cilk void ds_locking_function(void* l, int work){
+    Cilk_lockvar* lock = l;
+    Cilk_lock(*lock);
+    ds_work(work);
+    Cilk_unlock(*lock);
+}
+void usage(){
+    printf("Usage is:\n");
+    printf("doWork [-nproc <processors>] [-w <work per op>] [-o <operation count>] [-i <iterations>]\n");
+
+}
+
+cilk void call_in_parallel(int begin, int end, cilk void (*func)(void*,int), void* ds, int input)
+{
+	int i;
+	if (end - begin <= PARFOR_THRESHOLD) {
+		for (i = begin; i <= end; i++) {
+			spawn func(ds, input);
+		}			
+        sync;
+	} else {
+		i = begin+(end-begin)/2;
+		spawn call_in_parallel(begin, i, func,ds,input);
+		spawn call_in_parallel(i + 1, end, func,ds,input);
+		sync;
+	}
+}
+
+cilk int main(int argc, char** argv) { //KL some basic command line parsing here.
+    int index,i;
+    int opt=-2;
+    int opWork=DEFAULT_WORK, opCount=DEFAULT_COUNT, iterations=DEFAULT_ITERS;
+    int verbose=1;
+    Cilk_lockvar lock;
+    struct option all_options[] = {
+        {"work", required_argument,0,'w'},
+        {"operations", required_argument,0,'o'},
+        {"iterations", required_argument,0,'i'},
+        {"help", no_argument,0,'h'},
+        {"brief", no_argument,&verbose,0}
+    };
+    //Note that getopts_long puts the args to an option in char* optarg
+    while ((opt = getopt_long(argc,argv,"w:o:i:h",all_options,&index))!=-1) {
+        switch(opt){
+            case 0:
+                if (all_options[index].flag!=0){
+                    break;
+                }   
+                else {
+                    printf("Invalid option %s\n",all_options[index].name);
+                    break;
+                }
+            case 'w':
+                opWork=atoi(optarg);
+                break;
+            case 'i':
+                iterations=atoi(optarg);
+                break;
+            case 'o':
+                opCount=atoi(optarg);
+                break;
+            case '?':
+                break;
+            case 'h':
+            default:
+                usage();
+                return -1;
+        }
     }
-    sync;
-    stopTimer();
-    printf("Wall time: %lf ms\n", getWallTime());
-    printf("Proc time: %lf ms\n", getProcTime());
-    return 0;
+    if (argc==1 && verbose) {
+        printf("using defaults. use -h to see usage\n");
+    }
+    if (verbose){
+        printf("number of data-operation is set at %d\n",opCount);
+        printf("work per data-operation is set at %d\n",opWork);
+    }
+    Cilk_lock_init(lock);
+    for (i=0;i<iterations;i++){
+        printf("Begin iteration %d:\n",i);
+        startTimer();
+        spawn call_in_parallel(0,opCount,&ds_locking_function,&lock,opWork);
+        sync;
+        stopTimer();
+        printf("Locks\n");
+        printf("Wall time: %lf ms\n", getWallTime());
+        printf("Proc time: %lf ms\n", getProcTime());
+        
+        startTimer();
+        spawn call_in_parallel(0,opCount,&ds_function,NULL,opWork);
+        sync;
+        stopTimer();
+        printf("Batch\n");
+        printf("Wall time: %lf ms\n", getWallTime());
+        printf("Proc time: %lf ms\n", getProcTime());
+    }
+    
+   return 0;
 }
