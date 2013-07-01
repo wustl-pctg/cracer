@@ -9,6 +9,7 @@
 #define DEFAULT_WORK 1000
 #define DEFAULT_COUNT 500
 #define DEFAULT_ITERS 1
+#define DEFAULT_PRINT_INTERVAL 10
 void ds_work(int writes);
 
 void ds_work(int writes) {
@@ -43,7 +44,8 @@ cilk void ds_locking_function(void* l, int work){
 }
 void usage(){
     printf("Usage is:\n");
-    printf("doWork [-nproc <processors>] [-w <work per op>] [-o <operation count>] [-i <iterations>]\n");
+    printf("doWork [--nproc <processors>] [-w <work per op>] [-o <operation count>] [-i <iterations>]\n");
+    printf("[--brief] [--print_interval <iterations to print at>]\n");
 
 }
 
@@ -62,22 +64,36 @@ cilk void call_in_parallel(int begin, int end, cilk void (*func)(void*,int), voi
 		sync;
 	}
 }
+double getAverage(double* array, int size){
+    double avg=0;
+    int i;
+    for (i=0;i<size;i++){
+        avg+=array[i];
+    }
+    avg = avg / (double)size;
+    return avg;
+}
 
 cilk int main(int argc, char** argv) { //KL some basic command line parsing here.
     int index,i;
     int opt=-2;
     int opWork=DEFAULT_WORK, opCount=DEFAULT_COUNT, iterations=DEFAULT_ITERS;
     int verbose=1;
+    int printInterval=DEFAULT_PRINT_INTERVAL;
+    double avg;
+    double *wallTimesLock, *pTimesLock;
+    double *wallTimesBatch,*pTimesBatch;
     Cilk_lockvar lock;
     struct option all_options[] = {
         {"work", required_argument,0,'w'},
         {"operations", required_argument,0,'o'},
         {"iterations", required_argument,0,'i'},
         {"help", no_argument,0,'h'},
-        {"brief", no_argument,&verbose,0}
+        {"brief", no_argument,&verbose,0},
+        {"print_interval",required_argument,0,'p'}
     };
     //Note that getopts_long puts the args to an option in char* optarg
-    while ((opt = getopt_long(argc,argv,"w:o:i:h",all_options,&index))!=-1) {
+    while ((opt = getopt_long(argc,argv,"w:o:i:hp:",all_options,&index))!=-1) {
         switch(opt){
             case 0:
                 if (all_options[index].flag!=0){
@@ -96,6 +112,9 @@ cilk int main(int argc, char** argv) { //KL some basic command line parsing here
             case 'o':
                 opCount=atoi(optarg);
                 break;
+            case 'p':
+                printInterval=atoi(optarg);
+                break;
             case '?':
                 break;
             case 'h':
@@ -112,24 +131,44 @@ cilk int main(int argc, char** argv) { //KL some basic command line parsing here
         printf("work per data-operation is set at %d\n",opWork);
     }
     Cilk_lock_init(lock);
+    wallTimesLock = calloc(iterations, sizeof(long));
+    pTimesLock = calloc(iterations,sizeof(long));
+    wallTimesBatch = calloc(iterations, sizeof(long));
+    pTimesBatch = calloc(iterations,sizeof(long));
     for (i=0;i<iterations;i++){
-        printf("Begin iteration %d:\n",i);
+        if (verbose || i%printInterval==0) {
+            printf("Iteration %d.\n",i);
+        }
         startTimer();
         spawn call_in_parallel(0,opCount,&ds_locking_function,&lock,opWork);
         sync;
         stopTimer();
-        printf("Locks\n");
-        printf("Wall time: %lf ms\n", getWallTime());
-        printf("Proc time: %lf ms\n", getProcTime());
+        wallTimesLock[i]=getWallTime();
+        pTimesLock[i]=getProcTime();
+        if (verbose){
+            printf("Locks\n");
+            printf("Wall time: %lf ms\n", wallTimesLock[i]);
+            printf("Proc time: %lf ms\n", pTimesLock[i]);
+        }
         
         startTimer();
         spawn call_in_parallel(0,opCount,&ds_function,NULL,opWork);
         sync;
         stopTimer();
-        printf("Batch\n");
-        printf("Wall time: %lf ms\n", getWallTime());
-        printf("Proc time: %lf ms\n", getProcTime());
+        wallTimesBatch[i]=getWallTime();
+        pTimesBatch[i]=getProcTime();
+        if (verbose){
+            printf("Batch\n");
+            printf("Wall time: %lf ms\n", wallTimesBatch[i]);
+            printf("Proc time: %lf ms\n", pTimesBatch[i]);
+        }
     }
+    //Print the averages:
+    printf("Average results:\n");
+    avg = getAverage(wallTimesLock,iterations);
+    printf("Wall time with locks: %lf\n",avg);
+    avg = getAverage(wallTimesBatch,iterations);
+    printf("Wall time with batch: %lf\n",avg);
     
    return 0;
 }
