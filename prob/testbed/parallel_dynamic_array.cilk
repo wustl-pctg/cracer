@@ -153,28 +153,48 @@ cilk void push_back_iterator(dyn_array* current_array, int* input, int i)
 	Cilk_batchify(_cilk_ws, batch_push_back, current_array, &(input[i]), sizeof(int), NULL);
 }
 
-//!Adds a single item to the end of a dynamic array
-/*! This may be slow because it is implemented with cilk commands, a non-parallel push_back would be better
-	\param current_array the dynamic array to edit
-	\param input pointer to a single integer
-	\sa parallel_push_back()
-*/
-cilk void push_back(dyn_array* current_array, int* input)
-{
-	spawn push_back_iterator(current_array, input, 0);
-}
-
 //!Adds multiple items to the end of a dynamic array, in parallel
-/*!Problem: The input data will not be in hte same order when it is added to the dynamic array
+/*!Problem: The input data will not be in the same order when it is added to the dynamic array
 	\param current_array the dynamic array to edit
 	\param input an array of input data
 	\param size the number of items being pushed back
-	\sa push_back()
+	\sa sequential_push_back()
 */
 cilk void parallel_push_back(dyn_array* current_array, int* input, size_t size)
 {
 	spawn parallel_for(current_array, input, push_back_iterator, 0, size);
 	sync;
+}
+
+//!Adds a single item to the end of a dynamic array. Resizes if nessesary.
+/*! Entirely sequential
+	\param current_array the array to edit
+	\param input the data to add to the array
+	\sa parallel_push_back()
+*/
+void sequential_push_back(dyn_array* current_array, int input)
+{
+	int* temp;
+	int i;
+	
+	if(current_array->used >= current_array->size)	//If current_array needs more space
+	{
+		temp = (int*)malloc(current_array->size*2*sizeof(int));
+		if(temp == NULL)
+		{
+			printf("Error Allocating Memory");
+		}
+		current_array->size *= 2;
+		for(i=0; i<current_array->used; ++i)
+		{
+			temp[i] = current_array->array[i];
+		}
+		free(current_array->array);
+		current_array->array = temp;
+	}
+	current_array->array[current_array->used] = input;
+	current_array->used++;
+	return;
 }
 
 

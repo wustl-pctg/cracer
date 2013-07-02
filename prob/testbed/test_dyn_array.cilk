@@ -1,31 +1,51 @@
 #include "util/timer.h"
 #include "parallel_dynamic_array.cilk"
-#define TEST_SIZE 100000
 
-cilk int main()
+cilk int main(int argc, char **argv)
 {
-	dyn_array* test_array = create_array();
-	int input[TEST_SIZE];
+	int test_size = 10;
+	dyn_array* parallel_array = create_array();
+	dyn_array* sequential_array = create_array();
+	int *input;
 	int i,j;
 	
+	if (argc > 2)
+	{
+		printf("Incorrect number of arguements\n");
+	}
+	else if(argc == 2)
+	{
+		test_size = atoi(argv[1]);
+	}
 	
-	for(i=0; i<TEST_SIZE; ++i)
+	input = (int*)malloc(test_size * sizeof(int));
+	
+	for(i=0; i<test_size; ++i)
 	{
 		input[i] = i;
 	}
-	printf("Input created\n");
 	
 	startTimer();
-	spawn parallel_push_back(test_array, input, TEST_SIZE);	//Check for race conditions
+	spawn parallel_push_back(parallel_array, input, test_size);	//Check for race conditions
 	sync;
 	stopTimer();
 	
-	print_array(test_array);
-	printf("Parallel (Batch) wall time: %lf ms\n", getWallTime());
+	//print_array(test_array);
+	printf("\nParallel (Batch) wall time: %lf ms\n", getWallTime());
 	printf("Parallel (Batch) process time: %lf ms\n", getProcTime());
 	
-
+	startTimer();
+	for(i=0; i<test_size; ++i)
+	{
+		sequential_push_back(sequential_array, i);
+	}
+	stopTimer();
+	printf("\nSequential wall time: %lf ms\n", getWallTime());
+	printf("Sequential process time: %lf ms\n", getProcTime());
 	
-	delete_array(test_array);
+	
+	delete_array(parallel_array);
+	delete_array(sequential_array);
+	free(input);
 	return 0;
 }

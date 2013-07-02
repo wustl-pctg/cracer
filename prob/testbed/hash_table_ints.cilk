@@ -41,6 +41,7 @@ void hashTable_print(hashTable* table, int (*printfunct)(void*));
 cilk void resize(hashTable* current_table, int new_size);
 cilk void parallel_for1(hashTable* current_table, int* inputs, cilk void(*parallel_function)(hashTable*,int), int start, int end);
 cilk void parallel_for2(hashTable* current_table, hashTable* temp, cilk void(*parallel_function)(hashTable*,hashTable*,int), int start, int end);
+cilk void parallel_for3(hashTable* current_table, int* temp, cilk void(*parallel_function)(hashTable*,int*,int), int start, int end);
 cilk void parallel_for_remove(hashTable* current_table, hashTableItem** inputs, cilk void(*parallel_function)(hashTable*,hashTableItem*), int start, int end);
 cilk void copy(hashTable* current_table, hashTable* temp, int i);
 cilk void parallel_delete(hashTable* current_table, hashTable* place_holder, int i);
@@ -54,11 +55,15 @@ cilk void parallel_delete(hashTable* current_table, hashTable* place_holder, int
 */
 hashTable* hashTable_create(int size){
     int i;
-    hashTable* result = malloc(sizeof(hashTable));		//Allocate hashtable space
+    hashTable* result = (hashTable*)malloc(sizeof(hashTable));		//Allocate hashtable space
     result->size=size;
-    result->slots=calloc(size,sizeof(void*));			//Allocate containter space
-    result->load=0;
-    result->locks = calloc(size,sizeof(Cilk_lockvar));
+    result->slots= (hashTableItem**)malloc(size*sizeof(hashTableItem*));			//Allocate containter space
+    for(i=0;i<size;++i)
+	{
+		result->slots[i] = NULL;
+	}
+	result->load=0;
+    result->locks = malloc(size*sizeof(Cilk_lockvar));
     for(i=0;i<size;i++){
         Cilk_lock_init(result->locks[i]);
     }
@@ -72,7 +77,7 @@ hashTable* hashTable_create(int size){
 	\sa hashTable_delete(), hashTable_deleteItems(), hashTable_create()
 */
 hashTableItem* hashTable_createItem(int key){
-    hashTableItem* result = malloc(sizeof(hashTableItem));
+    hashTableItem* result = (hashTableItem*)malloc(sizeof(hashTableItem));
     result->key=key;
     result->prev=NULL;
     result->next=NULL;
@@ -171,31 +176,63 @@ cilk void hashTable_batchInsert(hashTable* table, void* insertions, int input_si
 	Cilk_terminate_batch(_cilk_ws);
 }
 
-//!A sequetial insert function
+//!A helper function for hashTable_parallelInsert
+cilk void insert_iterator(hashTable* table, int* keys, int i)
+{
+	spawn hashTable_insertItem(table, keys[i]);
+}
 
+cilk void hashTable_parallelInsert(hashTable* table, int* keys, size_t size)
+{
+	spawn parallel_for3(table, keys, insert_iterator, 0, size);
+	sync;
+}
+
+//!Insert a single item to the end of a dynamic array. Resizes if nessesary.
+/*! Entirely Sequetial
+	\param table the hash table to edit
+	\param key the key to insert
+	\sa hashTable_insertItem()
+*/
 void hashTable_sequentialInsert(hashTable* table, int key) {
     
+	hashTableItem** temp;
+	int i;
 	int slot = hashTable_hash(table->size, key);
-    hashTableItem* ptr;
+    hashTableItem* ptr = NULL;
     hashTableItem* dataItem = hashTable_createItem(key);
 	if(table->load > (table->size * 0.7))	//If current_array needs more space
 	{
-		table->slots = (hashTableItem**)realloc(table->slots, 2*(table->size));
+		temp = (hashTableItem**)malloc(table->size*2*sizeof(hashTableItem*));
+		if(temp==NULL)
+		{
+			printf("error Allocating Memory\n");
+		}
+		for(i=0; i<table->size;++i)
+		{
+			temp[i] = table->slots[i];
+		}
+		for(i=table->size; i<table->size*2;++i)
+		{
+			temp[i] = NULL;
+		}
+		free(table->slots);
+		table->slots = temp;
 		table->size *= 2;
 	}
-	printf("2\n");
-    if (table->slots[slot]==NULL){ //No list
+	
+    if (table->slots[slot]==NULL){ //No list, insert on its own
         table->slots[slot]=dataItem;
         dataItem->next=NULL;
         dataItem->prev=NULL;
     }
-    else {
+    else {							//List exists, insert at the end of list
         ptr = table->slots[slot]; //Start at the head of the list.
         while(ptr->next!=NULL) {
             ptr=ptr->next;
         }
         ptr->next=dataItem;
-        ptr->next->prev=ptr;
+        dataItem->prev=ptr;
     }
 	table->load++;
 }
@@ -318,11 +355,9 @@ void hashTable_print(hashTable* table, int (*printfunct)(void*)){
     int i;
 	
     for (i=0;i<table->size;i++){
-		printf("6\n");
 		printfunct(table->slots[i]);	//Our current print function is in test_hash_table.cilk
     }
-	printf("5\n");
-	printf("Load: %d\t Size: %d\n", table->load, table->size);
+	printf("\nLoad: %d\t Size: %d\n", table->load, table->size);
 }
 
 //! Sets the size of current_array to new_size
@@ -398,7 +433,7 @@ cilk void parallel_for1(hashTable* current_table, int* inputs, cilk void(*parall
 /*! \param current_table the table to edit
 	\param temp a pointer to a temporary hash table
 	\param parallel_function A parallel function with arguements (hashTable*, hashTable*,int)
-	\param start the startin point of the for loop: for(i=0;i<end;++i)
+	\param start the starting point of the for loop: for(i=0;i<end;++i)
 	\param end the ending point of the for loop: for(i=start;i<end;++i)
 	\sa resize(), copy()
 */
@@ -417,6 +452,31 @@ cilk void parallel_for2(hashTable* current_table, hashTable* temp, cilk void(*pa
 		spawn parallel_function(current_table, temp, middle);						//middle
 	}
 }
+
+//!A parallel_for loop for functions with arguements (hastTable*,int*,int)
+/*! \param current_table the table to edit
+	\param temp a pointer to a temporary hash table
+	\param parallel_function A parallel function with arguements (hashTable*, int*,int)
+	\param start the starting point of the for loop: for(i=0;i<end;++i)
+	\param end the ending point of the for loop: for(i=start;i<end;++i)
+	\sa hashTable_parallelInsert(), insert_iterator()
+*/
+cilk void parallel_for3(hashTable* current_table, int* temp, cilk void(*parallel_function)(hashTable*,int*,int), int start, int end)
+{
+	int middle = start+(end-start)/2;
+	if (end-start<=PARALLEL_CUTOFF) {
+		for (start; start < end; ++start) {
+            spawn parallel_function(current_table, temp, start);
+		}
+    }
+	else
+	{		
+		spawn parallel_for3(current_table, temp, parallel_function, start, middle); 	//start -> middle-1
+		spawn parallel_for3(current_table, temp, parallel_function, middle+1, end); 	//middle+1 -> end-1
+		spawn parallel_function(current_table, temp, middle);						//middle
+	}
+}
+
 
 //!A parallel_for loop for functions with arguements (hastTable*,hashTableItem*)
 /*! \param current_table the table to edit
