@@ -3,8 +3,12 @@
 #include <stdlib.h>
 #include <cilk-lib.cilkh>
 
+//Tyler Romero and Kefu Liu
+//The insert functions are finshed, the remove functions have some problems
+
 #define PARALLEL_CUTOFF 100	//!<The cutoff for converting from a parallel_for loop to a sequential for loop
 #define ab(j) (j<0)?-j:j	//!<A generic absolute value function
+
 /*! \file
 	\brief A dynamically resizing hash table that deals with collisions through chaining. Supports parallel insertion and resizing.
 */
@@ -42,6 +46,7 @@ cilk void resize(hashTable* current_table, int new_size);
 cilk void parallel_for1(hashTable* current_table, int* inputs, cilk void(*parallel_function)(hashTable*,int), int start, int end);
 cilk void parallel_for2(hashTable* current_table, hashTable* temp, cilk void(*parallel_function)(hashTable*,hashTable*,int), int start, int end);
 cilk void parallel_for3(hashTable* current_table, int* temp, cilk void(*parallel_function)(hashTable*,int*,int), int start, int end);
+cilk void parallel_for4(hashTable* current_table, hashTableItem** temp, cilk void(*parallel_function)(hashTable*,hashTableItem**,int), int start, int end);
 cilk void parallel_for_remove(hashTable* current_table, hashTableItem** inputs, cilk void(*parallel_function)(hashTable*,hashTableItem*), int start, int end);
 cilk void copy(hashTable* current_table, hashTable* temp, int i);
 cilk void parallel_delete(hashTable* current_table, hashTable* place_holder, int i);
@@ -182,6 +187,13 @@ cilk void insert_iterator(hashTable* table, int* keys, int i)
 	spawn hashTable_insertItem(table, keys[i]);
 }
 
+//!Calls a parallel for loop to call hashTable_insertItem
+/*! This is the function you should call to insert something in parallel
+	\param table the table to edit
+	\param keys An array of keys to insert
+	\param size the size of the array of keys
+	\sa hashTable_sequentialInsert(), hashTable_insertItem()
+*/
 cilk void hashTable_parallelInsert(hashTable* table, int* keys, size_t size)
 {
 	spawn parallel_for3(table, keys, insert_iterator, 0, size);
@@ -192,7 +204,7 @@ cilk void hashTable_parallelInsert(hashTable* table, int* keys, size_t size)
 /*! Entirely Sequetial
 	\param table the hash table to edit
 	\param key the key to insert
-	\sa hashTable_insertItem()
+	\sa hashTable_insertItem(), hashTable_parallelInsert()
 */
 void hashTable_sequentialInsert(hashTable* table, int key) {
     
@@ -273,12 +285,17 @@ hashTableItem* hashTable_search(hashTable* table, int key) {
 	\sa hashTable_batchRemove()
 */
 cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
-    int slot = 0;
+	int slot = 0;
+	
+	printf("hashTable_remove\n");
     if (item==NULL){
+		printf("hr null\n");
 		return; //Do nothing.
     }
     else {
+		printf("hr hash\n");
 		slot = hashTable_hash(table->size, item->key);
+		printf("hr lock\n");
 		Cilk_lock(table->locks[slot]);
 		if (item->prev==NULL) {			//If item is the first in the slot
             if (item->next==NULL){			//If item is the only item in the slot
@@ -296,7 +313,8 @@ cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
             }
         }
 		free(item);
-        Cilk_unlock(table->locks[slot]);
+		printf("Hr unlock\n");
+		Cilk_unlock(table->locks[slot]);
     }
 }
 
@@ -310,7 +328,6 @@ cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
 cilk void hashTable_batchRemove(hashTable* table, void* removals, int input_size, void* results){
     //Insertions will always be a int key followed by a void*
 	hashTableItem** inputs = (hashTableItem**)removals;
-    int i;
 
     table->load-=input_size;
     //Parallel operation must be done.
@@ -328,6 +345,45 @@ cilk void hashTable_removeItem(hashTable* table, hashTableItem* item){
     Cilk_batchify(_cilk_ws, hashTable_batchRemove, table, item, sizeof(hashTableItem), NULL);
 }
 
+//!A helper function for hashTable_parallelInsert
+cilk void remove_iterator(hashTable* table, hashTableItem** keys, int i)
+{
+	printf("i: %d\n",i);
+	spawn hashTable_removeItem(table, keys[i]);
+}
+
+cilk void hashTable_parallelRemove(hashTable* table, hashTableItem** items, size_t size)
+{
+	spawn parallel_for4(table, items, remove_iterator, 0, size);
+	sync;
+}
+
+void hashTable_sequentialRemove(hashTable* table, hashTableItem* item)
+{
+	int slot = 0;
+    if (item==NULL){
+		return; //Do nothing.
+    }
+    else {
+		slot = hashTable_hash(table->size, item->key);
+		if (item->prev==NULL) {			//If item is the first in the slot
+            if (item->next==NULL){			//If item is the only item in the slot
+				table->slots[slot]=NULL;
+            }
+            else {							//If item is NOT the only item in the slot
+				table->slots[slot]=item->next;
+				item->next->prev=NULL;
+            }
+        }
+        else {							//If item is NOT the first in the slot
+			item->prev->next=item->next;		//<----------Cut the item out of the list
+            if (item->next!=NULL){			//If item is the last item in the list
+				item->next->prev=item->prev;
+            }
+        }
+		free(item);
+    }
+}
 /*--------------------------------Other--------------------------------------------*/
 //!Hash the input key based on size.
 /*! A multiplicateive hash function based on the golden ratio
@@ -367,37 +423,27 @@ void hashTable_print(hashTable* table, int (*printfunct)(void*)){
 */
 cilk void resize(hashTable* current_table, int new_size)
 {
-	int i;
-	//hashTableItem** temp;
     hashTable* newTable;
+	int i;
 	
 	if(current_table->size > new_size)
 	{
 		printf("Error: Sizing Problem\n");
 		return;
 	}
-	newTable = hashTable_create(new_size);
-    /*
-	temp = calloc(new_size, sizeof(hashTableItem*));		//Reserve a new chunk of memory
-	
-	/*for(i=0; i<current_array->used; ++i){		//PARALLEL FOR
-		temp[i] = current_array->array[i];
-	}*/
+	newTable = hashTable_create(new_size);		//Sets all slots to NULL
+    
 	spawn parallel_for2(current_table, newTable, copy, 0, current_table->size);		//Copy to new array in parallel
 	sync;
-	
-	/*for(i=0; i<current_table->size; ++i)		//PARALLEL FOR
-	{
-		hashTable_deleteItems(current_table->slots[i]);
-	}*/
-	spawn parallel_for2(current_table, NULL, parallel_delete, 0, current_table->size);
+		
+	spawn parallel_for2(current_table, NULL, parallel_delete, 0, current_table->size); //free the contents of the old slots
 	sync;
 	
 	free(current_table->locks);
 	free(current_table->slots);
 	
-	current_table->size=newTable->size;
-    current_table->load=newTable->load;
+	current_table->size = newTable->size;
+    current_table->load = newTable->load;
     current_table->locks = newTable->locks;
     current_table->slots = newTable->slots;
     free(newTable);
@@ -473,6 +519,30 @@ cilk void parallel_for3(hashTable* current_table, int* temp, cilk void(*parallel
 	{		
 		spawn parallel_for3(current_table, temp, parallel_function, start, middle); 	//start -> middle-1
 		spawn parallel_for3(current_table, temp, parallel_function, middle+1, end); 	//middle+1 -> end-1
+		spawn parallel_function(current_table, temp, middle);						//middle
+	}
+}
+
+//!A parallel_for loop for functions with arguements (hastTable*,hashTableItem**,int)
+/*! \param current_table the table to edit
+	\param temp a pointer to an array of hashTableItems
+	\param parallel_function A parallel function with arguements (hashTable*, hashTableItem**,int)
+	\param start the starting point of the for loop: for(i=0;i<end;++i)
+	\param end the ending point of the for loop: for(i=start;i<end;++i)
+	\sa hashTable_parallelRemove(), remove_iterator()
+*/
+cilk void parallel_for4(hashTable* current_table, hashTableItem** temp, cilk void(*parallel_function)(hashTable*,hashTableItem**,int), int start, int end)
+{
+	int middle = start+(end-start)/2;
+	if (end-start<=PARALLEL_CUTOFF) {
+		for (start; start < end; ++start) {
+            spawn parallel_function(current_table, temp, start);
+		}
+    }
+	else
+	{		
+		spawn parallel_for4(current_table, temp, parallel_function, start, middle); 	//start -> middle-1
+		spawn parallel_for4(current_table, temp, parallel_function, middle+1, end); 	//middle+1 -> end-1
 		spawn parallel_function(current_table, temp, middle);						//middle
 	}
 }

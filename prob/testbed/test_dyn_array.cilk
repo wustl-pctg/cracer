@@ -1,6 +1,8 @@
 #include "util/timer.h"
 #include "parallel_dynamic_array.cilk"
 
+//Tyler Romero
+
 cilk int main(int argc, char **argv)
 {
 	int test_size = 10;
@@ -25,6 +27,8 @@ cilk int main(int argc, char **argv)
 		input[i] = i;
 	}
 	
+	//--------------------------------------------------------------------------------
+	
 	startTimer();
 	spawn parallel_push_back(parallel_array, input, test_size);	//Check for race conditions
 	sync;
@@ -33,6 +37,8 @@ cilk int main(int argc, char **argv)
 	//print_array(test_array);
 	printf("\nParallel (Batch) wall time: %lf ms\n", getWallTime());
 	printf("Parallel (Batch) process time: %lf ms\n", getProcTime());
+	
+	//---------------------------------------------------------------------------------
 	
 	startTimer();
 	for(i=0; i<test_size; ++i)
@@ -43,6 +49,7 @@ cilk int main(int argc, char **argv)
 	printf("\nSequential wall time: %lf ms\n", getWallTime());
 	printf("Sequential process time: %lf ms\n", getProcTime());
 	
+	//--------------------------------------------------------------------------------
 	
 	delete_array(parallel_array);
 	delete_array(sequential_array);
