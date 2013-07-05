@@ -1,0 +1,153 @@
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <cilk-lib.cilkh>
+
+#define VOID_DATA (int)-INFINITY
+
+//Tyler Romero
+//Most basic implementation of OM data structure
+
+//Order Maintenance Data Structure
+	//A linked list that has labels that can be compared to determine which of the list items comes first
+
+//Public Functions
+	//void insert(x,y)
+	//ptr order(x,y)
+	
+//Private Functions
+	//void distribute()
+	//etc
+
+//----------------------Structs----------------------------------------------------------------------------
+//A linked list item for an OM data struct that containts a spot for a label
+struct itemOM
+{
+	void* data;
+	size_t label;		//[0,OM->size^2)
+	struct itemOM* next;
+	struct itemOM* prev;
+};
+typedef struct itemOM itemOM;
+
+//The actual OM data structure
+struct datastructOM
+{
+	itemOM* list;
+	int size; //The number of itemOMs in the list
+};
+typedef struct datastructOM datastructOM;
+
+//----------------------Function Declarations--------------------------------------------------------------
+datastructOM* create_OM();
+void delete_OM(datastructOM* dead_OM);
+itemOM* create_item(void* new_data);
+void delete_list(itemOM* dead_item);
+void insert(datastructOM* current_OM, itemOM* insert_item, itemOM* existing_item);
+itemOM* order(itemOM* itemA, itemOM* itemB)
+int label_space(datastructOM* current_OM);
+
+//----------------------Create and Delete---------------------------------------
+
+datastructOM* create_OM()
+{
+	datastructOM* new_OM = (datastructOM*)malloc(sizeof(datastructOM));
+	new_OM->list = NULL
+	new_OM->size = 0;
+	return new_OM;
+}
+
+void delete_OM(datastructOM* dead_OM)
+{
+	delete_list(dead_OM->list);
+	free(dead_OM);
+	return;
+}
+
+itemOM* create_item(void* new_data)		//To 'delete' this, just free it
+{
+	itemOM* new_item = (itemOM*)malloc(sizeof(itemOM));
+	new_item->data = new_data;
+	new_item->label = VOID_DATA;
+	new_item->next = NULL;
+	new_item->prev = NULL;
+	return new_item;
+}
+
+void delete_list(itemOM* dead_item)
+{
+	if(dead_item==NULL)
+		return;
+	else
+	{
+		delete_list(dead_item->next);
+		free(dead_item);
+		return;
+	}
+}
+
+//----------------------Insert-----------------------------------------
+
+void insert(datastructOM* current_OM, itemOM* insert_item, itemOM* existing_item)		//Sequential Implementation - insert_item is inserted after existing_item
+{																						//Need to make it so
+	if(insert_item == NULL)
+	{
+		printf("Error: insert_item was NULL\n");
+		return;
+	}
+	
+	if(existing_item == NULL)		//Insert insert_item first in the list
+	{
+		
+		insert_item->prev = NULL;
+		insert_item->next = current_OM->list;
+		current_OM->list = insert_item;
+		current_OM->size++;
+		insert_item->label = 0;				//NEED TO FIX THE LABELS IN THIS CASE
+		return;
+	}
+	else if(existing_item->next == NULL)	//Existing item is the last in the list
+	{
+		existing_item->next = insert_item;
+		insert_item->prev = existing_item;
+		insert_item->next = NULL;
+		current_OM->size++;
+		insert_item->label = label_space(current_OM)-1;
+		return;
+	}
+	else
+	{
+		insert_item->prev = existing_item;
+		insert_item->next = existing_item->next;
+		existing_item->next = insert_item;
+		current_OM->size++;
+		insert_item->label = existing_item->label + 1;  //NEED TO FIX THE LABELS IN THIS CASE
+		return;
+	}
+
+}
+
+
+
+//----------------------Order------------------------------------------
+
+itemOM* order(itemOM* itemA, itemOM* itemB)		//Sequential Implementation
+{
+	if(itemA->label > itemB->label)
+		return itemB;	//Lower labels indicate that they are higher in the order (closert to the front of the list)
+	else if(itemB->label > itemA->label)
+		return itemA;
+	else{
+		printf("Error: items have the same label; should be impossible\n");
+		return NULL;
+	}	
+}
+
+//---------------------Other------------------------------------------
+int label_space(datastructOM* current_OM)
+{
+	return (current_OM->size) * (current_OM->size);
+}
+
+
+
