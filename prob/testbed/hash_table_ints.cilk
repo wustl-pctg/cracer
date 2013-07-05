@@ -4,7 +4,7 @@
 #include <cilk-lib.cilkh>
 
 //Tyler Romero and Kefu Liu
-//The insert functions are finshed, the remove functions have some problems
+//The insert functions are finshed, the remove functions have some problem
 
 #define PARALLEL_CUTOFF 100	//!<The cutoff for converting from a parallel_for loop to a sequential for loop
 #define ab(j) (j<0)?-j:j	//!<A generic absolute value function
@@ -286,16 +286,11 @@ hashTableItem* hashTable_search(hashTable* table, int key) {
 */
 cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
 	int slot = 0;
-	
-	printf("hashTable_remove\n");
-    if (item==NULL){
-		printf("hr null\n");
+    if (item == NULL || item == 0){
 		return; //Do nothing.
     }
     else {
-		printf("hr hash\n");
 		slot = hashTable_hash(table->size, item->key);
-		printf("hr lock\n");
 		Cilk_lock(table->locks[slot]);
 		if (item->prev==NULL) {			//If item is the first in the slot
             if (item->next==NULL){			//If item is the only item in the slot
@@ -313,7 +308,6 @@ cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
             }
         }
 		free(item);
-		printf("Hr unlock\n");
 		Cilk_unlock(table->locks[slot]);
     }
 }
@@ -342,13 +336,12 @@ cilk void hashTable_batchRemove(hashTable* table, void* removals, int input_size
 //segfaults when this is called, however, Robert thinks it is a problem with batchify and not my code
 // hashTable_batchRemove works on its own.
 cilk void hashTable_removeItem(hashTable* table, hashTableItem* item){
-    Cilk_batchify(_cilk_ws, hashTable_batchRemove, table, item, sizeof(hashTableItem), NULL);
+   Cilk_batchify(_cilk_ws, hashTable_batchRemove, table, item, sizeof(hashTableItem), NULL);
 }
 
 //!A helper function for hashTable_parallelInsert
 cilk void remove_iterator(hashTable* table, hashTableItem** keys, int i)
 {
-	printf("i: %d\n",i);
 	spawn hashTable_removeItem(table, keys[i]);
 }
 
@@ -358,7 +351,7 @@ cilk void hashTable_parallelRemove(hashTable* table, hashTableItem** items, size
 	sync;
 }
 
-void hashTable_sequentialRemove(hashTable* table, hashTableItem* item)
+void hashTable_sequentialRemove(hashTable* table, hashTableItem* item)	//Works just fine
 {
 	int slot = 0;
     if (item==NULL){
@@ -394,12 +387,11 @@ void hashTable_sequentialRemove(hashTable* table, hashTableItem* item)
 */
 int hashTable_hash(int size, int key) {
     //Use a simple multiplicative hash for now
-    double k = (double) key;
+	double k = (double) key;
     double magic_number = (sqrt(5)-1)/2;
     int spot;
 	
     spot = floor(size *(ab(k*magic_number - floor(k*magic_number))));	//Hash function
-	
     return spot;
 }
 

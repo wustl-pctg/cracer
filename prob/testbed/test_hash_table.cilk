@@ -2,6 +2,7 @@
 #include "hash_table_ints.cilk"
 
 //Tyler Romero and Kefu Liu
+//need to compile with the -lm flag after everything for some reason
 
 int printints(void* input){	//This doesnt mix with sequential insert for some reason
 	hashTableItem* ptr;
@@ -73,27 +74,25 @@ cilk int main(int argc, char **argv)
 	
 	//----------------------------------------------------------------------------------
 	
+
+	/*parallelRemove does not work due some strange problem with batchify. It works when 
+	hashTable_remove is called without it
 	
-	printf("1\n");
 	for(i=0;i<test_size/4;++i)
 	{
 		search_array1[i] = hashTable_search(table1, i);	//Items to remove
 		search_array2[i] = hashTable_search(table2, i);
 	}
-	printf("2\n");
+	
 	spawn hashTable_parallelRemove(table1,search_array1,test_size/4);
 	sync;
-	printf("3\n");
+
 	for(i=0; i<test_size/4; ++i)
 	{
 		hashTable_sequentialRemove(table2, search_array2[i]);
 	}
-	printf("4]n");
-	//spawn hashTable_batchRemove(table1, search_array, test_size/4, NULL);
-	//sync;
-	
-	//hashTable_print(table1,printints);
-	//printf("load: %d\n", table1->load);
+	*/
+
 	
 	free(search_array1);
 	free(search_array2);
