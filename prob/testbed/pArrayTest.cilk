@@ -1,0 +1,12 @@
+#include "packedMemoryArray.cilk"
+
+int main() {
+    pArray* array = pArray_create(100);
+    pItem* item = pItem_create(&array);
+    pItem* item2 = pItem_create(&item);
+    pArray_insert(array,NULL,item);
+    pArray_insert(array,NULL,item2);
+    //pArray_insert(array,1,&item3);
+    pArray_print(array);
+    pArray_destroy(array);
+}

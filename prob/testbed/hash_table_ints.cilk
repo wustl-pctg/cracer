@@ -290,6 +290,7 @@ cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
 		return; //Do nothing.
     }
     else {
+		printf("item %p\n",item);
 		slot = hashTable_hash(table->size, item->key);
 		Cilk_lock(table->locks[slot]);
 		if (item->prev==NULL) {			//If item is the first in the slot

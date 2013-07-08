@@ -1,0 +1,185 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <cilk-lib.cilkh>
+#include <math.h>
+
+
+#define LOAD_COEFFICIENT 2
+/*! \brief Simple array item.
+*/
+typedef struct {
+    int label;
+    void* item;
+} pItem;
+
+/*! \brief Struct for the packed-memory Array (called pArray now)
+*/
+typedef struct {
+    /*! The actual array of items*/
+    pItem** array;
+    /*! A secondary array of sizes, there are n/log(n) ints in this array*/
+    int* topArray;
+    /*! Size of the pItem Array*/
+    int maxSize;
+    /*! Total load factor*/
+    int load;
+    /*! Size of the int array*/
+    int topSize;
+    /*! The length of each segment that an int corresponds to, this is ~log(n)*/
+    int length;
+} pArray;
+
+
+int determineSpace(pArray* ds, int start);
+void redistributeLabel(pArray* ds, int index,pItem* newItem);
+
+/*! \brief Creates a pArray with initial size.
+    Returns a pointer to the new pArray.
+    \param maxSize the initial size
+*/
+pArray* pArray_create(int maxSize){
+    pArray* result = malloc(sizeof(pArray));
+    result->array = calloc(maxSize,sizeof(pItem*)); 
+    result->length = (int)log(maxSize);
+    result->topSize=maxSize/result->length;
+    result->topArray=calloc(result->topSize,sizeof(int));
+    result->maxSize=maxSize;
+    //printf("top: %d, %d\n",result->length,result->topSize);
+    return result;
+}
+
+/*! \brief Creates a pItem
+*/
+pItem* pItem_create(void* item){
+    pItem* result = malloc(sizeof(pItem));
+    result->item=item;
+    return result;
+}
+
+/*! \brief Destructor for the pArray.
+*/
+void pArray_destroy(pArray* victim){
+    int i;
+    if (victim==NULL){
+        return;
+    }
+    else {
+        for(i=0;i<victim->maxSize;i++){
+            if (victim->array[i]!=NULL){
+                free(victim->array[i]);
+            }
+        }
+        free(victim->array);
+        free(victim->topArray);
+        free(victim);
+    }
+}
+
+/*! \brief O(1) time Order operation by comparing labels.
+*/
+pItem* pArray_order(pItem* x, pItem* y){
+    if (x==NULL || y ==NULL){
+        printf("one item is null\n");
+        return NULL;
+    }
+    else {
+        if (x->label > y->label){
+            return y;
+        }
+        else if (x->label < y->label){
+            return x;
+        }
+        else {
+            printf("equal error!\n");
+            return NULL;
+        }
+    }
+}
+
+/*! \brief Insert operation, not yet O(1) amortized time
+*/
+void pArray_insert(pArray* ds, pItem* x, pItem* y){
+    int apres;
+    if (x==NULL){
+        apres=1;
+    } else {
+        apres=x->label+1;
+    }
+    if (ds->array[apres]!=NULL){
+        //KL: Need to shove things around in a non-trivial manner. 
+        redistributeLabel(ds,apres,y);
+        printf("%d occupied\n",apres);
+    }
+    else {
+        y->label=apres;
+        ds->array[apres]=y;
+        (ds->topArray[apres/ds->length])++;
+    }
+}
+
+void fillSpace(pArray* ds, int index, pItem* newItem, int segments) {
+    int toFill;
+    int next;
+    int start = index/ds->length;
+    int spacing;
+    int totalLoad=0;
+    int* topArray = ds->topArray;
+    pItem* temp;
+    for (next=start; next < start+segments; next++){
+        totalLoad+=topArray[next];
+        topArray[next]=0; //Reset the load amounts, will re-populate later.
+    }
+    
+    //printf("next %d\n",next);
+    //This flushes all the items to the left.
+    toFill = start;
+    for (next=start; next < start+(ds->length)*segments;next++){
+        if (ds->array[next]!=NULL){
+            temp=ds->array[next];
+            ds->array[next]=NULL;
+            ds->array[toFill]=temp;
+            toFill++;
+            if (next==index){
+                ds->array[toFill]=newItem;
+                toFill++;
+            }
+        }
+    }
+    
+    //Now must redistrubte along the segment. Segment has size ds->length
+    spacing = (segments*ds->length)/totalLoad;
+    for (next=start+(totalLoad)-1;next>=start;next--){
+        temp=ds->array[next];
+        ds->array[next]=NULL;
+        ds->array[next*spacing]=temp;
+        ds->array[next*spacing]->label = next*spacing;
+        topArray[next*spacing/ds->length]++;
+    }
+}
+
+/*! \brief Redistributes labels in array
+*/
+void redistributeLabel(pArray* ds, int index, pItem* newItem) {
+    int* segSize = &(ds->topArray[index/ds->length]);
+    (*segSize)++;
+    //printf("index %d\n",index);
+    //If the load is too high for the segment, need to do more work.
+    if ((*segSize)*LOAD_COEFFICIENT>ds->length){
+        printf("Not yet implemented\n");
+    }
+    //Otherwise, just redistribute within the segment.
+    else {
+        fillSpace(ds, index, newItem, 1);
+    }
+}
+/*! \brief Prints the Array
+*/
+void pArray_print(pArray* ds){
+    int i;
+    for (i=0;i<ds->maxSize;i++){
+        printf("[%d:%p]\n",i,ds->array[i]);
+    }
+    for (i=0;i<ds->topSize;i++){
+        printf("[%d]\n",ds->topArray[i]);
+    }
+}

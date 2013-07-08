@@ -89,11 +89,11 @@ cilk int main(int argc, char** argv) { //KL some basic command line parsing here
         {"operations", required_argument,0,'o'},
         {"iterations", required_argument,0,'i'},
         {"help", no_argument,0,'h'},
-        {"brief", no_argument,&verbose,0},
+        {"brief", no_argument,0,'b'},
         {"print_interval",required_argument,0,'p'}
     };
     //Note that getopts_long puts the args to an option in char* optarg
-    while ((opt = getopt_long(argc,argv,"w:o:i:hp:",all_options,&index))!=-1) {
+    while ((opt = getopt_long(argc,argv,"w:o:i:hp:b",all_options,&index))!=-1) {
         switch(opt){
             case 0:
                 if (all_options[index].flag!=0){
@@ -105,6 +105,9 @@ cilk int main(int argc, char** argv) { //KL some basic command line parsing here
                 }
             case 'w':
                 opWork=atoi(optarg);
+                break;
+            case 'b':
+                verbose=0;
                 break;
             case 'i':
                 iterations=atoi(optarg);
