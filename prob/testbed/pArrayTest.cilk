@@ -1,12 +1,26 @@
 #include "packedMemoryArray.cilk"
 
+#define SIZE 50
 int main() {
-    pArray* array = pArray_create(100);
-    pItem* item = pItem_create(&array);
-    pItem* item2 = pItem_create(&item);
-    pArray_insert(array,NULL,item);
-    pArray_insert(array,NULL,item2);
-    //pArray_insert(array,1,&item3);
+    int i;
+    int j;
+    char x,y,z;
+    pArray* array = pArray_create(SIZE*2);
+    pItem** items = calloc(SIZE*2,sizeof(pItem*));
+    x='x';
+    y='y';
+    z='z';
+    for (i=0;i<SIZE*2;i++){
+        items[i] = pItem_create(&x);
+    }
+    for (i=0;i<6;i++){
+       pArray_insert(array,NULL,items[i]);
+    }
+    items[5]->item=&z;
+    for (i=6;i<SIZE;i++){
+        pArray_insert(array,items[rand()%i],items[i]);
+        items[i]->item=&y;
+    }
     pArray_print(array);
     pArray_destroy(array);
 }

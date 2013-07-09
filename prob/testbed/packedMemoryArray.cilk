@@ -30,8 +30,20 @@ typedef struct {
 } pArray;
 
 
-int determineSpace(pArray* ds, int start);
+/*Constructors*/
+pArray* pArray_create(int maxSize);
+pItem* pItem_create(void* item);
+
+/*Functions*/
+void pArray_print(pArray* ds);
+void pArray_destroy(pArray* victim); //Destructor
+pItem* pArray_order(pItem* x, pItem* y); 
+void pArray_insert(pArray* ds, pItem* x, pItem* y);
+
+/*Private Functions*/
 void redistributeLabel(pArray* ds, int index,pItem* newItem);
+void insertAndShove(pArray* ds, int index, pItem* newItem);
+void fillSpace(pArray* ds, int index, pItem* newItem, int segments);
 
 /*! \brief Creates a pArray with initial size.
     Returns a pointer to the new pArray.
@@ -44,6 +56,7 @@ pArray* pArray_create(int maxSize){
     result->topSize=maxSize/result->length;
     result->topArray=calloc(result->topSize,sizeof(int));
     result->maxSize=maxSize;
+    result->load=0;
     //printf("top: %d, %d\n",result->length,result->topSize);
     return result;
 }
@@ -100,6 +113,15 @@ pItem* pArray_order(pItem* x, pItem* y){
 */
 void pArray_insert(pArray* ds, pItem* x, pItem* y){
     int apres;
+    if (ds->load*LOAD_COEFFICIENT>ds->maxSize){
+        printf("The array is too small to handle more inputs efficiently!\n");
+    }
+    else {
+        ds->load++;
+    }
+    
+    
+    //Need to figure out how to rebalance things properly.
     if (x==NULL){
         apres=1;
     } else {
@@ -108,7 +130,7 @@ void pArray_insert(pArray* ds, pItem* x, pItem* y){
     if (ds->array[apres]!=NULL){
         //KL: Need to shove things around in a non-trivial manner. 
         redistributeLabel(ds,apres,y);
-        printf("%d occupied\n",apres);
+        //printf("%d occupied\n",apres);
     }
     else {
         y->label=apres;
@@ -120,17 +142,18 @@ void pArray_insert(pArray* ds, pItem* x, pItem* y){
 void fillSpace(pArray* ds, int index, pItem* newItem, int segments) {
     int toFill;
     int next;
-    int start = index/ds->length;
+    int topStart = (index/ds->length);
+    int start;
     int spacing;
     int totalLoad=0;
     int* topArray = ds->topArray;
     pItem* temp;
-    for (next=start; next < start+segments; next++){
+    start = topStart * ds->length;
+    for (next=topStart; next < topStart+segments; next++){
         totalLoad+=topArray[next];
         topArray[next]=0; //Reset the load amounts, will re-populate later.
     }
     
-    //printf("next %d\n",next);
     //This flushes all the items to the left.
     toFill = start;
     for (next=start; next < start+(ds->length)*segments;next++){
@@ -139,47 +162,96 @@ void fillSpace(pArray* ds, int index, pItem* newItem, int segments) {
             ds->array[next]=NULL;
             ds->array[toFill]=temp;
             toFill++;
+            //Insert the new item.
             if (next==index){
-                ds->array[toFill]=newItem;
+                //KL: Need to shove things to insert the new item.
+                insertAndShove(ds,toFill,newItem);
                 toFill++;
+                if (next<toFill){
+                    next=toFill-1;
+                }
             }
         }
     }
-    
     //Now must redistrubte along the segment. Segment has size ds->length
     spacing = (segments*ds->length)/totalLoad;
-    for (next=start+(totalLoad)-1;next>=start;next--){
-        temp=ds->array[next];
-        ds->array[next]=NULL;
-        ds->array[next*spacing]=temp;
-        ds->array[next*spacing]->label = next*spacing;
-        topArray[next*spacing/ds->length]++;
+    for (toFill=(totalLoad)-1;toFill>=0;toFill--){
+        temp=ds->array[start+toFill];
+        //KL: This should not happen unless the above shove to left didn't work pour some reason.
+        if (temp==NULL){
+            printf("NULL TEMP\n");
+        }
+        ds->array[start+toFill]=NULL;
+        ds->array[toFill*spacing+start]=temp;
+        ds->array[toFill*spacing+start]->label = toFill*spacing+start;
+        (topArray[(toFill*spacing+start)/ds->length])++;
     }
 }
 
 /*! \brief Redistributes labels in array
+    
+    Note that the values of the topArray - the number of elements in each sublist, is only valid when the array is not overloaded.
+    After overload, the values of the topArray no longer mean anything.
 */
 void redistributeLabel(pArray* ds, int index, pItem* newItem) {
-    int* segSize = &(ds->topArray[index/ds->length]);
-    (*segSize)++;
-    //printf("index %d\n",index);
+    int segments=1;
+    int start,next;
+    int totalSize;
+    (ds->topArray[index/ds->length])++;
+    totalSize=0;
     //If the load is too high for the segment, need to do more work.
-    if ((*segSize)*LOAD_COEFFICIENT>ds->length){
-        printf("Not yet implemented\n");
+    //KL: Here, use the new re-balance function.
+    start = index/ds->length;
+    for (next=start;next<ds->topSize;next++){
+        totalSize+=ds->topArray[next];
+        if (totalSize*LOAD_COEFFICIENT<=ds->length*segments){
+            break;
+        }
+        else {
+            segments++;
+        }
     }
-    //Otherwise, just redistribute within the segment.
+    if (next>=ds->topSize){
+        printf("Overloaded\n");
+        insertAndShove(ds,index,newItem);
+        return;
+    }
     else {
-        fillSpace(ds, index, newItem, 1);
+        //printf("segs %d\n",segments);
+        fillSpace(ds, index, newItem, segments);
     }
 }
+
+/*! \brief Array insert function - put in element, shove everything along to the right.
+*/
+void insertAndShove(pArray* ds, int index, pItem* newItem){
+    int i = index;
+    pItem* temp, *temp2;
+    temp=ds->array[i];
+    ds->array[i]=NULL;
+    i++;
+    while (temp!=NULL){
+        temp2=temp;
+        temp=ds->array[i];
+        ds->array[i]=temp2;
+        i++;
+    }
+    ds->array[index]=newItem;
+}
+
 /*! \brief Prints the Array
 */
 void pArray_print(pArray* ds){
     int i;
+    int count=0;
     for (i=0;i<ds->maxSize;i++){
-        printf("[%d:%p]\n",i,ds->array[i]);
+        if (ds->array[i]!=NULL){
+            printf("[%d:%c]\n",i,*(char*)(ds->array[i]->item));
+            count++;
+        }
     }
-    for (i=0;i<ds->topSize;i++){
+    /*for (i=0;i<ds->topSize;i++){
         printf("[%d]\n",ds->topArray[i]);
-    }
+    }*/
+    printf("Total Items: %d\n",count);
 }
