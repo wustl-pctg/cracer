@@ -1773,7 +1773,8 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
       Cilk_enter_state(ws, STATE_DS_STEALING);
 
       victim = rts_rand(ws) % USE_PARAMETER(active_size);
-      if (victim != ws->self) {
+      if (victim != ws->self && 
+	  USE_SHARED(pending_batch).array[victim].status == DS_IN_PROGRESS) {
 	t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
 	if (!t && USE_PARAMETER(options->yieldslice) &&
 	    USE_SHARED(current_batch_id) == ws->batch_id) {
@@ -1788,7 +1789,7 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
       Cilk_raise_priority(ws);
 
     //    if (USE_SHARED(current_batch_id) == ws->batch_id) {
-    if (!batch_done_yet(ws, ws->batch_id)) {
+    if (t && !batch_done_yet(ws, ws->batch_id)) {
       t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
     }
 
