@@ -891,7 +891,7 @@ cilk int main(int argc, char* argv[])
     int c;
     btree * tree;
     bt_key_val * kv;
-    int item = 0x43;
+    //int item = 0x43;
     int count;
     int order;
     int * values;

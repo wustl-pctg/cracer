@@ -54,9 +54,9 @@ cilk void ds_main(void* hack) {
                     ++batch_size;
                 }
             }
-            for (j=0; j < batch_size; ++j) {
-                __builtin_prefetch(&ds_work_array.array[batch_indexes[j]].status,1,3); 
-            }
+            //for (j=0; j < batch_size; ++j) {
+            //    __builtin_prefetch(&ds_work_array.array[batch_indexes[j]].status,1,3); 
+            //}
             gettimeofday(&inner_end, NULL);
             group_time += inner_end.tv_sec*1000000 +inner_end.tv_usec -
                 (inner_begin.tv_sec*1000000 + inner_begin.tv_usec);

@@ -1904,25 +1904,6 @@ typedef struct {
 } CilkReadOnlyParams;
 
 
-typedef struct BatchOp{
-
-  void (*operation)(void**, size_t);
-  void *args;
-  size_t size;
-  volatile int status;
-  char padding[1024];
-
-} BatchOp;
-
-
-
-typedef struct {
-  int nprocs;
-  BatchOp* array;
-} work_array;
-
-work_array ds_work_array;
-
 typedef struct CilkGlobalState_s CilkGlobalState;
 
 typedef struct {
@@ -1968,6 +1949,26 @@ typedef struct{
 } CilkChildParams;
 
 
+typedef struct BatchOp{
+
+  void (*operation)(CilkContext*, void**, size_t);
+  void *args;
+  size_t size;
+  volatile int status;
+
+
+} BatchOp;
+
+
+
+typedef struct {
+  int nprocs;
+  BatchOp* array;
+} work_array;
+
+work_array ds_work_array;
+
+
 
 
 
@@ -1981,7 +1982,7 @@ extern void Cilk_unalloca_internal(CilkWorkerState *const ws,
 
 extern void *Cilk_internal_malloc(CilkWorkerState *const ws, size_t);
 extern void Cilk_internal_free(CilkWorkerState *const ws, void *p, size_t size);
-# 370 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 371 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 extern CilkContext *Cilk_init(int* argc,char** argv);
 extern void Cilk_terminate(CilkContext *const context);
 
@@ -1999,7 +2000,7 @@ static inline Cilk_time Cilk_get_elapsed_time(CilkWorkerState *const ws)
   ws->last_cp_time = now;
   return now - then;
 }
-# 397 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 398 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 static inline int Cilk_internal_malloc_canonicalize(size_t size)
 {
   if (size <= 16 && 16 >= 64) return 16;;
@@ -2047,7 +2048,7 @@ static inline int Cilk_internal_malloc_bucket_to_size(int b)
   if (8 == b) return 4096;;
   return -1;
 }
-# 452 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 453 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 static inline void Cilk_fence(void)
 {
   CILK_MB();
@@ -2086,7 +2087,7 @@ extern void Cilk_abort_slow(CilkWorkerState *const ws);
 extern void Cilk_event_new_thread(CilkWorkerState *const ws);
 extern void Cilk_destroy_frame(CilkWorkerState *const ws,
           CilkStackFrame *f, size_t size);
-# 505 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 506 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 # 1 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk-cilk2c-pre.h" 1
 
 static const char *ident_cilk_cilk2c_pre __attribute__((__unused__)) = "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-cilk2c-pre.h $ $LastChangedBy: bradley $ $Rev: 1465 $ $Date: 2004-08-02 06:31:06 -0400 (Mon, 02 Aug 2004) $"
@@ -2318,8 +2319,8 @@ static inline void Cilk_cilk2c_before_return_slow_cp(
     ;
     ;
 }
-# 506 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h" 2
-# 537 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 507 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h" 2
+# 538 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 extern __cilksafe__ int Cilk_flags_are_wrong_NODEBUG_NOTIMING_NOSTATS_please_recompile;
 static __cilksafe__ int *Cilk_check_flags_at_link_time = &Cilk_flags_are_wrong_NODEBUG_NOTIMING_NOSTATS_please_recompile;
 
@@ -3505,7 +3506,7 @@ typedef struct {
 extern btree * btree_create(unsigned int order);
 extern int btree_insert_key(btree * btree, bt_key_val * key_val);
 extern int btree_delete_key(btree * btree,bt_node * subtree ,void * key);
-extern bt_key_val * btree_search(btree * btree, void * key);
+
 extern void btree_destroy(btree * btree);
 extern void * btree_get_max_key(btree * btree);
 extern void * btree_get_min_key(btree * btree);
@@ -4274,7 +4275,7 @@ cilk int main(int argc, char* argv[])
     int c;
     btree * tree;
     bt_key_val * kv;
-    int item = 0x43;
+
     int count;
     int order;
     int * values;
@@ -4377,7 +4378,6 @@ cilk int main(int argc, char* argv[])
 
     for (i= 0; i<num_lookups;++i) {
         btree_search(tree, &values[i]);
-        printf("found %d\n", values[i]);
     }
 
     gettimeofday(&end, ((void *)0));

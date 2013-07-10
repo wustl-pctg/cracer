@@ -5,7 +5,8 @@
 #include <ds_api.cilkh>
 #include <btree.h>
 
-#define DEFAULT_COUNT 134217728 
+//#define DEFAULT_COUNT 134217728 
+#define DEFAULT_COUNT 64
 #define DEFAULT_ORDER 5
 
 typedef enum {left = -1,right = 1} position_t;
@@ -745,9 +746,11 @@ void btree_destroy(btree * btree) {
 */
 cilk bt_key_val * btree_search(btree * btree,void * key) {
 
+
 	bt_key_val * key_val = NULL;
 	node_pos kp = get_btree_node(btree,key);
 
+    printf("Entered btree_search\n");
 	if(kp.node) {
 		key_val = kp.node->key_vals[kp.index];
 	}
@@ -879,24 +882,32 @@ unsigned int datasize(void * data) {
 cilk void batch_btree_search(void **batch_data, size_t size) {
     int i;
     bt_key_val* key_val;
+    printf("In batch_btree_search\n");
     for (i=0; i < size; ++i) {
         key_val = spawn btree_search((btree*) batch_data[i*2], 
             (void*) batch_data[i*2+1]);
     } 
 }
 
-extern batch_btree_search(CilkWorkerState* const, void**, size_t);
+
+
+extern void mt_batch_btree_search(CilkContext* const, void**, size_t);
 
 cilk void ds_btree_search(btree* btree, void* key){
+    
+
     void* args[2];
     args[0] = (void*)btree;
     args[1] = key;
+    printf("In ds_btree_search\n");
 
-    //BATCH(batch_btree_search, args);
-    ds_work_array.array[_cilk_ws->self].operation=(batch_btree_search); \
-    ds_work_array.array[_cilk_ws->self].args=(args); \
-    ds_work_array.array[_cilk_ws->self].status=DS_WAITING; \
-    while(ds_work_array.array[_cilk_ws->self].status==DS_WAITING) {;}
+    BATCH(mt_batch_btree_search, args);
+    //ds_work_array.array[_cilk_ws->self].operation=(mt_batch_btree_search); \
+    //ds_work_array.array[_cilk_ws->self].args=(args); \
+    //ds_work_array.array[_cilk_ws->self].status=DS_WAITING; \
+    //printf("Entering busy loop\n");
+    //while(ds_work_array.array[_cilk_ws->self].status==DS_WAITING) {;}
+    //Jul 3 - busy loop not halting
 
 }
 
@@ -906,10 +917,11 @@ cilk int main(int argc, char* argv[])
     int i = 0;
     btree * tree;
     bt_key_val * kv;
-    int item = 0x43;
+    //int item = 0x43;
     int count;
     int order;
     int * values;
+    int search_value;
 
     srandom(0);
 
@@ -929,12 +941,17 @@ cilk int main(int argc, char* argv[])
     for (i=0;i<count;i++) {
         kv = (bt_key_val*)malloc(sizeof(*kv));
         kv->key = malloc(sizeof(int));
-        *(int *)kv->key = values[i];
+        *(int *)kv->key = i;
         kv->val = malloc(sizeof(int));
         *(int *)kv->val = values[i];
         btree_insert_key(tree,kv);
+        //printf("Inserted key: %d, val %d\n", i, values[i]);
     }
         //print_subtree(tree,tree->root);
+
+    search_value=random()%count;
+    spawn ds_btree_search(tree, (void *) &search_value);
+    sync;
 
     /*for (i= count - 1; i > -1; i-= (random()%5)) {
         item = values[i];
@@ -943,6 +960,7 @@ cilk int main(int argc, char* argv[])
     free(values);
     btree_destroy(tree);
     
+    exit(EXIT_SUCCESS);
     return 0;
 }
 

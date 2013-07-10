@@ -1449,40 +1449,19 @@ typedef struct ___sue21{
 # 210 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 CilkReadOnlyParams;
 # 282 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
-typedef struct BatchOp{
-
-  void( *operation)(void**, size_t);
-  void *args;
-  size_t size;
-  volatile int status;
-  char padding[1024];
-
-}
-# 282 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
-BatchOp;
-# 294 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
-typedef struct ___sue22{
-  int nprocs;
-  BatchOp*array;
-}
-# 294 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
-work_array;
-# 299 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
-work_array ds_work_array;
-
 typedef struct CilkGlobalState_s CilkGlobalState;
 
-typedef struct ___sue23{
+typedef struct ___sue22{
 
   CilkReadOnlyParams *Cilk_RO_params;
-# 310 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 291 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
   CilkGlobalState *Cilk_global_state;
 
 }
-# 303 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 284 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 CilkContext;
-# 316 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
-typedef struct ___sue24{
+# 297 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+typedef struct ___sue23{
   CilkClosureCache cache;
   int self;
   struct Cilk_im_descriptor im_descriptor [9];
@@ -1497,29 +1476,50 @@ typedef struct ___sue24{
   int barrier_direction;
   char __dummy[64];
   CilkContext *context;
-# 335 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 316 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
   enum WorkerType type;
 }
-# 316 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 297 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 CilkWorkerState;
-# 338 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
-typedef struct ___sue25{
+# 319 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+typedef struct ___sue24{
 
   CilkContext *context;
   int id;
 
 }
-# 338 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 319 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 CilkChildParams;
-# 349 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 327 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+typedef struct BatchOp{
+
+  void( *operation)(CilkContext*, void**, size_t);
+  void *args;
+  size_t size;
+  volatile int status;
+
+
+}
+# 327 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+BatchOp;
+# 339 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+typedef struct ___sue25{
+  int nprocs;
+  BatchOp*array;
+}
+# 339 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+work_array;
+# 344 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+work_array ds_work_array;
+# 350 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 extern void Cilk_dprintf(CilkWorkerState *const ws, const char *fmt,...);
 extern void Cilk_die_internal(CilkContext *const context, CilkWorkerState *const ws, const char *fmt,...);
 extern void Cilk_unalloca_internal(CilkWorkerState *const ws,
        CilkStackFrame *f);
-# 357 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 358 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 extern void *Cilk_internal_malloc(CilkWorkerState *const ws, size_t);
 extern void Cilk_internal_free(CilkWorkerState *const ws, void *p, size_t size);
-# 370 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 371 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 extern CilkContext *Cilk_init(int*argc, char**argv);
 extern void Cilk_terminate(CilkContext *const context);
 
@@ -1531,11 +1531,11 @@ static inline Cilk_time Cilk_get_elapsed_time(CilkWorkerState *const ws)
 {
   Cilk_time then= ws->last_cp_time;
   Cilk_time now= Cilk_get_time();;
-# 384 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 385 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
   ws->last_cp_time = now;
   return now - then;
 }
-# 397 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 398 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 static inline int Cilk_internal_malloc_canonicalize(size_t size)
 {
   if (size <= 16 && 16 >= 64) return 16;;
@@ -1583,7 +1583,7 @@ static inline int Cilk_internal_malloc_bucket_to_size(int b)
   if (8 == b) return 4096;;
   return -1;
 }
-# 452 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 453 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 static inline void Cilk_fence(void)
 {
   CILK_MB();
@@ -1606,7 +1606,7 @@ static inline void Cilk_membar_StoreLoad(void)
 {
   CILK_MB();
 }
-# 479 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 480 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 extern int Cilk_sync(CilkWorkerState *const ws);
 extern int Cilk_exception_handler(CilkWorkerState *const ws, void *, int);
 extern void Cilk_set_result(CilkWorkerState *const ws,
@@ -1842,12 +1842,12 @@ static inline void Cilk_cilk2c_before_return_slow_cp(
 
 
 }
-# 537 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 538 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 extern int Cilk_flags_are_wrong_NODEBUG_NOTIMING_NOSTATS_please_recompile;
 static int *Cilk_check_flags_at_link_time= &Cilk_flags_are_wrong_NODEBUG_NOTIMING_NOSTATS_please_recompile;
 
 static __attribute__((__unused__))int Cilk_check_flags_at_link_time_hack(void);
-# 541 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
+# 542 "/home/bss45/research/parallel_data_structures/parallelDS/split/runtime/cilk.h"
 static int Cilk_check_flags_at_link_time_hack(void) {
   return *Cilk_check_flags_at_link_time;
 }
@@ -2597,7 +2597,7 @@ btree;
 extern btree *btree_create (unsigned order);
 extern int btree_insert_key(btree *btree, bt_key_val *key_val);
 extern int btree_delete_key(btree *btree, bt_node *subtree, void *key);
-extern bt_key_val *btree_search (btree *btree, void *key);
+
 extern void btree_destroy(btree *btree);
 extern void *btree_get_max_key (btree *btree);
 extern void *btree_get_min_key (btree *btree);
@@ -3269,7 +3269,7 @@ unsigned datasize (void *data) {
 # 886 "btree.cilk"
 void usage(void){}
 
-static struct option long_options[]={{"nonrecursive",0,&recursive_flag,0},{"parallel",0,&parallel_flag,1},{"count",1,0,'c'},{"order",1,0,'o'},{"num_lookups",1,0,'n'},{0,0,0,0}};struct _cilk_cilk_main_frame{CilkStackFrame header;struct{int argc;char**argv;}scope0;struct{int i;int c;btree*tree;bt_key_val*kv;int item;int count;int order;int*values;int num_lookups;}scope1;struct{int option_index;}scope2;};struct _cilk_cilk_main_args{int _cilk_proc_result;int argc;char**argv;};static void _cilk_cilk_main_slow(CilkWorkerState*const _cilk_ws,struct _cilk_cilk_main_frame*_cilk_frame);static CilkProcInfo _cilk_cilk_main_sig[]={{sizeof(int),sizeof(struct _cilk_cilk_main_frame),_cilk_cilk_main_slow,0,0}};
+static struct option long_options[]={{"nonrecursive",0,&recursive_flag,0},{"parallel",0,&parallel_flag,1},{"count",1,0,'c'},{"order",1,0,'o'},{"num_lookups",1,0,'n'},{0,0,0,0}};struct _cilk_cilk_main_frame{CilkStackFrame header;struct{int argc;char**argv;}scope0;struct{int i;int c;btree*tree;bt_key_val*kv;int count;int order;int*values;int num_lookups;}scope1;struct{int option_index;}scope2;};struct _cilk_cilk_main_args{int _cilk_proc_result;int argc;char**argv;};static void _cilk_cilk_main_slow(CilkWorkerState*const _cilk_ws,struct _cilk_cilk_main_frame*_cilk_frame);static CilkProcInfo _cilk_cilk_main_sig[]={{sizeof(int),sizeof(struct _cilk_cilk_main_frame),_cilk_cilk_main_slow,0,0}};
 # 888 "btree.cilk"
 int cilk_main(CilkWorkerState*const _cilk_ws,int argc,char**argv){struct _cilk_cilk_main_frame*_cilk_frame;{ _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_cilk_main_frame), _cilk_cilk_main_sig); };{ Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header)); Cilk_cilk2c_event_new_thread_maybe(_cilk_ws); };
 {
@@ -3277,7 +3277,7 @@ int cilk_main(CilkWorkerState*const _cilk_ws,int argc,char**argv){struct _cilk_c
     int c;
     btree *tree;
     bt_key_val *kv;
-    int item= 0x43;
+
     int count;
     int order;
     int *values;
@@ -3366,7 +3366,6 @@ int cilk_main(CilkWorkerState*const _cilk_ws,int argc,char**argv){struct _cilk_c
 
     for (i= 0; i<num_lookups; ++i) {
         btree_search(tree, &values[i]);
-        printf("found %d\n", values[i]);
     }
 
     gettimeofday(&end, ((void *)0));
@@ -3387,7 +3386,7 @@ static void _cilk_cilk_main_slow(CilkWorkerState*const _cilk_ws,struct _cilk_cil
     int c;
     btree *tree;
     bt_key_val *kv;
-    int item= 0x43;
+
     int count;
     int order;
     int *values;
@@ -3476,7 +3475,6 @@ static void _cilk_cilk_main_slow(CilkWorkerState*const _cilk_ws,struct _cilk_cil
 
     for (i= 0; i<num_lookups; ++i) {
         btree_search(tree, &values[i]);
-        printf("found %d\n", values[i]);
     }
 
     gettimeofday(&end, ((void *)0));
@@ -3493,12 +3491,12 @@ static void _cilk_cilk_main_slow(CilkWorkerState*const _cilk_ws,struct _cilk_cil
 # 888 "btree.cilk"
 static void _cilk_cilk_main_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v)
 {(void)_cilk_ws;(void)_cilk_procargs_v;((struct _cilk_cilk_main_args*)_cilk_procargs_v)->_cilk_proc_result=cilk_main(_cilk_ws,((struct _cilk_cilk_main_args*)_cilk_procargs_v)->argc,((struct _cilk_cilk_main_args*)_cilk_procargs_v)->argv);
-# 1010 "btree.cilk"
+# 1009 "btree.cilk"
 }
 # 888 "btree.cilk"
 int mt_cilk_main(CilkContext*const context,int argc,char**argv)
 {struct _cilk_cilk_main_args*_cilk_procargs;
 # 888 "btree.cilk"
 int _cilk_proc_result;_cilk_procargs=(struct _cilk_cilk_main_args*)Cilk_malloc_fixed(sizeof(struct _cilk_cilk_main_args));_cilk_procargs->argc=argc;_cilk_procargs->argv=argv;Cilk_start(context,_cilk_cilk_main_import,_cilk_procargs,sizeof(int));_cilk_proc_result=_cilk_procargs->_cilk_proc_result;Cilk_free(_cilk_procargs);return _cilk_proc_result;
-# 1010 "btree.cilk"
+# 1009 "btree.cilk"
 }

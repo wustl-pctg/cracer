@@ -39,7 +39,7 @@ typedef struct {
 extern btree * btree_create(unsigned int order);
 extern int btree_insert_key(btree * btree, bt_key_val * key_val);
 extern int btree_delete_key(btree * btree,bt_node * subtree ,void * key);
-extern bt_key_val * btree_search(btree * btree,  void * key);
+//extern bt_key_val * btree_search(btree * btree,  void * key);
 extern void btree_destroy(btree * btree);
 extern void * btree_get_max_key(btree * btree);
 extern void * btree_get_min_key(btree * btree);

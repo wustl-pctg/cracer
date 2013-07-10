@@ -278,24 +278,6 @@ typedef struct {
 
 } CilkReadOnlyParams;
 
-//BSS45 - 1/8
-typedef struct BatchOp{
-
-  void      (*operation)(void**, size_t); 
-  void      *args;
-  size_t    size;
-  volatile int       status;
-
-} BatchOp;   
-  
-//BSS45 - 1/8
-//BatchOp *ds_work_array;
-typedef struct {
-  int       nprocs;
-  BatchOp*  array;  
-} work_array;
-
-work_array ds_work_array;
 
 typedef struct CilkGlobalState_s CilkGlobalState; /* Forward declaration*/
 
@@ -340,6 +322,26 @@ typedef struct{
   int id;
 
 } CilkChildParams;
+
+//BSS45 - 1/8
+typedef struct BatchOp{
+
+  void      (*operation)(CilkContext*, void**, size_t); 
+  void      *args;
+  size_t    size;
+  volatile int       status;
+  //char padding[1024];
+
+} BatchOp;   
+  
+//BSS45 - 1/8
+//BatchOp *ds_work_array;
+typedef struct {
+  int       nprocs;
+  BatchOp*  array;  
+} work_array;
+
+work_array ds_work_array;
 
 /*
  * Functions defined in the architecture-specific file and used
