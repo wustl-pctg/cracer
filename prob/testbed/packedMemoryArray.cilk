@@ -4,7 +4,8 @@
 #include <math.h>
 
 
-#define LOAD_COEFFICIENT 2
+#define TOTAL_MAX_LOAD 0.5
+#define SEG_MAX_LOAD 1.0
 /*! \brief Simple array item.
 */
 typedef struct {
@@ -19,7 +20,7 @@ typedef struct {
     pItem** array;
     /*! A secondary array of sizes, there are n/log(n) ints in this array*/
     int* topArray;
-    /*! Size of the pItem Array*/
+    /*! Size of the pItem Array. Always a power of 2.*/
     int maxSize;
     /*! Total load factor*/
     int load;
@@ -39,11 +40,15 @@ void pArray_print(pArray* ds);
 void pArray_destroy(pArray* victim); //Destructor
 pItem* pArray_order(pItem* x, pItem* y); 
 void pArray_insert(pArray* ds, pItem* x, pItem* y);
+void pArray_double(pArray* ds);
 
 /*Private Functions*/
 void redistributeLabel(pArray* ds, int index,pItem* newItem);
 void insertAndShove(pArray* ds, int index, pItem* newItem);
-void fillSpace(pArray* ds, int index, pItem* newItem, int segments);
+void fillSpace(pArray* ds, int start, int index, pItem* newItem, int segments);
+void determineSegments(pArray* ds, int index, int* startResult, int* segments);
+int countLoad(pArray* ds, int start, int end);
+float loadCoefficient(float tMax, float segMax, int lvl, int hMax);
 
 /*! \brief Creates a pArray with initial size.
     Returns a pointer to the new pArray.
@@ -51,11 +56,12 @@ void fillSpace(pArray* ds, int index, pItem* newItem, int segments);
 */
 pArray* pArray_create(int maxSize){
     pArray* result = malloc(sizeof(pArray));
-    result->array = calloc(maxSize,sizeof(pItem*)); 
-    result->length = (int)log(maxSize);
-    result->topSize=maxSize/result->length;
+    int realSize=pow(2,ceil((log(maxSize)/log(2))));
+    result->array = calloc(realSize,sizeof(pItem*)); 
+    result->length = (int)log(realSize);
+    result->topSize=realSize/result->length;
     result->topArray=calloc(result->topSize,sizeof(int));
-    result->maxSize=maxSize;
+    result->maxSize=realSize;
     result->load=0;
     //printf("top: %d, %d\n",result->length,result->topSize);
     return result;
@@ -113,12 +119,7 @@ pItem* pArray_order(pItem* x, pItem* y){
 */
 void pArray_insert(pArray* ds, pItem* x, pItem* y){
     int apres;
-    if (ds->load*LOAD_COEFFICIENT>ds->maxSize){
-        printf("The array is too small to handle more inputs efficiently!\n");
-    }
-    else {
-        ds->load++;
-    }
+    ds->load++;
     
     
     //Need to figure out how to rebalance things properly.
@@ -127,6 +128,7 @@ void pArray_insert(pArray* ds, pItem* x, pItem* y){
     } else {
         apres=x->label+1;
     }
+    
     if (ds->array[apres]!=NULL){
         //KL: Need to shove things around in a non-trivial manner. 
         redistributeLabel(ds,apres,y);
@@ -139,20 +141,19 @@ void pArray_insert(pArray* ds, pItem* x, pItem* y){
     }
 }
 
-void fillSpace(pArray* ds, int index, pItem* newItem, int segments) {
+void fillSpace(pArray* ds, int start, int index, pItem* newItem, int segments) {
     int toFill;
     int next;
-    int topStart = (index/ds->length);
-    int start;
+    int topStart = (start/ds->length);
     int spacing;
     int totalLoad=0;
     int* topArray = ds->topArray;
     pItem* temp;
-    start = topStart * ds->length;
     for (next=topStart; next < topStart+segments; next++){
         totalLoad+=topArray[next];
         topArray[next]=0; //Reset the load amounts, will re-populate later.
     }
+    totalLoad++;//There is a newItem to add!
     
     //This flushes all the items to the left.
     toFill = start;
@@ -180,6 +181,7 @@ void fillSpace(pArray* ds, int index, pItem* newItem, int segments) {
         //KL: This should not happen unless the above shove to left didn't work pour some reason.
         if (temp==NULL){
             printf("NULL TEMP\n");
+            pArray_print(ds);
         }
         ds->array[start+toFill]=NULL;
         ds->array[toFill*spacing+start]=temp;
@@ -197,31 +199,100 @@ void redistributeLabel(pArray* ds, int index, pItem* newItem) {
     int segments=1;
     int start,next;
     int totalSize;
-    (ds->topArray[index/ds->length])++;
+    //int d=0;
+    //(ds->topArray[index/ds->length])++;
     totalSize=0;
     //If the load is too high for the segment, need to do more work.
     //KL: Here, use the new re-balance function.
-    start = index/ds->length;
-    for (next=start;next<ds->topSize;next++){
-        totalSize+=ds->topArray[next];
-        if (totalSize*LOAD_COEFFICIENT<=ds->length*segments){
-            break;
-        }
-        else {
-            segments++;
-        }
+    determineSegments(ds, index, &start, &segments);
+    if (start<0){
+       //printf("array is too small to hold any more elements!"); 
+       //This happens if too many elemets are inserted into the array, must then resize!
+       pArray_double(ds);
+       //Double the array size, then relabel everything.
+       start=0;
+       segments=ds->topSize;
+       //d=1;
+       //return;
     }
-    if (next>=ds->topSize){
-        printf("Overloaded\n");
-        insertAndShove(ds,index,newItem);
-        return;
-    }
-    else {
-        //printf("segs %d\n",segments);
-        fillSpace(ds, index, newItem, segments);
-    }
+    //printf("start,seg: %d,%d\n",start,segments);
+    fillSpace(ds, start, index, newItem, segments);
+    //if (d==1){
+    //    pArray_print(ds);
+    //}
 }
 
+/*! \brief Finds the appropriate low-density region to relabel.
+
+    This implementation uses an implicit tree on top of the array.
+    KL: See M.A.Bender - An Adaptive PMA.
+*/
+void determineSegments(pArray* ds, int index, int* start, int* segments)
+{
+    int totalLoad=0;
+    int treeLevel=0;
+    int length=ds->length;
+    int curLength=length;
+    int maxHeight = log(ds->topSize)/log(2);
+    int indexSeg=index/ds->length;
+    int node;
+    while(treeLevel<maxHeight){
+        if (treeLevel==0){
+        //easy case if another insertion would fit.
+            totalLoad=ds->topArray[indexSeg];
+            if (totalLoad+1<ds->length*SEG_MAX_LOAD){
+                *segments=1;
+                *start=indexSeg*ds->length;
+                return;
+            }
+        }   
+        else {
+            curLength=2*length;
+            node=index/curLength;
+            //If true, the previous calc. was the left subTree.
+            if (node==2*(index/length)){
+                totalLoad+=countLoad(ds,node+length,node+curLength);
+            }
+            else {
+                totalLoad+=countLoad(ds,node,node+length);
+            }
+            if (totalLoad+1<curLength*loadCoefficient(TOTAL_MAX_LOAD,SEG_MAX_LOAD,treeLevel,maxHeight)){
+                *segments=curLength/ds->length;
+                *start=node*curLength;
+                return;
+            }
+            else {
+                length*=2;
+            }
+        }
+        treeLevel++;
+    }
+    printf("expired height, must double the array!\n");
+    *start = -1;
+}
+
+float loadCoefficient(float tMax, float segMax, int lvl, int hMax){
+    float result;
+    float level=(float)lvl;
+    float height = (float)hMax;
+    result = tMax + (segMax-tMax)*(height-level)/(height);
+    //printf("coef %f\n",result);
+    return result;
+}
+
+int countLoad(pArray* ds,int start,int end){
+    int count=0;
+    int i;
+    start/=ds->length;
+    end/=ds->length;
+    /*Needs a less-than-or-equal because the start,end bounds are inclusive! 
+    I.e. suppose the start and end are both within one ds->length.
+    In such a case, the count should be 1, not zero!*/
+    for (i=start;i<=end;i++){ 
+        count+=ds->topArray[i];
+    }
+    return count;
+}
 /*! \brief Array insert function - put in element, shove everything along to the right.
 */
 void insertAndShove(pArray* ds, int index, pItem* newItem){
@@ -247,11 +318,37 @@ void pArray_print(pArray* ds){
     for (i=0;i<ds->maxSize;i++){
         if (ds->array[i]!=NULL){
             printf("[%d:%c]\n",i,*(char*)(ds->array[i]->item));
+            //printf("[%d:%p]\n",i,ds->array[i]);
             count++;
         }
     }
-    /*for (i=0;i<ds->topSize;i++){
+    for (i=0;i<ds->topSize;i++){
         printf("[%d]\n",ds->topArray[i]);
-    }*/
-    printf("Total Items: %d\n",count);
+    }
+    printf("Total: %d/%d\n",count,ds->maxSize);
+}
+
+/*! \brief Doubles the array (call when too small!)
+*/
+void pArray_double(pArray* ds){
+    int i;
+    //printf("before double size: %d,%d\n",ds->maxSize,ds->length);
+    //pArray_print(ds);
+    ds->maxSize*=2;
+    ds->length=(int)log(ds->maxSize);
+    ds->topSize=ds->maxSize/ds->length;
+    ds->array = realloc(ds->array,ds->maxSize*sizeof(pItem*));
+    ds->topArray=realloc(ds->topArray,ds->topSize*sizeof(int));
+    if (ds->array==NULL || ds->topArray==NULL){
+        printf("error allocating\n");
+    }
+    for (i=0;i<ds->topSize;i++){
+        ds->topArray[i]=0;
+    }
+    for (i=0;i<ds->maxSize;i++){
+        if(ds->array[i]!=NULL){
+            (ds->topArray[i/ds->length])++;
+        }
+    }
+    //printf("after double size: %d,%d\n",ds->maxSize,ds->length);
 }

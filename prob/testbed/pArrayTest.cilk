@@ -1,6 +1,6 @@
 #include "packedMemoryArray.cilk"
 
-#define SIZE 50
+#define SIZE 32
 int main() {
     int i;
     int j;
@@ -16,8 +16,10 @@ int main() {
     for (i=0;i<6;i++){
        pArray_insert(array,NULL,items[i]);
     }
+    
     items[5]->item=&z;
-    for (i=6;i<SIZE;i++){
+    for (i=6;i<50;i++){
+        //printf("insertion %d\n",i);
         pArray_insert(array,items[rand()%i],items[i]);
         items[i]->item=&y;
     }
