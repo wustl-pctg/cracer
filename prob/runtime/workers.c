@@ -18,6 +18,7 @@
  *  USA.
  *
  */
+#define _GNU_SOURCE
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -27,6 +28,8 @@
 #include <string.h>
 #include <libperfctr.h>
 #endif
+
+// Affinity
 
 /***********************************************************\
  * Spawning worker processes
@@ -172,6 +175,9 @@ void Cilk_create_children(CilkContext *const context,
   }
   pthread_setconcurrency(USE_PARAMETER1(active_size));
 
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+
   for (i = 0; i < USE_PARAMETER1(active_size); i++)
     {
       res = pthread_create(USE_SHARED1(tid) + i,
@@ -180,6 +186,23 @@ void Cilk_create_children(CilkContext *const context,
 			   (void *) &(USE_SHARED1(thrd_params_array)[i]) );
       if (res)
 	Cilk_die_internal(context, NULL, "Can't create threads\n");
+
+      // Jing - Affinity setting start
+      int j;
+      // assuming bind threads to core 0 to 11 in round-robin manner
+      // assuming i is some global unique id for different threads, may need to change
+      //      int available_cores = 12;
+      int workerMaskID = i % USE_PARAMETER1(active_size);
+      //      printf("NumProcs: %i\nMask: %i\n", USE_PARAMETER1(active_size), workerMaskID);
+      // Bind the thread to the assigned core
+      CPU_SET(workerMaskID, &mask);
+      printf("Num avail. procs: %i\n", CPU_COUNT(&mask));
+      int ret_val = pthread_setaffinity_np(USE_SHARED1(tid) + i, sizeof(mask), &mask);
+      if (ret_val != 0) {
+	// Error message
+	printf("ERROR: Could not set CPU affinity\n");
+      }
+      // Jing - Affinity setting end
     }
 }
 
