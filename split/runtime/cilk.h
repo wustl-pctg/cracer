@@ -324,12 +324,14 @@ typedef struct{
 } CilkChildParams;
 
 //BSS45 - 1/8
+typedef void (*CilkBatchOp)(CilkWorkerState*const, void**, size_t);
+
 typedef struct BatchOp{
 
-  void      (*operation)(CilkContext*, void**, size_t); 
-  void      *args;
-  size_t    size;
-  volatile int       status;
+  CilkBatchOp   operation; 
+  void          *args;
+  size_t        size;
+  volatile int  status;
   //char padding[1024];
 
 } BatchOp;   
@@ -342,6 +344,8 @@ typedef struct {
 } work_array;
 
 work_array ds_work_array;
+
+
 
 /*
  * Functions defined in the architecture-specific file and used

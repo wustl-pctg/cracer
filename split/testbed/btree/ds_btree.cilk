@@ -884,14 +884,13 @@ cilk void batch_btree_search(void **batch_data, size_t size) {
     bt_key_val* key_val;
     printf("In batch_btree_search\n");
     for (i=0; i < size; ++i) {
-        key_val = spawn btree_search((btree*) batch_data[i*2], 
-            (void*) batch_data[i*2+1]);
+        void** args = batch_data[i];
+        key_val = spawn btree_search((btree*) args[0], 
+            (void*) args[1]);
     } 
 }
 
-
-
-extern void mt_batch_btree_search(CilkContext* const, void**, size_t);
+//extern void batch_btree_search(CilkWorkerState* const, void**, size_t);
 
 cilk void ds_btree_search(btree* btree, void* key){
     
@@ -901,7 +900,8 @@ cilk void ds_btree_search(btree* btree, void* key){
     args[1] = key;
     printf("In ds_btree_search\n");
 
-    BATCH(mt_batch_btree_search, args);
+    //BATCH(batch_btree_search, args);
+    Cilk_batchify(_cilk_ws, batch_btree_search, args);
     //ds_work_array.array[_cilk_ws->self].operation=(mt_batch_btree_search); \
     //ds_work_array.array[_cilk_ws->self].args=(args); \
     //ds_work_array.array[_cilk_ws->self].status=DS_WAITING; \
@@ -957,8 +957,8 @@ cilk int main(int argc, char* argv[])
         item = values[i];
         btree_delete_key(tree,tree->root,&item);
     }*/
-    free(values);
-    btree_destroy(tree);
+    //free(values);
+    //btree_destroy(tree);
     
     exit(EXIT_SUCCESS);
     return 0;

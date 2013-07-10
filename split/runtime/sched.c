@@ -459,7 +459,7 @@ static struct InletClosure
 	if (info->index == -1)
 	  p->receiver = f->receiver;
 	else
-		p->receiver = ((char *)f) + info->index;
+	  p->receiver = ((char *)f) + info->index;
 
 	/* take care of inlets */
 	if (info->inlet != NULL) {
@@ -1636,10 +1636,10 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			deque_unlock(ws, ws->self);
 	  }
 
-		num_ds = USE_PARAMETER(num_ds_workers);
-		num_main = USE_PARAMETER(num_real_workers);
-	  while (!t && !USE_SHARED(done)) {
-			/* otherwise, steal */
+      num_ds = USE_PARAMETER(num_ds_workers);
+      num_main = USE_PARAMETER(num_real_workers);
+      while (!t && !USE_SHARED(done)) {
+	        /* otherwise, steal */
 			Cilk_enter_state(ws, STATE_STEALING);
 			//BSS45 - 1/18
 			if (ws->self >= num_main) { // ds worker
@@ -1649,11 +1649,12 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			}
            
 			if (victim != ws->self) {
-		    t = Closure_steal(ws, victim);
-		    if (!t && USE_PARAMETER(options->yieldslice) &&
-						!USE_SHARED(done)) {
-					Cilk_lower_priority(ws);
-		    }
+		        t = Closure_steal(ws, victim);
+		        if (!t && USE_PARAMETER(options->yieldslice) &&
+			        !USE_SHARED(done)) {
+			    
+                    Cilk_lower_priority(ws);
+		        }
 			}
 
            
@@ -1774,5 +1775,19 @@ void Cilk_exit_from_user_main(CilkWorkerState *const ws, Closure *cl, int res)
 	  poll_inlets(ws, cl);
      
 	Closure_unlock(ws, cl);
+}
+
+//generalized macro to put operation and arguments into work_array then wait
+//#define BATCH(f,a) ds_work_array.array[_cilk_ws->self].operation=(f); \
+    ds_work_array.array[_cilk_ws->self].args=(a); \
+    ds_work_array.array[_cilk_ws->self].status=DS_WAITING; \
+    while(ds_work_array.array[_cilk_ws->self].status==DS_WAITING) {;}
+void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp operation,
+    void** args) {
+ 
+    ds_work_array.array[ws->self].operation=operation;
+    ds_work_array.array[ws->self].args=args;
+    ds_work_array.array[ws->self].status=DS_WAITING;
+    while(ds_work_array.array[ws->self].status==DS_WAITING) {;}
 }
 
