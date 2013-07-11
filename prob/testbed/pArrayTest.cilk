@@ -4,9 +4,12 @@
 int main() {
     int i;
     int j;
+    int k;
     char x,y,z;
     pArray* array = pArray_create(SIZE*2);
     pItem** items = calloc(SIZE*2,sizeof(pItem*));
+    pItem* testItem;
+    pItem* comp;
     x='x';
     y='y';
     z='z';
@@ -14,15 +17,32 @@ int main() {
         items[i] = pItem_create(&x);
     }
     for (i=0;i<6;i++){
-       pArray_insert(array,NULL,items[i]);
+       pArray_seqInsert(array,NULL,items[i]);
     }
     
     items[5]->item=&z;
     for (i=6;i<50;i++){
         //printf("insertion %d\n",i);
-        pArray_insert(array,items[rand()%i],items[i]);
+        pArray_seqInsert(array,items[0],items[i]);
         items[i]->item=&y;
     }
+    /*
+    for (k=0;k<SIZE;k++){
+    
+        i = rand()%SIZE;
+        j = rand()%SIZE;
+        if (i!=j){
+            testItem=pArray_order(items[i],items[j]);
+            /*if (i<k){
+                comp=items[i];
+            }else {
+                comp=items[j];
+            }
+            if (testItem!=comp){
+                printf("Order doesn't work between some item!\n");
+            }   */
+       // }
+    //}*/
     pArray_print(array);
-    pArray_destroy(array);
+    //pArray_destroy(array);
 }

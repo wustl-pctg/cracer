@@ -8,9 +8,10 @@
 #define SEG_MAX_LOAD 1.0
 /*! \brief Simple array item.
 */
-typedef struct {
+typedef struct p_Item{
     int label;
     void* item;
+    struct p_Item* in;
 } pItem;
 
 /*! \brief Struct for the packed-memory Array (called pArray now)
@@ -72,6 +73,7 @@ pArray* pArray_create(int maxSize){
 pItem* pItem_create(void* item){
     pItem* result = malloc(sizeof(pItem));
     result->item=item;
+    result->in=NULL;
     return result;
 }
 
@@ -109,15 +111,21 @@ pItem* pArray_order(pItem* x, pItem* y){
             return x;
         }
         else {
-            printf("equal error!\n");
-            return NULL;
+            if (x==y){
+                //KL: They are the same item, so arbitrarily return one?
+                return x;
+            }
+            else {
+                printf("equal error!\n");
+                return NULL;
+            }
         }
     }
 }
 
 /*! \brief Insert operation, not yet O(1) amortized time
 */
-void pArray_insert(pArray* ds, pItem* x, pItem* y){
+void pArray_seqInsert(pArray* ds, pItem* x, pItem* y){
     int apres;
     ds->load++;
     
@@ -139,6 +147,26 @@ void pArray_insert(pArray* ds, pItem* x, pItem* y){
         ds->array[apres]=y;
         (ds->topArray[apres/ds->length])++;
     }
+}
+
+/*! \brief Delete operation just removes item from array.
+*/
+void pArray_delete(pArray* ds, pItem* x){
+    if (x==NULL){
+        return;
+    }
+    if (ds->array[x->label]==NULL){
+        return;
+    }
+    else {
+        ds->array[x->label]=NULL;
+    }
+}
+
+/*! \brief A batch version of the insert.
+*/
+void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
+
 }
 
 void fillSpace(pArray* ds, int start, int index, pItem* newItem, int segments) {
@@ -210,22 +238,23 @@ void redistributeLabel(pArray* ds, int index, pItem* newItem) {
        //This happens if too many elemets are inserted into the array, must then resize!
        pArray_double(ds);
        //Double the array size, then relabel everything.
-       start=0;
-       segments=ds->topSize;
+       //start=0;
+       //segments=ds->topSize;
+       redistributeLabel(ds,index,newItem);
+       return;
        //d=1;
        //return;
     }
     //printf("start,seg: %d,%d\n",start,segments);
     fillSpace(ds, start, index, newItem, segments);
     //if (d==1){
-    //    pArray_print(ds);
+     //  pArray_print(ds);
     //}
 }
 
 /*! \brief Finds the appropriate low-density region to relabel.
 
     This implementation uses an implicit tree on top of the array.
-    KL: See M.A.Bender - An Adaptive PMA.
 */
 void determineSegments(pArray* ds, int index, int* start, int* segments)
 {
@@ -236,9 +265,9 @@ void determineSegments(pArray* ds, int index, int* start, int* segments)
     int maxHeight = log(ds->topSize)/log(2);
     int indexSeg=index/ds->length;
     int node;
-    while(treeLevel<maxHeight){
+    while(treeLevel<=maxHeight){
+        //base case. I.e. for 1 segment
         if (treeLevel==0){
-        //easy case if another insertion would fit.
             totalLoad=ds->topArray[indexSeg];
             if (totalLoad+1<ds->length*SEG_MAX_LOAD){
                 *segments=1;
@@ -262,15 +291,21 @@ void determineSegments(pArray* ds, int index, int* start, int* segments)
                 return;
             }
             else {
+                //printf("load %d length %d\n",totalLoad,curLength);
+                //printf("node %d idea %d\n",node,2*(index/length));
+                //printf("l %d cl %d\n",length,curLength);
                 length*=2;
             }
         }
         treeLevel++;
     }
+    //If nothing is returned at the end of this loop, it means array is too small.
     printf("expired height, must double the array!\n");
     *start = -1;
 }
 
+/*! \brief Calculates the correct load coefficient for the current level in the implicit tree
+*/
 float loadCoefficient(float tMax, float segMax, int lvl, int hMax){
     float result;
     float level=(float)lvl;
@@ -280,11 +315,13 @@ float loadCoefficient(float tMax, float segMax, int lvl, int hMax){
     return result;
 }
 
+/*! \brief Counts the load from start to end, exclusive at end but inclusive at start.
+*/
 int countLoad(pArray* ds,int start,int end){
     int count=0;
     int i;
     start/=ds->length;
-    end/=ds->length;
+    end=(end-1)/ds->length;
     /*Needs a less-than-or-equal because the start,end bounds are inclusive! 
     I.e. suppose the start and end are both within one ds->length.
     In such a case, the count should be 1, not zero!*/
@@ -331,9 +368,10 @@ void pArray_print(pArray* ds){
 /*! \brief Doubles the array (call when too small!)
 */
 void pArray_double(pArray* ds){
+    //KL: Seems to trigger all sorts of bugs 7/10/2013
     int i;
     //printf("before double size: %d,%d\n",ds->maxSize,ds->length);
-    //pArray_print(ds);
+   // pArray_print(ds);
     ds->maxSize*=2;
     ds->length=(int)log(ds->maxSize);
     ds->topSize=ds->maxSize/ds->length;
@@ -351,4 +389,6 @@ void pArray_double(pArray* ds){
         }
     }
     //printf("after double size: %d,%d\n",ds->maxSize,ds->length);
+    //pArray_print(ds);
+    //printf("--------------\n");
 }

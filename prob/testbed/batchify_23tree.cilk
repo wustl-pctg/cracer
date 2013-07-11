@@ -2,7 +2,7 @@
 #include "util/timer.h"
 #include "util/parfor.cilkh"
 
-#define TEST_SIZE 100000
+#define TEST_SIZE 100000000
 
 typedef struct in {
    void* ds;
@@ -27,7 +27,7 @@ void reset(struct tree23** tree){
 }
 cilk int main()
 {
-	struct tree23 *test_tree = create_tree(50);
+	struct tree23 *test_tree = create_tree(TEST_SIZE/2);
     dsInput input[TEST_SIZE];
     int i;
     for (i=0;i<TEST_SIZE;i++){
@@ -45,6 +45,9 @@ cilk int main()
     //print_tree(test_tree->root,0);
     
     reset(&test_tree);
+    for (i=0;i<TEST_SIZE;i++){
+        input[i].ds=test_tree;
+    }
     printf("Start parallel run\n");
     startTimer();
     spawn parforpar_1(0,TEST_SIZE-1,&testInsert,input);
