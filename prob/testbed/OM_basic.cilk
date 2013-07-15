@@ -6,8 +6,18 @@
 #define VOID_DATA (int)-INFINITY
 
 //Tyler Romero
-//Adding a second level of lists
+//Most basic implementation of OM data structure
 
+//Order Maintenance Data Structure
+	//A linked list that has labels that can be compared to determine which of the list items comes first
+
+//Public Functions
+	//void insert(x,y)
+	//ptr order(x,y)
+	
+//Private Functions
+	//void distribute()
+	//etc
 
 //----------------------Structs----------------------------------------------------------------------------
 //A linked list item for an OM data struct that containts a spot for a label
@@ -20,19 +30,10 @@ struct itemOM
 };
 typedef struct itemOM itemOM;
 
-struct nodeOM
-{
-	itemOM* leaf;
-	struct nodeOM* left, right;
-	int size, density; //Of the sub_tree
-};
-typedef struct nodeOM nodeOM;
-
 //The actual OM data structure
 struct datastructOM
 {
 	itemOM* list;
-	nodeOM* root;
 	int size; //The number of itemOMs in the list
 };
 typedef struct datastructOM datastructOM;
@@ -58,7 +59,6 @@ datastructOM* create_OM()
 	datastructOM* new_OM = (datastructOM*)malloc(sizeof(datastructOM));
 	if(new_OM == NULL) printf("Error Allocating Memory\n");
 	new_OM->list = NULL;
-	new_OM->root = NULL;
 	new_OM->size = 0;
 	return new_OM;
 }
@@ -78,7 +78,6 @@ itemOM* create_item(void* new_data)		//To 'delete' this, just free it
 	new_item->label = VOID_DATA;
 	new_item->next = NULL;
 	new_item->prev = NULL;
-	new_item->list = NULL;
 	return new_item;
 }
 
@@ -106,7 +105,38 @@ void insert(datastructOM* current_OM, itemOM* insert_item, itemOM* existing_item
 		return;
 	}
 	
-
+	if(existing_item == NULL)		//Insert insert_item first in the list
+	{
+		insert_item->prev = NULL;
+		insert_item->next = current_OM->list;
+		current_OM->list = insert_item;
+		current_OM->size++;
+		insert_item->label = 0;																		//NEED TO FIX THE LABELS IN THIS CASE
+		return;
+	}
+	else if(existing_item->next == NULL)	//Existing item is the last in the list
+	{
+		existing_item->next = insert_item;
+		insert_item->prev = existing_item;
+		insert_item->next = NULL;
+		current_OM->size++;
+		insert_item->label = label_space(current_OM)-1;						//Label Item
+		return;
+	}
+	else
+	{
+		insert_item->prev = existing_item;
+		insert_item->next = existing_item->next;
+		existing_item->next = insert_item;
+		current_OM->size++;
+		insert_item->label = existing_item->label + (insert_item->next->label-existing_item->label)/2;	//+1 ?
+		if(!is_space_left(insert_item))		//If more label space will be needed, redistribute
+		{
+			//printf("insert_item->label = %d\texisting_item->label = %d\n", insert_item->label,existing_item->label);
+			basic_redistribute(current_OM);
+		}
+		return;
+	}
 }
 
 //----------------------Delete-----------------------------------------

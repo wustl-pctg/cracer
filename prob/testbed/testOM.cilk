@@ -1,8 +1,18 @@
 #include "order_maintenance.cilk"
+#define TEST_SIZE 100
 
 int main()
 {
+	int test_data = 5;
+	int i;
+	datastructOM* testOM = create_OM();
+	insert(testOM, create_item(&test_data), NULL);
 	
+	for(i=0; i<TEST_SIZE; ++i){
+		insert(testOM, create_item(&test_data), testOM->list);
+	}
 	
+	print_OM(testOM);
+	delete_OM(testOM);
 	return 0;
 }
