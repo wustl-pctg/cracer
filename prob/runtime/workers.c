@@ -197,7 +197,7 @@ void Cilk_create_children(CilkContext *const context,
 			int ret_val = pthread_setaffinity_np(USE_SHARED1(tid) + i, sizeof(cpu_set_t), &mask);
       if (ret_val != 0) {
 				// Error message
-				printf("ERROR: Could not set CPU affinity for %i to %i with error %i\n", i, workerMaskID, ret_val);
+				~printf("ERROR: Could not set CPU affinity for %i to %i with error %i\n", i, workerMaskID, ret_val);
       }
       // Jing - Affinity setting end
     }
