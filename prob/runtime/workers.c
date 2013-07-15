@@ -29,8 +29,6 @@
 #include <libperfctr.h>
 #endif
 
-// Affinity
-
 /***********************************************************\
  * Spawning worker processes
 \***********************************************************/
@@ -123,10 +121,8 @@ volatile const struct vperfctr_state *__cilk_vperfctr_init(int set_global_variab
 
 #endif
 
-
-
 void Cilk_create_children(CilkContext *const context,
-			  void (*child)(CilkChildParams *const childParams))
+													void (*child)(CilkChildParams *const childParams))
 {
   long i;
   int res;
@@ -144,10 +140,6 @@ void Cilk_create_children(CilkContext *const context,
   USE_SHARED1(pending_batch).array =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(BatchRecord));
   USE_SHARED1(pending_batch).size = USE_PARAMETER1(active_size);
-  for (i=0; i < USE_PARAMETER1(active_size); i++) {
-    USE_SHARED1(pending_batch).array[i].status = DS_DONE;
-  }
-  USE_SHARED1(batch_work_array) = NULL;
 
   CILK_CHECK(USE_SHARED1(tid), (context, NULL, "could not malloc tid\n"));
 
@@ -160,7 +152,10 @@ void Cilk_create_children(CilkContext *const context,
     {
       USE_SHARED1(thrd_params_array)[i].context = context;
       USE_SHARED1(thrd_params_array)[i].id = i;
+
+			USE_SHARED1(pending_batch).array[i].status = DS_DONE;
     }
+  USE_SHARED1(batch_work_array) = NULL;
 
   pthread_attr_init(&attr);
   /* initialize attr with default attributes */
@@ -175,31 +170,34 @@ void Cilk_create_children(CilkContext *const context,
   }
   pthread_setconcurrency(USE_PARAMETER1(active_size));
 
-  cpu_set_t mask;
-  CPU_ZERO(&mask);
+	cpu_set_t mask;
+	CPU_ZERO(&mask);
+	CPU_SET(0, &mask);
+	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &mask);
 
   for (i = 0; i < USE_PARAMETER1(active_size); i++)
     {
       res = pthread_create(USE_SHARED1(tid) + i,
-			   &attr,
-			   (void * (*) (void *)) child,
-			   (void *) &(USE_SHARED1(thrd_params_array)[i]) );
+													 &attr,
+													 (void * (*) (void *)) child,
+													 (void *) &(USE_SHARED1(thrd_params_array)[i]) );
       if (res)
-	Cilk_die_internal(context, NULL, "Can't create threads\n");
+				Cilk_die_internal(context, NULL, "Can't create threads\n");
 
       // Jing - Affinity setting start
       int j;
       // assuming bind threads to core 0 to 11 in round-robin manner
       // assuming i is some global unique id for different threads, may need to change
       //      int available_cores = 12;
-      int workerMaskID = i % USE_PARAMETER1(active_size);
-      //      printf("NumProcs: %i\nMask: %i\n", USE_PARAMETER1(active_size), workerMaskID);
+      int workerMaskID = (i+1) % USE_PARAMETER1(active_size);
       // Bind the thread to the assigned core
-      CPU_SET(workerMaskID, &mask);
-      int ret_val = pthread_setaffinity_np(USE_SHARED1(tid) + i, sizeof(mask), &mask);
+			//		printf("Try to bind %i to %i\n", USE_SHARED1(tid)+i, workerMaskID);
+			CPU_ZERO(&mask);
+      CPU_SET(i, &mask);
+			int ret_val = pthread_setaffinity_np(USE_SHARED1(tid) + i, sizeof(cpu_set_t), &mask);
       if (ret_val != 0) {
-	// Error message
-	printf("ERROR: Could not set CPU affinity\n");
+				// Error message
+				printf("ERROR: Could not set CPU affinity for %i to %i with error %i\n", i, workerMaskID, ret_val);
       }
       // Jing - Affinity setting end
     }
@@ -243,7 +241,7 @@ void Cilk_worker_wait_for_invocation(CilkContext *const context, long self, int 
 {
   int res;
   pthread_cond_t *my_cond = ( self != 0 ? &USE_SHARED1(wakeup_other_workers_cond)
-			      : &USE_SHARED1(wakeup_first_worker_cond));
+															: &USE_SHARED1(wakeup_first_worker_cond));
 
   res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
   CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_lock: %d returned \n", res));
@@ -320,9 +318,9 @@ void Cilk_terminate_children(CilkContext *const context)
     {
       res = pthread_join(USE_SHARED1(tid[i]), NULL);
       CILK_CHECK(res == 0,
-		 (context, NULL,
-		  "error in pthread_join: %d returned (worker %d)\n",
-		  res, i));
+								 (context, NULL,
+									"error in pthread_join: %d returned (worker %d)\n",
+									res, i));
     }
 
 
