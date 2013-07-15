@@ -196,7 +196,6 @@ void Cilk_create_children(CilkContext *const context,
       //      printf("NumProcs: %i\nMask: %i\n", USE_PARAMETER1(active_size), workerMaskID);
       // Bind the thread to the assigned core
       CPU_SET(workerMaskID, &mask);
-      printf("Num avail. procs: %i\n", CPU_COUNT(&mask));
       int ret_val = pthread_setaffinity_np(USE_SHARED1(tid) + i, sizeof(mask), &mask);
       if (ret_val != 0) {
 	// Error message

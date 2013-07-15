@@ -11,6 +11,7 @@
 #define DEFAULT_ITERS 1
 #define DEFAULT_PRINT_INTERVAL 10
 void ds_work(int writes);
+extern void Cilk_terminate_batch(CilkWorkerState *const ws);
 
 void ds_work(int writes) {
     //does a number of writes/moves some registers back and forth

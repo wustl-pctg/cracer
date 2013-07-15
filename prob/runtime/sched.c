@@ -1750,9 +1750,6 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 
   ws->current_cache = &ws->ds_cache;
 
-  /* ws->cache.tail = &ws->cache.stack[0]; */
-  /* ws->cache.head = &ws->cache.stack[0]; */
-
   //  while (USE_SHARED(current_batch_id) == ws->batch_id) {
   while (!batch_done_yet(ws, ws->batch_id)) {
     if (!t) {
@@ -1859,10 +1856,13 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 
       op(ws, dataStruct, workArray, numJobs, workArray);
       ws->current_cache = &ws->cache;
-      if (pending->array[ws->self].status != DS_DONE) batch_scheduler(ws, NULL);
+      if (pending->array[ws->self].status != DS_DONE) {
+	printf("Shouldn't happen\n");
+	batch_scheduler(ws, NULL);
+      }
       ws->batch_id = 0;
       USE_SHARED(batch_owner) = -1;
-      assert(pending->array[ws->self].status == DS_DONE);
+      //      assert(pending->array[ws->self].status == DS_DONE);
       Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
       //break; // we got the lock, which means the batch must have contained our job - we're done
     }
