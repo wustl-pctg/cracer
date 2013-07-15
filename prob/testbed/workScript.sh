@@ -6,8 +6,8 @@ OPMAX=100000
 NPROCMAX=9
 ITER=5
 FILE=workTestLog.txt
-OPINTER=5000
-WORKINTER=5000
+OPINTER=10000
+WORKINTER=10000
 echo "WORK,OPS,ITER,LOCKS,BATCH" > $FILE
 NPROC=$NPROCMAX
     echo "NPROC=$NPROC" >>$FILE
@@ -15,6 +15,6 @@ NPROC=$NPROCMAX
     do
 	for ((OP=1;OP<=$OPMAX;OP+=$OPINTER))
 	do
-	    ./work --nproc $NPROC -w $WORK -o $OP -i $ITER -b -a >> $FILE
+	    ./work --nproc $NPROC -w $WORK -o $OP -i $ITER -b -a * 2>> $FILE
 	done
     done

@@ -181,7 +181,7 @@ cilk int main(int argc, char** argv) { //KL some basic command line parsing here
         printf("Wall time with batch: %lf\n",avg);
     }
     else {
-        printf("%d,%d,%d,%lf,%lf,\n",opWork,opCount,iterations,getAverage(wallTimesLock,iterations),getAverage(wallTimesBatch,iterations));
+      fprintf(stderr,"%d,%d,%d,%lf,%lf,\n",opWork,opCount,iterations,getAverage(wallTimesLock,iterations),getAverage(wallTimesBatch,iterations));
     }
     
    return 0;

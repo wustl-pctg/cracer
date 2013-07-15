@@ -14,12 +14,13 @@ typedef struct p_Item{
     struct p_Item* in;
 } pItem;
 
+
 /*! \brief Struct for the packed-memory Array (called pArray now)
 */
 typedef struct {
     /*! The actual array of items*/
     pItem** array;
-    /*! A secondary array of sizes, there are n/log(n) ints in this array*/
+    /*! A secondary array of sizes, there are n/log(n) ints in this array - this is the "indirection"*/
     int* topArray;
     /*! Size of the pItem Array. Always a power of 2.*/
     int maxSize;
@@ -50,6 +51,8 @@ void fillSpace(pArray* ds, int start, int index, pItem* newItem, int segments);
 void determineSegments(pArray* ds, int index, int* startResult, int* segments);
 int countLoad(pArray* ds, int start, int end);
 float loadCoefficient(float tMax, float segMax, int lvl, int hMax);
+void fillMuchSpace(pArray* ds, pItem** temp, int startSeg, int segments);
+
 
 /*! \brief Creates a pArray with initial size.
     Returns a pointer to the new pArray.
@@ -123,7 +126,7 @@ pItem* pArray_order(pItem* x, pItem* y){
     }
 }
 
-/*! \brief Insert operation, not yet O(1) amortized time
+/*! \brief Insert operation, O(log^2 n) amortized time, I think.
 */
 void pArray_seqInsert(pArray* ds, pItem* x, pItem* y){
     int apres;
@@ -166,9 +169,27 @@ void pArray_delete(pArray* ds, pItem* x){
 /*! \brief A batch version of the insert.
 */
 void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
-
+  /*!
+    Note that the operation record must contain two pointers - the insert and the insert_place.
+     That is why the input is a triple pointer to pItem. 
+     The insert item will be input[x][1].
+     The insert_place will be input[x][0]
+  */
+  pItem*** input = opRec;
+  int i;
+  for (i=0;i<size;i++){
+    //input[i][0]->in = input[i][1];
+    //Temporarily just call sequential insert.
+    pArray_seqInsert(ds,input[i][0],input[i][1]);
+  }
+  
 }
 
+/*! \brief A method to populate a region of the array and evenly space them out.
+  
+   The newItem is the item to insert, the index is the index at which the item should be inserted.
+
+ */
 void fillSpace(pArray* ds, int start, int index, pItem* newItem, int segments) {
     int toFill;
     int next;
@@ -183,7 +204,7 @@ void fillSpace(pArray* ds, int start, int index, pItem* newItem, int segments) {
     }
     totalLoad++;//There is a newItem to add!
     
-    //This flushes all the items to the left.
+    //This flushes all the items to the left to make sure the redistribution will work.
     toFill = start;
     for (next=start; next < start+(ds->length)*segments;next++){
         if (ds->array[next]!=NULL){
@@ -217,6 +238,52 @@ void fillSpace(pArray* ds, int start, int index, pItem* newItem, int segments) {
         (topArray[(toFill*spacing+start)/ds->length])++;
     }
 }
+
+/*! \brief A fillSpace method that works in batch.
+  
+    Note that the temp array passed in must be big enough (of size totalLoad at least)
+    Suggest allocating an array of (batch_size + current_load) just in case.
+*/
+void fillMuchSpace(pArray* ds,  pItem** temp, int startSeg, int segments) {
+  int spacing;
+  int totalLoad=0;
+  int next;
+  int count=0;
+  int startInd = startSeg*ds->length;
+
+  //Similar construct as in the sequential version.
+  for (next=startSeg;next<startSeg+segments;next++){
+    totalLoad+=ds->topArray[next];
+    ds->topArray[next]=0;
+  }
+
+  /*
+    Let X be segments*ds->length.
+    Do not do any shoving in the parallel case, since there is a temp. array of space.
+    Trade-off here is that size X  portion of the array will always be copied twice.
+    This is good when many batch items exist, but less so when there is few items.
+    The sequential method (see the seqinsert) will only traverse the X length portion once.
+       On the sceond pass it only goes through O(totalLoad) array indices.
+    Luckily, it is only a constant factor worse at most.
+  */  
+  spacing = (segments*ds->length)/totalLoad;
+  for (next=startInd;next<startInd + segments*ds->length;next++){
+    if (ds->array[next]!=NULL){
+      temp[count]=ds->array[next];
+      count++;
+      if (ds->array[next]->in!=NULL){
+	temp[count]=ds->array[next]->in;
+	ds->array[next]->in=NULL;
+	count++;
+      }
+    }  
+  }
+  //Copies the items back into the array. Now with correct spacing.
+  for (next=0;next<count;next++){
+    ds->array[startInd+spacing*next]=temp[next];
+  }
+}
+
 
 /*! \brief Redistributes labels in array
     
