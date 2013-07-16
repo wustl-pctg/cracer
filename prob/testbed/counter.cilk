@@ -19,16 +19,16 @@ extern void Cilk_terminate_batch(CilkWorkerState *const ws);
 
 cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)	//batch_op
 {
-  int *nums = (int*)data;
+	int *nums = (int*)data;
   int temp = nums[size-1];
   int *count = (int*)dataStruct;
-  int i;
 
   spawn prefixSumsExc(nums, size, nums);
   sync;
 
   result = data;
   *count += temp + nums[size-1];
+	if (*count < -100000 || *count > 100000) assert(0);
   Cilk_terminate_batch(_cilk_ws);
   return;
 }
