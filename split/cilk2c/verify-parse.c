@@ -535,7 +535,7 @@ PRIVATE void VerifyNode(Node *node, Context c)
 
 PRIVATE void VerifyTq(TypeQual tq)
 {
-     assert(tq_equal(tq, tq_type_quals(tq)));
+    assert(tq_equal(tq, tq_type_quals(tq)));
 }
 
 PRIVATE void VerifyScAndDq(TypeQual tq)

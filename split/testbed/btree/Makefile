@@ -1,5 +1,5 @@
 CILK=../cilkclocal
-CFLAGS=-g -O2 -save-temps -I./ -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L 
+CFLAGS=-g -O2 -save-temps -I./ 
 
 all: btree ds_btree
 

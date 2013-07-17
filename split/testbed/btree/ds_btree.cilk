@@ -950,7 +950,9 @@ cilk int main(int argc, char* argv[])
         //print_subtree(tree,tree->root);
 
     search_value=random()%count;
-    spawn ds_btree_search(tree, (void *) &search_value);
+    for (i=0; i<10; ++i) {
+        spawn ds_btree_search(tree, (void *) &search_value);
+    }
     sync;
 
     /*for (i= count - 1; i > -1; i-= (random()%5)) {

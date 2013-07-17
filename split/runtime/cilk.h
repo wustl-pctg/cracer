@@ -344,7 +344,7 @@ typedef struct {
 } work_array;
 
 work_array ds_work_array;
-
+volatile int ds_main_status;
 
 
 /*

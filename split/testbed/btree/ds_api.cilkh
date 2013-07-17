@@ -14,6 +14,8 @@
 int* op_counts;
 double group_time=0, execute_time=0, cleanup_time=0;
 struct timeval inner_begin, inner_end;
+                
+//struct _cilk_ds_main_frame{CilkStackFrame header;struct{void*hack;}scope0;struct{int i;int j;int nprocs;int batch_size;void**batch_data;int*batch_indexes;void(*operation)(CilkWorkerState*const ,void**,size_t);}scope1;};
 
 //main thread for primary DS worker to busy loop on ds_work_array
 //INPUT: void* hack - unused (makes function def match expected in runtime) 
@@ -59,7 +61,19 @@ cilk void ds_main(void* hack) {
             gettimeofday(&inner_begin, NULL);
             printf("calling operation\n");
             ds_main_status = DS_WAITING;
-            operation (_cilk_ws, batch_data, batch_size);
+
+            {
+                extern struct _cilk_ds_main_frame*_cilk_frame;
+                //_cilk_frame->header.entry=1;
+                //_cilk_frame->scope0.batch_data=batch_data;
+                //_cilk_frame->scope0.batch_size=batch_size;
+                CILK2C_BEFORE_SPAWN_FAST();
+                CILK2C_PUSH_FRAME(_cilk_frame);
+                operation (_cilk_ws, batch_data, batch_size);
+                CILK2C_XPOP_FRAME_NORESULT(_cilk_frame,0);
+                CILK2C_AFTER_SPAWN_FAST();
+            }
+
             ds_main_status = DS_DONE;
             printf("finished operation\n");
             gettimeofday(&inner_end, NULL);
@@ -76,5 +90,7 @@ cilk void ds_main(void* hack) {
 
         }
     }            
+
+    return;
 }
 #endif

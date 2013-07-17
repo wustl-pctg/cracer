@@ -143,6 +143,8 @@ void Cilk_create_children(CilkContext *const context,
      for (i=0; i < USE_PARAMETER1(active_size); ++i) {
        ds_work_array.array[i].status = DS_DONE;     
      }
+     
+     ds_main_status = DS_DONE;
      CILK_CHECK(USE_SHARED1(tid), (context, NULL, "could not malloc tid\n"));
 
      /* allocate and init the params sent to the children*/
