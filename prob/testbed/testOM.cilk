@@ -1,18 +1,33 @@
 #include "order_maintenance.cilk"
-#define TEST_SIZE 100
+#define TEST_SIZE 100	//Needs to fit with bound (see M)
 
 int main()
 {
-	int test_data = 5;
+	record* base = create_record(NULL);
+	record** record_list = (record**)malloc(TEST_SIZE*sizeof(record*));
 	int i;
-	datastructOM* testOM = create_OM();
-	insert(testOM, create_item(&test_data), NULL);
 	
-	for(i=0; i<TEST_SIZE; ++i){
-		insert(testOM, create_item(&test_data), testOM->list);
+	for(i=0; i<TEST_SIZE; ++i)
+	{
+		record_list[i] = create_record(NULL);
+	}
+
+	insert(NULL, base);
+	
+	for(i=0; i<TEST_SIZE; ++i)
+	{
+		insert(base,record_list[i]);
+		print(base);
 	}
 	
-	print_OM(testOM);
-	delete_OM(testOM);
+	printf("Should be 1: %d\n", order(record_list[45],record_list[40]));
+	
+	printf("\ndelete");
+	
+	delete(record_list[99]);
+	
+	print(base);
+	
+
 	return 0;
 }
