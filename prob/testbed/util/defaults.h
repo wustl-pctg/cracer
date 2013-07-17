@@ -1,7 +1,9 @@
 #ifndef _DEFAULTS_H
 #define _DEFAULTS_H
 
+#ifndef PARFOR_THRESHOLD
 #define PARFOR_THRESHOLD 128
+#endif
 
 #define DUMMY_WAIT 512 ///< Loop iteration to wait (to simulate operation time)
 #define DUMMY_ITERS 131072 ///< Number of times to execute operation
