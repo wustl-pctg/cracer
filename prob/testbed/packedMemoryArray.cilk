@@ -3,7 +3,6 @@
 #include <cilk-lib.cilkh>
 #include <math.h>
 
-
 #define TOTAL_MAX_LOAD 0.5
 #define SEG_MAX_LOAD 1.0
 /*! \brief Simple array item.
@@ -14,6 +13,13 @@ typedef struct p_Item{
     struct p_Item* in;
 } pItem;
 
+/*! \brief The Indirection item
+ */
+typedef struct {
+  int count;
+  Cilk_lockvar lock;
+  int start;
+} topItem;
 
 /*! \brief Struct for the packed-memory Array (called pArray now)
 */
@@ -21,7 +27,7 @@ typedef struct {
     /*! The actual array of items*/
     pItem** array;
     /*! A secondary array of sizes, there are n/log(n) ints in this array - this is the "indirection"*/
-    int* topArray;
+    topItem* topArray;
     /*! Size of the pItem Array. Always a power of 2.*/
     int maxSize;
     /*! Total load factor*/
@@ -43,6 +49,7 @@ void pArray_destroy(pArray* victim); //Destructor
 pItem* pArray_order(pItem* x, pItem* y); 
 void pArray_insert(pArray* ds, pItem* x, pItem* y);
 void pArray_double(pArray* ds);
+cilk void pAraay_batchInsert(pArray* ds, void* opRec, int size, void* results);
 
 /*Private Functions*/
 void redistributeLabel(pArray* ds, int index,pItem* newItem);
@@ -52,7 +59,10 @@ void determineSegments(pArray* ds, int index, int* startResult, int* segments);
 int countLoad(pArray* ds, int start, int end);
 float loadCoefficient(float tMax, float segMax, int lvl, int hMax);
 void fillMuchSpace(pArray* ds, pItem** temp, int startSeg, int segments);
-
+cilk void insertItem(pArray* ds, pItem** input, int index);
+int countAllLoad(pArray* ds, int start, int end);
+void processItem(pArray* ds, pItem** input, int round, int index, int* notDone);
+cilk void parallelProcessItem(pArray* ds, pItem** input, int round, int* notDone, int start, int end);
 
 /*! \brief Creates a pArray with initial size.
     Returns a pointer to the new pArray.
@@ -64,9 +74,14 @@ pArray* pArray_create(int maxSize){
     result->array = calloc(realSize,sizeof(pItem*)); 
     result->length = (int)log(realSize);
     result->topSize=realSize/result->length;
-    result->topArray=calloc(result->topSize,sizeof(int));
+    result->topArray=calloc(result->topSize,sizeof(topItem));
     result->maxSize=realSize;
     result->load=0;
+    //KL: Could be parallel, but shouldn't matter much.
+    for (realSize=0;realSize<result->topSize;realSize++){
+      Cilk_lock_init(result->topArray[realSize].lock);
+      result->topArray[realSize].start=realSize*result->length;
+    }
     //printf("top: %d, %d\n",result->length,result->topSize);
     return result;
 }
@@ -148,11 +163,13 @@ void pArray_seqInsert(pArray* ds, pItem* x, pItem* y){
     else {
         y->label=apres;
         ds->array[apres]=y;
-        (ds->topArray[apres/ds->length])++;
+        (ds->topArray[apres/ds->length].count)++;
     }
 }
 
 /*! \brief Delete operation just removes item from array.
+
+    Note that this does not free the memory of the item - since the caller of the method still has a pointer to it.
 */
 void pArray_delete(pArray* ds, pItem* x){
     if (x==NULL){
@@ -163,27 +180,127 @@ void pArray_delete(pArray* ds, pItem* x){
     }
     else {
         ds->array[x->label]=NULL;
-    }
+	ds->topArray[x->label/ds->length].count--;
+ 
+   }
 }
 
 /*! \brief A batch version of the insert.
 */
-void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
+cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
   /*!
     Note that the operation record must contain two pointers - the insert and the insert_place.
-     That is why the input is a triple pointer to pItem. 
-     The insert item will be input[x][1].
-     The insert_place will be input[x][0]
+     That is why the input pointer to pItem is strange.
+     Because it is inconvenient to use a 2D array, the technique of pretending a 2D array is 1D will be used.
+     The insert item will be odd elements.
+     The insert_place will be even elements.
   */
-  pItem*** input = opRec;
+  pItem** input = opRec;
+  pItem** temp;
   int i;
-  for (i=0;i<size;i++){
-    //input[i][0]->in = input[i][1];
-    //Temporarily just call sequential insert.
-    pArray_seqInsert(ds,input[i][0],input[i][1]);
+  /*for (i=0;i<size;i++){
+    printf("size? %d\n",sizeof(pItem*));
+    printf("item: %p,%p\n",input[i][0],input[i][1]);
+    }*/
+  
+
+  //Store into temporary slot.
+  for (i=0;i<size;i+=2){
+    input[i]->in = input[i+1];
+    //KL: Hack#1 to re-use memory. Hopefully pointers have same size.
+    //KL: so now, all odd items in input array are actually topItem*
+    input[i+1]=(pItem*)&(ds->topArray[input[i]->label/ds->length]);
+    //KL: increments the segment size, gets a lock.
+    Cilk_lock(ds->topArray[input[i]->label/ds->length].lock);
+    ds->topArray[input[i]->label/ds->length].count++;
+    Cilk_unlock(ds->topArray[input[i]->label/ds->length].lock);
   }
   
+  //Inserts items.
+  //pArray_print(ds);
+  spawn insertItem(ds,input,size);
+  sync; 
+ /*
+  for (i=0;i<size;i+=2){
+    printf("%d,%d\n",segments[i],segments[i+1]);
+    }*/
+
+  //  temp=calloc(ds->maxSize,sizeof(pItem*));
+  //fillMuchSpace(ds, temp,0,ds->topSize);
+  //Need to find which segments to do work on.
 }
+
+/*! \brief Insert method for batch. Uses locks cleverly.
+
+ */
+cilk void insertItem(pArray* ds, pItem** input, int size) {
+  int round=0;
+  int maxRounds=log(ds->topSize)/log(2);
+  int length=ds->length;
+  int i;
+  int notDone=1;
+
+  printf("size %d\n",size);
+  while (round<=maxRounds && notDone){
+    //par_for
+    notDone=0;
+    spawn parallelProcessItem(ds, input, round, &notDone, 0, size);
+    /*for (i=0;i<size;i+=2){
+      processItem(ds, input, round,  i, &notDone);
+    }*/
+    sync;
+    //printf("round %d end\n",round);
+    round++;
+  }
+  if (notDone){
+    printf("fail\n");
+  } 
+  else {
+    printf("done wtih stuff after %d rounds\n",round-1);
+  }
+}
+
+void processItem(pArray* ds, pItem** input, int round, int index, int* notDone) {
+  int length = pow(2,round);
+  int count=0;
+  int i;
+  topItem* seg;
+  int topIndex;
+  pItem** temp;
+
+  //Nothing to be done.
+  if (input[index+1]==NULL){
+    // printf("nothing to do in round %d for item %d\n",round,index);
+    return;
+  }
+  
+  seg = (topItem*)input[index+1];//KL: see Hack#1 above.
+  topIndex = (*seg).start/ds->length;
+  //  printf("doing round %d for item %d. top Index %d. topItem %p. \n",round,index, topIndex,seg);
+//  printf("topIndex %d length %d, %p\n",topIndex,length,seg);
+  //Lock the relevant part of the segment.
+  Cilk_lock((*seg).lock);
+  for (i=topIndex;i<topIndex+length;i++){
+    count+=ds->topArray[i].count;
+  }
+  if (count<length*ds->length*loadCoefficient(TOTAL_MAX_LOAD,SEG_MAX_LOAD,round, log(ds->topSize)/log(2))){
+    temp = calloc(length*ds->length,sizeof(pItem*));
+    //  printf("fill %d to %d\n", topIndex, topIndex+length);
+    fillMuchSpace(ds,temp,topIndex,length);
+    free(temp);
+    input[index+1]=NULL;
+  } else {
+    //  printf("count %d, length %d\n",count,length);
+    topIndex=topIndex/(2*length);
+    topIndex*=(2*length);
+    //KL: see Hack#1
+    input[index+1]=(pItem*)&ds->topArray[topIndex];
+    *notDone=1; //here is a concurrent write, but all are writing the same thing.
+  }
+  //Unlock
+  Cilk_unlock((*seg).lock);
+}
+
 
 /*! \brief A method to populate a region of the array and evenly space them out.
   
@@ -196,13 +313,13 @@ void fillSpace(pArray* ds, int start, int index, pItem* newItem, int segments) {
     int topStart = (start/ds->length);
     int spacing;
     int totalLoad=0;
-    int* topArray = ds->topArray;
+    topItem* topArray = ds->topArray;
     pItem* temp;
     for (next=topStart; next < topStart+segments; next++){
-        totalLoad+=topArray[next];
-        topArray[next]=0; //Reset the load amounts, will re-populate later.
+        totalLoad+=ds->topArray[next].count;
+        ds->topArray[next].count=0; //Reset the load amounts, will re-populate later.
     }
-    totalLoad++;//There is a newItem to add!
+    totalLoad++; //There is a newItem to add!
     
     //This flushes all the items to the left to make sure the redistribution will work.
     toFill = start;
@@ -235,7 +352,7 @@ void fillSpace(pArray* ds, int start, int index, pItem* newItem, int segments) {
         ds->array[start+toFill]=NULL;
         ds->array[toFill*spacing+start]=temp;
         ds->array[toFill*spacing+start]->label = toFill*spacing+start;
-        (topArray[(toFill*spacing+start)/ds->length])++;
+        (topArray[(toFill*spacing+start)/ds->length].count)++;
     }
 }
 
@@ -250,11 +367,12 @@ void fillMuchSpace(pArray* ds,  pItem** temp, int startSeg, int segments) {
   int next;
   int count=0;
   int startInd = startSeg*ds->length;
+  int place;
 
   //Similar construct as in the sequential version.
   for (next=startSeg;next<startSeg+segments;next++){
-    totalLoad+=ds->topArray[next];
-    ds->topArray[next]=0;
+    totalLoad+=ds->topArray[next].count;
+    ds->topArray[next].count=0;
   }
 
   /*
@@ -276,20 +394,23 @@ void fillMuchSpace(pArray* ds,  pItem** temp, int startSeg, int segments) {
 	ds->array[next]->in=NULL;
 	count++;
       }
+      ds->array[next]=NULL;
     }  
   }
   //Copies the items back into the array. Now with correct spacing.
   for (next=0;next<count;next++){
-    ds->array[startInd+spacing*next]=temp[next];
+    place=startInd+spacing*next;
+    ds->array[place]=temp[next];
+    ds->array[place]->label=place;
+    ds->topArray[place/ds->length].count++;
   }
 }
 
 
 /*! \brief Redistributes labels in array
-    
-    Note that the values of the topArray - the number of elements in each sublist, is only valid when the array is not overloaded.
-    After overload, the values of the topArray no longer mean anything.
-*/
+ 
+    Changes the values of topArray too.
+ */
 void redistributeLabel(pArray* ds, int index, pItem* newItem) {
     int segments=1;
     int start,next;
@@ -335,7 +456,7 @@ void determineSegments(pArray* ds, int index, int* start, int* segments)
     while(treeLevel<=maxHeight){
         //base case. I.e. for 1 segment
         if (treeLevel==0){
-            totalLoad=ds->topArray[indexSeg];
+            totalLoad=ds->topArray[indexSeg].count;
             if (totalLoad+1<ds->length*SEG_MAX_LOAD){
                 *segments=1;
                 *start=indexSeg*ds->length;
@@ -382,6 +503,21 @@ float loadCoefficient(float tMax, float segMax, int lvl, int hMax){
     return result;
 }
 
+/*! \brief Count that also counts temp items.
+ */
+int countAllLoad(pArray* ds, int start, int end){
+  int count=0;
+  int i;
+  for (i=start;i<end;i++){
+    if (ds->array[i]!=NULL){
+      count++;
+      if(ds->array[i]->in!=NULL){
+	count++;
+      }
+    }
+  }
+  return count;
+}
 /*! \brief Counts the load from start to end, exclusive at end but inclusive at start.
 */
 int countLoad(pArray* ds,int start,int end){
@@ -393,7 +529,7 @@ int countLoad(pArray* ds,int start,int end){
     I.e. suppose the start and end are both within one ds->length.
     In such a case, the count should be 1, not zero!*/
     for (i=start;i<=end;i++){ 
-        count+=ds->topArray[i];
+        count+=ds->topArray[i].count;
     }
     return count;
 }
@@ -422,40 +558,52 @@ void pArray_print(pArray* ds){
     for (i=0;i<ds->maxSize;i++){
         if (ds->array[i]!=NULL){
             printf("[%d:%c]\n",i,*(char*)(ds->array[i]->item));
-            //printf("[%d:%p]\n",i,ds->array[i]);
             count++;
         }
     }
     for (i=0;i<ds->topSize;i++){
-        printf("[%d]\n",ds->topArray[i]);
+        printf("[%d]\n",ds->topArray[i].count);
     }
     printf("Total: %d/%d\n",count,ds->maxSize);
+    printf("Top size: %d\n",ds->topSize);
 }
 
 /*! \brief Doubles the array (call when too small!)
 */
 void pArray_double(pArray* ds){
-    //KL: Seems to trigger all sorts of bugs 7/10/2013
     int i;
-    //printf("before double size: %d,%d\n",ds->maxSize,ds->length);
-   // pArray_print(ds);
     ds->maxSize*=2;
     ds->length=(int)log(ds->maxSize);
     ds->topSize=ds->maxSize/ds->length;
     ds->array = realloc(ds->array,ds->maxSize*sizeof(pItem*));
-    ds->topArray=realloc(ds->topArray,ds->topSize*sizeof(int));
+    ds->topArray=realloc(ds->topArray,ds->topSize*sizeof(topItem));
     if (ds->array==NULL || ds->topArray==NULL){
         printf("error allocating\n");
     }
     for (i=0;i<ds->topSize;i++){
-        ds->topArray[i]=0;
+        ds->topArray[i].count=0;
+	ds->topArray[i].start=i*ds->length;
+	Cilk_lock_init(ds->topArray[i].lock);
     }
     for (i=0;i<ds->maxSize;i++){
         if(ds->array[i]!=NULL){
-            (ds->topArray[i/ds->length])++;
+            (ds->topArray[i/ds->length].count)++;
         }
     }
-    //printf("after double size: %d,%d\n",ds->maxSize,ds->length);
-    //pArray_print(ds);
-    //printf("--------------\n");
+}
+
+cilk void parallelProcessItem(pArray* ds, pItem** input, int round, int* notDone, int start, int end){
+  int i;
+  if (end-start<2){
+    for (i=start; i <end; i++){
+      if (i%2==0){
+	processItem(ds, input, round, i, notDone);
+      }
+    }
+  } else {
+    i = start + (end-start)/2;
+    spawn parallelProcessItem(ds,input,round,notDone,start,i);
+    spawn parallelProcessItem(ds,input,round,notDone,i,end);
+    sync;
+  }
 }
