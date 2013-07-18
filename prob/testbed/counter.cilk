@@ -81,13 +81,13 @@ cilk int main(int argc, char *argv[])
   data = malloc(nNums*sizeof(int));
 
   srand(time(NULL));
-  //  printf("Original sequence: ");
+	//	printf("Original sequence: ");
   for (i = 0; i < nNums; i++) {
     // want -MAX_NUM to MAX_NUM range
     data[i] = rand() % (2*MAX_NUM) - MAX_NUM;
-    //    printf("%i ", data[i]);
+		//		printf("%i ", data[i]);
   }
-  //  printf("\n");
+	//	printf("\n");
 
   startTimer();
   sequentialIncrement(data, nNums);
