@@ -4,228 +4,158 @@
 #include <cilk-lib.cilkh>
 
 #define VOID_DATA (int)-INFINITY
+#define M 100000	//M = number of possible lables, N = Celling(m^(1/2))-1= Max # of records
 
 //Tyler Romero
-//Most basic implementation of OM data structure
-
-//Order Maintenance Data Structure
-	//A linked list that has labels that can be compared to determine which of the list items comes first
-
-//Public Functions
-	//void insert(x,y)
-	//ptr order(x,y)
-	
-//Private Functions
-	//void distribute()
-	//etc
+//Simple OM data structure
+//Implementation of the Amortized Time Algorithm given by Dietz and Sleator
+//Insert: O(log n) amortized -> Can be made O(1) Amortized through list-of-lists technique
+//Delete: O(1) worst case
+//Order: O(1) worst case
 
 //----------------------Structs----------------------------------------------------------------------------
-//A linked list item for an OM data struct that containts a spot for a label
-struct itemOM
+struct record
 {
+	int label;
+	struct record *prev, *next;
 	void* data;
-	size_t label;		//[0,OM->size^2)
-	struct itemOM* next;
-	struct itemOM* prev;
+	enum bool{false, true} is_base;
 };
-typedef struct itemOM itemOM;
+typedef struct record record;
 
-//The actual OM data structure
-struct datastructOM
+//--------------------Declarations--------------------------------------------------------------
+void insert(record* record_x, record* record_y);	//Inserts y directly after x
+void delete(record* dead_record);
+int order(record* record_x, record* record_y);	//Returns 1 if x is before y, otherwise returns 0
+
+record* create_record(void* data);
+void print(record* base);
+
+//--------------------Insert-----------------------------------------------------------
+void insert(record* record_x, record* record_y)	//insert y after the existing x record
 {
-	itemOM* list;
-	int size; //The number of itemOMs in the list
-};
-typedef struct datastructOM datastructOM;
-
-//----------------------Function Declarations--------------------------------------------------------------
-datastructOM* create_OM();
-void delete_OM(datastructOM* dead_OM);
-itemOM* create_item(void* new_data);
-void delete_list(itemOM* dead_item);
-
-void insert(datastructOM* current_OM, itemOM* insert_item, itemOM* existing_item);
-void delete(datastructOM* current_OM, itemOM* dead_item);
-itemOM* order(itemOM* itemA, itemOM* itemB);
-
-int label_space(datastructOM* current_OM);
-int is_space_left(itemOM* current_item);
-void basic_redistribute(datastructOM* current_OM);
-
-//----------------------Create and Delete---------------------------------------
-
-datastructOM* create_OM()
-{
-	datastructOM* new_OM = (datastructOM*)malloc(sizeof(datastructOM));
-	if(new_OM == NULL) printf("Error Allocating Memory\n");
-	new_OM->list = NULL;
-	new_OM->size = 0;
-	return new_OM;
-}
-
-void delete_OM(datastructOM* dead_OM)
-{
-	delete_list(dead_OM->list);
-	free(dead_OM);
-	return;
-}
-
-itemOM* create_item(void* new_data)		//To 'delete' this, just free it
-{
-	itemOM* new_item = (itemOM*)malloc(sizeof(itemOM));
-	if(new_item == NULL) printf("Error Allocating Memory\n");
-	new_item->data = new_data;
-	new_item->label = VOID_DATA;
-	new_item->next = NULL;
-	new_item->prev = NULL;
-	return new_item;
-}
-
-void delete_list(itemOM* dead_item)
-{
-	if(dead_item==NULL)
-		return;
-	else
+	int w;
+	record* j_record;
+	record* temp;
+	int j,k;
+	if(record_x==NULL)	//First item in the data structure ----> Base
 	{
-		delete_list(dead_item->next);
-		free(dead_item);
+		record_y->is_base = true;
+		record_y->next = record_y;
+		record_y->prev = record_y;
+		record_y->label = 0;		//Arbitrary
 		return;
 	}
-}
-
-
-
-//----------------------Insert-----------------------------------------
-
-void insert(datastructOM* current_OM, itemOM* insert_item, itemOM* existing_item)		//Sequential Implementation - insert_item is inserted after existing_item
-{																						//Need to make it so
-	if(insert_item == NULL)
+	else	//A normal insertion
 	{
-		printf("Error: insert_item was NULL\n");
-		return;
-	}
-	
-	if(existing_item == NULL)		//Insert insert_item first in the list
-	{
-		insert_item->prev = NULL;
-		insert_item->next = current_OM->list;
-		current_OM->list = insert_item;
-		current_OM->size++;
-		insert_item->label = 0;																		//NEED TO FIX THE LABELS IN THIS CASE
-		return;
-	}
-	else if(existing_item->next == NULL)	//Existing item is the last in the list
-	{
-		existing_item->next = insert_item;
-		insert_item->prev = existing_item;
-		insert_item->next = NULL;
-		current_OM->size++;
-		insert_item->label = label_space(current_OM)-1;						//Label Item
-		return;
-	}
-	else
-	{
-		insert_item->prev = existing_item;
-		insert_item->next = existing_item->next;
-		existing_item->next = insert_item;
-		current_OM->size++;
-		insert_item->label = existing_item->label + (insert_item->next->label-existing_item->label)/2;	//+1 ?
-		if(!is_space_left(insert_item))		//If more label space will be needed, redistribute
+		//Walk down list
+		j_record=record_x->next;
+		j=1;
+		w = (j_record->label - record_x->label)%M;
+		
+		while(w <= j*j)
 		{
-			//printf("insert_item->label = %d\texisting_item->label = %d\n", insert_item->label,existing_item->label);
-			basic_redistribute(current_OM);
+			if (j_record == record_x->prev) w = M;
+			else if(j==1) w = 1;
+			else
+			{
+				w = (j_record->label - record_x->label)%M;
+			}
+			//printf("\nw: %d\tj^2: %d", w, j*j);
+			j++;
+			j_record = j_record->next;
 		}
+		
+		//Relabel
+		temp = record_x->next;
+		w = (j_record->label - record_x->label)%M;
+		k=1;
+		while(k<j)
+		{
+			if(temp->is_base == false)	//Dont relabel the base
+			{
+				temp->label = ((int)(floor(w*k/j) + record_x->label)) % M;
+			}
+			k++;
+			temp = temp->next;
+		}
+		
+		//Insert
+		if(record_x->next->is_base == true)	//The record is the last in the list
+		{
+			record_y->label = (record_x->label + M)/2;
+		}
+		else
+		{
+			record_y->label = floor((record_x->label + record_x->next->label)/2);
+		}
+		record_y->next = record_x->next;
+		record_y->prev = record_x;
+		record_x->next = record_y;
 		return;
 	}
 }
 
-//----------------------Delete-----------------------------------------
-void delete(datastructOM* current_OM, itemOM* dead_item)
+//-------------------Delete-----------------------------------------------
+void delete(record* dead_record)
 {
-	if(dead_item->next == NULL)					//If item is last in list
+	if(dead_record == NULL)
+		return;
+	else if(dead_record->next == dead_record)	//Deletion of the base is only allowed if its the last item in the structure
 	{
-		dead_item->prev->next == NULL;
-		free(dead_item);
+		free(dead_record);
 	}
-	else if(dead_item->prev == NULL)			//If item is first in list
+	else if(dead_record->is_base == true)
 	{
-		current_OM->list = dead_item->next;
-		dead_item->next->prev = NULL;
-		free(dead_item);
+		printf("Deletion of the base is not allowed\n");
 	}
 	else
 	{
-		dead_item->prev->next = dead_item->next;
-		dead_item->next->prev = dead_item->prev;
-		free(dead_item);
+		dead_record->prev->next = dead_record->next;
+		dead_record->next->prev = dead_record->prev;
+		free(dead_record);
 	}
 }
 
-//----------------------Order------------------------------------------
-itemOM* order(itemOM* itemA, itemOM* itemB)		//Sequential Implementation
-{
-	if(itemA->label > itemB->label)
-		return itemB;	//Lower labels indicate that they are higher in the order (closert to the front of the list)
-	else if(itemB->label > itemA->label)
-		return itemA;
-	else{
-		printf("Error: items have the same label; should be impossible\n");
-		return NULL;
-	}	
-}
 
-//---------------------Other-------------------------------------------
-int label_space(datastructOM* current_OM)
+//-------------------Order------------------------------------------------
+int order(record* record_x, record* record_y)
 {
-	//printf("label_space\n");
-	return (current_OM->size) * (current_OM->size);
-}
-
-int is_space_left(itemOM* current_item)	//0 for no space left, 1 for space left
-{
-	//printf("is_space_left\n");
-	if(current_item->next != NULL && current_item->prev != NULL){
-		if(current_item->next->label <= current_item->label+1 || current_item->prev->label >= current_item->label-1){
-			return 0;
-		}
-		else{
-			return 1;
-		}
-	}
-	else{
-		return 0;
-	}
-}
-
-void basic_redistribute(datastructOM* current_OM)
-{
-	int j = 0;
-	itemOM* current_item = current_OM->list;
-	
-	//printf("basic_redistribute\n");
-	while(j<current_OM->size && current_item != NULL)		//Check this
+	if(record_x == NULL || record_y == NULL)
 	{
-		current_item->label = j*current_OM->size;
-		if(current_item->label >= label_space(current_OM)){
-			printf("Labeling Error\n");
-		}
-		//printf("j=%d\tlabel=%d\n",j,current_item->label);
-		++j;
-		current_item = current_item->next;
+		printf("A record is NULL");
+		return VOID_DATA;
 	}
+	else if(record_x->label < record_y->label)
+		return 1;		//True
+	else
+		return 0;		//False
 }
 
-
-
-//------------------------Print---------------------------------------
-void print_OM(datastructOM* current_OM)
+//-------------------Create Record-----------------------------------------
+record* create_record(void* data)
 {
-	itemOM* current_item = current_OM->list;
-	printf("\nList:\n");
-	while(current_item!=NULL)
-	{
-		printf("%d\t", current_item->label);
-		current_item = current_item->next;
-	}
-	printf("\nSize: %d\n", current_OM->size);
+	record* new_record = (record*)malloc(sizeof(record));
+	new_record->label = VOID_DATA;
+	new_record->next = NULL;
+	new_record->prev = NULL;
+	new_record->data = data;
+	new_record->is_base = false;
+	return new_record;
 }
+
+//--------------------Print--------------------------------------------------
+void print(record* base)
+{
+	int i = 0;
+	printf("\nPrint OM:\nLabels: ");
+	do{
+		++i;
+		printf("%d\t", base->label);
+		base = base->next;
+	}
+	while(base->is_base == false);
+	printf("\nSize: %d\n", i);
+}
+
+

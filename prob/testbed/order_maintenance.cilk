@@ -4,46 +4,241 @@
 #include <cilk-lib.cilkh>
 
 #define VOID_DATA (int)-INFINITY
-#define M 100000	//M = number of possible lables, N = Celling(m^(1/2))-1= Max # of records
+#define M 100000	//M = number of possible lables, N = Ceiling(m^(1/2))-1= Max # of records
 
 //Tyler Romero
 //Simple OM data structure
 //Implementation of the Amortized Time Algorithm given by Dietz and Sleator
-//Insert: O(log n) amortized -> Can be made O(1) Amortized through list-of-lists technique
+	//Uses list of lists technique
+//Insert: O(1) amortized -- hopefully
 //Delete: O(1) worst case
 //Order: O(1) worst case
 
+//TO DO:
+	//ORDER COMPARES PARENTS, THEN COMPARES CHILDREN
+	//MAKE THE BASE SYSTEM BETTER
+	
+//SORRY FOR THE OBNOXIOUS NAMING, MANY OF THE DIFFICULT NAMES COME FROM
+	//TRYING TO IMPLEMENT THE DIETZ AND SLEATOR ALGORYTHM
+
 //----------------------Structs----------------------------------------------------------------------------
-struct record
+enum bool{false, true};
+
+struct super_list_item
 {
 	int label;
-	struct record *prev, *next;
-	void* data;
-	enum bool{false, true} is_base;
+	int count;
+	int* countOM;			//A count shared by all super_list_items
+	struct super_list_item *prev, *next;
+	struct sub_list_item* sublist;
+	enum bool is_base;
 };
-typedef struct record record;
+typedef struct super_list_item record;
+
+struct sub_list_item
+{
+	int label;
+	struct sub_list_item *prev, *next;
+	void* data;
+	record* parent;
+	enum bool is_base;
+};
+typedef struct sub_list_item subrecord;
 
 //--------------------Declarations--------------------------------------------------------------
-void insert(record* record_x, record* record_y);	//Inserts y directly after x
-void delete(record* dead_record);
-int order(record* record_x, record* record_y);	//Returns 1 if x is before y, otherwise returns 0
+//For Sub List Items:
+void insert(subrecord* record_x, subrecord* record_y);	//Inserts y directly after x
+void delete(subrecord* dead_subrecord);
+void order(subrecord* record_x, subrecord* record_y);	//Returns 1 if x is before y
 
-record* create_record(void* data);
-void print(record* base);
+//For Super List Items:
+void insert_record(record* record_x, record* record_y);	//Inserts y directly after x
+void delete_record(record* dead_record);
+int order_record(record* record_x, record* record_y);	//Returns 1 if x is before y, otherwise returns 0
 
-//--------------------Insert-----------------------------------------------------------
-void insert(record* record_x, record* record_y)	//insert y after the existing x record
+record* create_record();
+subrecord* create_subrecord(void* data);
+void print(subrecord* anyrecord);
+void print_records(record* base);
+
+//---------------------Sub List Functions----------------------------------------
+void insert(subrecord* subrecord_x, subrecord* subrecord_y)
+{
+	int w;
+	subrecord* j_record;
+	subrecord* temp;
+	int j,k;
+	record *new_record, *base;
+	
+	if(subrecord_x==NULL)	//First item in the data structure
+	{
+		new_record = create_record();
+		temp = create_subrecord(NULL);
+		
+		insert_record(NULL, new_record);
+		
+		new_record->sublist = temp;
+		temp->is_base = true;
+		temp->label = 0;
+		temp->parent = new_record;
+		subrecord_y->parent = new_record;
+		subrecord_y->label = (temp->label + M)/2;
+		
+		subrecord_y->next = temp;
+		subrecord_y->prev = temp;
+		temp->next = subrecord_y;
+		temp->prev = subrecord_y;
+		
+		new_record->count += 2;
+		new_record->countOM = (int*)malloc(sizeof(int));
+		*(new_record->countOM) = *(new_record->countOM) + 2;
+		//No size check needed since it is the first item to be inserted
+		return;
+	}
+	else if(subrecord_x->label == VOID_DATA)
+	{
+		printf("Error: subrecord_x must already be part of the structure");
+		return;
+	}
+	else	//A normal insertion
+	{
+		//Walk down list
+		j_record=subrecord_x->next;
+		j=1;
+		w = (j_record->label - subrecord_x->label)%M;
+		
+		while(w <= j*j)
+		{
+			if (j_record == subrecord_x->prev) break;	//Changed this
+			else if(j==1) w = 1;
+			else
+			{
+				w = (j_record->label - subrecord_x->label)%M;
+			}
+			//printf("\nw: %d\tj^2: %d", w, j*j);
+			j++;
+			j_record = j_record->next;
+		}
+		
+		//Relabel
+		temp = subrecord_x->next;
+		w = (abs(j_record->label - subrecord_x->label))%M;
+		k=1;
+		while(k<j)
+		{
+			if(temp->is_base == false)	//Dont relabel the base
+			{
+				temp->label = ((int)(floor(w*k/j) + subrecord_x->label)) % M;
+			}
+			k++;
+			temp = temp->next;
+		}
+		
+		//Insert
+		if(subrecord_x->next->is_base == true)	//The record is the last in the list
+		{
+			subrecord_y->label = floor((subrecord_x->label + M)/2);
+		}
+		else
+		{
+			subrecord_y->label = floor((subrecord_x->label + subrecord_x->next->label)/2);
+		}
+		subrecord_y->next = subrecord_x->next;
+		subrecord_y->next->prev = subrecord_y;
+		subrecord_y->prev = subrecord_x;
+		subrecord_y->prev->next = subrecord_y;
+		
+		subrecord_y->parent = subrecord_x->parent;
+		subrecord_y->parent->count++;
+		*(subrecord_y->parent->countOM) = *(subrecord_y->parent->countOM) + 1;
+		
+		//Is it to large?
+		if(subrecord_y->parent->count > 2*log2(*(subrecord_y->parent->countOM)))	//Split
+		{			
+			//Search for halfway mark
+			j_record = subrecord_x->parent->sublist;
+			for(j=0;j<floor((subrecord_y->parent->count)/2);++j)	//Count backwards halfway through list
+			{
+				j_record = j_record->prev;		//Is this within time bound?
+				j_record->parent = new_record;
+			}
+
+			//Create new record and sublist
+			new_record = create_record();
+			temp = create_subrecord(NULL);
+			insert_record(subrecord_x->parent,new_record);
+
+			new_record->sublist = temp;
+			temp->parent = new_record;
+			temp->is_base = true;
+			temp->label = 0;
+
+			base = subrecord_x->parent;
+			
+			//Cut in two and re-connect in two loops
+			temp->next = j_record;					//The new sublist begins with j_record
+			temp->prev = base->sublist->prev;		//The new sublist ends where the old one did
+			temp->prev->next = temp;
+			base->sublist->prev = j_record->prev;	//The old sublist ends before j_record
+			base->sublist->prev->next = base->sublist;
+			temp->next->prev = temp;
+			
+			base->count = base->count - j;	//?
+			new_record->count += j+1;	//+1 because of the base added to the new list
+			new_record->countOM = base->countOM;
+			*(base->countOM) = *(base->countOM) + 1;
+
+		}
+		return;
+	}
+}
+
+void delete(subrecord* dead_subrecord)
+{
+	//Decrement count and countOM
+	//Remove item
+	//if last item in list, delete parent
+}
+
+void order(subrecord* record_x, subrecord* record_y)
+{
+	if(subrecord_x == NULL || subrecord_y == NULL)
+	{
+		printf("A subrecord is NULL");
+		return VOID_DATA;
+	}
+	else if(subrecord_x->parent->label == subrecord_y->parent->label)
+	{
+		if(subrecord_x->label < subrecord_y->label
+			return 1;
+		else
+			return 0;
+	}
+	else if(subrecord_x->parent->label < subrecord_y->parent->label)
+		return 1;		//True
+	else
+		return 0;		//False
+}
+
+
+//---------------------Super List Functions--------------------------------------
+void insert_record(record* record_x, record* record_y)	//insert y after the existing x record
 {
 	int w;
 	record* j_record;
 	record* temp;
 	int j,k;
-	if(record_x==NULL)	//First item in the data structure ----> Base
+	if(record_x==NULL)	//First and last item in the data structure ----> Base
 	{
 		record_y->is_base = true;
 		record_y->next = record_y;
 		record_y->prev = record_y;
 		record_y->label = 0;		//Arbitrary
+		return;
+	}
+	else if(record_x->label == VOID_DATA)
+	{
+		printf("Error: record_x must have been previously inserted");
 		return;
 	}
 	else	//A normal insertion
@@ -83,21 +278,21 @@ void insert(record* record_x, record* record_y)	//insert y after the existing x 
 		//Insert
 		if(record_x->next->is_base == true)	//The record is the last in the list
 		{
-			record_y->label = (record_x->label + M)/2;
+			record_y->label = floor((record_x->label + M)/2);
 		}
 		else
 		{
 			record_y->label = floor((record_x->label + record_x->next->label)/2);
 		}
 		record_y->next = record_x->next;
+		record_y->next->prev = record_y;
 		record_y->prev = record_x;
 		record_x->next = record_y;
 		return;
 	}
 }
 
-//-------------------Delete-----------------------------------------------
-void delete(record* dead_record)
+void delete_record(record* dead_record)
 {
 	if(dead_record == NULL)
 		return;
@@ -117,9 +312,7 @@ void delete(record* dead_record)
 	}
 }
 
-
-//-------------------Order------------------------------------------------
-int order(record* record_x, record* record_y)
+int order_record(record* record_x, record* record_y)
 {
 	if(record_x == NULL || record_y == NULL)
 	{
@@ -132,23 +325,80 @@ int order(record* record_x, record* record_y)
 		return 0;		//False
 }
 
+
 //-------------------Create Record-----------------------------------------
-record* create_record(void* data)
+record* create_record()
 {
 	record* new_record = (record*)malloc(sizeof(record));
 	new_record->label = VOID_DATA;
+	new_record->count = 0;
+	new_record->countOM = NULL;
 	new_record->next = NULL;
 	new_record->prev = NULL;
-	new_record->data = data;
+	new_record->sublist = NULL;
 	new_record->is_base = false;
 	return new_record;
 }
 
+subrecord* create_subrecord(void* data)
+{
+	subrecord* new_subrecord = (subrecord*)malloc(sizeof(record));
+	new_subrecord->label = VOID_DATA;
+	new_subrecord->next = NULL;
+	new_subrecord->prev = NULL;
+	new_subrecord->data = data;
+	new_subrecord->parent = NULL;
+	new_subrecord->is_base = false;
+	return new_subrecord;
+}
+
 //--------------------Print--------------------------------------------------
-void print(record* base)
+void print(subrecord* anyrecord)
 {
 	int i = 0;
+	record* temp = anyrecord->parent;
+	subrecord* subtemp;
+	while(temp->is_base == false)
+	{
+		temp = temp->next;	//Find the base of the superlist
+	}
+
 	printf("\nPrint OM:\nLabels: ");
+	do{	//Scroll through the superlist
+		if(temp->is_base == true)
+			printf("\n%d\t/%d b\t|\t",temp->label,temp->count);
+		else printf("\n%d\t/%d\t|\t",temp->label,temp->count);
+		
+		subtemp = temp->sublist;
+		do{	//scroll through each record's sublist
+			++i;
+			
+			if(subtemp->data == NULL){
+				if(subtemp->is_base == true)
+					printf("b %d (NULL)\t", subtemp->label);
+				else 
+					printf("%d (NULL)\t", subtemp->label);
+			}
+			else{
+				if(subtemp->is_base == true)
+					printf("b %d (%d)\t", subtemp->label, (*(int*)subtemp->data));
+				else
+					printf("%d (%d)\t", subtemp->label, (*(int*)subtemp->data));
+			}
+			subtemp = subtemp->next;
+		}
+		while(subtemp->is_base == false);
+		temp = temp->next;
+	}
+	while(temp->is_base == false);
+	printf("\nSubrecords Printed: %d\n", i);
+	printf("CountOM: %d\n", *(temp->countOM));
+}
+
+void print_records(record* base)
+{
+	int i = 0;
+	printf("\nPrint OM Records:\nLabels: ");
 	do{
 		++i;
 		printf("%d\t", base->label);
