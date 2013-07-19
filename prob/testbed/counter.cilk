@@ -28,7 +28,6 @@ cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)	//bat
 
   result = data;
   *count += temp + nums[size-1];
-	if (*count < -100000 || *count > 100000) assert(0);
   Cilk_terminate_batch(_cilk_ws);
   return;
 }

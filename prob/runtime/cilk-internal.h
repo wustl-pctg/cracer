@@ -193,14 +193,15 @@ struct CilkGlobalState_s{
   int current_batch_id;
   int batch_owner;
   Batch pending_batch;
-  int *batch_work_array;
+  void *batch_work_array;
   Cilk_mutex batch_lock;
+	int *batch_workers_list;
   /* End BATCHER */
   int terminating; /* Cilk_terminate was called */
   Cilk_mutex barrier_lock;
   volatile int barrier_counter;
   volatile int barrier_release;
-  struct Cilk_im_descriptor 
+  struct Cilk_im_descriptor
   global_im_descriptor [CILK_INTERNAL_MALLOC_BUCKETS];
   struct Cilk_im_stats global_im_info;
   int im_allocated;
