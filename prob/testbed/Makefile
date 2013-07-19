@@ -1,10 +1,8 @@
 CILK = ../support/cilkclocal
-CFLAGS = -Wall
+CFLAGS =
 MAKEDEPEND = $(CILK) -MM
-#SRCS = $(shell find . -name "*.cilk" | sed 's/.\///g')
 SRCS = $(wildcard *.cilk)
-DEPS = $(wildcard util/*.h)
-DEPS += $(wildcard util/*.cilkh)
+DEPS = $(wildcard util/*)
 
 ifeq ($(shell uname -s),Linux)
 	CFLAGS += -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L
@@ -14,35 +12,32 @@ ifeq ($(shell uname -s),Darwin)
 endif
 
 ifeq ($(mode),)
-	mode = debug
+	mode = bench
 endif
-ifeq ($(mode),test)
+ifeq ($(mode),bench)
 	CFLAGS += -O3 -DNDEBUG
 endif
 ifeq ($(mode),debug)
-	CFLAGS += -O0 -g -save-temps -DDEBUG
+	CFLAGS += -O0 -g -cilk-debug -save-temps -DDEBUG -Wall
+endif
+ifeq ($(profile),1)
+	CFLAGS += -cilk-profile
 endif
 
-tests:  information $(SRCS:.cilk=)
 all: cilk tests
+
+# Rule for all actual source files
 % : %.cilk $(DEPS)
 	$(CILK) $(CFLAGS) -o $@ $<
 
-### I simply can't get automatic dependency generation to work correctly.
-### See http://make.paulandlesley.org/autodep.html
-# % : %.cilk
-# 	@$(MAKEDEPEND) $< > $(basename $<).d; \
-# 		cp $*.d $*.P; \
-# 		sed -e 's/^[^:]*: *$*.cilk//'  -e 's/ \\$$//' -e 's/^ *//' $*.d | \
-# 		tr ' ' '\n' | sed -e 's/$$/:/' >> $*.P; \
-# 		rm -f $*.d
-# 	$(CILK) -o $@ $<
-
-# -include $(SRCS:.cilk=.P)
-
+# Rule for rebuilding CILK (BATCHER)
 cilk:
 	cd ..; make
 	make clean
+
+# Building our tests
+tests:  counter param btree dynArray concHash omPMA omTree
+counter: counter_lock counter_batch
 
 .PHONY: clean cilk-clean check-syntax doc information
 clean:
@@ -61,7 +56,7 @@ doc:
 	doxygen Doxyfile
 
 information:
-ifneq ($(mode),test)
+ifneq ($(mode),bench)
 ifneq ($(mode),debug)
 	@echo "Invalid build mode."
 	@echo "Only 'mode=test' and 'mode=debug' are currently supported."
