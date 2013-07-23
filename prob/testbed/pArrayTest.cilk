@@ -7,7 +7,7 @@ cilk int main() {
     int j;
     int k;
     char x,y,z;
-    pArray* array = pArray_create(SIZE*4);
+    pArray* array = pArray_create(SIZE*2);
     pItem** items = calloc(SIZE*2,sizeof(pItem*));
     pItem* testItem;
     pItem* comp;

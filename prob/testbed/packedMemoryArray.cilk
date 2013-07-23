@@ -145,6 +145,7 @@ pItem* pArray_order(pItem* x, pItem* y){
 */
 void pArray_seqInsert(pArray* ds, pItem* x, pItem* y){
     int apres;
+    Cilk_lock(ds->topArray[0].lock);
     ds->load++;
     
     
@@ -165,6 +166,7 @@ void pArray_seqInsert(pArray* ds, pItem* x, pItem* y){
         ds->array[apres]=y;
         (ds->topArray[apres/ds->length].count)++;
     }
+    Cilk_unlock(ds->topArray[0].lock);
 }
 
 /*! \brief Delete operation just removes item from array.
@@ -185,6 +187,17 @@ void pArray_delete(pArray* ds, pItem* x){
    }
 }
 
+/*! \brief The operation that calls batchify
+ */
+cilk void pArray_parInsert(pArray* ds, pItem* x, pItem* y){
+  pItem* items[2];
+  items[0]=x;
+  items[1]=y;
+  Cilk_batchify(_cilk_ws, &pArray_batchInsert, ds, &items, sizeof(items), NULL);
+
+};
+
+
 /*! \brief A batch version of the insert.
 */
 cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
@@ -202,8 +215,12 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
     printf("size? %d\n",sizeof(pItem*));
     printf("item: %p,%p\n",input[i][0],input[i][1]);
     }*/
+  if (ds->load+size/2>TOTAL_MAX_LOAD*ds->maxSize){
+    pArray_double(ds);
+  }
+  ds->load+=size/2;
   
-
+  
   //Store into temporary slot.
   for (i=0;i<size;i+=2){
     input[i]->in = input[i+1];
@@ -228,6 +245,7 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
   //  temp=calloc(ds->maxSize,sizeof(pItem*));
   //fillMuchSpace(ds, temp,0,ds->topSize);
   //Need to find which segments to do work on.
+  Cilk_terminate_batch(_cilk_ws);
 }
 
 /*! \brief Insert method for batch. Uses locks cleverly.
@@ -557,7 +575,7 @@ void pArray_print(pArray* ds){
     int count=0;
     for (i=0;i<ds->maxSize;i++){
         if (ds->array[i]!=NULL){
-            printf("[%d:%c]\n",i,*(char*)(ds->array[i]->item));
+            printf("[%d:%p]\n",i,ds->array[i]->item);
             count++;
         }
     }
