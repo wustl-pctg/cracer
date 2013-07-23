@@ -4,408 +4,274 @@
 #include <cilk-lib.cilkh>
 
 #define VOID_DATA (int)-INFINITY
-#define M 100000	//M = number of possible lables, N = Ceiling(m^(1/2))-1= Max # of records
+#define M 32	//M = Tag Universe Size; Power of 2
 
 //Tyler Romero
-//Simple OM data structure
-//Implementation of the Amortized Time Algorithm given by Dietz and Sleator
-	//Uses list of lists technique
-//Insert: O(1) amortized -- hopefully
-//Delete: O(1) worst case
-//Order: O(1) worst case
+//Binary Tree OM Structure
+//Has a leaf for every possible label
+//Will eventually support multiple insertions in parallel
 
-//TO DO:
-	//ORDER COMPARES PARENTS, THEN COMPARES CHILDREN
-	//MAKE THE BASE SYSTEM BETTER
-	
-//SORRY FOR THE OBNOXIOUS NAMING, MANY OF THE DIFFICULT NAMES COME FROM
-	//TRYING TO IMPLEMENT THE DIETZ AND SLEATOR ALGORYTHM
+//----Structs-----------
+enum bool{false,true};
 
-//----------------------Structs----------------------------------------------------------------------------
-enum bool{false, true};
-
-struct super_list_item
+struct nodeOM
 {
-	int label;
-	int count;
-	int* countOM;			//A count shared by all super_list_items
-	struct super_list_item *prev, *next;
-	struct sub_list_item* sublist;
-	enum bool is_base;
+	struct nodeOM *right, *left;
+	int height;	//Height 0 = leaf
+	int count; //Number of itemOMs below this node, max is 2^height
+	struct nodeOM *parent;	//NULL if the node is the root
+	struct itemOM* item;	//Only leafs will not be NULL
 };
-typedef struct super_list_item record;
+typedef struct nodeOM nodeOM;
 
-struct sub_list_item
+struct itemOM
 {
+	struct itemOM *next, *prev;
+	struct nodeOM *parent;
 	int label;
-	struct sub_list_item *prev, *next;
 	void* data;
-	record* parent;
-	enum bool is_base;
 };
-typedef struct sub_list_item subrecord;
+typedef struct itemOM itemOM;
 
-//--------------------Declarations--------------------------------------------------------------
-//For Sub List Items:
-void insert(subrecord* record_x, subrecord* record_y);	//Inserts y directly after x
-void delete(subrecord* dead_subrecord);
-void order(subrecord* record_x, subrecord* record_y);	//Returns 1 if x is before y
-
-//For Super List Items:
-void insert_record(record* record_x, record* record_y);	//Inserts y directly after x
-void delete_record(record* dead_record);
-int order_record(record* record_x, record* record_y);	//Returns 1 if x is before y, otherwise returns 0
-
-record* create_record();
-subrecord* create_subrecord(void* data);
-void print(subrecord* anyrecord);
-void print_records(record* base);
-
-//---------------------Sub List Functions----------------------------------------
-void insert(subrecord* subrecord_x, subrecord* subrecord_y)
+struct datastructOM
 {
-	int w;
-	subrecord* j_record;
-	subrecord* temp;
-	int j,k;
-	record *new_record, *base;
+	struct nodeOM* root;
+	int countOM;	//Number of leafs
 	
-	if(subrecord_x==NULL)	//First item in the data structure
+};
+typedef struct datastructOM OM;
+
+//----Declarations------------
+void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_item);
+enum bool individual_order(itemOM* itemA, itemOM* itemB);
+
+void recursive_relabel(nodeOM* current_node, itemOM** item_array, int size, int label);
+nodeOM* recursive_find_low_density(nodeOM* current_node, double theshold, double T);
+nodeOM* recursive_search_tree(nodeOM* current_node, int key, int height, int sum);
+double density(nodeOM* current_node);
+
+	//Initializations
+OM* create_OM(void* data);
+nodeOM* recursive_create_tree(nodeOM* root, int height);
+nodeOM* create_nodeOM();
+itemOM* create_itemOM(void* data);
+
+
+
+
+//-------individual insert-----------------------
+//NEED TO TEST AND DEBUG, should be fully implemented
+void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_item)
+{
+	nodeOM* temp;
+	itemOM* temp_item;
+	itemOM** item_array;
+	int i;
+	
+	//Insert into linked list
+	insert_item->next = existing_item->next;
+	existing_item->next = insert_item;
+	insert_item->next->prev = insert_item;
+	
+	//Give it a label	//IF IM RIGHT, THERE WILL ALWAYS BE SPACE
+	if(insert_item->next == existing_item)	//If there is only one existing item in the list
 	{
-		new_record = create_record();
-		temp = create_subrecord(NULL);
-		
-		insert_record(NULL, new_record);
-		
-		new_record->sublist = temp;
-		temp->is_base = true;
-		temp->label = 0;
-		temp->parent = new_record;
-		subrecord_y->parent = new_record;
-		subrecord_y->label = (temp->label + M)/2;
-		
-		subrecord_y->next = temp;
-		subrecord_y->prev = temp;
-		temp->next = subrecord_y;
-		temp->prev = subrecord_y;
-		
-		new_record->count += 2;
-		new_record->countOM = (int*)malloc(sizeof(int));
-		*(new_record->countOM) = *(new_record->countOM) + 2;
-		//No size check needed since it is the first item to be inserted
+		insert_item->label = floor((M+existing_item->label)/2);	//Should always be just M/2
+	}
+	else if(existing_item->label == M-1)	//If existing item is the last item in the label space
+	{
+		printf("Tyler's math is probably wrong");
+	}
+	else									//A normal insertion
+	{
+		insert_item->label = floor((insert_item->next->label+insert_item->prev->label)/2);
+	}
+	
+	//Insert into tree (Is this efficient enough???)
+	temp = recursive_search_tree(current_OM->root, insert_item->label, current_OM->root->height,0);	//O(log2(M))
+	temp->item = insert_item;
+	insert_item->parent = temp;
+	while(temp->parent != NULL)	//Update count //O(log2(M))
+	{
+		temp->count++;
+		temp = temp->parent;		
+	}
+	
+	//Relabel the smallest enclosing range that is not overflowing
+	temp = recursive_find_low_density(insert_item->parent, 1.0, 2.0);
+	
+	if(temp == NULL)	//Base case, root is overflowing
+	{
+		//Double size of tree by adding a node on top of root
+		temp = create_nodeOM();
+		temp->right = create_nodeOM();
+		temp->left = current_OM->root;
+		current_OM->root = temp;
+		temp->right->height = temp->left->height;
+		temp->height = temp->left->height + 1;
+		temp->left->parent = temp;
+		temp->right->parent = temp;
+		temp->count = temp->left->count;
+		//Build right side of tree
+		recursive_create_tree(temp->right,temp->right->height);
+		//Hypothetically, density should be low enough now
+	}
+	
+	item_array = (itemOM**)malloc(temp->count*sizeof(itemOM*));
+	temp_item = insert_item;
+	for(i=0; i<temp->count; ++i)	//THIS COULD BE BAD!!!
+	{
+		item_array[i] = temp_item;
+		temp_item->parent->item = NULL;	//Strip items from the tree
+		temp_item->parent = NULL;
+		temp_item = temp_item->next;
+	}
+	recursive_relabel(temp, item_array, temp->count, 0);	//Reinsert and relabel items
+}
+
+void recursive_relabel(nodeOM* current_node, itemOM** item_array, int size, int label)	//O(log(M))
+{
+	if(size>1 && current_node->height != 0)
+	{
+		recursive_relabel(current_node->left, item_array, floor(size/2), label);
+		recursive_relabel(current_node->right, &item_array[(int)(size-floor(size/2))], size-floor(size/2), label+pow(2,current_node->height-1));
+	}
+	else if(current_node->height != 0 && size == 1)
+	{
+		recursive_relabel(current_node->left, item_array, size, label);
+	}
+	else if(size == 1)
+	{
+		printf("Something was wrong with Tyler's math");
 		return;
 	}
-	else if(subrecord_x->label == VOID_DATA)
+	else	//Height should = 0
 	{
-		printf("Error: subrecord_x must already be part of the structure");
-		return;
-	}
-	else	//A normal insertion
-	{
-		//Walk down list
-		j_record=subrecord_x->next;
-		j=1;
-		w = (j_record->label - subrecord_x->label)%M;
-		
-		while(w <= j*j)
-		{
-			if (j_record == subrecord_x->prev) break;	//Changed this
-			else if(j==1) w = 1;
-			else
-			{
-				w = (j_record->label - subrecord_x->label)%M;
-			}
-			//printf("\nw: %d\tj^2: %d", w, j*j);
-			j++;
-			j_record = j_record->next;
-		}
-		
-		//Relabel
-		temp = subrecord_x->next;
-		w = (abs(j_record->label - subrecord_x->label))%M;
-		k=1;
-		while(k<j)
-		{
-			if(temp->is_base == false)	//Dont relabel the base
-			{
-				temp->label = ((int)(floor(w*k/j) + subrecord_x->label)) % M;
-			}
-			k++;
-			temp = temp->next;
-		}
-		
-		//Insert
-		if(subrecord_x->next->is_base == true)	//The record is the last in the list
-		{
-			subrecord_y->label = floor((subrecord_x->label + M)/2);
-		}
-		else
-		{
-			subrecord_y->label = floor((subrecord_x->label + subrecord_x->next->label)/2);
-		}
-		subrecord_y->next = subrecord_x->next;
-		subrecord_y->next->prev = subrecord_y;
-		subrecord_y->prev = subrecord_x;
-		subrecord_y->prev->next = subrecord_y;
-		
-		subrecord_y->parent = subrecord_x->parent;
-		subrecord_y->parent->count++;
-		*(subrecord_y->parent->countOM) = *(subrecord_y->parent->countOM) + 1;
-		
-		//Is it to large?
-		if(subrecord_y->parent->count > 2*log2(*(subrecord_y->parent->countOM)))	//Split
-		{			
-			//Search for halfway mark
-			j_record = subrecord_x->parent->sublist;
-			for(j=0;j<floor((subrecord_y->parent->count)/2);++j)	//Count backwards halfway through list
-			{
-				j_record = j_record->prev;		//Is this within time bound?
-				j_record->parent = new_record;
-			}
-
-			//Create new record and sublist
-			new_record = create_record();
-			temp = create_subrecord(NULL);
-			insert_record(subrecord_x->parent,new_record);
-
-			new_record->sublist = temp;
-			temp->parent = new_record;
-			temp->is_base = true;
-			temp->label = 0;
-
-			base = subrecord_x->parent;
-			
-			//Cut in two and re-connect in two loops
-			temp->next = j_record;					//The new sublist begins with j_record
-			temp->prev = base->sublist->prev;		//The new sublist ends where the old one did
-			temp->prev->next = temp;
-			base->sublist->prev = j_record->prev;	//The old sublist ends before j_record
-			base->sublist->prev->next = base->sublist;
-			temp->next->prev = temp;
-			
-			base->count = base->count - j;	//?
-			new_record->count += j+1;	//+1 because of the base added to the new list
-			new_record->countOM = base->countOM;
-			*(base->countOM) = *(base->countOM) + 1;
-
-		}
-		return;
+		current_node->item = item_array[0];
+		current_node->item->label = label;
+		current_node->item->parent = current_node;
 	}
 }
 
-void delete(subrecord* dead_subrecord)
+nodeOM* recursive_find_low_density(nodeOM* current_node, double threshold, double T) //O(log2(M)) worst case
 {
-	//Decrement count and countOM
-	//Remove item
-	//if last item in list, delete parent
-}
-
-void order(subrecord* record_x, subrecord* record_y)
-{
-	if(subrecord_x == NULL || subrecord_y == NULL)
-	{
-		printf("A subrecord is NULL");
-		return VOID_DATA;
-	}
-	else if(subrecord_x->parent->label == subrecord_y->parent->label)
-	{
-		if(subrecord_x->label < subrecord_y->label
-			return 1;
-		else
-			return 0;
-	}
-	else if(subrecord_x->parent->label < subrecord_y->parent->label)
-		return 1;		//True
+	if(current_node->height == 0)
+		threshold = 1.0;
 	else
-		return 0;		//False
+		threshold = threshold/T;
+	
+	if(current_node->parent == NULL)
+		return NULL;
+	else if(density(current_node) > threshold)	//If it is in overflow, move up the tree and try again
+		return recursive_find_low_density(current_node->parent, threshold, T);
+	else	//It is not in overflow, relabel below
+		return current_node;
 }
 
-
-//---------------------Super List Functions--------------------------------------
-void insert_record(record* record_x, record* record_y)	//insert y after the existing x record
+nodeOM* recursive_search_tree(nodeOM* current_node, int key, int height, int sum)	//O(log2(M))
 {
-	int w;
-	record* j_record;
-	record* temp;
-	int j,k;
-	if(record_x==NULL)	//First and last item in the data structure ----> Base
-	{
-		record_y->is_base = true;
-		record_y->next = record_y;
-		record_y->prev = record_y;
-		record_y->label = 0;		//Arbitrary
-		return;
-	}
-	else if(record_x->label == VOID_DATA)
-	{
-		printf("Error: record_x must have been previously inserted");
-		return;
-	}
-	else	//A normal insertion
-	{
-		//Walk down list
-		j_record=record_x->next;
-		j=1;
-		w = (j_record->label - record_x->label)%M;
-		
-		while(w <= j*j)
-		{
-			if (j_record == record_x->prev) w = M;
-			else if(j==1) w = 1;
-			else
-			{
-				w = (j_record->label - record_x->label)%M;
-			}
-			//printf("\nw: %d\tj^2: %d", w, j*j);
-			j++;
-			j_record = j_record->next;
-		}
-		
-		//Relabel
-		temp = record_x->next;
-		w = (j_record->label - record_x->label)%M;
-		k=1;
-		while(k<j)
-		{
-			if(temp->is_base == false)	//Dont relabel the base
-			{
-				temp->label = ((int)(floor(w*k/j) + record_x->label)) % M;
-			}
-			k++;
-			temp = temp->next;
-		}
-		
-		//Insert
-		if(record_x->next->is_base == true)	//The record is the last in the list
-		{
-			record_y->label = floor((record_x->label + M)/2);
-		}
-		else
-		{
-			record_y->label = floor((record_x->label + record_x->next->label)/2);
-		}
-		record_y->next = record_x->next;
-		record_y->next->prev = record_y;
-		record_y->prev = record_x;
-		record_x->next = record_y;
-		return;
-	}
+	if(height==0)
+		return current_node;
+	
+	height--;
+	if(pow(2,height)-sum > key)	//Search left
+		return recursive_search_tree(current_node->left,key,height,0);
+	else						//Search right
+		return recursive_search_tree(current_node->right,key,height,sum+pow(2,height));
 }
 
-void delete_record(record* dead_record)
+//--------individual order----------------------
+enum bool individual_order(itemOM* itemA, itemOM* itemB)	//True if itemA is earlier in the list than itemB
 {
-	if(dead_record == NULL)
-		return;
-	else if(dead_record->next == dead_record)	//Deletion of the base is only allowed if its the last item in the structure
+	if(itemA->label == itemB->label)
 	{
-		free(dead_record);
+		printf("Error: Input items must be distinct items from the same data structure\n");
+		return false;
 	}
-	else if(dead_record->is_base == true)
+	else if(itemA->label < itemB->label) return true;
+	else return false;
+}
+
+
+//-----Other-----------
+double density(nodeOM* current_node)
+{
+	return (double)((double)current_node->count)/((double)pow(2,current_node->height));	//Might have over-cast this
+}
+
+//----Initializations--------
+OM* create_OM(void* data)	//Data is for the first inserted item
+{
+	nodeOM* temp_node;
+	OM* new_OM = (OM*)malloc(sizeof(OM));
+	if(new_OM == NULL)
 	{
-		printf("Deletion of the base is not allowed\n");
+		printf("Error Allocating Memory\n");
+		return NULL;
 	}
-	else
+	//Initialize OM
+	new_OM->root = create_nodeOM();
+	new_OM->root->height = log2(M);
+	new_OM->countOM = M;
+	//Initialize first item
+	temp_node = recursive_create_tree(new_OM->root,new_OM->root->height);
+	temp_node->item = create_itemOM(data);			//
+	temp_node->item->parent = temp_node;
+	temp_node->item->next = temp_node->item;	//Begin circularly linked list
+	temp_node->item->prev = temp_node->item;
+	temp_node->item->label = 0;
+}
+
+nodeOM* recursive_create_tree(nodeOM* root, int height)	//Height of the node being inputted	//PARALLELIZE
+{
+	if(height <= 0)
 	{
-		dead_record->prev->next = dead_record->next;
-		dead_record->next->prev = dead_record->prev;
-		free(dead_record);
+		return root;
 	}
+	root->left = create_nodeOM();
+	root->left->height = height - 1;
+	root->left->parent = root;
+	root->right = create_nodeOM();
+	root->right->height = height - 1;
+	root->right->parent = root;
+	recursive_create_tree(root->right,root->right->height);
+	return recursive_create_tree(root->left,root->left->height);
 }
 
-int order_record(record* record_x, record* record_y)
+nodeOM* create_nodeOM()
 {
-	if(record_x == NULL || record_y == NULL)
+	nodeOM* new_node = (nodeOM*)malloc(sizeof(nodeOM));
+	if(new_node == NULL)
 	{
-		printf("A record is NULL");
-		return VOID_DATA;
+		printf("Error Allocating Memory\n");
+		return NULL;
 	}
-	else if(record_x->label < record_y->label)
-		return 1;		//True
-	else
-		return 0;		//False
+	new_node->right = NULL;
+	new_node->left = NULL;
+	new_node->parent = NULL;
+	new_node->height = VOID_DATA;
+	new_node->count = 0;
+	new_node->item = NULL;
+	return new_node;
 }
 
-
-//-------------------Create Record-----------------------------------------
-record* create_record()
+itemOM* create_itemOM(void* data)
 {
-	record* new_record = (record*)malloc(sizeof(record));
-	new_record->label = VOID_DATA;
-	new_record->count = 0;
-	new_record->countOM = NULL;
-	new_record->next = NULL;
-	new_record->prev = NULL;
-	new_record->sublist = NULL;
-	new_record->is_base = false;
-	return new_record;
-}
-
-subrecord* create_subrecord(void* data)
-{
-	subrecord* new_subrecord = (subrecord*)malloc(sizeof(record));
-	new_subrecord->label = VOID_DATA;
-	new_subrecord->next = NULL;
-	new_subrecord->prev = NULL;
-	new_subrecord->data = data;
-	new_subrecord->parent = NULL;
-	new_subrecord->is_base = false;
-	return new_subrecord;
-}
-
-//--------------------Print--------------------------------------------------
-void print(subrecord* anyrecord)
-{
-	int i = 0;
-	record* temp = anyrecord->parent;
-	subrecord* subtemp;
-	while(temp->is_base == false)
+	itemOM* new_item = (itemOM*)malloc(sizeof(itemOM));
+	if(new_item == NULL)
 	{
-		temp = temp->next;	//Find the base of the superlist
+		printf("Error Allocating Memory\n");
+		return NULL;
 	}
-
-	printf("\nPrint OM:\nLabels: ");
-	do{	//Scroll through the superlist
-		if(temp->is_base == true)
-			printf("\n%d\t/%d b\t|\t",temp->label,temp->count);
-		else printf("\n%d\t/%d\t|\t",temp->label,temp->count);
-		
-		subtemp = temp->sublist;
-		do{	//scroll through each record's sublist
-			++i;
-			
-			if(subtemp->data == NULL){
-				if(subtemp->is_base == true)
-					printf("b %d (NULL)\t", subtemp->label);
-				else 
-					printf("%d (NULL)\t", subtemp->label);
-			}
-			else{
-				if(subtemp->is_base == true)
-					printf("b %d (%d)\t", subtemp->label, (*(int*)subtemp->data));
-				else
-					printf("%d (%d)\t", subtemp->label, (*(int*)subtemp->data));
-			}
-			subtemp = subtemp->next;
-		}
-		while(subtemp->is_base == false);
-		temp = temp->next;
-	}
-	while(temp->is_base == false);
-	printf("\nSubrecords Printed: %d\n", i);
-	printf("CountOM: %d\n", *(temp->countOM));
+	new_item->next = NULL;
+	new_item->prev = NULL;
+	new_item->parent = NULL;
+	new_item->label = VOID_DATA;
+	new_item->data = data;
+	return new_item;
 }
 
-void print_records(record* base)
-{
-	int i = 0;
-	printf("\nPrint OM Records:\nLabels: ");
-	do{
-		++i;
-		printf("%d\t", base->label);
-		base = base->next;
-	}
-	while(base->is_base == false);
-	printf("\nSize: %d\n", i);
-}
+
+
 
 

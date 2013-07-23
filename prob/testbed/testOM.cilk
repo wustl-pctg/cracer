@@ -1,39 +1,7 @@
 #include "order_maintenance.cilk"
-#define TEST_SIZE 1000	//Needs to fit with bound (see M)
+#define TEST_SIZE 100	//Needs to fit with bound (see M)
 
 int main()
 {
-
-	int base_int = -1;
-	subrecord* base = create_subrecord(&base_int);
-	int* integers = (int*)malloc(TEST_SIZE*sizeof(int));
-	subrecord** subrecord_list = (subrecord**)malloc(TEST_SIZE*sizeof(subrecord*));
-	int i;
-	
-	for(i=0; i<TEST_SIZE; ++i)
-	{
-		integers[i] = i;
-		subrecord_list[i] = create_subrecord(&integers[i]);
-	}
-
-	insert(NULL, base);
-	print(base);
-	
-	for(i=0; i<TEST_SIZE; ++i)
-	{
-		insert(base,subrecord_list[i]);
-	}
-	
-	print(base);
-	//print_records(base->parent);
-	//printf("Should be 1: %d\n", order(record_list[45],record_list[40]));
-	
-	//printf("\ndelete");
-	
-	//delete(record_list[99]);
-	
-	//print(base);
-	
-
 	return 0;
 }
