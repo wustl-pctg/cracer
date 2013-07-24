@@ -156,8 +156,6 @@ void Cilk_create_children(CilkContext *const context,
 			USE_SHARED1(pending_batch).array[i].status = DS_DONE;
     }
   USE_SHARED1(batch_work_array) = NULL;
-	USE_SHARED1(batch_workers_list) =
-		Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(int));
 
   pthread_attr_init(&attr);
   /* initialize attr with default attributes */

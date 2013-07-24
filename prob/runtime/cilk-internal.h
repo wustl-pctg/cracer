@@ -195,7 +195,6 @@ struct CilkGlobalState_s{
   Batch pending_batch;
   void *batch_work_array;
   Cilk_mutex batch_lock;
-	int *batch_workers_list;
   /* End BATCHER */
   int terminating; /* Cilk_terminate was called */
   Cilk_mutex barrier_lock;

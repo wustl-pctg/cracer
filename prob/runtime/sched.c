@@ -42,7 +42,7 @@ FILE_IDENTITY(ident,
 #define CLOSURE_ABORT(cl) (cl->abort_status)
 
 #define NOBODY (-1)   /* invalid processor number */
-#define MAX_BATCH_SIZE USE_PARAMETER(active_size) / 2
+#define MAX_BATCH_SIZE USE_PARAMETER(active_size) / 2 // ***
 
 /* 
  * SCHEDULER LOCK DIAGRAM
@@ -1770,14 +1770,7 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 			// Otherwise, steal
 			Cilk_enter_state(ws, STATE_DS_STEALING);
 
-			// Try to only steal from workers that are on the batch.
-			// 1. For currently unknown reasons, sometimes the size comes
-			// back as 0, so I add 1 to it.
-			// Then subtract 2 because the array is 0-based.
-			// Also, this doesn't seem to help very much. Needs more testing.
-			victim = rts_rand(ws) % (USE_SHARED(pending_batch).size+1);
-			victim = USE_SHARED(batch_workers_list)[victim-2];
-			//			victim = rts_rand(ws) & USE_PARAMETER(active_size);
+			victim = rts_rand(ws) & USE_PARAMETER(active_size);
 			if (victim != ws->self &&
 					USE_SHARED(pending_batch).array[victim].status == DS_IN_PROGRESS) {
 				t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
@@ -1854,7 +1847,6 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 					memcpy(workArray + dataSize*numJobs, pending->array[i].args, dataSize);
 					pending->array[i].packedIndex = numJobs;
 					pending->array[i].status = DS_IN_PROGRESS;
-					USE_SHARED(batch_workers_list)[numJobs] = i;
 					numJobs++;
 				}
 			}
