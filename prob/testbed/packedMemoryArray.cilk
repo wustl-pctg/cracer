@@ -49,7 +49,7 @@ void pArray_destroy(pArray* victim); //Destructor
 pItem* pArray_order(pItem* x, pItem* y); 
 void pArray_insert(pArray* ds, pItem* x, pItem* y);
 void pArray_double(pArray* ds);
-cilk void pAraay_batchInsert(pArray* ds, void* opRec, int size, void* results);
+cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results);
 
 /*Private Functions*/
 void redistributeLabel(pArray* ds, int index,pItem* newItem);
@@ -194,7 +194,6 @@ cilk void pArray_parInsert(pArray* ds, pItem* x, pItem* y){
   items[0]=x;
   items[1]=y;
   Cilk_batchify(_cilk_ws, &pArray_batchInsert, ds, &items, sizeof(items), NULL);
-
 };
 
 

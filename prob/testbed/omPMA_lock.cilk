@@ -1,15 +1,17 @@
 #include <getopt.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include "util/timer.h"
 #include "packedMemoryArray.cilk"
 
 #define SIZE 32
 #define TSIZE 20
+#define PARFOR_THRESHOLD 5
 void initializeTest(pArray* ds, int testSize, pItem** result){
   int i;
   for (i=0;i<testSize;i++){
     result[i]=pItem_create(NULL);
-    pArray_seqInsert(array,NULL,result[i]);
+    pArray_seqInsert(ds,NULL,result[i]);
   }
 }
 
@@ -30,32 +32,33 @@ cilk void parallelInsert(pArray* ds, pItem** input, pItem** place, int start, in
 
 
 cilk void runLockTest(pArray* ds, pItem** input, pItem** setup, int size){
-  
+  spawn parallelInsert(ds,input,setup,0,size);
+  sync;
 }
 
 void usage() {
-
+  printf("use arguments");
 }
 
 cilk int main(int argc, char** argv) {
     int testSize=20;
     int verbose=0;
     int i;
-    char x,y,z;
     pItem** setup;
     pItem** testInputs;
-    struct option all_options={
-      {"size" required_argument,0,'s'},
+    /*
+    struct option all_options[] ={
+      {"size",required_argument,0,'s'},
       {"verbose", no_argument,&verbose,1}
     };
     int opt_index;
     int option;
     pArray* array = pArray_create(SIZE*4);
 
-    while((option = getopt_long(argc,argv,"s:v",all_options,&index))!=-1){
+    while((option = getopt_long(argc,argv,"s:v",all_options,&opt_index))!=-1){
       switch(option){
       case 0:
-	if (all_options[index].flag!=0){
+	if (all_options[opt_index].flag!=0){
 	  break;
 	}
 	else{
@@ -81,7 +84,7 @@ cilk int main(int argc, char** argv) {
       testInputs[i]=pItem_create(NULL);
     }
     startTimer();
-    spawn runLockTest(ds,testInputs, setup, testSize);
+    spawn runLockTest(array,testInputs, setup, testSize);
     sync;
     stopTimer();
     if (verbose){
@@ -90,4 +93,5 @@ cilk int main(int argc, char** argv) {
     else {
       printf("%lf\n", getWallTime());
     }
+    return 1;*/
 }
