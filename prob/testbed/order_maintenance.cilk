@@ -51,10 +51,14 @@ nodeOM* recursive_search_tree(nodeOM* current_node, int key, int height, int sum
 double density(nodeOM* current_node);
 
 	//Initializations
-OM* create_OM(void* data);
+OM* create_OM(itemOM* first_item);
 nodeOM* recursive_create_tree(nodeOM* root, int height);
 nodeOM* create_nodeOM();
 itemOM* create_itemOM(void* data);
+
+	//Print
+void print_OM(OM* current_OM);
+void recursive_print_OM(nodeOM* current_node);
 
 
 
@@ -200,7 +204,7 @@ double density(nodeOM* current_node)
 }
 
 //----Initializations--------
-OM* create_OM(void* data)	//Data is for the first inserted item
+OM* create_OM(itemOM* first_item)	//Data is for the first inserted item
 {
 	nodeOM* temp_node;
 	OM* new_OM = (OM*)malloc(sizeof(OM));
@@ -215,7 +219,7 @@ OM* create_OM(void* data)	//Data is for the first inserted item
 	new_OM->countOM = M;
 	//Initialize first item
 	temp_node = recursive_create_tree(new_OM->root,new_OM->root->height);
-	temp_node->item = create_itemOM(data);			//
+	temp_node->item = first_item;
 	temp_node->item->parent = temp_node;
 	temp_node->item->next = temp_node->item;	//Begin circularly linked list
 	temp_node->item->prev = temp_node->item;
@@ -270,6 +274,60 @@ itemOM* create_itemOM(void* data)
 	new_item->data = data;
 	return new_item;
 }
+
+//-------Print-----------------
+void print_OM(OM* current_OM)
+{
+	recursive_print_OM(current_OM->root);
+	printf("CountOM: %d\n", current_OM->countOM);
+	return;
+}
+
+void recursive_print_OM(nodeOM* current_node)
+{
+	int i;
+	
+	if(current_node == NULL)
+	{
+		printf("NULL SUBTREE");
+		return;
+	}
+		
+	if(current_node->left != NULL)
+		recursive_print(current_node->left);
+	
+	if(current_node->item != NULL)
+	{
+		printf("Item l[%d]\t\t", current_node->item->label);
+	}
+	else printf("\t\t");
+	
+	for(i=0; i<current_node->height; ++i)
+	{
+		printf("\t\t");
+	}
+	printf("Node h[%d] c[%d]\n", current_node->height, current_node->count);
+	
+	if(current_node->right != NULL)
+		recursive_print(current_node->right);
+	
+	return;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
