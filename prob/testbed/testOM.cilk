@@ -4,13 +4,21 @@
 int main()
 {
 	int test_ints[10] = {-1,0,1,2,3,4,5,6,7,8};
-	itemOM* base = create_itemOM(&test_ints[0]);
+	itemOM* base = create_itemOM(&(test_ints[0]));
 	OM* testOM = create_OM(base);
-	itemOM* item0 = creat_itemOM(&test_ints[1]);
+	itemOM* item0 = create_itemOM(&(test_ints[1]));
+	itemOM* item1 = create_itemOM(&(test_ints[2]));
+	itemOM* item2 = create_itemOM(&(test_ints[3]));
+	itemOM* item3 = create_itemOM(&(test_ints[4]));
+	itemOM* item4 = create_itemOM(&(test_ints[5]));
 	
+	//----------------------
 	individual_insert(testOM, base, item0);
-	
+	individual_insert(testOM, base, item1);
+	individual_insert(testOM, base, item2);
+	individual_insert(testOM, base, item3);
+	individual_insert(testOM, base, item4);
+	//-----------------------
 	print_OM(testOM);
-	
 	return 0;
 }

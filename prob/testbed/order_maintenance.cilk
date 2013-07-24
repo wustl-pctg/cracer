@@ -47,7 +47,7 @@ enum bool individual_order(itemOM* itemA, itemOM* itemB);
 
 void recursive_relabel(nodeOM* current_node, itemOM** item_array, int size, int label);
 nodeOM* recursive_find_low_density(nodeOM* current_node, double theshold, double T);
-nodeOM* recursive_search_tree(nodeOM* current_node, int key, int height, int sum);
+nodeOM* recursive_search_and_update_tree(nodeOM* current_node, int key, int sum);
 double density(nodeOM* current_node);
 
 	//Initializations
@@ -58,7 +58,7 @@ itemOM* create_itemOM(void* data);
 
 	//Print
 void print_OM(OM* current_OM);
-void recursive_print_OM(nodeOM* current_node);
+void recursive_print_OM(nodeOM* current_node, int label);
 
 
 
@@ -73,13 +73,17 @@ void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_ite
 	int i;
 	
 	//Insert into linked list
+	printf("insert into list\n");
+	insert_item->prev = existing_item;
 	insert_item->next = existing_item->next;
 	existing_item->next = insert_item;
 	insert_item->next->prev = insert_item;
 	
 	//Give it a label	//IF IM RIGHT, THERE WILL ALWAYS BE SPACE
+	printf("label\n");
 	if(insert_item->next == existing_item)	//If there is only one existing item in the list
 	{
+		printf("A\n");
 		insert_item->label = floor((M+existing_item->label)/2);	//Should always be just M/2
 	}
 	else if(existing_item->label == M-1)	//If existing item is the last item in the label space
@@ -88,24 +92,25 @@ void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_ite
 	}
 	else									//A normal insertion
 	{
+		printf("B\n");
 		insert_item->label = floor((insert_item->next->label+insert_item->prev->label)/2);
 	}
 	
 	//Insert into tree (Is this efficient enough???)
-	temp = recursive_search_tree(current_OM->root, insert_item->label, current_OM->root->height,0);	//O(log2(M))
+	printf("Put in tree\n");
+	printf("insert item label: %d\n", insert_item->label);
+	temp = recursive_search_and_update_tree(current_OM->root, insert_item->label,0);	//O(log2(M))
 	temp->item = insert_item;
 	insert_item->parent = temp;
-	while(temp->parent != NULL)	//Update count //O(log2(M))
-	{
-		temp->count++;
-		temp = temp->parent;		
-	}
-	
+
+
 	//Relabel the smallest enclosing range that is not overflowing
-	temp = recursive_find_low_density(insert_item->parent, 1.0, 2.0);
-	
+
+	temp = recursive_find_low_density(insert_item->parent, 1.0, 1.1);
+
 	if(temp == NULL)	//Base case, root is overflowing
 	{
+		printf("Root overflowed - Base Case\n");
 		//Double size of tree by adding a node on top of root
 		temp = create_nodeOM();
 		temp->right = create_nodeOM();
@@ -120,7 +125,7 @@ void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_ite
 		recursive_create_tree(temp->right,temp->right->height);
 		//Hypothetically, density should be low enough now
 	}
-	
+	printf("Create item array\n");
 	item_array = (itemOM**)malloc(temp->count*sizeof(itemOM*));
 	temp_item = insert_item;
 	for(i=0; i<temp->count; ++i)	//THIS COULD BE BAD!!!
@@ -130,30 +135,44 @@ void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_ite
 		temp_item->parent = NULL;
 		temp_item = temp_item->next;
 	}
-	recursive_relabel(temp, item_array, temp->count, 0);	//Reinsert and relabel items
+	printf("Reinsert and relabel\n");
+	printf("Size: %d\n", temp->count);
+	recursive_relabel(temp, item_array, temp->count, item_array[0]->label);	//Reinsert and relabel items
+	printf("Done inserting\n");
 }
 
 void recursive_relabel(nodeOM* current_node, itemOM** item_array, int size, int label)	//O(log(M))
 {
+	//SOME SORT OF PROBLEM WITH THIS!!!
 	if(size>1 && current_node->height != 0)
 	{
+		printf("A\n");
 		recursive_relabel(current_node->left, item_array, floor(size/2), label);
 		recursive_relabel(current_node->right, &item_array[(int)(size-floor(size/2))], size-floor(size/2), label+pow(2,current_node->height-1));
 	}
 	else if(current_node->height != 0 && size == 1)
 	{
+		printf("B\n");
 		recursive_relabel(current_node->left, item_array, size, label);
 	}
-	else if(size == 1)
+	else if(current_node->height == 0 && size != 1)
 	{
 		printf("Something was wrong with Tyler's math");
 		return;
 	}
 	else	//Height should = 0
 	{
+		printf("C\n");
 		current_node->item = item_array[0];
-		current_node->item->label = label;
-		current_node->item->parent = current_node;
+		printf("Item from item array: %p\n",item_array[0]);
+		printf("2\n");
+		if(current_node->item != NULL)
+		{
+			current_node->item->label = label;
+			printf("3\n");
+			current_node->item->parent = current_node;
+			printf("4\n");
+		}
 	}
 }
 
@@ -166,22 +185,28 @@ nodeOM* recursive_find_low_density(nodeOM* current_node, double threshold, doubl
 	
 	if(current_node->parent == NULL)
 		return NULL;
-	else if(density(current_node) > threshold)	//If it is in overflow, move up the tree and try again
+	else if(density(current_node) >= threshold)	//If it is in overflow, move up the tree and try again
+	{
+		printf("Density: %f\tthreshold: %f (Overflow)\n",density(current_node),threshold);
 		return recursive_find_low_density(current_node->parent, threshold, T);
+	}
 	else	//It is not in overflow, relabel below
+	{
+		printf("Density: %f\tthreshold: %f\n",density(current_node),threshold);
 		return current_node;
+	}
 }
 
-nodeOM* recursive_search_tree(nodeOM* current_node, int key, int height, int sum)	//O(log2(M))
+nodeOM* recursive_search_and_update_tree(nodeOM* current_node, int key, int sum)	//O(log2(M))
 {
-	if(height==0)
+	current_node->count++;
+	if(current_node->height==0)
 		return current_node;
 	
-	height--;
-	if(pow(2,height)-sum > key)	//Search left
-		return recursive_search_tree(current_node->left,key,height,0);
+	if(pow(2,current_node->height-1)+sum > key)	//Search left
+		return recursive_search_and_update_tree(current_node->left,key,sum);
 	else						//Search right
-		return recursive_search_tree(current_node->right,key,height,sum+pow(2,height));
+		return recursive_search_and_update_tree(current_node->right,key,sum+pow(2,current_node->height-1));
 }
 
 //--------individual order----------------------
@@ -224,6 +249,11 @@ OM* create_OM(itemOM* first_item)	//Data is for the first inserted item
 	temp_node->item->next = temp_node->item;	//Begin circularly linked list
 	temp_node->item->prev = temp_node->item;
 	temp_node->item->label = 0;
+	do{
+		temp_node->count++;
+		temp_node = temp_node->parent;
+	}while(temp_node != NULL);
+	return new_OM;
 }
 
 nodeOM* recursive_create_tree(nodeOM* root, int height)	//Height of the node being inputted	//PARALLELIZE
@@ -278,38 +308,45 @@ itemOM* create_itemOM(void* data)
 //-------Print-----------------
 void print_OM(OM* current_OM)
 {
-	recursive_print_OM(current_OM->root);
+	recursive_print_OM(current_OM->root, 0);
 	printf("CountOM: %d\n", current_OM->countOM);
 	return;
 }
 
-void recursive_print_OM(nodeOM* current_node)
+void recursive_print_OM(nodeOM* current_node, int label)
 {
 	int i;
-	
+	//Dont do anything if its null
 	if(current_node == NULL)
 	{
 		printf("NULL SUBTREE");
 		return;
 	}
-		
-	if(current_node->left != NULL)
-		recursive_print(current_node->left);
 	
-	if(current_node->item != NULL)
+	//Move down the left side of the tree
+	if(current_node->height != 0 && current_node->left != NULL)
+		recursive_print_OM(current_node->left, label);
+	
+	//If its a leaf and it has an item, print the item
+	if(current_node->item != NULL && current_node->height == 0)
 	{
-		printf("Item l[%d]\t\t", current_node->item->label);
+		printf("I l[%d] d[%d] \t\t", current_node->item->label, *((int*)current_node->item->data));
 	}
-	else printf("\t\t");
+	else if (current_node->height == 0) printf("Slot:  %d\t\t", label);
+	else printf("\t\t\t");
 	
+	//printf("height: %d\n",current_node->height);	SOMETHING IS WRONG WITH THE HEIGHTS
 	for(i=0; i<current_node->height; ++i)
 	{
 		printf("\t\t");
 	}
-	printf("Node h[%d] c[%d]\n", current_node->height, current_node->count);
 	
-	if(current_node->right != NULL)
-		recursive_print(current_node->right);
+	//Print current node
+	printf("N h[%d] c[%d] d[%f]\n", current_node->height, current_node->count,density(current_node));
+	
+	//Move down the right side of the tree
+	if(current_node->height != 0 && current_node->right != NULL)
+		recursive_print_OM(current_node->right, label + pow(2,current_node->right->height));
 	
 	return;
 }
