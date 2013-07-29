@@ -36,8 +36,14 @@ typedef struct {
     int topSize;
     /*! The length of each segment that an int corresponds to, this is ~log(n)*/
     int length;
+  /*! A lock for the array*/
+  Cilk_lockvar lock;
 } pArray;
 
+typedef struct {
+  pItem* x;
+  pItem* y;
+} pOpRec;
 
 /*Constructors*/
 pArray* pArray_create(int maxSize);
@@ -77,6 +83,7 @@ pArray* pArray_create(int maxSize){
     result->topArray=calloc(result->topSize,sizeof(topItem));
     result->maxSize=realSize;
     result->load=0;
+    Cilk_lock_init(result->lock);
     //KL: Could be parallel, but shouldn't matter much.
     for (realSize=0;realSize<result->topSize;realSize++){
       Cilk_lock_init(result->topArray[realSize].lock);
@@ -145,7 +152,8 @@ pItem* pArray_order(pItem* x, pItem* y){
 */
 void pArray_seqInsert(pArray* ds, pItem* x, pItem* y){
     int apres;
-    Cilk_lock(ds->topArray[0].lock);
+    Cilk_lock(ds->lock);
+    //printf("inserting %p\n",y);
     ds->load++;
     
     
@@ -155,7 +163,7 @@ void pArray_seqInsert(pArray* ds, pItem* x, pItem* y){
     } else {
         apres=x->label+1;
     }
-    
+    //printf("%d\n",apres);
     if (ds->array[apres]!=NULL){
         //KL: Need to shove things around in a non-trivial manner. 
         redistributeLabel(ds,apres,y);
@@ -166,7 +174,7 @@ void pArray_seqInsert(pArray* ds, pItem* x, pItem* y){
         ds->array[apres]=y;
         (ds->topArray[apres/ds->length].count)++;
     }
-    Cilk_unlock(ds->topArray[0].lock);
+    Cilk_unlock(ds->lock);
 }
 
 /*! \brief Delete operation just removes item from array.
@@ -190,10 +198,10 @@ void pArray_delete(pArray* ds, pItem* x){
 /*! \brief The operation that calls batchify
  */
 cilk void pArray_parInsert(pArray* ds, pItem* x, pItem* y){
-  pItem* items[2];
-  items[0]=x;
-  items[1]=y;
-  Cilk_batchify(_cilk_ws, &pArray_batchInsert, ds, &items, sizeof(items), NULL);
+  pOpRec ins;
+  ins.x=x;
+  ins.y=y;
+  Cilk_batchify(_cilk_ws, &pArray_batchInsert, ds, &ins, sizeof(ins), NULL);
 };
 
 
@@ -208,20 +216,24 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
      The insert_place will be even elements.
   */
   pItem** input = opRec;
+  //pOpRec* recs = opRec;
   pItem** temp;
   int i;
+  //printf("%d\n",size);
+   size*=2;
   /*for (i=0;i<size;i++){
     printf("size? %d\n",sizeof(pItem*));
     printf("item: %p,%p\n",input[i][0],input[i][1]);
     }*/
+  
   if (ds->load+size/2>TOTAL_MAX_LOAD*ds->maxSize){
     pArray_double(ds);
   }
   ds->load+=size/2;
   
-  
   //Store into temporary slot.
   for (i=0;i<size;i+=2){
+    //printf("i=%d, %p\n",i,input[i]);
     input[i]->in = input[i+1];
     //KL: Hack#1 to re-use memory. Hopefully pointers have same size.
     //KL: so now, all odd items in input array are actually topItem*
@@ -234,6 +246,7 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
   
   //Inserts items.
   //pArray_print(ds);
+  //  printf("insert\n");
   spawn insertItem(ds,input,size);
   sync; 
  /*
@@ -257,7 +270,7 @@ cilk void insertItem(pArray* ds, pItem** input, int size) {
   int i;
   int notDone=1;
 
-  printf("size %d\n",size);
+  //printf("size %d\n",size);
   while (round<=maxRounds && notDone){
     //par_for
     notDone=0;
@@ -273,7 +286,7 @@ cilk void insertItem(pArray* ds, pItem** input, int size) {
     printf("fail\n");
   } 
   else {
-    printf("done wtih stuff after %d rounds\n",round-1);
+    //printf("done wtih stuff after %d rounds\n",round-1);
   }
 }
 
@@ -296,7 +309,12 @@ void processItem(pArray* ds, pItem** input, int round, int index, int* notDone) 
   //  printf("doing round %d for item %d. top Index %d. topItem %p. \n",round,index, topIndex,seg);
 //  printf("topIndex %d length %d, %p\n",topIndex,length,seg);
   //Lock the relevant part of the segment.
+  i = (*seg).count;
   Cilk_lock((*seg).lock);
+  if (i!=ds->topArray[topIndex].count){
+    //printf("don't work\n");
+    return;
+  }
   for (i=topIndex;i<topIndex+length;i++){
     count+=ds->topArray[i].count;
   }
@@ -445,6 +463,7 @@ void redistributeLabel(pArray* ds, int index, pItem* newItem) {
        //Double the array size, then relabel everything.
        //start=0;
        //segments=ds->topSize;
+       //printf("double\n");
        redistributeLabel(ds,index,newItem);
        return;
        //d=1;

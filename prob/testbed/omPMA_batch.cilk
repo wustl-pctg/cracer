@@ -21,15 +21,11 @@ void initializeTest(pArray* ds, int testSize, pItem** result){
   }
 }
 
-cilk void insert(pArray* ds, pItem** x, pItem** y, int index){
-  pArray_seqInsert(ds, x[index],y[index]);
-}
-
 cilk void parallelInsert(pArray* ds, pItem** input, pItem** place, int start, int end){
   int i;
   if (end-start <=PARFOR_THRESHOLD){
     for (i=start;i<end;i++){
-      spawn insert(ds,place,input,i);
+      spawn pArray_parInsert(ds,place[i],input[i]);
     }
     sync;
   }
@@ -37,7 +33,7 @@ cilk void parallelInsert(pArray* ds, pItem** input, pItem** place, int start, in
     i=start+(end-start)/2;
     spawn parallelInsert(ds,input,place,i+1,end);
     spawn parallelInsert(ds,input,place,start,i);
-    spawn insert(ds,place,input,i);
+    spawn pArray_parInsert(ds,place[i],input[i]);
     sync;
   }
 }
@@ -105,11 +101,11 @@ cilk int main(int argc, char** argv) {
     sync;
     stopTimer();
     if (verbose){
-      printf("Locks. Size %d. \n",testSize);
+      printf("Batch. Size %d. \n",testSize);
     }
     printf("%lf\n", getWallTime());
     if (verbose){
-      //      printBatcherStats();
+ //      printBatchStats();
     }
-    return 0;
+    return 1;
 }
