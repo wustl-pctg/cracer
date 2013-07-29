@@ -1778,6 +1778,8 @@ void printBatcherStats()
 void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 {
 	int victim;
+	CILK_ASSERT(ws, ws->self >= 0);
+	rts_srand(ws, ws->self * 162347);
 
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
 
@@ -1811,9 +1813,8 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 					Cilk_lower_priority(ws);
 				}
 			}
+			Cilk_exit_state(ws, STATE_DS_STEALING);
 		}
-		/* Cilk_fence(); */
-		Cilk_exit_state(ws, STATE_DS_STEALING);
 
 		if (USE_PARAMETER(options->yieldslice))
 			Cilk_raise_priority(ws);
@@ -1839,6 +1840,8 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 	int i, numJobs = 0;
 	Batch *pending;
 
+	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
+
 	// add operation to pending array
 	pending = &USE_SHARED(pending_batch);
 	pending->array[ws->self].operation = op;
@@ -1847,18 +1850,20 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 	pending->array[ws->self].result = indvResult;
 	pending->array[ws->self].status = DS_WAITING;
 
+	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
+
 	while (pending->array[ws->self].status != DS_DONE) {
 		ws->batch_id = USE_SHARED(current_batch_id);
 
 		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
 			gettimeofday(&batchPackStart, NULL);
+			Cilk_enter_state(ws, STATE_BATCH_TOTAL);
+			Cilk_enter_state(ws, STATE_BATCH_START);
 
 			ws->current_cache = &ws->ds_cache;
 			ws->current_cache->tail = &ws->ds_cache.stack[0];
 			ws->current_cache->head = &ws->ds_cache.stack[0];
 			ws->current_cache->exception = &ws->ds_cache.stack[0];
-
-			Cilk_enter_state(ws, STATE_BATCH_START);
 
 			USE_SHARED(batch_owner) = ws->self;
 			workArray = USE_SHARED(batch_work_array);
@@ -1888,8 +1893,12 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 				}
 			}
 			pending->size = numJobs;
-			numBatches++;
-			batchSizes += numJobs;
+			numBatches++; //***
+			batchSizes += numJobs; //***
+#if CILK_STATS
+			USE_SHARED(total_batch_ops) += numJobs;
+			USE_SHARED(num_batches)++;
+#endif
 
 			Cilk_exit_state(ws, STATE_BATCH_START);
 			gettimeofday(&batchPack2End, NULL);
@@ -1904,7 +1913,9 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 			gettimeofday(&batchPackEnd, NULL);
 			batchPackTime += getTime(&batchPackStart, &batchPackEnd);
 			gettimeofday(&batchWorkStart, NULL);
+			Cilk_enter_state(ws, STATE_DS_WORKING);
 			op(ws, dataStruct, workArray, numJobs, workArray);
+			Cilk_exit_state(ws, STATE_DS_WORKING);
 			gettimeofday(&batchWorkEnd, NULL);
 			batchWorkTime += getTime(&batchWorkStart, &batchWorkEnd);
 
@@ -1920,6 +1931,7 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 			USE_SHARED(batch_owner) = -1;
 			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
 			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
+			Cilk_exit_state(ws, STATE_BATCH_TOTAL);
 		}
 		batch_scheduler(ws, NULL);
 	}
@@ -1930,6 +1942,7 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 void Cilk_terminate_batch(CilkWorkerState *const ws)
 {
 	int i, index;
+	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
 	gettimeofday(&batchUnpackStart, NULL);
 	Batch *current = &USE_SHARED(pending_batch);
 	void* results = USE_SHARED(batch_work_array);
@@ -1947,6 +1960,7 @@ void Cilk_terminate_batch(CilkWorkerState *const ws)
 	USE_SHARED(current_batch_id)++; // signal end of this batch
 	gettimeofday(&batchUnpackEnd, NULL);
 	batchUnpackTime += getTime(&batchUnpackStart, &batchUnpackEnd);
+	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
 
 /*

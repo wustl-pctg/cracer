@@ -46,22 +46,28 @@ static char *smart_sprint_time(double x)
  */
 static void print_all_statistics(CilkContext *const context)
 {
-
+#if CILK_STATS
+	if (USE_PARAMETER1(options->statlevel) == -1) {
+		Cilk_summarize_time_statistics(context);
+		fprintf(USE_PARAMETER1(infofile), "\nAverage Batch Size: %f\n\n",
+						(double)USE_SHARED1(total_batch_ops)/(double)USE_SHARED1(num_batches));
+	}
+#endif
   if (USE_PARAMETER1(options->statlevel) >= 1) {
     /* Print Header line for statistics */
     fprintf(USE_PARAMETER1(infofile),
-	    "\nRUNTIME SYSTEM STATISTICS:\n"
-	    "\n");
+						"\nRUNTIME SYSTEM STATISTICS:\n"
+						"\n");
     /* level 1 and above: print wall clock, work and CP */
     fprintf(USE_PARAMETER1(infofile),
-	    "Wall-clock running time on %d processor%s: %s\n",
-	    USE_PARAMETER1(active_size),
-	    USE_PARAMETER1(active_size) > 1 ? "s" : "",
-	    smart_sprint_time(Cilk_wall_time_to_sec(
-						    Cilk_get_wall_time() - USE_PARAMETER1(start_time))));
+						"Wall-clock running time on %d processor%s: %s\n",
+						USE_PARAMETER1(active_size),
+						USE_PARAMETER1(active_size) > 1 ? "s" : "",
+						smart_sprint_time(Cilk_wall_time_to_sec(
+																										Cilk_get_wall_time() - USE_PARAMETER1(start_time))));
     WHEN_CILK_TIMING({
-	fprintf(USE_PARAMETER1(infofile), "Total work = %s\n",
-		smart_sprint_time(Cilk_compute_work(context)));
+				fprintf(USE_PARAMETER1(infofile), "Total work = %s\n",
+								smart_sprint_time(Cilk_compute_work(context)));
       });
 
     /*
@@ -71,20 +77,20 @@ static void print_all_statistics(CilkContext *const context)
      * CILK_CRITICAL_PATH=0
      */
     WHEN_CILK_TIMING({
-	if (Cilk_time_to_sec(USE_SHARED1(total_work)) > 0.001) {
-	  fprintf(USE_PARAMETER1(infofile),
-		  "Total work (accumulated) = %s\n",
-		  smart_sprint_time(
-				    Cilk_time_to_sec(USE_SHARED1(total_work))));
-	  fprintf(USE_PARAMETER1(infofile),
-		  "Span = %s\n",
-		  smart_sprint_time(
-				    Cilk_time_to_sec(USE_SHARED1(critical_path))));
-	  fprintf(USE_PARAMETER1(infofile),
-		  "Parallelism = %f\n",
-		  (double) USE_SHARED1(total_work) /
-		  (double) USE_SHARED1(critical_path));
-	}
+				if (Cilk_time_to_sec(USE_SHARED1(total_work)) > 0.001) {
+					fprintf(USE_PARAMETER1(infofile),
+									"Total work (accumulated) = %s\n",
+									smart_sprint_time(
+																		Cilk_time_to_sec(USE_SHARED1(total_work))));
+					fprintf(USE_PARAMETER1(infofile),
+									"Span = %s\n",
+									smart_sprint_time(
+																		Cilk_time_to_sec(USE_SHARED1(critical_path))));
+					fprintf(USE_PARAMETER1(infofile),
+									"Parallelism = %f\n",
+									(double) USE_SHARED1(total_work) /
+									(double) USE_SHARED1(critical_path));
+				}
       });
   }
 
@@ -94,28 +100,28 @@ static void print_all_statistics(CilkContext *const context)
      */
     Cilk_print_rts_statistics(context);
     WHEN_CILK_TIMING({
-	if (Cilk_time_to_sec(USE_SHARED1(total_work)) > 0.001
-	    && USE_PARAMETER1(num_threads) > 0) {
-	  fprintf(USE_PARAMETER1(infofile),
-		  "AVERAGE THREAD LENGTH = %s\n",
-		  smart_sprint_time(
-				    Cilk_time_to_sec(
-						     USE_SHARED1(total_work)) /
-				    (double) USE_PARAMETER1(num_threads)));
-	}
+				if (Cilk_time_to_sec(USE_SHARED1(total_work)) > 0.001
+						&& USE_PARAMETER1(num_threads) > 0) {
+					fprintf(USE_PARAMETER1(infofile),
+									"AVERAGE THREAD LENGTH = %s\n",
+									smart_sprint_time(
+																		Cilk_time_to_sec(
+																										 USE_SHARED1(total_work)) /
+																		(double) USE_PARAMETER1(num_threads)));
+				}
 
-	if (Cilk_time_to_sec(USE_SHARED1(total_work)) > 0.001
-	    && USE_PARAMETER1(num_steals) > 0) {
-	  fprintf(USE_PARAMETER1(infofile),
-		  "AVERAGE SUBCOMPUTATION LENGTH = %s\n",
-		  smart_sprint_time(
-				    Cilk_time_to_sec(
-						     USE_SHARED1(total_work)) /
-				    ((double) USE_PARAMETER1(num_steals) + 1.0)));
-	}
-	fprintf(USE_PARAMETER1(infofile),
-		"MAX STACK DEPTH = %d\n",
-		USE_PARAMETER1(max_stack_depth));
+				if (Cilk_time_to_sec(USE_SHARED1(total_work)) > 0.001
+						&& USE_PARAMETER1(num_steals) > 0) {
+					fprintf(USE_PARAMETER1(infofile),
+									"AVERAGE SUBCOMPUTATION LENGTH = %s\n",
+									smart_sprint_time(
+																		Cilk_time_to_sec(
+																										 USE_SHARED1(total_work)) /
+																		((double) USE_PARAMETER1(num_steals) + 1.0)));
+				}
+				fprintf(USE_PARAMETER1(infofile),
+								"MAX STACK DEPTH = %d\n",
+								USE_PARAMETER1(max_stack_depth));
 
       });
   }
@@ -147,7 +153,7 @@ void Cilk_create_global_state(CilkContext *const context)
   context->Cilk_global_state =
     Cilk_malloc_fixed(sizeof (CilkGlobalState));
   CILK_CHECK(context->Cilk_global_state,
-	     (context, NULL, "Cannot allocate global state\n"));
+						 (context, NULL, "Cannot allocate global state\n"));
 }
 
 void Cilk_free_global_state(CilkContext *const context)
@@ -163,7 +169,7 @@ void Cilk_create_context(CilkContext ** context)
   *context =
     Cilk_malloc_fixed(sizeof (CilkContext));
   CILK_CHECK(*context,
-	     (*context, NULL, "Cannot allocate Cilk context object\n"));
+						 (*context, NULL, "Cannot allocate Cilk context object\n"));
 
   /* setup the address space */
   Cilk_create_global_state(*context);
@@ -171,12 +177,12 @@ void Cilk_create_context(CilkContext ** context)
   (*context)->Cilk_RO_params =
     Cilk_malloc_fixed(sizeof (CilkReadOnlyParams));
   CILK_CHECK((*context)->Cilk_RO_params,
-	     (*context, NULL, "Cannot allocate Cilk context object\n"));
+						 (*context, NULL, "Cannot allocate Cilk context object\n"));
 
   (*context)->Cilk_RO_params->options =
     Cilk_malloc_fixed(sizeof (Cilk_options));
   CILK_CHECK((*context)->Cilk_RO_params->options,
-	     (*context, NULL, "Cannot allocate Cilk context object\n"));
+						 (*context, NULL, "Cannot allocate Cilk context object\n"));
 
   (*context)->Cilk_RO_params->Cilk_init_global_hooks = NULL_HOOK;
   (*context)->Cilk_RO_params->Cilk_init_per_worker_hooks = NULL_HOOK;
@@ -198,12 +204,12 @@ static void init_variables(CilkContext *context)
   INIT_PARAMETER1(pthread_stacksize, USE_PARAMETER1(options->pthread_stacksize));
 
   INIT_PARAMETER1(assertion_failed_msg,
-		  "Assertion failed: %s line %d file %s\n"
-		  "This is either a Cilk bug, or your program\n"
-		  "has corrupted some Cilk internal data structure.\n");
+									"Assertion failed: %s line %d file %s\n"
+									"This is either a Cilk bug, or your program\n"
+									"has corrupted some Cilk internal data structure.\n");
   INIT_PARAMETER1(stack_overflow_msg,
-		  "Cilk runtime system: Stack overflow.\n"
-		  "Your program may have infinite recursion.\n");
+									"Cilk runtime system: Stack overflow.\n"
+									"Your program may have infinite recursion.\n");
 }
 
 static void init_variables_2( CilkContext *const context )
@@ -336,9 +342,9 @@ static void Cilk_child_main(CilkChildParams *const childParams)
 
     if(! local_terminating){
       if (id == 0)
-	Cilk_scheduler(ws, USE_PARAMETER(invoke_main));
+				Cilk_scheduler(ws, USE_PARAMETER(invoke_main));
       else 
-	Cilk_scheduler(ws, (Closure *) NULL);
+				Cilk_scheduler(ws, (Closure *) NULL);
 
       Cilk_worker_is_done(context, &local_terminating);
     }
@@ -373,7 +379,7 @@ CilkContext* Cilk_init( int* argc, char *argv[] )
   } else {
     if( sched_setaffinity(0, sizeof( USE_PARAMETER1(options)->pinned_mask ), &( USE_PARAMETER1(options)->pinned_mask ) ) )
       {
-	fprintf(stderr, "Failed pinning process, continuing on default mask...\n");
+				fprintf(stderr, "Failed pinning process, continuing on default mask...\n");
       }
   }
 #endif
@@ -390,9 +396,9 @@ CilkContext* Cilk_init( int* argc, char *argv[] )
 }
 
 void Cilk_start(CilkContext *const context,
-		void (*main)(CilkWorkerState *const ws, void *args),
-		void *args,
-		int return_size )
+								void (*main)(CilkWorkerState *const ws, void *args),
+								void *args,
+								int return_size )
 {
   Cilk_global_init_2(context);
 
@@ -413,9 +419,9 @@ void Cilk_start(CilkContext *const context,
 }
 
 void Cilk_really_exit_1(CilkWorkerState *const ws,
-			int res) {
+												int res) {
   Cilk_exit_from_user_main(
-			   ws, USE_PARAMETER(invoke_main), res);
+													 ws, USE_PARAMETER(invoke_main), res);
 }
 
 /* magic consistency check - for compilation/link*/

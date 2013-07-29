@@ -68,16 +68,19 @@ static const struct state_desc {
 		"Waiting for locks", STATE_WAITING_FOR_LOCK
 	},
 	{
-		"Working on data structure operations", STATE_DS_WORKING
+		"Batch DS operations time", STATE_DS_WORKING
 	},
 	{
-		"Stealing a DS operations", STATE_DS_STEALING
+		"DS Stealing", STATE_DS_STEALING
 	},
 	{
-		"Total batch execution time", STATE_BATCH_TOTAL
+		"Total batch time", STATE_BATCH_TOTAL
 	},
 	{
-		"Time for starting batches", STATE_BATCH_START
+		"Starting batches", STATE_BATCH_START
+	},
+	{
+		"Terminating batches", STATE_BATCH_TERMINATE
 	},
 	{
 		"Stealing", STATE_STEALING

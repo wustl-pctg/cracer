@@ -195,6 +195,10 @@ struct CilkGlobalState_s{
   Batch pending_batch;
   void *batch_work_array;
   Cilk_mutex batch_lock;
+#if CILK_STATS
+	unsigned int total_batch_ops;
+	unsigned int num_batches;
+#endif
   /* End BATCHER */
   int terminating; /* Cilk_terminate was called */
   Cilk_mutex barrier_lock;
@@ -345,6 +349,7 @@ enum {
   STATE_DS_STEALING,
   STATE_BATCH_TOTAL,
   STATE_BATCH_START,
+	STATE_BATCH_TERMINATE,
   STATE_STEALING,
   STATE_RETURNING,
   STATE_ABORT_RECURSIVE,

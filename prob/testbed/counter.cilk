@@ -40,9 +40,9 @@ cilk void batchIncrement(int i, void* nums)	//calls batch_op
 
 cilk void parallelIncrement(int *nums, size_t size)	//Parallel for to call the call to batch_op
 {
-  spawn parforpar_1(0, size-1, batchIncrement, (void*)nums);
+	spawn parforpar_1(0, size-1, batchIncrement, (void*)nums);
   sync;
-} 
+}
 
 void lockIncrement(int i, void* nums)
 {
