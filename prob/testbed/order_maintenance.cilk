@@ -4,14 +4,20 @@
 #include <cilk-lib.cilkh>
 
 #define VOID_DATA (int)-INFINITY
-#define M 32	//M = Tag Universe Size; Power of 2
+#define PARALLEL_CUTOFF 3
+#define M 32	//M = Initial Label space; Power of 2
 
 //Tyler Romero
-//Binary Tree OM Structure
+//Binary Tree OM Structure, no layer of indirection yet
 //Has a leaf for every possible label
 //Will eventually support multiple insertions in parallel
 
-//----Structs-----------
+//NEED TO ADD LAYER OF INDIRECTION
+//NEED TO ADD MULTI ORDER FUNCTION
+//NEED TO ADD BATCHIFY FUNCTION
+
+
+//----Structs-----------------------
 enum bool{false,true};
 
 struct nodeOM
@@ -21,6 +27,8 @@ struct nodeOM
 	int count; //Number of itemOMs below this node, max is 2^height
 	struct nodeOM *parent;	//NULL if the node is the root
 	struct itemOM* item;	//Only leafs will not be NULL
+	enum bool is_marked;
+	enum bool root_split;
 };
 typedef struct nodeOM nodeOM;
 
@@ -37,81 +45,150 @@ struct datastructOM
 {
 	struct nodeOM* root;
 	int countOM;	//Number of leafs
-	
+	int count;
 };
 typedef struct datastructOM OM;
 
-//----Declarations------------
-void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_item);
-enum bool individual_order(itemOM* itemA, itemOM* itemB);
+//----Declarations---------------------
+	//Batch Item Operations
+cilk void batch_insert(OM* current_OM, itemOM** existing_array, itemOM** insert_array, int insert_count);
 
-void recursive_relabel(nodeOM* current_node, itemOM** item_array, int size, int label);
-nodeOM* recursive_find_low_density(nodeOM* current_node, double theshold, double T);
-nodeOM* recursive_search_and_update_tree(nodeOM* current_node, int key, int sum);
-double density(nodeOM* current_node);
+	//Batch Function Helpers
+cilk void parallel_for_find_and_mark_low_density(itemOM** insert_array, int start, int end);
+void recursive_find_and_mark_low_density(nodeOM* current_node, double threshold, double T);
+cilk void recursive_fix_overflows(OM* current_OM, nodeOM* current_node);
+cilk void recursive_reinsert(nodeOM* current_node, itemOM** item_array, int size, int label);
+cilk void parallel_for_search_insert_and_update(nodeOM* root, itemOM** insert_array, int start, int end);
+void search_insert_and_update(nodeOM* root, itemOM* insert_item);
+cilk void parallel_for_list_insert_and_label(OM* current_OM, itemOM** existing_array, itemOM** insert_array, int start, int end);
+void list_insert_and_label(OM* current_OM, itemOM* existing_item, itemOM* insert_item);
+	
+	//Individual Item Operations
+cilk void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_item);	//O(logn)??? With Indirection could be Amortized O(1)???
+enum bool individual_order(itemOM* itemA, itemOM* itemB);	//O(1)
+
+	//Individual Function Helpers
+cilk void recursive_relabel(nodeOM* current_node, itemOM** item_array, int size, int label);	//O(logn)
+nodeOM* recursive_find_low_density(nodeOM* current_node, double theshold, double T);	//Worst Case: O(logn)Parallelization not needed
+nodeOM* recursive_search_and_update_tree(nodeOM* current_node, int key, int sum);		//O(logn)Parallelization not needed
+double density(nodeOM* current_node);	//O(1)
 
 	//Initializations
-OM* create_OM(itemOM* first_item);
-nodeOM* recursive_create_tree(nodeOM* root, int height);
-nodeOM* create_nodeOM();
-itemOM* create_itemOM(void* data);
+cilk OM* create_OM(itemOM* first_item);		//Ave: O(logn) Worst Case: O(2logn);
+cilk nodeOM* recursive_create_tree(nodeOM* root, int height, int is_return);	//O(logn)
+nodeOM* create_nodeOM();	//O(1)
+itemOM* create_itemOM(void* data);	//O(1)
 
 	//Print
-void print_OM(OM* current_OM);
-void recursive_print_OM(nodeOM* current_node, int label);
+void print_OM(OM* current_OM, int is_tree);
+void recursive_print_OM(nodeOM* current_node, int label, int count, int is_tree);
 
 
 
-
-//-------individual insert-----------------------
-//NEED TO TEST AND DEBUG, should be fully implemented
-void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_item)
+//----------Multiple Insert-----------------------
+	//Density Finder Changes slightly,
+		//Multiple relabeling operations in parallel
+	//Takes in an OM Structure, an array of insert pairs, and the size of that array
+		//How to do insert pairs??? One array with structs or two arrays? Or, an array[size] of arrays[2] of pairs?
+cilk void batch_insert(OM* current_OM, itemOM** existing_array, itemOM** insert_array, int insert_count)
 {
+	if(insert_count > current_OM->count)
+	{
+		printf("Too many items are being inserted\n");
+		return;
+	}
+	
+	//Insert things into linked list and label them (at the same time)
+	spawn parallel_for_list_insert_and_label(current_OM, existing_array,insert_array, 0, insert_count);
+	sync;
+	current_OM->count += insert_count;
+	
+	//Insert into tree
+	spawn parallel_for_search_insert_and_update(current_OM->root, insert_array, 0, insert_count);
+	sync;
+
+	//Relabel smallest enclosing range that is not overflowing
+		//Mark first nodes that arent overflowing
+	spawn parallel_for_find_and_mark_low_density(insert_array, 0, insert_count);
+	sync;
+		//Find the highest up nodes that are marked, generate arrays, reinsert, and relabel
+	spawn recursive_fix_overflows(current_OM, current_OM->root);
+	sync;
+
+	return;
+}
+
+//- - - - - - - - - - - - - - - -
+//THIS IS THE COMPLICATED PART
+	//Marks then reverse search? O(2logn)?
+cilk void parallel_for_find_and_mark_low_density(itemOM** insert_array, int start, int end)
+{
+	double T = 1.1;
+	int middle = start+(end-start)/2;
+	if(end-start<=PARALLEL_CUTOFF)
+	{
+		for(start; start<end;++start)
+		{
+			//printf("\t-----i: %d-----\n",start);
+			recursive_find_and_mark_low_density(insert_array[start]->parent, 1.0, T);
+		}
+	}
+	else
+	{
+		spawn parallel_for_find_and_mark_low_density(insert_array,start,middle);
+		spawn parallel_for_find_and_mark_low_density(insert_array,middle+1,end);
+		//printf("\t-----i: %d-----\n",middle);
+		recursive_find_and_mark_low_density(insert_array[middle]->parent, 1.0, T);
+	}
+}
+
+void recursive_find_and_mark_low_density(nodeOM* current_node, double threshold, double T)	//NOT CILK
+{
+	if(current_node == NULL)	//Root overflowed
+	{
+		//printf("\t-Root Overflowed\n");
+		
+		return;	//Without marking anything
+	}
+	
+	if(current_node->height == 0)
+		threshold = 1.0;
+	else
+		threshold = threshold/T;
+	
+	if(density(current_node) > threshold || density(current_node) > 0.5)	//if it is in overflow, move up and try again
+	{
+		//printf("\t-Height: %d\tDensity: %f\tThreshold: %f\t(Overflow)\n",current_node->height, density(current_node), threshold);
+		if(current_node->parent == NULL)	//Root overflowed
+		{
+			//printf("\t-Root Overflowed\n");
+			current_node->root_split = true;
+			return;	//Without marking anything
+		}
+		else recursive_find_and_mark_low_density(current_node->parent, threshold, T);
+		return;
+	}
+	else	//If it is not in overflow, mark it
+	{
+		//printf("\t-Height: %d\tDensity: %f\tThreshold: %f\t\n",current_node->height, density(current_node), threshold);
+		current_node->is_marked = true;
+		return;
+	}
+}
+
+cilk void recursive_fix_overflows(OM* current_OM, nodeOM* current_node)
+{
+	itemOM** item_array;
 	nodeOM* temp;
 	itemOM* temp_item;
-	itemOM** item_array;
+	nodeOM* cilk_throwaway;
 	int i;
 	
-	//Insert into linked list
-	printf("insert into list\n");
-	insert_item->prev = existing_item;
-	insert_item->next = existing_item->next;
-	existing_item->next = insert_item;
-	insert_item->next->prev = insert_item;
-	
-	//Give it a label	//IF IM RIGHT, THERE WILL ALWAYS BE SPACE
-	printf("label\n");
-	if(insert_item->next == existing_item)	//If there is only one existing item in the list
+	if(current_node == NULL);
+	else if(current_node->root_split == true)//Root Split --> BASE CASE
 	{
-		printf("A\n");
-		insert_item->label = floor((M+existing_item->label)/2);	//Should always be just M/2
-	}
-	else if(existing_item->label == M-1)	//If existing item is the last item in the label space
-	{
-		printf("Tyler's math is probably wrong");
-	}
-	else									//A normal insertion
-	{
-		printf("B\n");
-		insert_item->label = floor((insert_item->next->label+insert_item->prev->label)/2);
-	}
-	
-	//Insert into tree (Is this efficient enough???)
-	printf("Put in tree\n");
-	printf("insert item label: %d\n", insert_item->label);
-	temp = recursive_search_and_update_tree(current_OM->root, insert_item->label,0);	//O(log2(M))
-	temp->item = insert_item;
-	insert_item->parent = temp;
-
-
-	//Relabel the smallest enclosing range that is not overflowing
-
-	temp = recursive_find_low_density(insert_item->parent, 1.0, 1.1);
-
-	if(temp == NULL)	//Base case, root is overflowing
-	{
-		printf("Root overflowed - Base Case\n");
-		//Double size of tree by adding a node on top of root
+		//printf("\t-Root Split\n");
+		current_node->root_split == false;
 		temp = create_nodeOM();
 		temp->right = create_nodeOM();
 		temp->left = current_OM->root;
@@ -121,62 +198,324 @@ void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_ite
 		temp->left->parent = temp;
 		temp->right->parent = temp;
 		temp->count = temp->left->count;
+		temp->is_marked = true;
+		cilk_throwaway = spawn recursive_create_tree(temp->right,temp->right->height,0);
+		sync;
+		current_OM->countOM = current_OM->countOM * 2;
+		spawn recursive_fix_overflows(current_OM, current_OM->root);
+	}
+	else
+	{
+		if(current_node->is_marked == true)	//Relabel everything under this node
+		{
+			//printf("\t-Relabel\n");
+			//generate array and reinsert
+			item_array = (itemOM**)malloc(sizeof(itemOM*)*current_node->count);
+			temp = current_node->left;
+			while(temp->height != 0)
+				temp = temp->left;
+			temp_item = temp->item;
+			for(i=0; i<current_node->count; ++i)	//COULD BE BAD TIME WISE, MAYBE COULD BE DONE BETTER WITH RECURSION???
+			{
+				item_array[i] = temp_item;
+				temp_item->parent->item = NULL;	//Strip items from tree
+				temp_item->parent = NULL;
+				temp_item = temp_item->next;
+			}
+			spawn recursive_reinsert(current_node,item_array, current_node->count, item_array[0]->label);
+			sync;
+			free(item_array);
+		}
+		else	//Search right and left for a marked node
+		{
+			//printf("\t-Search left and right\n");
+			spawn recursive_fix_overflows(current_OM, current_node->right);
+			spawn recursive_fix_overflows(current_OM, current_node->left);
+		}
+	}
+}
+
+cilk void recursive_reinsert(nodeOM* current_node, itemOM** item_array, int size, int label)
+{
+	if(size>1 && current_node->height != 0)	//Multiple items, split
+	{
+		current_node->count = size;
+		current_node->is_marked = false;
+		spawn recursive_reinsert(current_node->left, item_array, size/2, label);
+		spawn recursive_reinsert(current_node->right, &item_array[size/2], size-floor(size/2), label+pow(2,current_node->height-1));
+	}
+	else if(current_node->height != 0 && size==1)//Move individual item dow left path
+	{
+		current_node->count = 0;
+		current_node->is_marked = false;
+		spawn recursive_reinsert(current_node->left, item_array, size, label);
+		spawn recursive_reinsert(current_node->right, NULL, 0, 0);
+	}
+	else if(size == 0 && current_node->height != 0)
+	{
+		current_node->count = 0;
+		current_node->is_marked = false;
+		spawn recursive_reinsert(current_node->left, NULL, 0, 0);
+		spawn recursive_reinsert(current_node->right, NULL, 0, 0);
+	}
+	else if(size == 0 && current_node->height == 0)
+	{
+		current_node->count = size;
+		current_node->is_marked = false;
+	}
+	else if(current_node->height == 0 && size != 1)
+	{
+		printf("Something was wrong with Tyler's math\n");
+	}
+	else	//Height should == 0, size should == 1
+	{
+		current_node->count = size;
+		current_node->item = item_array[0];
+		if(current_node->item != NULL)
+		{
+			current_node->item->label = label;
+			current_node->item->parent = current_node;
+		}
+		else printf("Item is null somehow\n");
+	}
+}
+
+//- - - - - - - - - - - - - - - -
+
+
+//- - - - - - - - - - - - - - - -  
+cilk void parallel_for_search_insert_and_update(nodeOM* root, itemOM** insert_array, int start, int end)
+{
+	int middle = start+(end-start)/2;
+	if(end-start<=PARALLEL_CUTOFF)
+	{
+		for(start; start<end;++start)
+		{
+			search_insert_and_update(root,insert_array[start]);
+		}
+	}
+	else
+	{
+		spawn parallel_for_search_insert_and_update(root,insert_array,start,middle);
+		spawn parallel_for_search_insert_and_update(root,insert_array,middle+1,end);
+		search_insert_and_update(root,insert_array[middle]);
+	}
+}
+
+void search_insert_and_update(nodeOM* root, itemOM* insert_item)	//NOT CILK
+{
+	nodeOM* temp;
+	//search and update
+	temp = recursive_search_and_update_tree(root, insert_item->label, 0);
+	//insert
+	temp->item = insert_item;
+	insert_item->parent = temp;
+}
+//- - - - - - - - - - - - - - - - - - -
+
+
+
+//- - - - - - - - - - - - - - - - - - - - - - - - 
+cilk void parallel_for_list_insert_and_label(OM* current_OM, itemOM** existing_array, itemOM** insert_array, int start, int end)	//NEED TO ACTUALLY PARALLELIZE
+{
+	int middle = start+(end-start)/2;
+	if(end-start<=PARALLEL_CUTOFF)
+	{
+		for(start; start<end;++start)
+		{
+			list_insert_and_label(current_OM, existing_array[start],insert_array[start]);
+		}
+	}
+	else
+	{
+		spawn parallel_for_list_insert_and_label(current_OM, existing_array,insert_array,start,middle);
+		spawn parallel_for_list_insert_and_label(current_OM, existing_array,insert_array,middle+1,end);
+		list_insert_and_label(current_OM, existing_array[middle],insert_array[middle]);
+	}
+}
+
+void list_insert_and_label(OM* current_OM, itemOM* existing_item, itemOM* insert_item)	//NOT CILK
+{
+	//insert
+	insert_item->next = existing_item->next;
+	existing_item->next = insert_item;
+	insert_item->prev = existing_item;
+	insert_item->next->prev = insert_item;
+	//label
+	//printf("Test\n");
+	if(insert_item->next == existing_item)	//If one item is in the list
+	{
+		insert_item->label = floor((M+existing_item->label)/2);	//Should always be just M/2
+	}
+	else if(insert_item->next->label == 0)
+	{
+		//printf("CountOM: %d\n", current_OM->countOM);
+		insert_item->label = floor((current_OM->countOM + existing_item->label)/2);
+		//printf("label: %d\n", insert_item->label);
+	}
+	else if(existing_item->label == current_OM->countOM-1)	//If existing item is the last item in the label space
+	{
+		printf("\t-Tyler's math is probably wrong");
+	}
+	else									//A normal insertion
+	{
+		insert_item->label = floor((insert_item->next->label+insert_item->prev->label)/2);
+	}
+}
+//- - - - - - - - - - - - - - - - - - - - - - - - -
+
+
+
+
+//-----------------------------------------------------------------
+//-------individual insert-----------------------------------------
+//-------------------------------------------------------------------
+//NEED TO CONFIRM PARALLIZATION and NEED TO CONFIRM Big O TIME
+cilk void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_item)
+{
+	nodeOM *temp, *temp_child;
+	nodeOM *cilk_throwaway;
+	itemOM* temp_item;
+	itemOM** item_array;
+	int i;
+	
+	//Insert into linked list
+	//printf("insert into list\n");
+	insert_item->prev = existing_item;
+	insert_item->next = existing_item->next;
+	existing_item->next = insert_item;
+	insert_item->next->prev = insert_item;
+	current_OM->count++;
+	
+	//Give it a label
+	//printf("label\n");
+	if(insert_item->next == existing_item)	//If there is only one existing item in the list
+	{
+		//printf("\t-Only one existing item in the list\n");
+		insert_item->label = floor((M+existing_item->label)/2);	//Should always be just M/2
+	}
+	else if(existing_item->label == current_OM->countOM-1)	//If existing item is the last item in the label space
+	{
+		printf("\t-Tyler's math is probably wrong");
+	}
+	else									//A normal insertion
+	{
+		//printf("\t-A normal insertion\n");
+		insert_item->label = floor((insert_item->next->label+insert_item->prev->label)/2);
+	}
+	
+	//Insert into tree (Is this efficient enough???)
+	//printf("Put in tree\n");
+	//printf("\t-insert item label: %d\n", insert_item->label);
+	temp = recursive_search_and_update_tree(current_OM->root, insert_item->label,0);	//O(log(M))
+	temp->item = insert_item;
+	insert_item->parent = temp;
+
+	//Relabel the smallest enclosing range that is not overflowing
+	//printf("Relabel smallest range that is not overflowing\n");
+	temp = recursive_find_low_density(insert_item->parent, 1.0, 1.2);	//INFO ABOUT T: 2>T>=1, lower numbers relabel more often?, higher numbers relabel a greater number of items
+	if(temp == NULL)	//Base case, root is overflowing
+	{
+		//printf("\t-ROOT OVERFLOWED - Base Case\n");
+		//Double size of tree by adding a node on top of root
+		temp = create_nodeOM();
+		temp->right = create_nodeOM();
+		temp->left = current_OM->root;
+		current_OM->root = temp;
+		current_OM->countOM *= 2;
+		temp->right->height = temp->left->height;
+		temp->height = temp->left->height + 1;
+		temp->left->parent = temp;
+		temp->right->parent = temp;
+		temp->count = temp->left->count;
 		//Build right side of tree
-		recursive_create_tree(temp->right,temp->right->height);
+		cilk_throwaway = spawn recursive_create_tree(temp->right,temp->right->height, 0);
+		sync;
 		//Hypothetically, density should be low enough now
 	}
-	printf("Create item array\n");
-	item_array = (itemOM**)malloc(temp->count*sizeof(itemOM*));
-	temp_item = insert_item;
-	for(i=0; i<temp->count; ++i)	//THIS COULD BE BAD!!!
-	{
+	//printf("\t-Create item array\n");
+	item_array = (itemOM**)malloc(temp->count*sizeof(itemOM*));	//Initialize array
+	temp_child = temp->left;
+	while(temp_child->height != 0 )	//O(logn) //Find first item for array
+		temp_child = temp_child->left;
+	temp_item = temp_child->item;
+	for(i=0; i<temp->count; ++i)	//Ave: better than O(n), Worst Case: O(n)	//THIS COULD BE BAD, TIME WISE!!!
+	{								//THIS COULD POSSILBY BE DONE BETTER WITH RECURSION
 		item_array[i] = temp_item;
 		temp_item->parent->item = NULL;	//Strip items from the tree
 		temp_item->parent = NULL;
 		temp_item = temp_item->next;
 	}
-	printf("Reinsert and relabel\n");
-	printf("Size: %d\n", temp->count);
-	recursive_relabel(temp, item_array, temp->count, item_array[0]->label);	//Reinsert and relabel items
-	printf("Done inserting\n");
+	//printf("\t-Reinsert and relabel\n");
+	//printf("\t\t-Size: %d\n", temp->count);
+	spawn recursive_relabel(temp, item_array, temp->count, item_array[0]->label);	//Reinsert and relabel items
+	sync;
+	free(item_array);
+	//printf("Done inserting\n");
 }
 
-void recursive_relabel(nodeOM* current_node, itemOM** item_array, int size, int label)	//O(log(M))
+cilk void recursive_relabel(nodeOM* current_node, itemOM** item_array, int size, int label)	//O(log(M))
 {
-	//SOME SORT OF PROBLEM WITH THIS!!!
-	if(size>1 && current_node->height != 0)
+	int i;
+
+	/*for(i=0; i<size; ++i)
 	{
-		printf("A\n");
-		recursive_relabel(current_node->left, item_array, floor(size/2), label);
-		recursive_relabel(current_node->right, &item_array[(int)(size-floor(size/2))], size-floor(size/2), label+pow(2,current_node->height-1));
+		if(i==0)
+			printf("\t\t\t-item_array:\n");
+		printf("\t\t\t\t-Address: %p\n", item_array[i]);
+	}*/
+	if(size>1 && current_node->height != 0)	//Multiple items, split
+	{
+		current_node->count = size;
+		//printf("\t\t-Size greater than one and not a leaf ---> split, move down left and right\n");
+		spawn recursive_relabel(current_node->left, item_array, size/2, label);
+		spawn recursive_relabel(current_node->right, &item_array[size/2], size-floor(size/2), label+pow(2,current_node->height-1));
+		return;
 	}
-	else if(current_node->height != 0 && size == 1)
+	else if(current_node->height != 0 && size == 1)	//Move individual item down left path
 	{
-		printf("B\n");
-		recursive_relabel(current_node->left, item_array, size, label);
+		current_node->count  = size;
+		//printf("\t\t-Size == 1 and not a leaf ---> move down left\n");
+		spawn recursive_relabel(current_node->left, item_array, size, label);
+		spawn recursive_relabel(current_node->right, NULL, 0, 0);
+		return;
+	}
+	else if(size == 0 && current_node->height != 0)	//No items, Reset counts above leafs
+	{
+		current_node->count = 0;
+		spawn recursive_relabel(current_node->left, NULL, 0, 0);
+		spawn recursive_relabel(current_node->right, NULL, 0, 0);
+		return;
+	}
+	else if(size == 0 && current_node->height == 0)	//No items, Reset counts at leafs
+	{
+		current_node->count = 0;
+		return;
 	}
 	else if(current_node->height == 0 && size != 1)
 	{
-		printf("Something was wrong with Tyler's math");
+		//printf("\t\t-Something was wrong with Tyler's math");
 		return;
 	}
-	else	//Height should = 0
+	else	//Height should = 0, size should == 1
 	{
-		printf("C\n");
+		current_node->count = size;
+		//printf("\t\t-At leaf height\n");
 		current_node->item = item_array[0];
-		printf("Item from item array: %p\n",item_array[0]);
-		printf("2\n");
+		//printf("\t\t\t-Address: %p\n",item_array[0]);
 		if(current_node->item != NULL)
 		{
+			//printf("\t\t\t-label\n");
 			current_node->item->label = label;
-			printf("3\n");
+			//printf("\t\t\t-Set new parent\n");
 			current_node->item->parent = current_node;
-			printf("4\n");
 		}
+		else printf("\t\t\t-NULL");
+		return;
 	}
 }
 
-nodeOM* recursive_find_low_density(nodeOM* current_node, double threshold, double T) //O(log2(M)) worst case
+nodeOM* recursive_find_low_density(nodeOM* current_node, double threshold, double T) //O(log2(M)) worst case	//Not parallel
 {
 	if(current_node->height == 0)
 		threshold = 1.0;
@@ -185,19 +524,19 @@ nodeOM* recursive_find_low_density(nodeOM* current_node, double threshold, doubl
 	
 	if(current_node->parent == NULL)
 		return NULL;
-	else if(density(current_node) >= threshold)	//If it is in overflow, move up the tree and try again
+	else if(density(current_node) >= threshold || density(current_node) > 0.5)	//If it is in overflow, move up the tree and try again
 	{
-		printf("Density: %f\tthreshold: %f (Overflow)\n",density(current_node),threshold);
+		//printf("\t-Height: %d\tDensity: %f\tthreshold: %f (Overflow)\n",current_node->height,density(current_node),threshold);
 		return recursive_find_low_density(current_node->parent, threshold, T);
 	}
 	else	//It is not in overflow, relabel below
 	{
-		printf("Density: %f\tthreshold: %f\n",density(current_node),threshold);
+		//printf("\t-Height: %d\tDensity: %f\tthreshold: %f\n", current_node->height,density(current_node),threshold);
 		return current_node;
 	}
 }
 
-nodeOM* recursive_search_and_update_tree(nodeOM* current_node, int key, int sum)	//O(log2(M))
+nodeOM* recursive_search_and_update_tree(nodeOM* current_node, int key, int sum)	//O(log2(M))	//Not parallel
 {
 	current_node->count++;
 	if(current_node->height==0)
@@ -210,6 +549,7 @@ nodeOM* recursive_search_and_update_tree(nodeOM* current_node, int key, int sum)
 }
 
 //--------individual order----------------------
+//NEED TO TEST THIS, its really simple though
 enum bool individual_order(itemOM* itemA, itemOM* itemB)	//True if itemA is earlier in the list than itemB
 {
 	if(itemA->label == itemB->label)
@@ -229,7 +569,7 @@ double density(nodeOM* current_node)
 }
 
 //----Initializations--------
-OM* create_OM(itemOM* first_item)	//Data is for the first inserted item
+cilk OM* create_OM(itemOM* first_item)	//Data is for the first inserted item
 {
 	nodeOM* temp_node;
 	OM* new_OM = (OM*)malloc(sizeof(OM));
@@ -243,21 +583,42 @@ OM* create_OM(itemOM* first_item)	//Data is for the first inserted item
 	new_OM->root->height = log2(M);
 	new_OM->countOM = M;
 	//Initialize first item
-	temp_node = recursive_create_tree(new_OM->root,new_OM->root->height);
-	temp_node->item = first_item;
-	temp_node->item->parent = temp_node;
-	temp_node->item->next = temp_node->item;	//Begin circularly linked list
-	temp_node->item->prev = temp_node->item;
-	temp_node->item->label = 0;
+	printf("\t-Recursive Create Tree\n");
+	temp_node = spawn recursive_create_tree(new_OM->root,new_OM->root->height,1);
+	sync;
+	if(temp_node == NULL)		//LAST RESORT FIX
+	{
+		printf("\t-Fixing NULL temp_node\n");
+		temp_node = new_OM->root;
+		while(temp_node->height!=0)
+		{
+			temp_node = temp_node->left;
+		}
+	}
+	if(temp_node == NULL)
+		printf("\t-Temp_node is still NULL\n");
+	else
+	{
+		temp_node->item = first_item;
+		temp_node->item->parent = temp_node;
+		temp_node->item->next = temp_node->item;	//Begin circularly linked list
+		temp_node->item->prev = temp_node->item;
+		temp_node->item->label = 0;
+	}
+	printf("\t-Update Counts\n");
 	do{
 		temp_node->count++;
 		temp_node = temp_node->parent;
+		new_OM->count = 1;
 	}while(temp_node != NULL);
+	printf("OM created\n");
 	return new_OM;
 }
 
-nodeOM* recursive_create_tree(nodeOM* root, int height)	//Height of the node being inputted	//PARALLELIZE
-{
+cilk nodeOM* recursive_create_tree(nodeOM* root, int height, int is_return)	//Height of the node being inputted
+{			//If 0 for is return, no return needed
+	nodeOM* temp;
+	nodeOM* cilk_throwaway;
 	if(height <= 0)
 	{
 		return root;
@@ -268,8 +629,11 @@ nodeOM* recursive_create_tree(nodeOM* root, int height)	//Height of the node bei
 	root->right = create_nodeOM();
 	root->right->height = height - 1;
 	root->right->parent = root;
-	recursive_create_tree(root->right,root->right->height);
-	return recursive_create_tree(root->left,root->left->height);
+	cilk_throwaway = spawn recursive_create_tree(root->right,root->right->height,0);
+	temp = spawn recursive_create_tree(root->left,root->left->height,1);	//How does the return affect this?
+	if(is_return != 0)
+		return temp;
+	else return NULL;
 }
 
 nodeOM* create_nodeOM()
@@ -286,6 +650,8 @@ nodeOM* create_nodeOM()
 	new_node->height = VOID_DATA;
 	new_node->count = 0;
 	new_node->item = NULL;
+	new_node->is_marked = false;
+	new_node->root_split = false;
 	return new_node;
 }
 
@@ -306,49 +672,111 @@ itemOM* create_itemOM(void* data)
 }
 
 //-------Print-----------------
-void print_OM(OM* current_OM)
+void print_OM(OM* current_OM, int is_tree)
 {
-	recursive_print_OM(current_OM->root, 0);
+	recursive_print_OM(current_OM->root, 0, current_OM->count, is_tree);
 	printf("CountOM: %d\n", current_OM->countOM);
+	printf("Count: %d\n", current_OM->count);
 	return;
 }
 
-void recursive_print_OM(nodeOM* current_node, int label)
+void recursive_print_OM(nodeOM* current_node, int label, int count, int is_tree)
 {
 	int i;
+	int temp_label;
+	nodeOM* temp_node;
+	itemOM* temp_item;
 	//Dont do anything if its null
 	if(current_node == NULL)
 	{
 		printf("NULL SUBTREE");
 		return;
 	}
-	
-	//Move down the left side of the tree
-	if(current_node->height != 0 && current_node->left != NULL)
-		recursive_print_OM(current_node->left, label);
-	
-	//If its a leaf and it has an item, print the item
-	if(current_node->item != NULL && current_node->height == 0)
+	if(is_tree != 0)
 	{
-		printf("I l[%d] d[%d] \t\t", current_node->item->label, *((int*)current_node->item->data));
+		//Move down the left side of the tree
+		if(current_node->height != 0 && current_node->left != NULL)
+			recursive_print_OM(current_node->left, label, count, is_tree);
+		
+		//If its a leaf and it has an item, print the item
+		if(current_node->item != NULL && current_node->height == 0)
+		{
+			printf("[%d] I[%d] \t||", current_node->item->label, *((int*)current_node->item->data));
+		}
+		else if (current_node->height == 0) printf("[%d]\t\t||", label);
+		else printf("\t\t||");
+		
+		//printf("height: %d\n",current_node->height);
+		for(i=0; i<current_node->height; ++i)
+		{
+			printf("\t");
+		}
+		
+		//Print current node
+		if(current_node->count > 0)
+			if(current_node->is_marked == true)
+				printf("(%d)[%d]{%.2f} M\n", current_node->height, current_node->count,density(current_node));
+			else printf("(%d)[%d]{%.2f}\n", current_node->height, current_node->count,density(current_node));
+		else
+			if(current_node->is_marked == true)
+				printf("(%d) M\n",current_node->height);
+			else printf("(%d)\n",current_node->height);
+		
+		//Move down the right side of the tree
+		if(current_node->height != 0 && current_node->right != NULL)
+			recursive_print_OM(current_node->right, label + pow(2,current_node->right->height), count, is_tree);
+		
+		return;
 	}
-	else if (current_node->height == 0) printf("Slot:  %d\t\t", label);
-	else printf("\t\t\t");
-	
-	//printf("height: %d\n",current_node->height);	SOMETHING IS WRONG WITH THE HEIGHTS
-	for(i=0; i<current_node->height; ++i)
+	else
 	{
-		printf("\t\t");
+		//Find leftmost item
+		temp_node = current_node;
+		while(temp_node->height > 0)
+		{
+			if(temp_node == NULL)
+			{
+				printf("temp_node is null\n");
+				break;
+			}
+			if(temp_node->left == NULL)
+			{
+				if(temp_node->right == NULL)
+					break;
+				else
+					temp_node = temp_node->right;
+			}
+			else
+				temp_node = temp_node->left;
+			
+		}
+		
+		if(temp_node != NULL)
+		{
+			printf("Test 1\n");
+			temp_item = temp_node->item;
+			temp_label = temp_item->label;
+			printf("Test 3\n");
+			//Print item list
+			for(i=0; i<count+1; ++i)
+			{
+				if(temp_item != NULL)
+				{				
+					if(temp_item->data == NULL) printf("I l[%d] d[nil] \t\t\n", temp_item->label);
+					else printf("I l[%d] d[%d] \t\t\n", temp_item->label, *((int*)temp_item->data));
+					temp_item = temp_item->next;
+				}
+				else
+				{
+					printf("Temp_item is null\n");
+					break;
+				}
+			}
+			printf("Last item should be same as first item (circularly linked)\n");
+		}else printf("temp_node is NULL\n");
+		
+		return;
 	}
-	
-	//Print current node
-	printf("N h[%d] c[%d] d[%f]\n", current_node->height, current_node->count,density(current_node));
-	
-	//Move down the right side of the tree
-	if(current_node->height != 0 && current_node->right != NULL)
-		recursive_print_OM(current_node->right, label + pow(2,current_node->right->height));
-	
-	return;
 }
 
 

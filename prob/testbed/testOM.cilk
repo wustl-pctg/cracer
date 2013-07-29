@@ -1,24 +1,68 @@
 #include "order_maintenance.cilk"
-#define TEST_SIZE 100	//Needs to fit with bound (see M)
+#include "util/timer.h"
+#define TEST_SIZE 1000 	//Needs to fit with bound (see M)
+	//Problems with 9, 10, 11, etc
 
-int main()
+
+cilk int main(int argc, char **argv)
 {
-	int test_ints[10] = {-1,0,1,2,3,4,5,6,7,8};
-	itemOM* base = create_itemOM(&(test_ints[0]));
-	OM* testOM = create_OM(base);
-	itemOM* item0 = create_itemOM(&(test_ints[1]));
-	itemOM* item1 = create_itemOM(&(test_ints[2]));
-	itemOM* item2 = create_itemOM(&(test_ints[3]));
-	itemOM* item3 = create_itemOM(&(test_ints[4]));
-	itemOM* item4 = create_itemOM(&(test_ints[5]));
+	int test_size = 10;
+	int item_ints[TEST_SIZE];
+	int insert_ints[TEST_SIZE];
+	itemOM* item_array[TEST_SIZE];
+	itemOM* insert_array[TEST_SIZE];
+	int int_base = -1;
+	int i;
+	itemOM* base = create_itemOM(&int_base);
+	OM* testOM;
 	
-	//----------------------
-	individual_insert(testOM, base, item0);
-	individual_insert(testOM, base, item1);
-	individual_insert(testOM, base, item2);
-	individual_insert(testOM, base, item3);
-	individual_insert(testOM, base, item4);
-	//-----------------------
-	print_OM(testOM);
+	if(argc > 2)
+	{
+		printf("Incorrect number of arguements\n");
+	}
+	else if(argc == 2)
+	{
+		test_size = atoi(argv[1]);
+	}
+	
+
+	testOM = spawn create_OM(base);
+	sync;
+	
+	//--------Initialize Arrays--------------
+	for(i=0;i<TEST_SIZE; ++i)
+	{
+		item_ints[i] = i;
+		insert_ints[i] = i+100;
+		item_array[i] = create_itemOM(&item_ints[i]);
+		insert_array[i] = create_itemOM(&insert_ints[i]);
+	}
+	
+	//---------Insert "Existing" items-----------
+	for(i=0;i<TEST_SIZE;++i)
+	{
+		spawn individual_insert(testOM, base, item_array[i]);
+		sync;
+		
+	}
+	//print_OM(testOM,1);
+	
+	//----------Insert Multiple Items------------
+	startTimer();
+	spawn batch_insert(testOM, item_array, insert_array, TEST_SIZE);
+	sync;
+	stopTimer();
+	
+	
+	
+	
+	
+	
+	
+	//----------Print----------------	
+	
+	print_OM(testOM,1);	//0 for list, 1 for tree and list
+	
+	
 	return 0;
 }

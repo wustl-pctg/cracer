@@ -498,7 +498,7 @@ void determineSegments(pArray* ds, int index, int* start, int* segments)
                 *start=indexSeg*ds->length;
                 return;
             }
-        }   
+        }
         else {
             curLength=2*length;
             node=index/curLength;
