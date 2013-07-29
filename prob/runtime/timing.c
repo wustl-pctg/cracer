@@ -27,7 +27,7 @@
 #include <cilk-internal.h>
 
 FILE_IDENTITY(ident,
-	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/timing.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
+							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/timing.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
 
 #if CILK_TIMING
@@ -118,7 +118,7 @@ static const struct state_desc {
 };
 
 void Cilk_enter_state(CilkWorkerState *const ws, 
-		      int state)
+											int state)
 {
 	int stackp;
 	Cilk_time now = Cilk_get_time();
@@ -137,7 +137,7 @@ void Cilk_enter_state(CilkWorkerState *const ws,
 }
 
 void Cilk_exit_state(CilkWorkerState *const ws, 
-		     int state)
+										 int state)
 {
 	int stackp;
 	Cilk_time now = Cilk_get_time();
@@ -165,21 +165,21 @@ void Cilk_print_time_statistics(CilkContext *const context)
 	double totaltime = 0.0;
 
 	fprintf(USE_PARAMETER1(infofile),
-		"\nSUMMARY OF TIME SPENT BY EACH PROCESSOR:\n\n"
-		" PN     Working       Total\n"
-		"---------------------------\n");
+					"\nSUMMARY OF TIME SPENT BY EACH PROCESSOR:\n\n"
+					" PN     Working       Total\n"
+					"---------------------------\n");
 	for (i = 0; i < USE_PARAMETER1(active_size); i++) {
 		fprintf(USE_PARAMETER1(infofile), "%3d %11f %11f\n", i,
-			Cilk_time_to_sec(info[i].statetime[STATE_WORKING]),
-			Cilk_time_to_sec(info[i].statetime[STATE_TOTAL]));
+						Cilk_time_to_sec(info[i].statetime[STATE_WORKING]),
+						Cilk_time_to_sec(info[i].statetime[STATE_TOTAL]));
 		worktime +=
 			Cilk_time_to_sec(info[i].statetime[STATE_WORKING]);
 		totaltime +=
 			Cilk_time_to_sec(info[i].statetime[STATE_TOTAL]);
 	}
 	fprintf(USE_PARAMETER1(infofile),
-		"---------------------------\n"
-		"TOT %11f %11f\n", worktime, totaltime);
+					"---------------------------\n"
+					"TOT %11f %11f\n", worktime, totaltime);
 }
 
 void Cilk_summarize_time_statistics(CilkContext *const context)
@@ -189,7 +189,7 @@ void Cilk_summarize_time_statistics(CilkContext *const context)
 	StateInfoT *info = USE_PARAMETER1(timer_state_info);
 
 	fprintf(USE_PARAMETER1(infofile),
-		"\nSUMMARY OF TIME STATISTICS:\n\n");
+					"\nSUMMARY OF TIME STATISTICS:\n\n");
 
 	for (p = (struct state_desc *) state_descriptions; p->name; ++p) {
 		Cilk_time virtual = 0;
@@ -204,11 +204,11 @@ void Cilk_summarize_time_statistics(CilkContext *const context)
 
 		if (entered > 0)
 			fprintf(USE_PARAMETER1(infofile),
-				"%s: %fs / wall %fs (entered %d times)\n",
-				p->name,
-				Cilk_time_to_sec(virtual),
-				Cilk_wall_time_to_sec(wall),
-				entered);
+							"%s: %fs / wall %fs (entered %d times)\n",
+							p->name,
+							Cilk_time_to_sec(virtual),
+							Cilk_wall_time_to_sec(wall),
+							entered);
 	}
 }
 
@@ -219,22 +219,22 @@ void Cilk_print_detailed_time_statistics(CilkContext *const context)
 	StateInfoT *info = USE_PARAMETER1(timer_state_info);
 
 	fprintf(USE_PARAMETER1(infofile),
-		"\nDETAILS OF TIME SPENT BY EACH PROCESSOR:\n");
+					"\nDETAILS OF TIME SPENT BY EACH PROCESSOR:\n");
 
 	for (i = 0; i < USE_PARAMETER1(active_size); i++) {
 		fprintf(USE_PARAMETER1(infofile),
-			"\n--- Time statistics for processor %d ---\n", i);
+						"\n--- Time statistics for processor %d ---\n", i);
 
 		for (p = (struct state_desc *) state_descriptions; p->name; ++p) {
 			if (info[i].stateentered[p->state] > 0)
 				fprintf(USE_PARAMETER1(infofile),
-					"%s: %fs / wall %fs (entered %d times)\n",
-					p->name,
-					Cilk_time_to_sec(info[i].statetime
-							 [p->state]),
-					Cilk_wall_time_to_sec(info[i].state_wall_time
-							      [p->state]),
-					info[i].stateentered[p->state]);
+								"%s: %fs / wall %fs (entered %d times)\n",
+								p->name,
+								Cilk_time_to_sec(info[i].statetime
+																 [p->state]),
+								Cilk_wall_time_to_sec(info[i].state_wall_time
+																			[p->state]),
+								info[i].stateentered[p->state]);
 		}
 	}
 }
@@ -254,8 +254,8 @@ double Cilk_compute_work(CilkContext *const context)
 void Cilk_timing_init(CilkContext *const context)
 {
 	INIT_PARAMETER1(timer_state_info ,
-			(StateInfoT *) Cilk_malloc_fixed(sizeof(StateInfoT) *
-							 USE_PARAMETER1(active_size)));
+									(StateInfoT *) Cilk_malloc_fixed(sizeof(StateInfoT) *
+																									 USE_PARAMETER1(active_size)));
 }
 
 void Cilk_timing_terminate(CilkContext *const context)

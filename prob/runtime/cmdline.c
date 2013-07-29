@@ -64,7 +64,7 @@ static struct options {
     "stack", STACK, "--stack <n> : set stack depth"
   },
   {
-    "dsprob", DSPROB, "dsprob <n>: the probability that a thread will steal from the data structure-level of deques"
+    "dsprob", DSPROB, "--dsprob <n>: the probability that a thread will steal from the data structure-level of deques"
   },
   {
     "pthread-stacksize", PTHREAD_STACKSIZE, "--pthread-stacksize <n> : set the size of the stack used by each worker thread"

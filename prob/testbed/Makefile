@@ -21,7 +21,7 @@ ifeq ($(mode),debug)
 	CFLAGS += -O0 -g -cilk-debug -save-temps -DDEBUG -Wall
 endif
 ifeq ($(profile),1)
-	CFLAGS += -cilk-profile
+	CFLAGS += -cilk-profile -Wc,"-pg"
 endif
 
 all: cilk tests

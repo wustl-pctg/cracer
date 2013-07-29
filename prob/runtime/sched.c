@@ -1743,6 +1743,38 @@ inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
 	return USE_SHARED(current_batch_id) > batch_id || USE_SHARED(batch_owner) == -1;
 }
 
+#include <sys/time.h>
+struct timeval batchPackStart, batchPackEnd;
+struct timeval batchPack1Start, batchPack1End;
+struct timeval batchPack2Start, batchPack2End;
+struct timeval batchPack3Start, batchPack3End;
+struct timeval batchUnpackStart, batchUnpackEnd;
+struct timeval batchWorkStart, batchWorkEnd;
+double batchPackTime = 0;
+double batchUnpackTime = 0;
+double batchWorkTime = 0;
+double batchPack1Time = 0;
+double batchPack2Time = 0;
+double batchPack3Time = 0;
+int numBatches = 0;
+int batchSizes = 0;
+
+inline double getTime(struct timeval *start, struct timeval *end)
+{
+	return (double)(end->tv_sec*1000000.0 + end->tv_usec -
+									(start->tv_sec*1000000.0 + start->tv_usec))/1000;
+}
+
+void printBatcherStats()
+{
+	printf("Batch Start time: %lf ms\n", batchPackTime);
+	printf("Batch work time: %lf ms\n", batchWorkTime - batchUnpackTime);
+	printf("Batch end time: %lf ms\n", batchUnpackTime);
+	printf("Batch memory alloc: %lf ms\n", batchPack1Time);
+	printf("Batch array loop: %lf ms\n", batchPack2Time);
+	printf("Average batch size: %lf\n", ((double)batchSizes)/((double)numBatches));
+}
+
 void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 {
 	int victim;
@@ -1819,6 +1851,7 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 		ws->batch_id = USE_SHARED(current_batch_id);
 
 		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
+			gettimeofday(&batchPackStart, NULL);
 
 			ws->current_cache = &ws->ds_cache;
 			ws->current_cache->tail = &ws->ds_cache.stack[0];
@@ -1830,6 +1863,7 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 			USE_SHARED(batch_owner) = ws->self;
 			workArray = USE_SHARED(batch_work_array);
 
+			gettimeofday(&batchPack1Start, NULL);
 			if (workArray == NULL) {
 				workArray = Cilk_malloc(dataSize * USE_PARAMETER(active_size));
 				USE_SHARED(batch_work_array) = workArray;
@@ -1838,7 +1872,10 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 				workArray = Cilk_malloc(dataSize * USE_PARAMETER(active_size));
 				USE_SHARED(batch_work_array) = workArray;
 			}
+			gettimeofday(&batchPack1End, NULL);
+			batchPack1Time += getTime(&batchPack1Start, &batchPack1End);
 
+			gettimeofday(&batchPack2Start, NULL);
 			pending->dataSize = dataSize;
 			pending->operation = op;
 
@@ -1851,155 +1888,167 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 				}
 			}
 			pending->size = numJobs;
+			numBatches++;
+			batchSizes += numJobs;
 
 			Cilk_exit_state(ws, STATE_BATCH_START);
+			gettimeofday(&batchPack2End, NULL);
+			batchPack2Time += getTime(&batchPack2Start, &batchPack2End);
 
-					 // I debated using the same method that Cilk uses to start cilk_main,
-					 // i.e. manually putting the procedure on the deque. But this requires
-					 // more complication e.g. manually writing the slow version, which 1. 
-					 // I think would be slower, and 2. would make it harder to support 
-					 // general batch operations.
-					 // This seems to work without issue, so far.
-					 op(ws, dataStruct, workArray, numJobs, workArray);
+			// I debated using the same method that Cilk uses to start cilk_main,
+			// i.e. manually putting the procedure on the deque. But this requires
+			// more complication e.g. manually writing the slow version, which 1. 
+			// I think would be slower, and 2. would make it harder to support 
+			// general batch operations.
+			// This seems to work without issue, so far.
+			gettimeofday(&batchPackEnd, NULL);
+			batchPackTime += getTime(&batchPackStart, &batchPackEnd);
+			gettimeofday(&batchWorkStart, NULL);
+			op(ws, dataStruct, workArray, numJobs, workArray);
+			gettimeofday(&batchWorkEnd, NULL);
+			batchWorkTime += getTime(&batchWorkStart, &batchWorkEnd);
 
-					 ws->current_cache = &ws->cache;
+			ws->current_cache = &ws->cache;
 
-					 // I think that's it's possible for the main operation to get stolen,
-					 // but I've *never* seen it happen, so maybe not. Maybe it would happen
-					 // with a very sequential batch operation.
-					 if (pending->array[ws->self].status != DS_DONE) {
-						 batch_scheduler(ws, NULL);
-					 }
-						 ws->batch_id = 0;
-					 USE_SHARED(batch_owner) = -1;
-					 CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
-					 Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
-					 }
-			batch_scheduler(ws, NULL);
-		}
-
-		return;
-	}
-
-	void Cilk_terminate_batch(CilkWorkerState *const ws)
-	{
-		int i, index;
-		Batch *current = &USE_SHARED(pending_batch);
-		void* results = USE_SHARED(batch_work_array);
-		size_t dataSize = current->dataSize;
-
-		for (i = 0; i < USE_PARAMETER(active_size); i++) {
-			if (current->array[i].status == DS_IN_PROGRESS) {
-				index = current->array[i].packedIndex;
-				if (current->array[i].result) {
-					memcpy(current->array[i].result, &results[index], dataSize);
-				}
-				current->array[i].status = DS_DONE;
+			// I think that's it's possible for the main operation to get stolen,
+			// but I've *never* seen it happen, so maybe not. Maybe it would happen
+			// with a very sequential batch operation.
+			if (pending->array[ws->self].status != DS_DONE) {
+				batch_scheduler(ws, NULL);
 			}
+			ws->batch_id = 0;
+			USE_SHARED(batch_owner) = -1;
+			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
+			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
 		}
-		USE_SHARED(current_batch_id)++; // signal end of this batch
+		batch_scheduler(ws, NULL);
 	}
 
-	/*
-	 * initialization of the scheduler. 
-	 */
-	void Cilk_scheduler_init(CilkContext *const context)
-	{
-		CILK_CHECK(USE_PARAMETER1(active_size) > 0,
-							 (context, NULL, "Partition size must be positive\n"));
-		create_deques(context);
-		Cilk_internal_malloc_global_init(context);
-		Cilk_internal_malloc_global_init_2(context);
+	return;
+}
+
+void Cilk_terminate_batch(CilkWorkerState *const ws)
+{
+	int i, index;
+	gettimeofday(&batchUnpackStart, NULL);
+	Batch *current = &USE_SHARED(pending_batch);
+	void* results = USE_SHARED(batch_work_array);
+	size_t dataSize = current->dataSize;
+
+	for (i = 0; i < USE_PARAMETER(active_size); i++) {
+		if (current->array[i].status == DS_IN_PROGRESS) {
+			index = current->array[i].packedIndex;
+			if (current->array[i].result) {
+				memcpy(current->array[i].result, &results[index], dataSize);
+			}
+			current->array[i].status = DS_DONE;
+		}
 	}
+	USE_SHARED(current_batch_id)++; // signal end of this batch
+	gettimeofday(&batchUnpackEnd, NULL);
+	batchUnpackTime += getTime(&batchUnpackStart, &batchUnpackEnd);
+}
 
-	void Cilk_scheduler_terminate(CilkContext *const context)
-	{
-		Cilk_internal_malloc_global_terminate_2(context);
-		Cilk_internal_malloc_global_terminate(context);
-		free_deques(context);
-	}
+/*
+ * initialization of the scheduler. 
+ */
+void Cilk_scheduler_init(CilkContext *const context)
+{
+	CILK_CHECK(USE_PARAMETER1(active_size) > 0,
+						 (context, NULL, "Partition size must be positive\n"));
+	create_deques(context);
+	Cilk_internal_malloc_global_init(context);
+	Cilk_internal_malloc_global_init_2(context);
+}
 
-	void Cilk_scheduler_init_2(CilkContext *const context)
-	{
-		USE_SHARED1(done) = 0;
-		init_deques(context);
-		/*Cilk_internal_malloc_global_init_2(context); */
-	}
+void Cilk_scheduler_terminate(CilkContext *const context)
+{
+	Cilk_internal_malloc_global_terminate_2(context);
+	Cilk_internal_malloc_global_terminate(context);
+	free_deques(context);
+}
 
-	void Cilk_scheduler_terminate_2(CilkContext *const UNUSED(context))
-	{
-		/*Cilk_internal_malloc_global_terminate_2(context); */
-	}
+void Cilk_scheduler_init_2(CilkContext *const context)
+{
+	USE_SHARED1(done) = 0;
+	init_deques(context);
+	/*Cilk_internal_malloc_global_init_2(context); */
+}
 
-	void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws)
-	{
-		WHEN_CILK_TIMING(ws->cp_hack = 0);
-		WHEN_CILK_TIMING(ws->work_hack = 0);
-		/* int cpu = sched_getcpu(); */ // *** rsu
-		/* printf("Thread %i on proc %i\n", ws->self, cpu); */
+void Cilk_scheduler_terminate_2(CilkContext *const UNUSED(context))
+{
+	/*Cilk_internal_malloc_global_terminate_2(context); */
+}
 
-		ws->cache.stack = 
-			Cilk_malloc_fixed(USE_PARAMETER(options->stackdepth) *
-												sizeof(CilkStackFrame *));
-		ws->ds_cache.stack =
-			Cilk_malloc_fixed(USE_PARAMETER(options->stackdepth) *
-												sizeof(CilkStackFrame *)); // rsu ***
-		ws->stackdepth = USE_PARAMETER(options->stackdepth);
-		ws->current_cache = &ws->cache;
-		Cilk_reset_stack_depth_stats(ws);
+void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws)
+{
+	WHEN_CILK_TIMING(ws->cp_hack = 0);
+	WHEN_CILK_TIMING(ws->work_hack = 0);
+	/* int cpu = sched_getcpu(); */ // *** rsu
+	/* printf("Thread %i on proc %i\n", ws->self, cpu); */
 
-		CILK_CHECK(ws->cache.stack, (ws->context, ws, "failed to allocate stack\n"));
-		CILK_CHECK(ws->ds_cache.stack, (ws->context, ws, "failed to allocate stack\n"));
-	}
+	ws->cache.stack = 
+		Cilk_malloc_fixed(USE_PARAMETER(options->stackdepth) *
+											sizeof(CilkStackFrame *));
+	ws->ds_cache.stack =
+		Cilk_malloc_fixed(USE_PARAMETER(options->stackdepth) *
+											sizeof(CilkStackFrame *)); // rsu ***
+	ws->stackdepth = USE_PARAMETER(options->stackdepth);
+	ws->current_cache = &ws->cache;
+	Cilk_reset_stack_depth_stats(ws);
 
-	void Cilk_scheduler_per_worker_terminate(CilkWorkerState *const ws)
-	{
-		Cilk_free(ws->cache.stack);
-		Cilk_free(ws->ds_cache.stack);
-	}
+	CILK_CHECK(ws->cache.stack, (ws->context, ws, "failed to allocate stack\n"));
+	CILK_CHECK(ws->ds_cache.stack, (ws->context, ws, "failed to allocate stack\n"));
+}
 
-	/* 
-	 * From the frame of <cl>, which should be the invoke_main closure,
-	 * get the inlet that should be executed when cilk_main returns.
-	 * (All the inlet does, is to set the proper return value and call
-	 * abort).
-	 * Pass <res>, the exit value, to the inlet, and enque it as 
-	 * a complete inlet.
-	 */
-	static void make_exit_inlet_closure(CilkWorkerState *const ws, 
-																			Closure *cl, int res)
-	{
-		struct InletClosure *p;
+void Cilk_scheduler_per_worker_terminate(CilkWorkerState *const ws)
+{
+	Cilk_free(ws->cache.stack);
+	Cilk_free(ws->ds_cache.stack);
+}
 
-		p = make_incomplete_inlet_closure(ws, cl, 1);
+/* 
+ * From the frame of <cl>, which should be the invoke_main closure,
+ * get the inlet that should be executed when cilk_main returns.
+ * (All the inlet does, is to set the proper return value and call
+ * abort).
+ * Pass <res>, the exit value, to the inlet, and enque it as 
+ * a complete inlet.
+ */
+static void make_exit_inlet_closure(CilkWorkerState *const ws, 
+																		Closure *cl, int res)
+{
+	struct InletClosure *p;
 
-		memcpy(p->inlet_args, &res, sizeof(int));     
-		p->next = cl->complete_inlets;
-		cl->complete_inlets = p;
-	}
+	p = make_incomplete_inlet_closure(ws, cl, 1);
 
-	/* 
-	 * This procedure is called by Cilk_exit().
-	 * <cl> is the invoke_main closure, and <res> is the return
-	 * value passed in by Cilk_exit.  
-	 * 
-	 * The real work is done by first enqueing an inlet that calls
-	 * abort, and then either signal exception or polls the inlet.
-	 * So, cilk_main, which is spawned by invoke_main will be 
-	 * aborted.  
-	 * (Refer to "invoke_main.c" for details.)
-	 */
-	void Cilk_exit_from_user_main(CilkWorkerState *const ws, Closure *cl, int res)
-	{
-		Closure_assert_alienation(ws, cl);
+	memcpy(p->inlet_args, &res, sizeof(int));     
+	p->next = cl->complete_inlets;
+	cl->complete_inlets = p;
+}
 
-		Closure_lock(ws, cl);
-		make_exit_inlet_closure(ws, cl, res);
+/* 
+ * This procedure is called by Cilk_exit().
+ * <cl> is the invoke_main closure, and <res> is the return
+ * value passed in by Cilk_exit.  
+ * 
+ * The real work is done by first enqueing an inlet that calls
+ * abort, and then either signal exception or polls the inlet.
+ * So, cilk_main, which is spawned by invoke_main will be 
+ * aborted.  
+ * (Refer to "invoke_main.c" for details.)
+ */
+void Cilk_exit_from_user_main(CilkWorkerState *const ws, Closure *cl, int res)
+{
+	Closure_assert_alienation(ws, cl);
+
+	Closure_lock(ws, cl);
+	make_exit_inlet_closure(ws, cl, res);
      
-		if (cl->status == CLOSURE_RUNNING)
-			signal_immediate_exception(ws, cl);
-		else
-			poll_inlets(ws, cl);
+	if (cl->status == CLOSURE_RUNNING)
+		signal_immediate_exception(ws, cl);
+	else
+		poll_inlets(ws, cl);
      
-		Closure_unlock(ws, cl);
-	}
+	Closure_unlock(ws, cl);
+}

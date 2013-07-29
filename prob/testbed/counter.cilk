@@ -16,6 +16,7 @@ int counter = 0;
 /* 			  CilkBatchOpInternal op, */
 /* 			  void *dataStruct, void *data, size_t dataSize, void *indvResult); */
 extern void Cilk_terminate_batch(CilkWorkerState *const ws);
+extern void printBatcherStats();
 
 cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)	//batch_op
 {
@@ -117,7 +118,7 @@ cilk int main(int argc, char *argv[])
     printf("counter: %i, actual sum: %i\n", counter, sum);
     assert(counter == sum);
   }
-
+	printBatcherStats();
   free(data);
 
   return 0;
