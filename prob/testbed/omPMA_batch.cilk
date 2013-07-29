@@ -7,6 +7,9 @@
 #define SIZE 32
 #define TSIZE 20
 #define PARFOR_THRESHOLD 5
+
+extern void printBatcherStats();
+
 void initializeTest(pArray* ds, int testSize, pItem** result){
   int i;
   for (i=0;i<testSize;i++){
@@ -105,7 +108,7 @@ cilk int main(int argc, char** argv) {
     }
     printf("%lf\n", getWallTime());
     if (verbose){
- //      printBatchStats();
+       printBatcherStats();
     }
     return 1;
 }

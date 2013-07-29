@@ -313,6 +313,7 @@ void processItem(pArray* ds, pItem** input, int round, int index, int* notDone) 
   Cilk_lock((*seg).lock);
   if (i!=ds->topArray[topIndex].count){
     //printf("don't work\n");
+    Cilk_unlock((*seg).lock);
     return;
   }
   for (i=topIndex;i<topIndex+length;i++){
