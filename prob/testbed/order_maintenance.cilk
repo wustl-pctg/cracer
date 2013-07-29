@@ -4,7 +4,7 @@
 #include <cilk-lib.cilkh>
 
 #define VOID_DATA (int)-INFINITY
-#define PARALLEL_CUTOFF 3
+#define PARALLEL_CUTOFF 100
 #define M 32	//M = Initial Label space; Power of 2
 
 //Tyler Romero
@@ -14,7 +14,7 @@
 
 //NEED TO ADD LAYER OF INDIRECTION
 //NEED TO ADD MULTI ORDER FUNCTION
-//NEED TO ADD BATCHIFY FUNCTION
+//NEED TO MAKE INDIVIDUAL INSERT into LOCK INSERT
 
 
 //----Structs-----------------------
@@ -46,25 +46,43 @@ struct datastructOM
 	struct nodeOM* root;
 	int countOM;	//Number of leafs
 	int count;
+	Cilk_lockvar lock;
 };
 typedef struct datastructOM OM;
 
+struct insert_pair	//Fix notation to item_pair, itemA, itemB
+{
+	itemOM* existing;
+	itemOM* insert;
+};
+
 //----Declarations---------------------
+	//PUBLIC FUNCTIONS
+cilk void parallel_for_batch_insert(OM* current_OM, struct insert_pair** inserts, int start, int end);
+cilk void lock_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_item);	
+void print_OM(OM* current_OM, int is_tree);
+cilk OM* create_OM(itemOM* first_item);		//Initialization
+itemOM* create_itemOM(void* data);	//Initialization
+	
+	
 	//Batch Item Operations
-cilk void batch_insert(OM* current_OM, itemOM** existing_array, itemOM** insert_array, int insert_count);
+cilk void batch_insert(OM* current_OM, void* inserts_void, size_t insert_count, void* results);
+cilk void batch_insert_iterator(OM* current_OM, struct insert_pair** inserts, int i);
 
 	//Batch Function Helpers
+cilk void parallel_for_divide_inserts(struct insert_pair** inserts, itemOM** existing_array, itemOM** insert_array, int start, int end);
+cilk void divide_inserts(struct insert_pair** inserts, itemOM** existing_array, itemOM** insert_array, int i);
 cilk void parallel_for_find_and_mark_low_density(itemOM** insert_array, int start, int end);
-void recursive_find_and_mark_low_density(nodeOM* current_node, double threshold, double T);
+cilk void recursive_find_and_mark_low_density(nodeOM* current_node, double threshold, double T);
 cilk void recursive_fix_overflows(OM* current_OM, nodeOM* current_node);
 cilk void recursive_reinsert(nodeOM* current_node, itemOM** item_array, int size, int label);
 cilk void parallel_for_search_insert_and_update(nodeOM* root, itemOM** insert_array, int start, int end);
-void search_insert_and_update(nodeOM* root, itemOM* insert_item);
+cilk void search_insert_and_update(nodeOM* root, itemOM* insert_item);
 cilk void parallel_for_list_insert_and_label(OM* current_OM, itemOM** existing_array, itemOM** insert_array, int start, int end);
-void list_insert_and_label(OM* current_OM, itemOM* existing_item, itemOM* insert_item);
+cilk void list_insert_and_label(OM* current_OM, itemOM* existing_item, itemOM* insert_item);
 	
 	//Individual Item Operations
-cilk void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_item);	//O(logn)??? With Indirection could be Amortized O(1)???
+	//O(logn)??? With Indirection could be Amortized O(1)???
 enum bool individual_order(itemOM* itemA, itemOM* itemB);	//O(1)
 
 	//Individual Function Helpers
@@ -74,13 +92,12 @@ nodeOM* recursive_search_and_update_tree(nodeOM* current_node, int key, int sum)
 double density(nodeOM* current_node);	//O(1)
 
 	//Initializations
-cilk OM* create_OM(itemOM* first_item);		//Ave: O(logn) Worst Case: O(2logn);
 cilk nodeOM* recursive_create_tree(nodeOM* root, int height, int is_return);	//O(logn)
+struct insert_pair* create_insert_pair(itemOM* existing_item, itemOM* insert_item);
 nodeOM* create_nodeOM();	//O(1)
-itemOM* create_itemOM(void* data);	//O(1)
+
 
 	//Print
-void print_OM(OM* current_OM, int is_tree);
 void recursive_print_OM(nodeOM* current_node, int label, int count, int is_tree);
 
 
@@ -90,13 +107,20 @@ void recursive_print_OM(nodeOM* current_node, int label, int count, int is_tree)
 		//Multiple relabeling operations in parallel
 	//Takes in an OM Structure, an array of insert pairs, and the size of that array
 		//How to do insert pairs??? One array with structs or two arrays? Or, an array[size] of arrays[2] of pairs?
-cilk void batch_insert(OM* current_OM, itemOM** existing_array, itemOM** insert_array, int insert_count)
+cilk void batch_insert(OM* current_OM, void* inserts_void, size_t insert_count, void* results)
 {
+	itemOM** existing_array = (itemOM**)malloc(sizeof(itemOM*) * insert_count);
+	itemOM** insert_array = (itemOM**)malloc(sizeof(itemOM*) * insert_count);
+	struct insert_pair** inserts = (struct insert_pair**)inserts_void;
+	
 	if(insert_count > current_OM->count)
 	{
 		printf("Too many items are being inserted\n");
 		return;
 	}
+	
+	spawn parallel_for_divide_inserts(inserts, existing_array, insert_array, 0, insert_count);	//This system is not optimal
+	sync;
 	
 	//Insert things into linked list and label them (at the same time)
 	spawn parallel_for_list_insert_and_label(current_OM, existing_array,insert_array, 0, insert_count);
@@ -115,12 +139,72 @@ cilk void batch_insert(OM* current_OM, itemOM** existing_array, itemOM** insert_
 	spawn recursive_fix_overflows(current_OM, current_OM->root);
 	sync;
 
+	free(insert_array);
+	free(existing_array);
+	Cilk_terminate_batch(_cilk_ws);
 	return;
 }
 
+cilk void parallel_for_batch_insert(OM* current_OM, struct insert_pair** inserts, int start, int end)
+{
+	int middle = start+(end-start)/2;
+	
+	if(end-start<=PARALLEL_CUTOFF)
+	{
+		for(start; start<end;++start)
+		{
+			spawn batch_insert_iterator(current_OM, inserts, start);
+		}
+	}
+	else
+	{
+		spawn parallel_for_batch_insert(current_OM, inserts, start, middle);
+		spawn parallel_for_batch_insert(current_OM, inserts, middle+1, end);
+		spawn batch_insert_iterator(current_OM, inserts, middle);
+	}
+}
+
+cilk void batch_insert_iterator(OM* current_OM, struct insert_pair** inserts, int i)
+{
+	//printf("%d\n",i);
+	Cilk_batchify(_cilk_ws, batch_insert, current_OM, &(inserts[i]), sizeof(struct insert_pair*), NULL);
+}
+
+
+
+
+//- - - - - - - - - - - - - 
+cilk void parallel_for_divide_inserts(struct insert_pair** inserts, itemOM** existing_array, itemOM** insert_array, int start, int end)
+{
+	int middle = start+(end-start)/2;
+	
+	if(end-start<=PARALLEL_CUTOFF)
+	{
+		for(start; start<end;++start)
+		{
+			spawn divide_inserts(inserts, existing_array, insert_array, start);
+		}
+	}
+	else
+	{
+		spawn parallel_for_divide_inserts(inserts, existing_array, insert_array, start, middle);
+		spawn parallel_for_divide_inserts(inserts, existing_array, insert_array, middle+1, end);
+		spawn divide_inserts(inserts, existing_array, insert_array, middle);
+	}
+}
+
+cilk void divide_inserts(struct insert_pair** inserts, itemOM** existing_array, itemOM** insert_array, int i)
+{
+	existing_array[i] = inserts[i]->existing;
+	insert_array[i] = inserts[i]->insert;
+}
+
+//- - - - - - - - - - - - -
+
+
+
 //- - - - - - - - - - - - - - - -
 //THIS IS THE COMPLICATED PART
-	//Marks then reverse search? O(2logn)?
 cilk void parallel_for_find_and_mark_low_density(itemOM** insert_array, int start, int end)
 {
 	double T = 1.1;
@@ -130,7 +214,7 @@ cilk void parallel_for_find_and_mark_low_density(itemOM** insert_array, int star
 		for(start; start<end;++start)
 		{
 			//printf("\t-----i: %d-----\n",start);
-			recursive_find_and_mark_low_density(insert_array[start]->parent, 1.0, T);
+			spawn recursive_find_and_mark_low_density(insert_array[start]->parent, 1.0, T);
 		}
 	}
 	else
@@ -138,11 +222,11 @@ cilk void parallel_for_find_and_mark_low_density(itemOM** insert_array, int star
 		spawn parallel_for_find_and_mark_low_density(insert_array,start,middle);
 		spawn parallel_for_find_and_mark_low_density(insert_array,middle+1,end);
 		//printf("\t-----i: %d-----\n",middle);
-		recursive_find_and_mark_low_density(insert_array[middle]->parent, 1.0, T);
+		spawn recursive_find_and_mark_low_density(insert_array[middle]->parent, 1.0, T);
 	}
 }
 
-void recursive_find_and_mark_low_density(nodeOM* current_node, double threshold, double T)	//NOT CILK
+cilk void recursive_find_and_mark_low_density(nodeOM* current_node, double threshold, double T)
 {
 	if(current_node == NULL)	//Root overflowed
 	{
@@ -165,7 +249,7 @@ void recursive_find_and_mark_low_density(nodeOM* current_node, double threshold,
 			current_node->root_split = true;
 			return;	//Without marking anything
 		}
-		else recursive_find_and_mark_low_density(current_node->parent, threshold, T);
+		else spawn recursive_find_and_mark_low_density(current_node->parent, threshold, T);
 		return;
 	}
 	else	//If it is not in overflow, mark it
@@ -291,18 +375,18 @@ cilk void parallel_for_search_insert_and_update(nodeOM* root, itemOM** insert_ar
 	{
 		for(start; start<end;++start)
 		{
-			search_insert_and_update(root,insert_array[start]);
+			spawn search_insert_and_update(root,insert_array[start]);
 		}
 	}
 	else
 	{
 		spawn parallel_for_search_insert_and_update(root,insert_array,start,middle);
 		spawn parallel_for_search_insert_and_update(root,insert_array,middle+1,end);
-		search_insert_and_update(root,insert_array[middle]);
+		spawn search_insert_and_update(root,insert_array[middle]);
 	}
 }
 
-void search_insert_and_update(nodeOM* root, itemOM* insert_item)	//NOT CILK
+cilk void search_insert_and_update(nodeOM* root, itemOM* insert_item)
 {
 	nodeOM* temp;
 	//search and update
@@ -323,18 +407,18 @@ cilk void parallel_for_list_insert_and_label(OM* current_OM, itemOM** existing_a
 	{
 		for(start; start<end;++start)
 		{
-			list_insert_and_label(current_OM, existing_array[start],insert_array[start]);
+			spawn list_insert_and_label(current_OM, existing_array[start],insert_array[start]);
 		}
 	}
 	else
 	{
 		spawn parallel_for_list_insert_and_label(current_OM, existing_array,insert_array,start,middle);
 		spawn parallel_for_list_insert_and_label(current_OM, existing_array,insert_array,middle+1,end);
-		list_insert_and_label(current_OM, existing_array[middle],insert_array[middle]);
+		spawn list_insert_and_label(current_OM, existing_array[middle],insert_array[middle]);
 	}
 }
 
-void list_insert_and_label(OM* current_OM, itemOM* existing_item, itemOM* insert_item)	//NOT CILK
+cilk void list_insert_and_label(OM* current_OM, itemOM* existing_item, itemOM* insert_item)
 {
 	//insert
 	insert_item->next = existing_item->next;
@@ -368,16 +452,18 @@ void list_insert_and_label(OM* current_OM, itemOM* existing_item, itemOM* insert
 
 
 //-----------------------------------------------------------------
-//-------individual insert-----------------------------------------
+//-------Lock insert-----------------------------------------
 //-------------------------------------------------------------------
 //NEED TO CONFIRM PARALLIZATION and NEED TO CONFIRM Big O TIME
-cilk void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_item)
+cilk void lock_insert(OM* current_OM, itemOM* existing_item, itemOM* insert_item)
 {
 	nodeOM *temp, *temp_child;
 	nodeOM *cilk_throwaway;
 	itemOM* temp_item;
 	itemOM** item_array;
 	int i;
+	
+	Cilk_lock(current_OM->lock);
 	
 	//Insert into linked list
 	//printf("insert into list\n");
@@ -452,7 +538,31 @@ cilk void individual_insert(OM* current_OM, itemOM* existing_item, itemOM* inser
 	sync;
 	free(item_array);
 	//printf("Done inserting\n");
+	Cilk_unlock(current_OM->lock);
 }
+
+
+cilk void parallel_for_lock_insert(OM* current_OM, itemOM** existing_array, itemOM** insert_array, int start, int end)
+{
+	int middle = start+(end-start)/2;
+	
+	if(end-start<=PARALLEL_CUTOFF)
+	{
+		for(start; start<end; ++start)
+		{
+			spawn lock_insert(current_OM, existing_array[start], insert_array[start]);
+		}
+	}
+	else
+	{
+		spawn parallel_for_lock_insert(current_OM, existing_array, insert_array, start, middle);
+		spawn parallel_for_lock_insert(current_OM, existing_array, insert_array, middle+1, end);
+		spawn lock_insert(current_OM, existing_array[middle], insert_array[middle]);
+	}
+}
+
+
+
 
 cilk void recursive_relabel(nodeOM* current_node, itemOM** item_array, int size, int label)	//O(log(M))
 {
@@ -575,20 +685,18 @@ cilk OM* create_OM(itemOM* first_item)	//Data is for the first inserted item
 	OM* new_OM = (OM*)malloc(sizeof(OM));
 	if(new_OM == NULL)
 	{
-		printf("Error Allocating Memory\n");
 		return NULL;
 	}
 	//Initialize OM
 	new_OM->root = create_nodeOM();
 	new_OM->root->height = log2(M);
 	new_OM->countOM = M;
+	Cilk_lock_init(new_OM->lock);
 	//Initialize first item
-	printf("\t-Recursive Create Tree\n");
 	temp_node = spawn recursive_create_tree(new_OM->root,new_OM->root->height,1);
 	sync;
 	if(temp_node == NULL)		//LAST RESORT FIX
 	{
-		printf("\t-Fixing NULL temp_node\n");
 		temp_node = new_OM->root;
 		while(temp_node->height!=0)
 		{
@@ -596,7 +704,7 @@ cilk OM* create_OM(itemOM* first_item)	//Data is for the first inserted item
 		}
 	}
 	if(temp_node == NULL)
-		printf("\t-Temp_node is still NULL\n");
+		printf("Temp_node is still NULL\n");
 	else
 	{
 		temp_node->item = first_item;
@@ -605,13 +713,11 @@ cilk OM* create_OM(itemOM* first_item)	//Data is for the first inserted item
 		temp_node->item->prev = temp_node->item;
 		temp_node->item->label = 0;
 	}
-	printf("\t-Update Counts\n");
 	do{
 		temp_node->count++;
 		temp_node = temp_node->parent;
 		new_OM->count = 1;
 	}while(temp_node != NULL);
-	printf("OM created\n");
 	return new_OM;
 }
 
@@ -634,6 +740,15 @@ cilk nodeOM* recursive_create_tree(nodeOM* root, int height, int is_return)	//He
 	if(is_return != 0)
 		return temp;
 	else return NULL;
+}
+
+
+struct insert_pair* create_insert_pair(itemOM* existing_item, itemOM* insert_item)
+{
+	struct insert_pair* new_pair = (struct insert_pair*)malloc(sizeof(struct insert_pair));
+	new_pair->existing = existing_item;
+	new_pair->insert = insert_item;
+	return new_pair;
 }
 
 nodeOM* create_nodeOM()
@@ -701,7 +816,9 @@ void recursive_print_OM(nodeOM* current_node, int label, int count, int is_tree)
 		//If its a leaf and it has an item, print the item
 		if(current_node->item != NULL && current_node->height == 0)
 		{
-			printf("[%d] I[%d] \t||", current_node->item->label, *((int*)current_node->item->data));
+			if(current_node->item->data== NULL)
+				printf("[%d] I[nil] \t||", current_node->item->label);
+			else printf("[%d] I[%d] \t||", current_node->item->label, *((int*)current_node->item->data));
 		}
 		else if (current_node->height == 0) printf("[%d]\t\t||", label);
 		else printf("\t\t||");
@@ -773,7 +890,8 @@ void recursive_print_OM(nodeOM* current_node, int label, int count, int is_tree)
 				}
 			}
 			printf("Last item should be same as first item (circularly linked)\n");
-		}else printf("temp_node is NULL\n");
+		}
+		else printf("temp_node is NULL\n");
 		
 		return;
 	}

@@ -146,7 +146,7 @@ cilk void batch_push_back(void* array, void* data, size_t input_size, void* resu
 }
 
 //! DONT CALL THIS, Call push_back or parallel_push_back instead
-/*! Ultimatel, this is the function that calls Cilk_batchify, but it is not user friendly
+/*! Ultimately, this is the function that calls Cilk_batchify, but it is not user friendly
 	\sa parallel_push_back(), push_back(), parallel_for()
 */
 cilk void push_back_iterator(dyn_array* current_array, int* input, int i)
