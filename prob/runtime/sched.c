@@ -1743,38 +1743,6 @@ inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
 	return USE_SHARED(current_batch_id) > batch_id || USE_SHARED(batch_owner) == -1;
 }
 
-#include <sys/time.h>
-struct timeval batchPackStart, batchPackEnd;
-struct timeval batchPack1Start, batchPack1End;
-struct timeval batchPack2Start, batchPack2End;
-struct timeval batchPack3Start, batchPack3End;
-struct timeval batchUnpackStart, batchUnpackEnd;
-struct timeval batchWorkStart, batchWorkEnd;
-double batchPackTime = 0;
-double batchUnpackTime = 0;
-double batchWorkTime = 0;
-double batchPack1Time = 0;
-double batchPack2Time = 0;
-double batchPack3Time = 0;
-int numBatches = 0;
-int batchSizes = 0;
-
-inline double getTime(struct timeval *start, struct timeval *end)
-{
-	return (double)(end->tv_sec*1000000.0 + end->tv_usec -
-									(start->tv_sec*1000000.0 + start->tv_usec))/1000;
-}
-
-void printBatcherStats()
-{
-	printf("Batch Start time: %lf ms\n", batchPackTime);
-	printf("Batch work time: %lf ms\n", batchWorkTime - batchUnpackTime);
-	printf("Batch end time: %lf ms\n", batchUnpackTime);
-	printf("Batch memory alloc: %lf ms\n", batchPack1Time);
-	printf("Batch array loop: %lf ms\n", batchPack2Time);
-	printf("Average batch size: %lf\n", ((double)batchSizes)/((double)numBatches));
-}
-
 void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 {
 	int victim;
@@ -1856,7 +1824,6 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 		ws->batch_id = USE_SHARED(current_batch_id);
 
 		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
-			gettimeofday(&batchPackStart, NULL);
 			Cilk_enter_state(ws, STATE_BATCH_TOTAL);
 			Cilk_enter_state(ws, STATE_BATCH_START);
 
@@ -1868,7 +1835,6 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 			USE_SHARED(batch_owner) = ws->self;
 			workArray = USE_SHARED(batch_work_array);
 
-			gettimeofday(&batchPack1Start, NULL);
 			if (workArray == NULL) {
 				workArray = Cilk_malloc(dataSize * USE_PARAMETER(active_size));
 				USE_SHARED(batch_work_array) = workArray;
@@ -1877,10 +1843,7 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 				workArray = Cilk_malloc(dataSize * USE_PARAMETER(active_size));
 				USE_SHARED(batch_work_array) = workArray;
 			}
-			gettimeofday(&batchPack1End, NULL);
-			batchPack1Time += getTime(&batchPack1Start, &batchPack1End);
 
-			gettimeofday(&batchPack2Start, NULL);
 			pending->dataSize = dataSize;
 			pending->operation = op;
 
@@ -1893,16 +1856,12 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 				}
 			}
 			pending->size = numJobs;
-			numBatches++; //***
-			batchSizes += numJobs; //***
 #if CILK_STATS
 			USE_SHARED(total_batch_ops) += numJobs;
 			USE_SHARED(num_batches)++;
 #endif
 
 			Cilk_exit_state(ws, STATE_BATCH_START);
-			gettimeofday(&batchPack2End, NULL);
-			batchPack2Time += getTime(&batchPack2Start, &batchPack2End);
 
 			// I debated using the same method that Cilk uses to start cilk_main,
 			// i.e. manually putting the procedure on the deque. But this requires
@@ -1910,14 +1869,9 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 			// I think would be slower, and 2. would make it harder to support 
 			// general batch operations.
 			// This seems to work without issue, so far.
-			gettimeofday(&batchPackEnd, NULL);
-			batchPackTime += getTime(&batchPackStart, &batchPackEnd);
-			gettimeofday(&batchWorkStart, NULL);
 			Cilk_enter_state(ws, STATE_DS_WORKING);
 			op(ws, dataStruct, workArray, numJobs, workArray);
 			Cilk_exit_state(ws, STATE_DS_WORKING);
-			gettimeofday(&batchWorkEnd, NULL);
-			batchWorkTime += getTime(&batchWorkStart, &batchWorkEnd);
 
 			ws->current_cache = &ws->cache;
 
@@ -1943,7 +1897,6 @@ void Cilk_terminate_batch(CilkWorkerState *const ws)
 {
 	int i, index;
 	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
-	gettimeofday(&batchUnpackStart, NULL);
 	Batch *current = &USE_SHARED(pending_batch);
 	void* results = USE_SHARED(batch_work_array);
 	size_t dataSize = current->dataSize;
@@ -1958,8 +1911,6 @@ void Cilk_terminate_batch(CilkWorkerState *const ws)
 		}
 	}
 	USE_SHARED(current_batch_id)++; // signal end of this batch
-	gettimeofday(&batchUnpackEnd, NULL);
-	batchUnpackTime += getTime(&batchUnpackStart, &batchUnpackEnd);
 	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
 
