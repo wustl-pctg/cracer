@@ -46,6 +46,7 @@ static char *smart_sprint_time(double x)
  */
 static void print_all_statistics(CilkContext *const context)
 {
+	// Batch stats
 #if CILK_STATS
 	if (USE_PARAMETER1(options->statlevel) == -1) {
 		Cilk_summarize_time_statistics(context);
@@ -53,6 +54,7 @@ static void print_all_statistics(CilkContext *const context)
 						(double)USE_SHARED1(total_batch_ops)/(double)USE_SHARED1(num_batches));
 	}
 #endif
+
   if (USE_PARAMETER1(options->statlevel) >= 1) {
     /* Print Header line for statistics */
     fprintf(USE_PARAMETER1(infofile),
