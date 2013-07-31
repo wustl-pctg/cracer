@@ -1,8 +1,13 @@
 #include <getopt.h>
-#include "order_maintenance.cilk"
+#include "ds/order_maintenance_copy.cilk"
 #include "util/timer.h"
 
 //NEED TO SET UP DEFAULTS
+
+//DO NOT RUN ACTUAL TESTS WITH THIS YET, STILL NEED TO ADD LAYER OF INDIRECTION
+
+//FOR SOME REASON, USING A TEST SIZE OVER 1000 TAKES A REALLY LONG TIME
+
 
 void usage() {
   printf("use default arguments");
@@ -12,9 +17,10 @@ cilk int main(int argc, char **argv)
 {
 	int* item_ints;
 	int* insert_ints;
-	indirection_item* base;
-	indirection_item** item_array;
-	indirection_item** insert_array;
+	itemOM* base;
+	itemOM** item_array;
+	itemOM** insert_array;
+	struct item_pair** pair_array;
 	int int_base = -1;
 	int i;
 	OM* testOM;
@@ -29,7 +35,7 @@ cilk int main(int argc, char **argv)
      {"verbose", no_argument,0,'v'}
     };
 	
-	base = create_indirection_item(&int_base);
+	base = create_itemOM(&int_base);
 	
 	
 	//---------Set Up Command Line Arguements---------------------
@@ -64,38 +70,41 @@ cilk int main(int argc, char **argv)
 	//--------Initialize Arrays--------------
 	item_ints = (int*)malloc(sizeof(int) * test_size);
 	insert_ints = (int*)malloc(sizeof(int) * test_size);
-	item_array = (indirection_item**)malloc(sizeof(indirection_item*) * test_size);
-	insert_array = (indirection_item**)malloc(sizeof(indirection_item*) * test_size);
+	item_array = (itemOM**)malloc(sizeof(itemOM*) * test_size);
+	insert_array = (itemOM**)malloc(sizeof(itemOM*) * test_size);
+	pair_array = (struct item_pair**)malloc(sizeof(struct item_pair*) * test_size);
 	
-	if(item_ints == NULL || insert_ints == NULL || item_array == NULL || insert_array == NULL)
+	if(item_ints == NULL || insert_ints == NULL || item_array == NULL || insert_array == NULL || pair_array == NULL)
 		printf("Out of memory\n");
 	
 	for(i=0;i<test_size; ++i)
 	{
 		item_ints[i] = i;
-		item_array[i] = create_indirection_item(&(item_ints[i]));
-		insert_array[i] = create_indirection_item(&(item_ints[i]));
+		item_array[i] = create_itemOM(NULL);
+		insert_array[i] = create_itemOM(NULL);
 		if(item_array[i] == NULL || insert_array[i] == NULL) printf("Out of memory\n");
+		
+		pair_array[i] = create_item_pair(item_array[i],insert_array[i]);
 	}
-	
 	
 	//---------Insert "Existing" items-----------
 	for(i=0;i<test_size; ++i)
 	{
-		spawn lock_indirection_insert(testOM, base, item_array[i]);
+		spawn lock_insert(testOM, base, item_array[i]);
 		sync;
 	}
+	//print_OM(testOM,1);
 	
-	print_OM(testOM, 0);
-	
+
+
+
 	//----------TEST------------
 	if(verbose)
 	{
 		printf("Begin Test\n");
 	}
-	
-	/*startTimer();
-	spawn parallel_for_lock_indirection_insert(testOM, item_array, insert_array, 0, test_size);
+	startTimer();
+	spawn parallel_for_batch_insert(testOM, pair_array, 0, test_size);
 	sync;
 	stopTimer();
 	
@@ -104,13 +113,16 @@ cilk int main(int argc, char **argv)
 		printf("Batch\tsize: %d\n", test_size);
 	}
 	printf("%lf\n", getWallTime());
+
 	
-	print_OM(testOM, 0);*/
+	//print_OM(testOM, 0);
+	
 	
 	free(item_ints);
 	free(insert_ints);
 	free(item_array);
 	free(insert_array);
+	free(pair_array);
 	
 	return 0;
 }

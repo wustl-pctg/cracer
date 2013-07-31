@@ -77,6 +77,9 @@ static const struct state_desc {
 		"Total batch time", STATE_BATCH_TOTAL
 	},
 	{
+		"Time spent in batch_scheduler", STATE_BATCH_SCHEDULING
+	},
+	{
 		"Starting batches", STATE_BATCH_START
 	},
 	{

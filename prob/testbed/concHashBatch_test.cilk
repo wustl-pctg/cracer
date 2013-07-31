@@ -1,6 +1,6 @@
-
 #include "util/timer.h"
-#include "hash_table_ints.cilk"
+#include "ds/concHash.cilk"
+#include <math.h>
 
 //Tyler Romero and Kefu Liu
 //need to compile with the -lm flag after everything for some reason

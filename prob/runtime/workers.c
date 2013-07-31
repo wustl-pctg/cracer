@@ -171,10 +171,6 @@ void Cilk_create_children(CilkContext *const context,
   pthread_setconcurrency(USE_PARAMETER1(active_size));
 
 	cpu_set_t mask;
-	CPU_ZERO(&mask);
-	CPU_SET(0, &mask);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &mask);
-
   for (i = 0; i < USE_PARAMETER1(active_size); i++)
     {
       res = pthread_create(USE_SHARED1(tid) + i,
@@ -185,11 +181,7 @@ void Cilk_create_children(CilkContext *const context,
 				Cilk_die_internal(context, NULL, "Can't create threads\n");
 
       // Jing - Affinity setting start
-      int j;
-      // assuming bind threads to core 0 to 11 in round-robin manner
-      // assuming i is some global unique id for different threads, may need to change
-      //      int available_cores = 12;
-      int workerMaskID = (i+1) % USE_PARAMETER1(active_size);
+      int workerMaskID = i % USE_PARAMETER1(active_size);
       // Bind the thread to the assigned core
 			//		printf("Try to bind %i to %i\n", USE_SHARED1(tid)+i, workerMaskID);
 			CPU_ZERO(&mask);
@@ -197,7 +189,7 @@ void Cilk_create_children(CilkContext *const context,
 			int ret_val = pthread_setaffinity_np(USE_SHARED1(tid) + i, sizeof(cpu_set_t), &mask);
       if (ret_val != 0) {
 				// Error message
-				~printf("ERROR: Could not set CPU affinity for %i to %i with error %i\n", i, workerMaskID, ret_val);
+				printf("ERROR: Could not set CPU affinity for %i to %i with error %i\n", i, workerMaskID, ret_val);
       }
       // Jing - Affinity setting end
     }

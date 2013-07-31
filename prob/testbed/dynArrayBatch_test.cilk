@@ -1,5 +1,5 @@
 #include "util/timer.h"
-#include "parallel_dynamic_array.cilk"
+#include "ds/dynArray.cilk"
 
 //Tyler Romero
 

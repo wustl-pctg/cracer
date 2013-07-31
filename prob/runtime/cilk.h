@@ -537,6 +537,7 @@ typedef struct {
   enum DS_STATUS   status;
   int         packedIndex;
   void*       result;
+	CILK_CACHE_LINE_PAD;
 } BatchRecord;
 
 typedef struct {

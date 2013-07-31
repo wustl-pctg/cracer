@@ -1,8 +1,8 @@
-CILK = ../support/cilkclocal
+CILKC = ../support/cilkclocal
 CFLAGS =
-MAKEDEPEND = $(CILK) -MM
-SRCS = $(wildcard *.cilk)
-DEPS = $(wildcard util/*)
+MAKEDEPEND = $(CILKC) -MM
+DEPS = $(wildcard util/*.h util/*.cilkh)
+DS = $(wildcard ds/*.c ds/*.cilk)
 
 ifeq ($(shell uname -s),Linux)
 	CFLAGS += -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L
@@ -28,7 +28,7 @@ all: cilk tests
 
 # Rule for all actual source files
 % : %.cilk $(DEPS)
-	$(CILK) $(CFLAGS) -o $@ $<
+	$(CILKC) $(CFLAGS) $(DS) -o $@ $<
 
 # Rule for rebuilding CILK (BATCHER)
 cilk:
@@ -36,12 +36,20 @@ cilk:
 	make clean
 
 # Building our tests
-tests:  counter param btree dynArray concHash omPMA omTree
-counter: counter_lock counter_batch
+tests:  param counter btree dynArray concHash omPMA omTree
+param:
+	$(CILKC) $(CFLAGS) -o $@ $@.cilk
+counter: counterLock_test counterBatch_test
+btree: btreeLock_test btreeBatch_test
+dynArray: dynArrayLock_test dynArrayBatch_test
+concHash: concHashLock_test concHashBatch_test
+omPMA: omPMALock_test omPMABatch_test
+omTree: omTreeLock_test omTreeBatch_test
+te: test
 
-.PHONY: clean cilk-clean check-syntax doc information
+.PHONY: clean cilk-clean check-syntax doc information all
 clean:
-	rm -f *.i *.cilki *.cilkc *.d *.P *.o
+	rm -f *.i *.cilki *.cilkc *.d *.P *.o *.d
 	rm -f $(SRCS:.cilk=)
 
 cilk-clean:
@@ -49,7 +57,7 @@ cilk-clean:
 	make clean
 
 check-syntax:
-	$(CILK) -o /dev/null -c ${CHK_SOURCES}
+	$(CILKC) -o /dev/null -c ${CHK_SOURCES}
 
 doc:
 	@command -v doxygen >/dev/null 2>&1 || { echo "Doxygen not installed. Aborting." >&2; exit 1; }

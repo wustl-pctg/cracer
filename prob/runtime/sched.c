@@ -1740,7 +1740,10 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
  *********************************************************/
 inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
 {
-	return USE_SHARED(current_batch_id) > batch_id || USE_SHARED(batch_owner) == -1;
+	Cilk_enter_state(ws, STATE_USER0);
+	int x = USE_SHARED(current_batch_id) > batch_id || USE_SHARED(batch_owner) == -1;
+	Cilk_exit_state(ws, STATE_USER0);
+	return x;
 }
 
 void batch_scheduler(CilkWorkerState *const ws, Closure *t)
@@ -1750,6 +1753,7 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 	rts_srand(ws, ws->self * 162347);
 
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
+	Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 
 	ws->current_cache = &ws->ds_cache;
 
@@ -1789,12 +1793,15 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 
 		//    if (USE_SHARED(current_batch_id) == ws->batch_id) {
 		if (t && !batch_done_yet(ws, ws->batch_id)) {
+			Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
+			Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 		}
 
 	}
 	ws->batch_id = 0;
 	ws->current_cache = &ws->cache;
+	Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
 
 	return;
