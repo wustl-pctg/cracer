@@ -1,5 +1,5 @@
 #include <getopt.h>
-#include "order_maintenance.cilk"
+#include "order_maintenance_copy.cilk"
 #include "util/timer.h"
 
 //NEED TO SET UP DEFAULTS
@@ -8,8 +8,6 @@
 
 //FOR SOME REASON, USING A TEST SIZE OVER 1000 TAKES A REALLY LONG TIME
 
-
-extern void printBatcherStats();
 
 void usage() {
   printf("use default arguments");
@@ -22,7 +20,7 @@ cilk int main(int argc, char **argv)
 	itemOM* base;
 	itemOM** item_array;
 	itemOM** insert_array;
-	struct insert_pair** pair_array;
+	struct item_pair** pair_array;
 	int int_base = -1;
 	int i;
 	OM* testOM;
@@ -74,7 +72,7 @@ cilk int main(int argc, char **argv)
 	insert_ints = (int*)malloc(sizeof(int) * test_size);
 	item_array = (itemOM**)malloc(sizeof(itemOM*) * test_size);
 	insert_array = (itemOM**)malloc(sizeof(itemOM*) * test_size);
-	pair_array = (struct insert_pair**)malloc(sizeof(struct insert_pair*) * test_size);
+	pair_array = (struct item_pair**)malloc(sizeof(struct item_pair*) * test_size);
 	
 	if(item_ints == NULL || insert_ints == NULL || item_array == NULL || insert_array == NULL || pair_array == NULL)
 		printf("Out of memory\n");
@@ -86,10 +84,8 @@ cilk int main(int argc, char **argv)
 		insert_array[i] = create_itemOM(NULL);
 		if(item_array[i] == NULL || insert_array[i] == NULL) printf("Out of memory\n");
 		
-		pair_array[i] = create_insert_pair(item_array[i],insert_array[i]);
+		pair_array[i] = create_item_pair(item_array[i],insert_array[i]);
 	}
-	
-	
 	
 	//---------Insert "Existing" items-----------
 	for(i=0;i<test_size; ++i)
@@ -97,9 +93,11 @@ cilk int main(int argc, char **argv)
 		spawn lock_insert(testOM, base, item_array[i]);
 		sync;
 	}
+	//print_OM(testOM,1);
 	
-	
-	
+
+
+
 	//----------TEST------------
 	if(verbose)
 	{
@@ -115,12 +113,9 @@ cilk int main(int argc, char **argv)
 		printf("Batch\tsize: %d\n", test_size);
 	}
 	printf("%lf\n", getWallTime());
-	if(verbose)
-	{
-		printBatcherStats();
-	}
+
 	
-	//print_OM(testOM, 1);
+	//print_OM(testOM, 0);
 	
 	
 	free(item_ints);

@@ -4,11 +4,6 @@
 
 //NEED TO SET UP DEFAULTS
 
-//DO NOT RUN ACTUAL TESTS WITH THIS YET, STILL NEED TO ADD LAYER OF INDIRECTION
-
-
-extern void printBatcherStats();
-
 void usage() {
   printf("use default arguments");
 }
@@ -17,9 +12,9 @@ cilk int main(int argc, char **argv)
 {
 	int* item_ints;
 	int* insert_ints;
-	itemOM* base;
-	itemOM** item_array;
-	itemOM** insert_array;
+	indirection_item* base;
+	indirection_item** item_array;
+	indirection_item** insert_array;
 	int int_base = -1;
 	int i;
 	OM* testOM;
@@ -34,7 +29,7 @@ cilk int main(int argc, char **argv)
      {"verbose", no_argument,0,'v'}
     };
 	
-	base = create_itemOM(&int_base);
+	base = create_indirection_item(&int_base);
 	
 	
 	//---------Set Up Command Line Arguements---------------------
@@ -69,8 +64,8 @@ cilk int main(int argc, char **argv)
 	//--------Initialize Arrays--------------
 	item_ints = (int*)malloc(sizeof(int) * test_size);
 	insert_ints = (int*)malloc(sizeof(int) * test_size);
-	item_array = (itemOM**)malloc(sizeof(itemOM*) * test_size);
-	insert_array = (itemOM**)malloc(sizeof(itemOM*) * test_size);
+	item_array = (indirection_item**)malloc(sizeof(indirection_item*) * test_size);
+	insert_array = (indirection_item**)malloc(sizeof(indirection_item*) * test_size);
 	
 	if(item_ints == NULL || insert_ints == NULL || item_array == NULL || insert_array == NULL)
 		printf("Out of memory\n");
@@ -78,30 +73,29 @@ cilk int main(int argc, char **argv)
 	for(i=0;i<test_size; ++i)
 	{
 		item_ints[i] = i;
-		item_array[i] = create_itemOM(NULL);
-		insert_array[i] = create_itemOM(NULL);
+		item_array[i] = create_indirection_item(&(item_ints[i]));
+		insert_array[i] = create_indirection_item(&(item_ints[i]));
 		if(item_array[i] == NULL || insert_array[i] == NULL) printf("Out of memory\n");
-		
 	}
-	
 	
 	
 	//---------Insert "Existing" items-----------
 	for(i=0;i<test_size; ++i)
 	{
-		spawn lock_insert(testOM, base, item_array[i]);
+		spawn lock_indirection_insert(testOM, base, item_array[i]);
 		sync;
 	}
 	
-	
+	print_OM(testOM, 0);
 	
 	//----------TEST------------
 	if(verbose)
 	{
 		printf("Begin Test\n");
 	}
-	startTimer();
-	spawn parallel_for_lock_insert(testOM, item_array, insert_array, 0, test_size);
+	
+	/*startTimer();
+	spawn parallel_for_lock_indirection_insert(testOM, item_array, insert_array, 0, test_size);
 	sync;
 	stopTimer();
 	
@@ -110,13 +104,8 @@ cilk int main(int argc, char **argv)
 		printf("Batch\tsize: %d\n", test_size);
 	}
 	printf("%lf\n", getWallTime());
-	if(verbose)
-	{
-		printBatcherStats();
-	}
 	
-	//print_OM(testOM, 1);
-	
+	print_OM(testOM, 0);*/
 	
 	free(item_ints);
 	free(insert_ints);

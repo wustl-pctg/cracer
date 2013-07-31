@@ -96,7 +96,7 @@ void insert(subrecord* subrecord_x, subrecord* subrecord_y)
 	}
 	else if(subrecord_x->label == VOID_DATA)
 	{
-		printf("Error: subrecord_x must already be part of the structure");
+		printf("Error: subrecord_x must already be part of the structure\n");
 		return;
 	}
 	else	//A normal insertion
