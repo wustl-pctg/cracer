@@ -71,6 +71,7 @@ int countAllLoad(pArray* ds, int start, int end);
 void processItem(pArray* ds, pItem** input, int round, int index, int* notDone);
 cilk void parallelProcessItem(pArray* ds, pItem** input, int round, int* notDone, int start, int end);
 void countSegment(pArray* ds, topItem* seg);
+//extern bool __sync_bool_compare_and_swap(int*,int,int);
 
 /*! \brief Creates a pArray with initial size.
     Returns a pointer to the new pArray.
@@ -223,7 +224,6 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
   */
   pItem** input = opRec;
   //pOpRec* recs = opRec;
-  pItem** temp;
   int i;
   //printf("%d\n",size);
    size*=2;
@@ -270,8 +270,6 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
 cilk void insertItem(pArray* ds, pItem** input, int size) {
   int round=0;
   int maxRounds=log(ds->topSize)/log(2);
-  int length=ds->length;
-  int i;
   int notDone=1;
 
   //KL:Really should only spawn threads at the start. Then have each round be a "barrier" or some sort.
@@ -468,7 +466,7 @@ void fillMuchSpace(pArray* ds,  pItem** temp, int startSeg, int segments) {
  */
 void redistributeLabel(pArray* ds, int index, pItem* newItem) {
     int segments=1;
-    int start,next;
+    int start;
     int totalSize;
     //int d=0;
     //(ds->topArray[index/ds->length])++;
