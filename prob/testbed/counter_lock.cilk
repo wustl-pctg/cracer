@@ -1,0 +1,56 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <cilk-lib.cilkh>
+#include <time.h>
+
+#include "util/parfor.cilkh"
+#include "util/prefixSums.cilkh"
+#include "util/timer.h"
+
+#define MAX_NUM 100
+Cilk_lockvar lock_counter;
+int counter = 0;
+
+void lockIncrement(int i, void* nums)
+{
+  Cilk_lock(lock_counter);
+  counter += ((int*)nums)[i];
+  Cilk_unlock(lock_counter);
+}
+
+cilk int main(int argc, char *argv[])
+{
+  int *data;
+  int nNums = 5;
+  int i, sum = 0;
+
+  if (argc > 2) {
+    fprintf(stderr, "Too many arguments\n");
+    Cilk_exit(1);
+  } else if (argc == 2) {
+    nNums = atoi(argv[1]);
+  }
+
+  data = malloc(nNums*sizeof(int));
+
+  srand(time(NULL));
+  for (i = 0; i < nNums; i++) {
+    // want -MAX_NUM to MAX_NUM range
+    data[i] = rand() % (2*MAX_NUM) - MAX_NUM;
+		sum += data[i];
+  }
+
+  counter = 0;
+  startTimer();
+  Cilk_lock_init(lock_counter);
+  spawn parfor_1(0, nNums-1, lockIncrement, (void*)data);
+  sync;
+  stopTimer();
+  printf("Time: %lf ms\n", getWallTime());
+  assert(counter == sum);
+
+  free(data);
+
+  return 0;
+}
