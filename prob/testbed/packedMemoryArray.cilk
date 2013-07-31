@@ -17,7 +17,8 @@ typedef struct p_Item{
  */
 typedef struct {
   int count;
-  Cilk_lockvar lock;
+  /*! For compare and swap operation.*/
+  int id;
   int start;
 } topItem;
 
@@ -69,6 +70,7 @@ cilk void insertItem(pArray* ds, pItem** input, int index);
 int countAllLoad(pArray* ds, int start, int end);
 void processItem(pArray* ds, pItem** input, int round, int index, int* notDone);
 cilk void parallelProcessItem(pArray* ds, pItem** input, int round, int* notDone, int start, int end);
+void countSegment(pArray* ds, topItem* seg);
 
 /*! \brief Creates a pArray with initial size.
     Returns a pointer to the new pArray.
@@ -76,9 +78,13 @@ cilk void parallelProcessItem(pArray* ds, pItem** input, int round, int* notDone
 */
 pArray* pArray_create(int maxSize){
     pArray* result = malloc(sizeof(pArray));
-    int realSize=pow(2,ceil((log(maxSize)/log(2))));
+    int initTopSize = maxSize/log(maxSize);
+    int realSize;
+    int logFactor = (int) log(maxSize);
+    initTopSize = pow(2,ceil((log(initTopSize)/log(2))));
+    realSize = initTopSize * logFactor;
     result->array = calloc(realSize,sizeof(pItem*)); 
-    result->length = (int)log(realSize);
+    result->length = logFactor;
     result->topSize=realSize/result->length;
     result->topArray=calloc(result->topSize,sizeof(topItem));
     result->maxSize=realSize;
@@ -86,10 +92,10 @@ pArray* pArray_create(int maxSize){
     Cilk_lock_init(result->lock);
     //KL: Could be parallel, but shouldn't matter much.
     for (realSize=0;realSize<result->topSize;realSize++){
-      Cilk_lock_init(result->topArray[realSize].lock);
+      result->topArray[realSize].id=0;
+      result->topArray[realSize].count=0;
       result->topArray[realSize].start=realSize*result->length;
     }
-    //printf("top: %d, %d\n",result->length,result->topSize);
     return result;
 }
 
@@ -239,10 +245,6 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
     //KL: Hack#1 to re-use memory. Hopefully pointers have same size.
     //KL: so now, all odd items in input array are actually topItem*
     input[i+1]=(pItem*)&(ds->topArray[input[i]->label/ds->length]);
-    //KL: increments the segment size, gets a lock.
-    Cilk_lock(ds->topArray[input[i]->label/ds->length].lock);
-    ds->topArray[input[i]->label/ds->length].count++;
-    Cilk_unlock(ds->topArray[input[i]->label/ds->length].lock);
   }
   
   //Inserts items.
@@ -262,7 +264,8 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
 }
 
 /*! \brief Insert method for batch. Uses locks cleverly.
-
+  
+   Acutally uses compare and swap now, instead of locks.
  */
 cilk void insertItem(pArray* ds, pItem** input, int size) {
   int round=0;
@@ -271,10 +274,10 @@ cilk void insertItem(pArray* ds, pItem** input, int size) {
   int i;
   int notDone=1;
 
-  //printf("size %d\n",size);
   //KL:Really should only spawn threads at the start. Then have each round be a "barrier" or some sort.
   //Though, need to find a barrier.
   //As of right now, respawns threads every round.
+  //KL: Cilk's barrier.c doesn't seem to work for this purpose, must find alternative.
   while (round<=maxRounds && notDone){
     //par_for
     notDone=0;
@@ -305,43 +308,52 @@ void processItem(pArray* ds, pItem** input, int round, int index, int* notDone) 
   pItem** temp;
 
   //Nothing to be done if NULL. This item's work was completed in a previous round.
+  //KL: If I get the barrier working, this part can be reworked to be much faster.
   if (input[index+1]==NULL){
-    // printf("nothing to do in round %d for item %d\n",round,index);
+    //printf("nothing to do in round %d for item %d\n",round,index);
     return;
   }
   
   seg = (topItem*)input[index+1];//KL: see Hack#1 above.
   topIndex = (*seg).start/ds->length;
   //  printf("doing round %d for item %d. top Index %d. topItem %p. \n",round,index, topIndex,seg);
-//  printf("topIndex %d length %d, %p\n",topIndex,length,seg);
-  //Lock the relevant part of the segment.
-  i = (*seg).count;
-  Cilk_lock((*seg).lock);
-  //KL: This is when you get the lock, but someone already did the work for this segment. . . so just don't do anything.
-  if (i!=ds->topArray[topIndex].count){
-    //printf("don't work\n");
-    Cilk_unlock((*seg).lock);
-    return;
+  //KL: Use a compare and swap instead of locking.
+  //KL: notice that the index of each thread/process is unique.
+  /* if (__sync_bool_compare_and_swap(&(*seg).id,0,index)){
+    printf("%d on seg %d succeeded\n",index, topIndex);
   }
-  for (i=topIndex;i<topIndex+length;i++){
-    count+=ds->topArray[i].count;
+  else {
+    printf("%d on seg %d failed\n",index, topIndex);
+    }*/
+  if (__sync_bool_compare_and_swap(&(*seg).id,0,index)) {
+      if (round==0){
+	countSegment(ds,seg);
+      }
+      for (i=topIndex;i<topIndex+length;i++){
+	count+=ds->topArray[i].count;
+      }
+      //printf("%d has count %d in round %d\n",index,count,round);
+      if (count<length*ds->length*loadCoefficient(TOTAL_MAX_LOAD,SEG_MAX_LOAD,round, log(ds->topSize)/log(2))){
+	//printf("%d is doing stuff in round %d\n",index,round);
+	temp = calloc(length*ds->length,sizeof(pItem*));
+       	fillMuchSpace(ds,temp,topIndex,length);
+	free(temp);
+	input[index+1]=NULL;
+      } else {
+     	//printf("%d is not done in round %d\n",index,round);
+	topIndex=topIndex/(2*length);
+	topIndex*=(2*length);
+	//KL: see Hack#1
+	input[index+1]=(pItem*)&ds->topArray[topIndex];
+	*notDone=1; //here is a concurrent write, but all are writing the same thing.
+      }
+      //Unlock - preferably only do this at the end of round, but must figure out how to implement that.
+      __sync_bool_compare_and_swap(&(*seg).id,index,0);
   }
-  if (count<length*ds->length*loadCoefficient(TOTAL_MAX_LOAD,SEG_MAX_LOAD,round, log(ds->topSize)/log(2))){
-    temp = calloc(length*ds->length,sizeof(pItem*));
-    //  printf("fill %d to %d\n", topIndex, topIndex+length);
-    fillMuchSpace(ds,temp,topIndex,length);
-    free(temp);
+  else {
     input[index+1]=NULL;
-  } else {
-    //  printf("count %d, length %d\n",count,length);
-    topIndex=topIndex/(2*length);
-    topIndex*=(2*length);
-    //KL: see Hack#1
-    input[index+1]=(pItem*)&ds->topArray[topIndex];
-    *notDone=1; //here is a concurrent write, but all are writing the same thing.
+    //   printf("Collision\n");
   }
-  //Unlock
-  Cilk_unlock((*seg).lock);
 }
 
 
@@ -627,7 +639,6 @@ void pArray_double(pArray* ds){
     for (i=0;i<ds->topSize;i++){
         ds->topArray[i].count=0;
 	ds->topArray[i].start=i*ds->length;
-	Cilk_lock_init(ds->topArray[i].lock);
     }
     for (i=0;i<ds->maxSize;i++){
         if(ds->array[i]!=NULL){
@@ -651,3 +662,18 @@ cilk void parallelProcessItem(pArray* ds, pItem** input, int round, int* notDone
     sync;
   }
 }
+
+void countSegment(pArray* ds, topItem* segment){
+  int start = segment->start;
+  int end = start + ds->length;
+  int i;
+  int count=0;
+  for (i=start; i<end;i++){
+    if (ds->array[i]!=NULL){
+      count++;
+      if (ds->array[i]->in!=NULL){
+	count++;
+      }
+    }
+  }
+  segment->count=count;}
