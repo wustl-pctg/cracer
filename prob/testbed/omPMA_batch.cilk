@@ -107,8 +107,5 @@ cilk int main(int argc, char** argv) {
       printf("Batch. Size %d. \n",testSize);
     }
     printf("%lf\n", getWallTime());
-    if (verbose){
-       printBatcherStats();
-    }
     return 1;
 }

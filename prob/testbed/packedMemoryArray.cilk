@@ -231,6 +231,7 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
   }
   ds->load+=size/2;
   
+  //Should parallelize.  
   //Store into temporary slot.
   for (i=0;i<size;i+=2){
     //printf("i=%d, %p\n",i,input[i]);
@@ -271,10 +272,14 @@ cilk void insertItem(pArray* ds, pItem** input, int size) {
   int notDone=1;
 
   //printf("size %d\n",size);
+  //KL:Really should only spawn threads at the start. Then have each round be a "barrier" or some sort.
+  //Though, need to find a barrier.
+  //As of right now, respawns threads every round.
   while (round<=maxRounds && notDone){
     //par_for
     notDone=0;
     spawn parallelProcessItem(ds, input, round, &notDone, 0, size);
+    //KL: old code.
     /*for (i=0;i<size;i+=2){
       processItem(ds, input, round,  i, &notDone);
     }*/
@@ -284,6 +289,7 @@ cilk void insertItem(pArray* ds, pItem** input, int size) {
   }
   if (notDone){
     printf("fail\n");
+    return;
   } 
   else {
     //printf("done wtih stuff after %d rounds\n",round-1);
@@ -298,7 +304,7 @@ void processItem(pArray* ds, pItem** input, int round, int index, int* notDone) 
   int topIndex;
   pItem** temp;
 
-  //Nothing to be done.
+  //Nothing to be done if NULL. This item's work was completed in a previous round.
   if (input[index+1]==NULL){
     // printf("nothing to do in round %d for item %d\n",round,index);
     return;
@@ -311,6 +317,7 @@ void processItem(pArray* ds, pItem** input, int round, int index, int* notDone) 
   //Lock the relevant part of the segment.
   i = (*seg).count;
   Cilk_lock((*seg).lock);
+  //KL: This is when you get the lock, but someone already did the work for this segment. . . so just don't do anything.
   if (i!=ds->topArray[topIndex].count){
     //printf("don't work\n");
     Cilk_unlock((*seg).lock);
@@ -631,7 +638,7 @@ void pArray_double(pArray* ds){
 
 cilk void parallelProcessItem(pArray* ds, pItem** input, int round, int* notDone, int start, int end){
   int i;
-  if (end-start<2){
+  if (end-start<5){
     for (i=start; i <end; i++){
       if (i%2==0){
 	processItem(ds, input, round, i, notDone);
