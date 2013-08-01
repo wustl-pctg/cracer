@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "util/timer.h"
-#include "packedMemoryArray.cilk"
+#include "ds/omPMA.cilk"
 
 #define SIZE 32
 #define TSIZE 20
