@@ -10,7 +10,6 @@ test_sets = ['prob'] # add split later
 tests = {}
 #     Name of Test   Start Size, End Size, Increment
 tests['counter'] = range(10000, 20000+1, 10000)
-# tests['param'] = range(1,3,1)
 # tests['btree'] = range(1,3,1)
 # tests['dynArray'] = range(1,3,1)
 # tests['concHash'] = range(1,3,1)

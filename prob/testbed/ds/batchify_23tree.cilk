@@ -1,6 +1,6 @@
-#include "complex_2_3_tree.cilk"
-#include "util/timer.h"
-#include "util/parfor.cilkh"
+#include "btree.cilk"
+#include "../util/timer.h"
+#include "../util/parfor.cilkh"
 
 #define TEST_SIZE 1000
 

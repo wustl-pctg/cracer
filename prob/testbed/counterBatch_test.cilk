@@ -11,22 +11,25 @@
 #define MAX_NUM 100
 int counter = 0;
 
-/* extern void Cilk_batchify(CilkWorkerState *const ws, */
-/* 			  CilkBatchOpInternal op, */
-/* 			  void *dataStruct, void *data, size_t dataSize, void *indvResult); */
-extern void Cilk_terminate_batch(CilkWorkerState *const ws);
-
 cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)	//batch_op
 {
 	int *nums = (int*)data;
-  int temp = nums[size-1];
   int *count = (int*)dataStruct;
+	int i;
 
-  spawn prefixSumsExc(nums, size, nums);
-  sync;
+	if (size < BATCH_THRESHOLD) {
+		for (i = 0; i < size; i++) {
+			*count += nums[i];
+		}
+	} else {
+		int temp = nums[size-1];
 
-  result = data;
-  *count += temp + nums[size-1];
+		spawn prefixSumsExc(nums, size, nums);
+		sync;
+
+		//  result = data;
+		*count += temp + nums[size-1];
+	}
   Cilk_terminate_batch(_cilk_ws);
   return;
 }
@@ -36,16 +39,12 @@ cilk void batchIncrement(int i, void* nums)	//calls batch_op
   Cilk_batchify(_cilk_ws, fastSum, &counter, &((int*)nums)[i], sizeof(int), NULL);
 }
 
-cilk void parallelIncrement(int *nums, size_t size)	//Parallel for to call the call to batch_op
-{
-} 
-
 cilk int main(int argc, char *argv[])
 {
   int *data;
   int nNums = 5;
   int i, sum = 0;
-	
+
   if (argc > 2) {
     fprintf(stderr, "Too many arguments\n");
     Cilk_exit(1);
@@ -66,7 +65,7 @@ cilk int main(int argc, char *argv[])
   spawn parforpar_1(0, nNums-1, batchIncrement, (void*)data);
   sync;
   stopTimer();
-  printf("Time: %lf ms\n", getWallTime());
+  printf("%lf ms\n", getWallTime());
 
 	assert(counter == sum);
 

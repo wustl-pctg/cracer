@@ -1,0 +1,20 @@
+#!/bin/bash
+
+NPROC=12
+
+WORKMAX=10000 #100000
+WORKINTER=10000
+
+OPMAX=10000 #100000
+OPINTER=10000
+
+ITER=5
+
+echo "WORK,OPS,NPROC,ITER,LOCKS,BATCH"
+for ((WORK=0;WORK<=$WORKMAX;WORK+=$WORKINTER))
+do
+		for ((OP=1;OP<=$OPMAX;OP+=$OPINTER))
+		do
+				sudo prob/testbed/param --nproc $NPROC -w $WORK -o $OP -i $ITER
+		done
+done
