@@ -2,7 +2,7 @@
 #include "util/timer.h"
 #include "util/parfor.cilkh"
 
-#define TEST_SIZE 100000000
+#define TEST_SIZE 1000
 
 typedef struct in {
    void* ds;

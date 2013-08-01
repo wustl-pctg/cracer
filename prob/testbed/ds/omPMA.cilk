@@ -437,6 +437,7 @@ void fillMuchSpace(pArray* ds,  pItem** temp, int startSeg, int segments) {
        On the sceond pass it only goes through O(totalLoad) array indices.
     Luckily, it is only a constant factor worse at most.
   */  
+  //KL:Making this parallel will need some interesting use of prefix sums and such.
   spacing = (segments*ds->length)/totalLoad;
   for (next=startInd;next<startInd + segments*ds->length;next++){
     if (ds->array[next]!=NULL){
@@ -451,6 +452,7 @@ void fillMuchSpace(pArray* ds,  pItem** temp, int startSeg, int segments) {
     }  
   }
   //Copies the items back into the array. Now with correct spacing.
+  //KL:This is easiy parallelizable.
   for (next=0;next<count;next++){
     place=startInd+spacing*next;
     ds->array[place]=temp[next];
