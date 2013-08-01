@@ -3,6 +3,7 @@ CFLAGS =
 MAKEDEPEND = $(CILKC) -MM
 DEPS = $(wildcard util/*.h util/*.cilkh)
 DS = $(wildcard ds/*.c ds/*.cilk)
+SRCS = $(wildcard *.cilk)
 
 ifeq ($(shell uname -s),Linux)
 	CFLAGS += -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L

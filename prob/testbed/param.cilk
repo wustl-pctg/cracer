@@ -145,7 +145,7 @@ cilk int main(int argc, char** argv) {
 	}
 
 	//Print the averages:
-	printf("%d,%d,%d,%d,%lf,%lf,\n", opWork, opCount, USE_PARAMETER2(active_size),
+	printf("%d,%d,%d,%d,%lf,%lf\n", opWork, opCount, USE_PARAMETER2(active_size),
 				 iterations, lockTime/(double)iterations, batchTime/(double)iterations);
 
 	return 0;
