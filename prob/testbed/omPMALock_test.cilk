@@ -108,8 +108,5 @@ cilk int main(int argc, char** argv) {
       printf("Locks. Size %d. \n",testSize);
     }
     printf("%lf\n", getWallTime());
-    if (verbose){
-      //      printBatcherStats();
-    }
     return 0;
 }
