@@ -80,8 +80,8 @@ cilk int main(int argc, char **argv)
 	for(i=0;i<test_size; ++i)
 	{
 		item_ints[i] = i;
-		item_array[i] = create_itemOM(NULL);
-		insert_array[i] = create_itemOM(NULL);
+		item_array[i] = create_itemOM(&item_ints[i]);
+		insert_array[i] = create_itemOM(&item_ints[i]);
 		if(item_array[i] == NULL || insert_array[i] == NULL) printf("Out of memory\n");
 		
 		pair_array[i] = create_item_pair(item_array[i],insert_array[i]);

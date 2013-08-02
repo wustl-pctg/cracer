@@ -1,0 +1,71 @@
+#include "ds/omSimpleTree.cilk"
+#include <getopt.h>
+#include "util/timer.h"
+
+void usage() {
+  printf("use default arguments");
+}
+
+cilk int main(int argc, char **argv)
+{
+	nodeOM** test_array;
+	treeOM* test_tree;
+	int i;
+	
+	int test_size = 10;
+	int verbose = 0;
+	int option;
+	int opt_index;
+
+	struct option all_options[] ={
+     {"size",required_argument,0,'s'},
+     {"verbose", no_argument,0,'v'}
+    };
+	
+	while((option = getopt_long(argc,argv,"s:v",all_options,&opt_index))!=-1){
+     
+	switch(option){
+      case 0:
+		if (all_options[opt_index].flag!=0){
+		  break;
+		}
+		else{
+		  printf("Invalid option.\n");
+		  break;
+		}
+      case 's':
+	test_size=atoi(optarg);
+	break;
+      case 'v':
+	verbose=1;
+	break;
+      default:
+	usage();
+	return -1;
+      }
+    }
+	
+	test_array = malloc(sizeof(nodeOM*) * test_size);
+	test_tree = create_treeOM();
+	
+	for(i=0; i<test_size; ++i)
+	{
+		test_array[i] = create_nodeOM(i);
+	}
+	
+	tree_insert(test_tree, test_array[test_size/2]);
+	
+	print_tree(test_tree);
+	printf("----------------------------------------\n");
+	for(i=0; i<test_size; ++i)
+	{
+		if(i!=test_size/2)
+			tree_insert(test_tree, test_array[i]);
+	}
+	
+	print_tree(test_tree);
+	
+	
+	return 0;
+}
+
