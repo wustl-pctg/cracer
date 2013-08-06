@@ -32,10 +32,10 @@
 #include <string.h>
 
 FILE_IDENTITY(ident,
-	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cmdline.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
+							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cmdline.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
 enum {
-  NONE, NPROC, DSPROB, STATS, NO_STATS, HELP, STACK, YIELD, NO_YIELD,
+  NONE, NPROC, DSPROB, BTEST, STATS, NO_STATS, HELP, STACK, YIELD, NO_YIELD,
   PTHREAD_STACKSIZE,
   POSIX_LOCKS, MEMORY_LOCKS,
   INFOFILE, DUMP_CORE, NO_DUMP_CORE, PINNED_PROC,  ALLOC_BATCH,
@@ -65,6 +65,9 @@ static struct options {
   },
   {
     "dsprob", DSPROB, "--dsprob <n>: the probability that a thread will steal from the data structure-level of deques"
+  },
+  {
+    "btest", BTEST, "--btest <n>: enable extra batch features to test"
   },
   {
     "pthread-stacksize", PTHREAD_STACKSIZE, "--pthread-stacksize <n> : set the size of the stack used by each worker thread"
@@ -174,7 +177,7 @@ static struct options *parse_option(char *s)
   return p;
 }
 
-#define CHECK(cond, complaint)						\
+#define CHECK(cond, complaint)																					\
   if (!(cond)) { fprintf(stderr, "Bad option argument for -%s: %s\n", p->string, complaint); return 1; }
 
 int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
@@ -204,17 +207,17 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
     case NPROC:
       ++i;
       CHECK(i < *argc,
-	    "argument missing");
+						"argument missing");
       options->nproc = atoi(argv[i]);
 #ifndef CILK_ND
       if (options->nproc == 0)
-	options->nproc = Cilk_partition_size();
+				options->nproc = Cilk_partition_size();
       CHECK(options->nproc > 0,
-	    "non-positive number of processors");
+						"non-positive number of processors");
 #else
       if (options->nproc != 1)
-	fprintf(stderr, "Warning: the Nondeterminator runs only"
-		" on one processor\n");
+				fprintf(stderr, "Warning: the Nondeterminator runs only"
+								" on one processor\n");
       options->nproc = 1;
 #endif
       break;
@@ -225,26 +228,30 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
       CHECK(options->dsprob < 1.0, "invalid ds-stealing probability");
       CHECK(options->dsprob >= 0.0, "invalid ds-stealing probability");
       break;
+    case BTEST:
+      ++i;
+      CHECK(i < *argc, "argument missing");
+      options->btest = atoi(argv[i]);
+      break;
     case STACK:
       ++i;
-      CHECK(i < *argc,
-	    "argument missing");
+      CHECK(i < *argc, "argument missing");
       options->stackdepth = atoi(argv[i]);
       CHECK(options->stackdepth > 0,
-	    "non-positive stack depth");
+						"non-positive stack depth");
       break;
     case PTHREAD_STACKSIZE:
       ++i;
       CHECK(i < *argc,
-	    "argument missing");
+						"argument missing");
       options->pthread_stacksize = atoi(argv[i]);
       CHECK(options->pthread_stacksize > 0,
-	    "non-positive stack depth");
+						"non-positive stack depth");
       break;
     case STATS:
       ++i;
       CHECK(i < *argc,
-	    "argument missing");
+						"argument missing");
       options->statlevel = atoi(argv[i]);
       break;
     case NO_STATS:
@@ -284,15 +291,15 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
     case ALLOC_BATCH:
       ++i;
       CHECK(i < *argc,
-	    "argument missing");
+						"argument missing");
       options->alloc_batch_size = atoi(argv[i]);
       if (options->alloc_batch_size < 8)
-	options->alloc_batch_size = 8;
+				options->alloc_batch_size = 8;
       break;
     case INFOFILE:
       ++i;
       CHECK(i < *argc,
-	    "argument missing");
+						"argument missing");
       options->infofile_name = argv[i];
       break;
       WHEN_CILK_ND(
@@ -313,7 +320,7 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
       case RECYCLE_MEM:
       INIT_SHARED_RO(recycle_mem, 1);
       break;
-		   )
+									 )
     case END_OPTIONS:
       ++i;
       goto stop;

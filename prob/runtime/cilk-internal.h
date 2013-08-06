@@ -199,6 +199,7 @@ struct CilkGlobalState_s{
 	unsigned int total_batch_ops;
 	unsigned int num_batches;
 #endif
+	int *batch_workers_list;
   /* End BATCHER */
   int terminating; /* Cilk_terminate was called */
   Cilk_mutex barrier_lock;
@@ -420,6 +421,7 @@ extern Closure *Cilk_Closure_create_malloc(CilkContext *const context, CilkWorke
 struct Cilk_options_s
 {
   int nproc;
+	int btest;
   double dsprob;
   int stackdepth;
   int statlevel;
@@ -440,6 +442,7 @@ extern int Cilk_parse_command_line(
   {						\
     1,						\
       0.5,					\
+			0,           \
       CILK_DEFAULT_STACK_DEPTH,			\
       0,					\
       0,					\

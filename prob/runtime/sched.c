@@ -1750,7 +1750,7 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 {
 	int victim;
 	CILK_ASSERT(ws, ws->self >= 0);
-	rts_srand(ws, ws->self * 162347);
+	rts_srand(ws, ws->self * 162347); // *** need this?
 
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
 	Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
@@ -1776,7 +1776,9 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 			// Otherwise, steal
 			Cilk_enter_state(ws, STATE_DS_STEALING);
 
-			victim = rts_rand(ws) & USE_PARAMETER(active_size);
+			//			victim = rts_rand(ws) & USE_PARAMETER(active_size);
+			victim = rts_rand(ws) % (USE_SHARED(pending_batch).size+1);
+			victim = USE_SHARED(batch_workers_list)[victim-2];
 			if (victim != ws->self &&
 					USE_SHARED(pending_batch).array[victim].status == DS_IN_PROGRESS) {
 				t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
@@ -1814,7 +1816,7 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 	void *workArray;
 	int i, numJobs = 0;
 	Batch *pending;
-
+	printf("btest: %i\n", USE_PARAMETER(options->btest));
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
 
 	// add operation to pending array
@@ -1859,6 +1861,7 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 					memcpy(workArray + dataSize*numJobs, pending->array[i].args, dataSize);
 					pending->array[i].packedIndex = numJobs;
 					pending->array[i].status = DS_IN_PROGRESS;
+					USE_SHARED(batch_workers_list)[numJobs] = i;
 					numJobs++;
 				}
 			}
