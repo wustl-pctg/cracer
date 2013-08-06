@@ -4,6 +4,7 @@ MAKEDEPEND = $(CILKC) -MM
 DEPS = $(wildcard util/*.h util/*.cilkh)
 DS = $(wildcard ds/*.c ds/*.cilk)
 SRCS = $(wildcard *.cilk)
+LD =
 
 ifeq ($(shell uname -s),Linux)
 	CFLAGS += -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L
@@ -28,8 +29,9 @@ endif
 all: cilk tests
 
 # Rule for all actual source files
-% : %.cilk $(DEPS)
-	$(CILKC) $(CFLAGS) $(DS) -o $@ $<
+%_test: $(DEPS)
+	$(CILKC) $(CFLAGS) $(@:=.cilk) -o $@ $(LD)
+
 
 # Rule for rebuilding CILK (BATCHER)
 cilk:
@@ -38,15 +40,19 @@ cilk:
 
 # Building our tests
 tests:  param counter btree dynArray concHash omPMA omTree
+
+# Parameterized Test
 param:
 	$(CILKC) $(CFLAGS) -o $@ $@.cilk
+
+# Data Structure Tests
 counter: counterLock_test counterBatch_test
 btree: btreeLock_test btreeBatch_test
 dynArray: dynArrayLock_test dynArrayBatch_test
 concHash: concHashLock_test concHashBatch_test
+omPMA: LD += -lm
 omPMA: omPMALock_test omPMABatch_test
 omTree: omTreeLock_test omTreeBatch_test
-te: test
 
 .PHONY: clean cilk-clean check-syntax doc information all
 clean:
