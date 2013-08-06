@@ -4,7 +4,7 @@
 
 args <- commandArgs(trailingOnly = TRUE)
 if (is.na(args[1])) {
-	 operations <- 90001
+	 operations <- 90000
 } else if (suppressWarnings(is.na(as.numeric(args[1])))) {
 	stop("Invalid argument")
 } else {
@@ -17,9 +17,9 @@ pdf(file="test.pdf")
 
 y_range <- range(0, subset$BATCH, subset$LOCKS)
 
-plot(subset$WORK, subset$BATCH, type="o", col="blue", ylim=y_range,
+plot(subset$WORKTIME, subset$BATCH, type="o", col="blue", ylim=y_range,
 									axes = FALSE, ann = FALSE)
-lines(subset$WORK, subset$LOCKS, type="o", pch=22, lty=2, col="red")
+lines(subset$WORKTIME, subset$LOCKS, type="o", pch=22, lty=2, col="red")
 axis(1, at=subset$WORK, lab=subset$WORK)
 axis(2, las=1, at=1000*0:y_range[2])
 

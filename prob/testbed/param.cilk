@@ -65,6 +65,7 @@ cilk int main(int argc, char** argv) {
 
 	int verbose = 0;
 	double batchTime = 0, lockTime = 0, temp;
+	double workTime = 0;
 
 	static struct option all_options[] = {
 		{"work", required_argument,0,'w'},
@@ -117,6 +118,14 @@ cilk int main(int argc, char** argv) {
 
 	Cilk_lock_init(global_lock);
 
+	for (i = 0; i < iterations; i++) {
+		startTimer();
+		ds_work(opWork);
+		stopTimer();
+		workTime += (double)getWallTime();
+	}
+	workTime /= iterations;
+
 	for (i = 0;i < iterations;i++){
 
 		// Test with locks
@@ -145,7 +154,7 @@ cilk int main(int argc, char** argv) {
 	}
 
 	//Print the averages:
-	printf("%d,%d,%d,%d,%lf,%lf\n", opWork, opCount, USE_PARAMETER2(active_size),
+	printf("%lf,%d,%d,%d,%d,%lf,%lf\n", workTime,opWork, opCount, USE_PARAMETER2(active_size),
 				 iterations, lockTime/(double)iterations, batchTime/(double)iterations);
 
 	return 0;
