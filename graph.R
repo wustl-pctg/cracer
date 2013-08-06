@@ -1,19 +1,25 @@
-#!/usr/bin/Rscript
-# graph.R
-
+#!/usr/bin/env Rscript
 
 args <- commandArgs(trailingOnly = TRUE)
 if (is.na(args[1])) {
-	 operations <- 100000
-} else if (suppressWarnings(is.na(as.numeric(args[1])))) {
-	stop("Invalid argument")
+	 logFile <- "param.log"
 } else {
-	operations <- as.numeric(args[1])
+	logFile <- args[1]
+}
+if (is.na(args[2])) {
+	 outFile <- "graph.pdf"
+} else {
+	outFile <- args[2]
+}
+if (is.na(args[3])) {
+	 operations <- 100000
+} else {
+	operations <- as.numeric(args[3])
 }
 
-data <- read.csv(file="param.08051546.log", header=TRUE, sep=",")
+data <- read.csv(file=logFile, header=TRUE, sep=",")
 subset <- data[data$OPS == operations,]
-pdf(file="test.pdf")
+pdf(file=outFile)
 
 y_range <- range(0, subset$BATCH, subset$LOCKS)
 
