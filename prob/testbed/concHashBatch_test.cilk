@@ -1,105 +1,80 @@
-#include "util/timer.h"
+//#define USE_LOCKS
 #include "ds/concHash.cilk"
-#include <math.h>
+#include <getopt.h>
+#include "util/timer.h"
 
-//Tyler Romero and Kefu Liu
-//need to compile with the -lm flag after everything for some reason
-
-int printints(void* input){	//This doesnt mix with sequential insert for some reason
-	hashTableItem* ptr;
-    if (input==NULL) {
-        printf("{nil}");
-    }
-    else {
-        ptr=(hashTableItem*)input;
-        printf("{");
-        do {
-			printf("%d ",ptr->key);
-            ptr=ptr->next;
-        }
-        while (ptr!=NULL);
-        printf("}");
-    }
+void usage() {
+  printf("use default arguments");
 }
 
 cilk int main(int argc, char **argv)
 {
-    int test_size = 10;
-	int* input;
-	hashTable* table1 = hashTable_create(15);
-	hashTable* table2 = hashTable_create(15);
-	hashTableItem** search_array1; 		//[TEST_SIZE/4]
-	hashTableItem** search_array2;
-    int i;
 	
-    if (argc > 2){
-		printf("Incorrect number of arguements\n");
-	} else if(argc == 2)
-	{
-		test_size = atoi(argv[1]);
-	}
+	hashTable* test_table;
+	int* integer_array;
+	int i;
 	
-	input = (int*)malloc(test_size * sizeof(int));
+	int test_size = 10;
+	int verbose = 0;
+	int option;
+	int opt_index;
+
+	struct option all_options[] ={
+     {"size",required_argument,0,'s'},
+     {"verbose", no_argument,0,'v'}
+    };
+	
+	while((option = getopt_long(argc,argv,"s:v",all_options,&opt_index))!=-1){
+     
+	switch(option){
+      case 0:
+		if (all_options[opt_index].flag!=0){
+		  break;
+		}
+		else{
+		  printf("Invalid option.\n");
+		  break;
+		}
+      case 's':
+	test_size=atoi(optarg);
+	break;
+      case 'v':
+	verbose=1;
+	break;
+      default:
+	usage();
+	return -1;
+      }
+    }
+	
+	integer_array = malloc(sizeof(int)*test_size);
+	test_table = hashTable_create(10);
 	
 	for(i=0; i<test_size; ++i)
 	{
-		input[i] = i;
+		integer_array[i] = i;
 	}
-	
-	//----------------------------------------------------------------------------
-	
-	search_array1 = (hashTableItem**)malloc(test_size/4 * sizeof(hashTableItem*));
-	search_array2 = (hashTableItem**)malloc(test_size/4 * sizeof(hashTableItem*));
+
+	//Perform Tests--------------------------
+	#ifdef USE_LOCKS
+		if (verbose) {
+		  printf("begin test - USE_LOCKS is on - it should be off\n");
+		}
+	#else
+		if (verbose) {
+		  printf("begin test - USE_LOCKS is off\n");
+		}
+	#endif
 	
 	startTimer();
-    /*for (i=0;i<test_size;++i){
-        spawn hashTable_insertItem(table1,i);		//Would you want a parallel for for this?
-        sync;
-    }*/
-	spawn hashTable_parallelInsert(table1,input,test_size);
-	sync;
+	spawn hashTable_parallelInsert(test_table, integer_array, test_size);
 	stopTimer();
-	printf("\nParallel (Batch) wall time: %lf ms\n", getWallTime());
-	printf("Parallel (Batch) process time: %lf ms\n", getProcTime());
 	
-	//------------------------------------------------------------------------------
+	if (verbose){
+      printf("Batch. Size %d. \n", test_size);
+    }
+    printf("%lf\n", getWallTime());
 	
-	startTimer();
-	for(i=0; i<test_size; ++i){
-		hashTable_sequentialInsert(table2, i);
-	}
-	stopTimer();
-	printf("\nSequential wall time: %lf ms\n", getWallTime());
-	printf("Sequential process time: %lf ms\n", getProcTime());
-	
-	
-	//----------------------------------------------------------------------------------
-	
-
-	/*parallelRemove does not work due some strange problem with batchify. It works when 
-	hashTable_remove is called without it
-	
-	for(i=0;i<test_size/4;++i)
-	{
-		search_array1[i] = hashTable_search(table1, i);	//Items to remove
-		search_array2[i] = hashTable_search(table2, i);
-	}
-	
-	spawn hashTable_parallelRemove(table1,search_array1,test_size/4);
-	sync;
-
-	for(i=0; i<test_size/4; ++i)
-	{
-		hashTable_sequentialRemove(table2, search_array2[i]);
-	}
-	*/
-
-	
-	free(search_array1);
-	free(search_array2);
-	hashTable_delete(table1);
-	hashTable_delete(table2);
-	free(input);
-	
+	//hashTable_delete(test_table);
 	return 0;
 }

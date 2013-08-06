@@ -1,58 +1,84 @@
-#include "util/timer.h"
+//#define USE_LOCKS			//Should be un-defined for batch tests
 #include "ds/dynArray.cilk"
+#include <getopt.h>
+#include "util/timer.h"
 
-//Tyler Romero
+void usage() {
+  printf("use default arguments");
+}
 
 cilk int main(int argc, char **argv)
 {
+	
+	dyn_array* test_array;
+	int* integer_array;
+	int i;
+	
 	int test_size = 10;
-	dyn_array* parallel_array = create_array();
-	dyn_array* sequential_array = create_array();
-	int *input;
-	int i,j;
+	int verbose = 0;
+	int option;
+	int opt_index;
+
+	struct option all_options[] ={
+     {"size",required_argument,0,'s'},
+     {"verbose", no_argument,0,'v'}
+    };
 	
-	if (argc > 2)
+	while((option = getopt_long(argc,argv,"s:v",all_options,&opt_index))!=-1){
+     
+	switch(option){
+      case 0:
+		if (all_options[opt_index].flag!=0){
+		  break;
+		}
+		else{
+		  printf("Invalid option.\n");
+		  break;
+		}
+      case 's':
+	test_size=atoi(optarg);
+	break;
+      case 'v':
+	verbose=1;
+	break;
+      default:
+	usage();
+	return -1;
+      }
+    }
+	
+	integer_array = malloc(sizeof(int)*test_size);
+	test_array = create_array();
+	
+	
+	for(i = 0; i< test_size; ++i)
 	{
-		printf("Incorrect number of arguements\n");
+		integer_array[i] = i;
 	}
-	else if(argc == 2)
-	{
-		test_size = atoi(argv[1]);
-	}
-	
-	input = (int*)malloc(test_size * sizeof(int));
-	
-	for(i=0; i<test_size; ++i)
-	{
-		input[i] = i;
-	}
-	
-	//--------------------------------------------------------------------------------
+
+	//Perform Tests--------------------------
+	#ifdef USE_LOCKS
+		if (verbose) {
+		  printf("begin test - USE_LOCKS is on - it should be off\n");
+		}
+	#else
+		if (verbose) {
+		  printf("begin test - USE_LOCKS is off\n");
+		}
+	#endif
 	
 	startTimer();
-	spawn parallel_push_back(parallel_array, input, test_size);	//Check for race conditions
+	spawn parallel_for_batch_push_back(test_array, integer_array, test_size);
 	sync;
 	stopTimer();
 	
-	//print_array(test_array);
-	printf("\nParallel (Batch) wall time: %lf ms\n", getWallTime());
-	printf("Parallel (Batch) process time: %lf ms\n", getProcTime());
+	if (verbose){
+      printf("Batch. Size %d. \n", test_size);
+    }
+    printf("%lf\n", getWallTime());
 	
-	//---------------------------------------------------------------------------------
-	
-	startTimer();
-	for(i=0; i<test_size; ++i)
-	{
-		sequential_push_back(sequential_array, i);
-	}
-	stopTimer();
-	printf("\nSequential wall time: %lf ms\n", getWallTime());
-	printf("Sequential process time: %lf ms\n", getProcTime());
-	
-	//--------------------------------------------------------------------------------
-	
-	delete_array(parallel_array);
-	delete_array(sequential_array);
-	free(input);
+	delete_array(test_array);
+	free(integer_array);
 	return 0;
 }
+

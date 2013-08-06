@@ -27,7 +27,11 @@ typedef struct {
     hashTableItem** slots;	//!<The array of items that have been hashed
     int size;				//!<The amount of memory allocated to the hash table in terms of integers
     int load;				//!<The number of integer items in the hash table
-    Cilk_lockvar* locks;
+    #ifdef USE_LOCKS
+	Cilk_lockvar table_lock;
+	#else
+	Cilk_lockvar* locks;	//!<Used in case of collisions
+	#endif
 } hashTable;
 
 /*-----------------------------------Declarations---------------------------------------------------*/
@@ -68,10 +72,14 @@ hashTable* hashTable_create(int size){
 		result->slots[i] = NULL;
 	}
 	result->load=0;
-    result->locks = malloc(size*sizeof(Cilk_lockvar));
-    for(i=0;i<size;i++){
+    #ifdef USE_LOCKS
+	Cilk_lock_init(result->table_lock);
+	#else
+	result->locks = malloc(size*sizeof(Cilk_lockvar));
+	for(i=0;i<size;i++){
         Cilk_lock_init(result->locks[i]);
     }
+	#endif
     return result;
 }
 
@@ -101,7 +109,9 @@ void hashTable_delete(hashTable* dead_table)
 		hashTable_deleteItems(dead_table->slots[i]);
 	}
 	free(dead_table->slots);
-	free(dead_table->locks);
+	#ifndef USE_LOCKS
+		free(dead_table->locks);
+	#endif
 	free(dead_table);
 }
 
@@ -130,7 +140,9 @@ cilk void hashTable_insert(hashTable* table, int key) {
     int slot = hashTable_hash(table->size, key);
     hashTableItem* ptr;
     hashTableItem* dataItem = hashTable_createItem(key);
+	#ifndef USE_LOCKS
     Cilk_lock(table->locks[slot]);
+	#endif
     if (table->slots[slot]==NULL){ //No list
         table->slots[slot]=dataItem;
         dataItem->next=NULL;
@@ -144,7 +156,9 @@ cilk void hashTable_insert(hashTable* table, int key) {
         ptr->next=dataItem;
         ptr->next->prev=ptr;
     }
+	#ifndef USE_LOCKS
     Cilk_unlock(table->locks[slot]);
+	#endif
 }
 
 //!Insert a single item into the Hash Table
@@ -192,7 +206,7 @@ cilk void insert_iterator(hashTable* table, int* keys, int i)
 	\param table the table to edit
 	\param keys An array of keys to insert
 	\param size the size of the array of keys
-	\sa hashTable_sequentialInsert(), hashTable_insertItem()
+	\sa hashTable_lockInsert(), hashTable_insertItem()
 */
 cilk void hashTable_parallelInsert(hashTable* table, int* keys, size_t size)
 {
@@ -206,31 +220,20 @@ cilk void hashTable_parallelInsert(hashTable* table, int* keys, size_t size)
 	\param key the key to insert
 	\sa hashTable_insertItem(), hashTable_parallelInsert()
 */
-void hashTable_sequentialInsert(hashTable* table, int key) {
+cilk void hashTable_lockInsert(hashTable* table, int key) {
     
 	hashTableItem** temp;
 	int i;
 	int slot = hashTable_hash(table->size, key);
     hashTableItem* ptr = NULL;
     hashTableItem* dataItem = hashTable_createItem(key);
+	#ifdef USE_LOCKS
+		Cilk_lock(table->table_lock);
+	#endif
 	if(table->load > (table->size * 0.7))	//If current_array needs more space
 	{
-		temp = (hashTableItem**)malloc(table->size*2*sizeof(hashTableItem*));
-		if(temp==NULL)
-		{
-			printf("error Allocating Memory\n");
-		}
-		for(i=0; i<table->size;++i)
-		{
-			temp[i] = table->slots[i];
-		}
-		for(i=table->size; i<table->size*2;++i)
-		{
-			temp[i] = NULL;
-		}
-		free(table->slots);
-		table->slots = temp;
-		table->size *= 2;
+		spawn resize(table, 2*(table->load));
+		sync;
 	}
 	
     if (table->slots[slot]==NULL){ //No list, insert on its own
@@ -247,6 +250,10 @@ void hashTable_sequentialInsert(hashTable* table, int key) {
         dataItem->prev=ptr;
     }
 	table->load++;
+	
+	#ifdef USE_LOCKS
+		Cilk_unlock(table->table_lock);
+	#endif
 }
 
 
@@ -292,7 +299,9 @@ cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
     else {
 		printf("item %p\n",item);
 		slot = hashTable_hash(table->size, item->key);
+		#ifndef USE_LOCKS
 		Cilk_lock(table->locks[slot]);
+		#endif
 		if (item->prev==NULL) {			//If item is the first in the slot
             if (item->next==NULL){			//If item is the only item in the slot
 				table->slots[slot]=NULL;
@@ -309,7 +318,9 @@ cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
             }
         }
 		free(item);
+		#ifndef USE_LOCKS
 		Cilk_unlock(table->locks[slot]);
+		#endif
     }
 }
 
@@ -355,6 +366,9 @@ cilk void hashTable_parallelRemove(hashTable* table, hashTableItem** items, size
 void hashTable_sequentialRemove(hashTable* table, hashTableItem* item)	//Works just fine
 {
 	int slot = 0;
+	#ifdef USE_LOCKS
+	Cilk_lock(table->table_lock);
+	#endif
     if (item==NULL){
 		return; //Do nothing.
     }
@@ -377,6 +391,9 @@ void hashTable_sequentialRemove(hashTable* table, hashTableItem* item)	//Works j
         }
 		free(item);
     }
+	#ifdef USE_LOCKS
+	Cilk_unlock(table->table_lock);
+	#endif
 }
 /*--------------------------------Other--------------------------------------------*/
 //!Hash the input key based on size.
@@ -400,7 +417,7 @@ int hashTable_hash(int size, int key) {
 /*! \param table the table to print
 	\param printfunct a function to print out the hash table with (corresponds to the data type in the hash table)
 */
-void hashTable_print(hashTable* table, int (*printfunct)(void*)){
+void hashTable_print(hashTable* table, int (*printfunct)(void*)){	//See bottom for commented out printfunct
     int i;
 	
     for (i=0;i<table->size;i++){
@@ -431,13 +448,16 @@ cilk void resize(hashTable* current_table, int new_size)
 		
 	spawn parallel_for2(current_table, NULL, parallel_delete, 0, current_table->size); //free the contents of the old slots
 	sync;
-	
+	#ifndef USE_LOCKS
 	free(current_table->locks);
+	#endif
 	free(current_table->slots);
 	
 	current_table->size = newTable->size;
     current_table->load = newTable->load;
+	#ifndef USE_LOCKS
     current_table->locks = newTable->locks;
+	#endif
     current_table->slots = newTable->slots;
     free(newTable);
 }
@@ -593,3 +613,21 @@ cilk void parallel_delete(hashTable* current_table, hashTable* place_holder, int
 {
 	hashTable_deleteItems(current_table->slots[i]);
 }
+
+
+/*int printints(void* input){	//This doesnt mix with sequential insert for some reason
+	hashTableItem* ptr;
+    if (input==NULL) {
+        printf("{nil}");
+    }
+    else {
+        ptr=(hashTableItem*)input;
+        printf("{");
+        do {
+			printf("%d ",ptr->key);
+            ptr=ptr->next;
+        }
+        while (ptr!=NULL);
+        printf("}");
+    }
+}*/

@@ -1,8 +1,7 @@
+#define USE_LOCKS
+#include "ds/omSimpleTree.cilk"
 #include <getopt.h>
-#include "ds/omTree.cilk"
 #include "util/timer.h"
-
-//NEED TO SET UP DEFAULTS
 
 void usage() {
   printf("use default arguments");
@@ -10,14 +9,10 @@ void usage() {
 
 cilk int main(int argc, char **argv)
 {
-	int* item_ints;
-	int* insert_ints;
-	indirection_item* base;
-	indirection_item** item_array;
-	indirection_item** insert_array;
-	int int_base = -1;
+	nodeOM** test_array;
+	nodeOM** insert_array;
+	OM* test_tree;
 	int i;
-	OM* testOM;
 	
 	int test_size = 10;
 	int verbose = 0;
@@ -29,10 +24,6 @@ cilk int main(int argc, char **argv)
      {"verbose", no_argument,0,'v'}
     };
 	
-	base = create_indirection_item(&int_base);
-	
-	
-	//---------Set Up Command Line Arguements---------------------
 	while((option = getopt_long(argc,argv,"s:v",all_options,&opt_index))!=-1){
      
 	switch(option){
@@ -55,62 +46,52 @@ cilk int main(int argc, char **argv)
 	return -1;
       }
     }
-
-	testOM = spawn create_OM(base);
-	sync;
 	
+	test_array = malloc(sizeof(nodeOM*) * test_size);
+	insert_array = malloc(sizeof(nodeOM*) * test_size);
 	
-	
-	//--------Initialize Arrays--------------
-	item_ints = (int*)malloc(sizeof(int) * test_size);
-	insert_ints = (int*)malloc(sizeof(int) * test_size);
-	item_array = (indirection_item**)malloc(sizeof(indirection_item*) * test_size);
-	insert_array = (indirection_item**)malloc(sizeof(indirection_item*) * test_size);
-	
-	if(item_ints == NULL || insert_ints == NULL || item_array == NULL || insert_array == NULL)
-		printf("Out of memory\n");
-	
-	for(i=0;i<test_size; ++i)
+	//Initiallize Arrays--------------
+	for(i=0; i<test_size; ++i)
 	{
-		item_ints[i] = i;
-		item_array[i] = create_indirection_item(&(item_ints[i]));
-		insert_array[i] = create_indirection_item(&(item_ints[i]));
-		if(item_array[i] == NULL || insert_array[i] == NULL) printf("Out of memory\n");
+		test_array[i] = create_nodeOM(NULL);
+		insert_array[i] = create_nodeOM(NULL);
 	}
 	
+	//Initialize Tree-------------------------
+	test_tree = create_OM(test_array, test_size);
 	
-	//---------Insert "Existing" items-----------
-	for(i=0;i<test_size; ++i)
+	//print_OM(test_tree);
+	
+	
+	//Perform Tests--------------------------
+	#ifdef USE_LOCKS
+	if (verbose) {
+      printf("begin test - USE_LOCKS is on\n");
+    }
+	#else
+	if (verbose) {
+      printf("begin test - USE_LOCKS is not on - It should be\n");
+    }
+	#endif
+	
+	startTimer();
+	for(i=0; i<test_size; ++i)
 	{
-		spawn lock_indirection_insert(testOM, base, item_array[i]);
-		sync;
+		spawn lock_insert(test_tree, test_array[i], insert_array[i]);
 	}
-	
-	print_OM(testOM, 0);
-	
-	//----------TEST------------
-	if(verbose)
-	{
-		printf("Begin Test\n");
-	}
-	
-	/*startTimer();
-	spawn parallel_for_lock_indirection_insert(testOM, item_array, insert_array, 0, test_size);
 	sync;
 	stopTimer();
 	
-	if(verbose)
-	{
-		printf("Batch\tsize: %d\n", test_size);
-	}
-	printf("%lf\n", getWallTime());
+	if (verbose){
+      printf("Locks. Size %d. \n", test_size);
+    }
+    printf("%lf\n", getWallTime());
 	
-	print_OM(testOM, 0);*/
 	
-	free(item_ints);
-	free(insert_ints);
-	free(item_array);
-	free(insert_array);
+	//printf("\n-------------------------------------------------\n");
+	//print_OM(test_tree);
+	
 	
 	return 0;
 }
+

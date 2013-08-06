@@ -1,5 +1,6 @@
+//no need to use #define USE_LOCKS, there is no batch version of the sleator OM
 #include <getopt.h>
-#include "OM_sleator.cilk"
+#include "ds/OM_sleator.cilk"
 #include "util/timer.h"
 
 //THERE IS A STRANGE RUNTIME ERROR WITH MALLOC THAT I COULDNT FIGURE OUT HOW TO FIX
@@ -12,7 +13,7 @@ void usage() {
 
 cilk int main(int argc, char **argv)
 {
-	OM* test_OM = create_OM();
+	OM* test_OM;
 	int base_int = -1;
 	subrecord* base = create_subrecord(&base_int);
 	int* int_data;
@@ -58,6 +59,7 @@ cilk int main(int argc, char **argv)
 
 
 	//--------Initialize Arrays--------------
+	test_OM = create_OM();
 	
 	int_data = malloc(sizeof(int) * test_size);
 	existing_array = malloc(sizeof(subrecord*) * test_size);

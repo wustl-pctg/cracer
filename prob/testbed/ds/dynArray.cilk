@@ -22,6 +22,9 @@ struct dyn_array
 	int* array;			//!<The actual array used to store data
 	size_t size;		//!<The total memory allocated to the array, in terms of integers
 	size_t used;		//!<The current number of intergs held in the array
+	#ifdef USE_LOCKS
+	Cilk_lockvar lock;
+	#endif
 };
 typedef struct dyn_array dyn_array;
 
@@ -63,6 +66,9 @@ dyn_array* create_array()
 	//Initializations
 	new_array->size = DEFAULT_SIZE;
 	new_array->used = 0;
+	#ifdef USE_LOCKS
+		Cilk_lock_init(new_array->lock);
+	#endif
 	new_array->array = (int*)malloc(DEFAULT_SIZE*sizeof(int));
 	return new_array;
 }
@@ -124,9 +130,7 @@ cilk void batch_push_back(void* array, void* data, size_t input_size, void* resu
 {
 	//int i;
 	dyn_array* current_array = (dyn_array*)array;
-	int* input = (int*)data;
-	int* output = (int*)result;
-	
+	int* input = (int*)data;	
 	
 	if(input_size+current_array->used > current_array->size)	//If current_array needs more space
 	{
@@ -161,7 +165,7 @@ cilk void push_back_iterator(dyn_array* current_array, int* input, int i)
 	\param size the number of items being pushed back
 	\sa sequential_push_back()
 */
-cilk void parallel_push_back(dyn_array* current_array, int* input, size_t size)
+cilk void parallel_for_batch_push_back(dyn_array* current_array, int* input, size_t size)
 {
 	spawn parallel_for(current_array, input, push_back_iterator, 0, size);
 	sync;
@@ -173,11 +177,13 @@ cilk void parallel_push_back(dyn_array* current_array, int* input, size_t size)
 	\param input the data to add to the array
 	\sa parallel_push_back()
 */
-void sequential_push_back(dyn_array* current_array, int input)
+cilk void lock_push_back(dyn_array* current_array, int input)
 {
 	int* temp;
 	int i;
-	
+	#ifdef USE_LOCKS
+		Cilk_lock(current_array->lock);
+	#endif
 	if(current_array->used >= current_array->size)	//If current_array needs more space
 	{
 		temp = (int*)malloc(current_array->size*2*sizeof(int));
@@ -195,6 +201,10 @@ void sequential_push_back(dyn_array* current_array, int input)
 	}
 	current_array->array[current_array->used] = input;
 	current_array->used++;
+	
+	#ifdef USE_LOCKS
+		Cilk_unlock(current_array->lock);
+	#endif
 	return;
 }
 
