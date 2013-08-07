@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 #define VOID_DATA (int)-INFINITY
-#define PARALLEL_CUTOFF 2
+#define PARALLEL_CUTOFF 50
 
 
 /*! \file 
@@ -42,7 +42,9 @@ struct node23
 struct tree23
 {
 	struct node23 *root;
-    Cilk_lockvar lock;
+    #ifdef USE_LOCKS
+	Cilk_lockvar lock;
+	#endif
 };
 
 
@@ -63,7 +65,7 @@ int find_insert_index(int *input_array, int size, struct node23* target);
 
     //Datastructure functions (to act like a concurrent datastructure)
 cilk void insert_item(struct tree23* tree, int input);
-cilk void sequential_insert(struct tree23* tree, int input);
+cilk void lock_insert(struct tree23* tree, int input);
 struct node23* sequential_insert_helper(struct node23* node, struct node23* insert);
 
 	//Search and Mark
@@ -148,7 +150,9 @@ struct tree23* create_tree(int node_data)
 	}
 	
 	new_tree->root = create_node(node_data);
-    Cilk_lock_init(new_tree->lock);
+	#ifdef USE_LOCKS
+	Cilk_lock_init(new_tree->lock);
+	#endif
 	return new_tree;
 }
 
@@ -319,6 +323,26 @@ void search_for_delete(struct node23* current_node, int key)
 	}
 }
 
+/*! \brief A parallel for loop that calls insert_item, used by the batch test
+*/
+cilk void parallel_for_batch_insert(struct tree23* current_tree, int start, int end)
+{
+	int middle = start+(end-start)/2;
+	
+	if(end-start<=PARALLEL_CUTOFF)
+	{
+		for(start; start<end; ++start)
+		{
+			spawn insert_item(current_tree, start);
+		}
+	}
+	else
+	{
+		spawn parallel_for_batch_insert(current_tree, start, middle);
+		spawn parallel_for_batch_insert(current_tree, middle+1, end);
+		spawn insert_item(current_tree, middle);
+	}
+}
 
 /*! \brief The insert functions - calls batchify.
 
@@ -334,11 +358,13 @@ cilk void insert_item(struct tree23* tree, int input){
      This needs a lock on the tree before it does any sort of re-arranging.
      It also moves up the tree and fixes values.
 */
-cilk void sequential_insert(struct tree23* tree, int input) {
+cilk void lock_insert(struct tree23* tree, int input) {
     struct node23* node = create_node(input);
     struct node23* new_node;
-    Cilk_lock(tree->lock);
-    searchAndMark(tree->root,input,marked);
+    #ifdef USE_LOCKS
+	Cilk_lock(tree->lock);
+    #endif
+	searchAndMark(tree->root,input,marked);
     new_node = sequential_insert_helper(tree->root, node);
     if (new_node!=NULL){
         node=create_node(VOID_DATA);
@@ -352,7 +378,9 @@ cilk void sequential_insert(struct tree23* tree, int input) {
         tree->root=node;
         fix_node_values(tree->root);
     }
-    Cilk_unlock(tree->lock);
+    #ifdef USE_LOCKS
+	Cilk_unlock(tree->lock);
+	#endif
 }
 /*! \brief A recursive helper function for the insert.
 
@@ -435,6 +463,7 @@ struct node23* sequential_insert_helper(struct node23* node, struct node23* inse
         }
         else {
             printf("unexpected leaf count\n");
+			return NULL;
         }
     }
 }
@@ -937,7 +966,7 @@ void print_tree(struct node23 *current_node, int i)
         printf("\t\t");
     }
     
-    printf("[%d, %d] {%d} (%d) (?%d) %p", current_node->left_data,current_node->right_data, current_node->max, current_node->height,current_node->is_marked,current_node);
+    printf("[%d, %d] {%d} (%d) (%d)", current_node->left_data,current_node->right_data, current_node->max, current_node->height,current_node->is_marked);
     printf("\n");
     
 	if(current_node->middle != NULL){

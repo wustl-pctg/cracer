@@ -1,50 +1,76 @@
+//#define USE_LOCKS //Should be commented out or not included in batch test files
 #include "ds/btree.cilk"
+#include <getopt.h>
+#include "util/timer.h"
 
-#define TEST_SIZE 30
+void usage() {
+  printf("use default arguments");
+}
 
-cilk int main()
+cilk int main(int argc, char **argv)
 {
-	int large_test[TEST_SIZE];
-	int test_numbers[TEST_SIZE/2];
-   	 int test_2[10] = {0, 1, -2, -1};
-	struct tree23 *test_tree = create_tree(100);
-	//struct tree23 *test_tree2 = create_tree(-3);
+	struct tree23* test_tree;
 	int i;
 	
-	for(i=0; i<TEST_SIZE; ++i)
-	{
-		large_test[i] = i*10;
-	}
-	spawn complex_batch_insert(test_tree, test_2, 2, NULL);
-	sync;
-	
-	for(i=0; i<TEST_SIZE/2-1; ++i)
-	{
-		test_numbers[i] = i*10;
-	}
-	test_numbers[TEST_SIZE/2-1]=12;    	
+	int test_size = 10;
+	int verbose = 0;
+	int option;
+	int opt_index;
 
-	//115,125,135,153,157,165,175,235};
-    
-	printf("Start\nsizes: %d\n",sizeof(struct node23));
+	struct option all_options[] ={
+     {"size",required_argument,0,'s'},
+     {"verbose", no_argument,0,'v'}
+    };
+	
+	while((option = getopt_long(argc,argv,"s:v",all_options,&opt_index))!=-1){
+     
+	switch(option){
+      case 0:
+		if (all_options[opt_index].flag!=0){
+		  break;
+		}
+		else{
+		  printf("Invalid option.\n");
+		  break;
+		}
+      case 's':
+	test_size=atoi(optarg);
+	break;
+      case 'v':
+	verbose=1;
+	break;
+      default:
+	usage();
+	return -1;
+      }
+    }
+	
+	test_tree = create_tree(-1);
 
-	spawn complex_batch_insert(test_tree, large_test, TEST_SIZE, NULL);
-	sync;
 	
-	print_tree(test_tree->root,0);
+	//Perform Tests--------------------------
+	#ifdef USE_LOCKS
+	if (verbose) {
+      printf("begin test\nUSE_LOCKS is on - it should be off\n");
+    }
+	#else
+	if (verbose) {
+      printf("begin test\nUSE_LOCKS is off\n");
+    }
+	#endif
 	
-    	//merge_trees(test_tree->root, test_tree2->root);
-	spawn complex_batch_remove(test_tree, test_numbers, TEST_SIZE/2);
+	startTimer();
+	spawn parallel_for_batch_insert(test_tree, 0, test_size);
 	sync;
-	spawn complex_batch_remove(test_tree,test_2,4);
-	/*spawn complex_batch_insert(test_tree,test_numbers,TEST_SIZE/2);
-	sync;
-	spawn complex_batch_insert(test_tree,test_numbers,TEST_SIZE/2);*/
-	sync;
-    
-	printf("--------------------------------------------------\n");
-	print_tree(test_tree->root,0);
+	stopTimer();
 	
+	if (verbose){
+      printf("Locks. Size %d. \n", test_size);
+    }
+    printf("%lf\n", getWallTime());
+	
+	//print_tree(test_tree->root, 0);
 	delete_tree(test_tree);
 	return 0;
 }
+

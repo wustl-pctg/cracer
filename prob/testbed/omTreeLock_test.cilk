@@ -53,8 +53,8 @@ cilk int main(int argc, char **argv)
 	//Initiallize Arrays--------------
 	for(i=0; i<test_size; ++i)
 	{
-		test_array[i] = create_nodeOM(NULL);
-		insert_array[i] = create_nodeOM(NULL);
+		test_array[i] = create_nodeOM();
+		insert_array[i] = create_nodeOM();
 	}
 	
 	//Initialize Tree-------------------------
@@ -89,7 +89,7 @@ cilk int main(int argc, char **argv)
 	
 	
 	//printf("\n-------------------------------------------------\n");
-	//print_OM(test_tree);
+	print_OM(test_tree);
 	
 	
 	return 0;

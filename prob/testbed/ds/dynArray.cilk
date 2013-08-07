@@ -186,18 +186,8 @@ cilk void lock_push_back(dyn_array* current_array, int input)
 	#endif
 	if(current_array->used >= current_array->size)	//If current_array needs more space
 	{
-		temp = (int*)malloc(current_array->size*2*sizeof(int));
-		if(temp == NULL)
-		{
-			printf("Error Allocating Memory");
-		}
-		current_array->size *= 2;
-		for(i=0; i<current_array->used; ++i)
-		{
-			temp[i] = current_array->array[i];
-		}
-		free(current_array->array);
-		current_array->array = temp;
+		spawn resize(current_array, 2*(current_array->used));
+		sync;
 	}
 	current_array->array[current_array->used] = input;
 	current_array->used++;
