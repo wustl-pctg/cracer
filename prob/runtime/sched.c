@@ -1776,9 +1776,13 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 			// Otherwise, steal
 			Cilk_enter_state(ws, STATE_DS_STEALING);
 
-			//			victim = rts_rand(ws) & USE_PARAMETER(active_size);
-			victim = rts_rand(ws) % (USE_SHARED(pending_batch).size+1);
-			victim = USE_SHARED(batch_workers_list)[victim-2];
+			if (USE_PARAMETER(options->btest) == 0) {
+				victim = rts_rand(ws) & USE_PARAMETER(active_size);
+			}	else {
+				int range = USE_SHARED(pending_batch).size;
+				victim = range == 1 ? 0 : rts_rand(ws) % (range-1) + 1;
+				victim = USE_SHARED(batch_workers_list)[victim];
+			}
 			if (victim != ws->self &&
 					USE_SHARED(pending_batch).array[victim].status == DS_IN_PROGRESS) {
 				t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
@@ -1816,7 +1820,7 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 	void *workArray;
 	int i, numJobs = 0;
 	Batch *pending;
-	printf("btest: %i\n", USE_PARAMETER(options->btest));
+
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
 
 	// add operation to pending array
@@ -1856,15 +1860,21 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 			pending->dataSize = dataSize;
 			pending->operation = op;
 
-			for (i = 0; i < USE_PARAMETER(active_size); i++) {
-				if (pending->array[i].status == DS_WAITING && pending->array[i].operation == op) {
-					memcpy(workArray + dataSize*numJobs, pending->array[i].args, dataSize);
-					pending->array[i].packedIndex = numJobs;
-					pending->array[i].status = DS_IN_PROGRESS;
-					USE_SHARED(batch_workers_list)[numJobs] = i;
-					numJobs++;
+			do {
+				numJobs = 0;
+				for (i = 0; i < USE_PARAMETER(active_size); i++) {
+					if (pending->array[i].status == DS_WAITING && pending->array[i].operation == op) {
+						memcpy(workArray + dataSize*numJobs, pending->array[i].args, dataSize);
+						pending->array[i].packedIndex = numJobs;
+						pending->array[i].status = DS_IN_PROGRESS;
+						if (USE_PARAMETER(options->btest) > 0) {
+							USE_SHARED(batch_workers_list)[numJobs] = i;
+						}
+						numJobs++;
+					}
 				}
-			}
+			} while (numJobs < USE_PARAMETER(active_size)/2 && usleep(100));
+
 			pending->size = numJobs;
 #if CILK_STATS
 			USE_SHARED(total_batch_ops) += numJobs;
