@@ -3,14 +3,17 @@
 #include <getopt.h>
 #include "util/timer.h"
 
+//Test is ready
+
 void usage() {
   printf("use default arguments");
 }
 
 cilk int main(int argc, char **argv)
 {
-	nodeOM** test_array;
-	nodeOM** insert_array;
+	itemOM** test_array;
+	itemOM** insert_array;
+	int* integer_array;
 	OM* test_tree;
 	int i;
 	
@@ -47,17 +50,18 @@ cilk int main(int argc, char **argv)
       }
     }
 	
-	test_array = malloc(sizeof(nodeOM*) * test_size);
-	insert_array = malloc(sizeof(nodeOM*) * test_size);
+	test_array = malloc(sizeof(itemOM*) * test_size);
+	insert_array = malloc(sizeof(itemOM*) * test_size);
+	integer_array = malloc(sizeof(int)*test_size);
 	
 	//Initiallize Arrays--------------
 	for(i=0; i<test_size; ++i)
 	{
-		test_array[i] = create_nodeOM(NULL);
-		insert_array[i] = create_nodeOM(NULL);
+		integer_array[i] = i;
+		test_array[i] = create_itemOM(&integer_array[i]);
+		insert_array[i] = create_itemOM(&integer_array[i]);
 	}
-	
-	//Initialize Tree-------------------------
+	//initialize Tree-------------------------
 	test_tree = create_OM(test_array, test_size);
 	
 	//print_OM(test_tree);
@@ -66,14 +70,13 @@ cilk int main(int argc, char **argv)
 	//Perform Tests--------------------------
 	#ifdef USE_LOCKS
 	if (verbose) {
-      printf("begin test - USE_LOCKS is on - It shouldnt be\n");
+      printf("begin test - USE_LOCKS is on - it should be off\n");
     }
 	#else
 	if (verbose) {
       printf("begin test - USE_LOCKS is off\n");
     }
 	#endif
-	
 	startTimer();
 	for(i=0; i<test_size; ++i)
 	{
