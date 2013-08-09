@@ -1860,20 +1860,17 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 			pending->dataSize = dataSize;
 			pending->operation = op;
 
-			do {
-				numJobs = 0;
-				for (i = 0; i < USE_PARAMETER(active_size); i++) {
-					if (pending->array[i].status == DS_WAITING && pending->array[i].operation == op) {
-						memcpy(workArray + dataSize*numJobs, pending->array[i].args, dataSize);
-						pending->array[i].packedIndex = numJobs;
-						pending->array[i].status = DS_IN_PROGRESS;
-						if (USE_PARAMETER(options->btest) > 0) {
-							USE_SHARED(batch_workers_list)[numJobs] = i;
-						}
-						numJobs++;
+			for (i = 0; i < USE_PARAMETER(active_size); i++) {
+				if (pending->array[i].status == DS_WAITING && pending->array[i].operation == op) {
+					memcpy(workArray + dataSize*numJobs, pending->array[i].args, dataSize);
+					pending->array[i].packedIndex = numJobs;
+					pending->array[i].status = DS_IN_PROGRESS;
+					if (USE_PARAMETER(options->btest) > 0) {
+						USE_SHARED(batch_workers_list)[numJobs] = i;
 					}
+					numJobs++;
 				}
-			} while (numJobs < USE_PARAMETER(active_size)/2 && usleep(100));
+			}
 
 			pending->size = numJobs;
 #if CILK_STATS
