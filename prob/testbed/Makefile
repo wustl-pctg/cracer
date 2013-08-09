@@ -29,6 +29,7 @@ endif
 all: cilk tests
 
 # Rule for all actual source files
+# May need to add -DUSE_LOCKS for ...Lock_test files
 %_test: $(DEPS)
 	$(CILKC) $(CFLAGS) $(@:=.cilk) -o $@ $(LD)
 
