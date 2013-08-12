@@ -13,23 +13,23 @@ int counter = 0;
 
 cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)	//batch_op
 {
-	int *nums = (int*)data;
+  int *nums = (int*)data;
   int *count = (int*)dataStruct;
-	int i;
+  int i;
 
-	if (size < BATCH_THRESHOLD) {
-		for (i = 0; i < size; i++) {
-			*count += nums[i];
-		}
-	} else {
-		int temp = nums[size-1];
+  if (size < BATCH_THRESHOLD) {
+    for (i = 0; i < size; i++) {
+      *count += nums[i];
+    }
+  } else {
+    int temp = nums[size-1];
 
-		spawn prefixSumsExc(nums, size, nums);
-		sync;
+    spawn prefixSumsExc(nums, size, nums);
+    sync;
 
-		//  result = data;
-		*count += temp + nums[size-1];
-	}
+    //  result = data;
+    *count += temp + nums[size-1];
+  }
   Cilk_terminate_batch(_cilk_ws);
   return;
 }
@@ -57,7 +57,7 @@ cilk int main(int argc, char *argv[])
   srand(time(NULL));
   for (i = 0; i < nNums; i++) {
     data[i] = rand() % (2*MAX_NUM) - MAX_NUM;
-		sum += data[i];
+    sum += data[i];
   }
 
   counter = 0;
@@ -67,7 +67,7 @@ cilk int main(int argc, char *argv[])
   stopTimer();
   printf("%lf ms\n", getWallTime());
 
-	assert(counter == sum);
+  assert(counter == sum);
 
   free(data);
 
