@@ -1,0 +1,81 @@
+#ifndef _OMPMA_CILKH
+#define _OMPMA_CILKH
+
+#define TOTAL_MAX_LOAD 0.5
+#define SEG_MAX_LOAD 1.0
+
+/*1 Define this from command line if want to use locks for counting.
+//#define USE_LOCK_FOR_COUNTING
+
+/*! \brief Simple array item.
+*/
+typedef struct p_Item{
+    int label;
+    void* item;
+    struct p_Item* in;
+} pItem;
+
+/*! \brief The Indirection item
+ */
+typedef struct {
+  int count;
+  /*! For compare and swap operation.*/
+  int id;
+  int start;
+  /*! Lock for the locking count operation*/
+  Cilk_lockvar lock;
+} topItem;
+
+/*! \brief Struct for the packed-memory Array (called pArray now)
+*/
+typedef struct {
+    /*! The actual array of items*/
+    pItem** array;
+    /*! A secondary array of sizes, there are n/log(n) ints in this array - this is the "indirection"*/
+    topItem* topArray;
+    /*! Size of the pItem Array. Always a power of 2.*/
+    int maxSize;
+    /*! Total load factor*/
+    int load;
+    /*! Size of the int array*/
+    int topSize;
+    /*! The length of each segment that an int corresponds to, this is ~log(n)*/
+    int length;
+  /*! A lock for the array*/
+  Cilk_lockvar lock;
+} pArray;
+
+typedef struct {
+  pItem* x;
+  pItem* y;
+} pOpRec;
+
+/*Constructors*/
+pArray* pArray_create(int maxSize);
+pItem* pItem_create(void* item);
+
+/*Functions*/
+void pArray_print(pArray* ds);
+void pArray_destroy(pArray* victim); //Destructor
+pItem* pArray_order(pItem* x, pItem* y); 
+void pArray_insert(pArray* ds, pItem* x, pItem* y);
+void pArray_double(pArray* ds);
+cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results);
+
+/*Private Functions*/
+void redistributeLabel(pArray* ds, int index,pItem* newItem);
+void insertAndShove(pArray* ds, int index, pItem* newItem);
+void fillSpace(pArray* ds, int start, int index, pItem* newItem, int segments);
+void determineSegments(pArray* ds, int index, int* startResult, int* segments);
+int countLoad(pArray* ds, int start, int end);
+float loadCoefficient(float tMax, float segMax, int lvl, int hMax);
+void fillMuchSpace(pArray* ds, pItem** temp, int startSeg, int segments);
+cilk void insertItem(pArray* ds, pItem** input, int index);
+int countAllLoad(pArray* ds, int start, int end);
+void processItem(pArray* ds, pItem** input, int round, int index, int* notDone);
+cilk void parallelProcessItem(pArray* ds, pItem** input, int round, int* notDone, int start, int end);
+void countSegment(pArray* ds, topItem* seg);
+void insertTemp(int index, void* ds);
+//extern bool __sync_bool_compare_and_swap(int*,int,int);
+
+#endif
