@@ -1,5 +1,5 @@
 #define USE_LOCKS
-#include "ds/btree.cilk"
+#include "ds/btree.cilkh"
 #include <getopt.h>
 #include "util/timer.h"
 

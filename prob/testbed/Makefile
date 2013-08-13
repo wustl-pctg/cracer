@@ -2,8 +2,8 @@ CILKC = ../support/cilkclocal
 CFLAGS =
 MAKEDEPEND = $(CILKC) -MM
 DEPS = $(wildcard util/*.h util/*.cilkh)
-DS = $(wildcard ds/*.c ds/*.cilk)
 SRCS = $(wildcard *.cilk)
+DS =
 LD =
 
 ifeq ($(shell uname -s),Linux)
@@ -30,8 +30,8 @@ all: cilk tests
 
 # Rule for all actual source files
 # May need to add -DUSE_LOCKS for ...Lock_test files
-%_test: $(DEPS)
-	$(CILKC) $(CFLAGS) $(@:=.cilk) -o $@ $(LD)
+%_test: $(DEPS) $(@:=.cilk)
+	$(CILKC) $(CFLAGS) $(@:=.cilk) $(DS) -o $@ $(LD)
 
 
 # Rule for rebuilding CILK (BATCHER)
@@ -48,8 +48,10 @@ param: param.cilk
 
 # Data Structure Tests
 counter: counterLock_test counterBatch_test
+btree: DS = ds/btree.cilk
 btree: btreeLock_test btreeBatch_test
 dynArray: dynArrayLock_test dynArrayBatch_test
+concHash: LD += -lm
 concHash: concHashLock_test concHashBatch_test
 omPMA: LD += -lm
 omPMA: omPMALock_test omPMABatch_test
@@ -57,7 +59,7 @@ omTree: omTreeLock_test omTreeBatch_test
 
 .PHONY: clean cilk-clean check-syntax doc information all
 clean:
-	rm -f *.i *.cilki *.cilkc *.d *.P *.o *.d
+	rm -f *.i *.cilki *.cilkc *.d *.P *.o
 	rm -f $(SRCS:.cilk=)
 
 cilk-clean:

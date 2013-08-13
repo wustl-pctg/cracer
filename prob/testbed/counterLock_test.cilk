@@ -47,7 +47,7 @@ cilk int main(int argc, char *argv[])
   spawn parfor_1(0, nNums-1, lockIncrement, (void*)data);
   sync;
   stopTimer();
-  printf("Time: %lf ms\n", getWallTime());
+  printf("%lf ms\n", getWallTime());
   assert(counter == sum);
 
   free(data);
