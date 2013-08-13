@@ -7,6 +7,7 @@
 
 int g_size;
 int *g_sums;
+CilkWorkerState *ws;
 
 void upSweep(int i, void *data)
 {
@@ -24,7 +25,8 @@ void downSweep(int i, void *data)
     g_sums[right(i,d)] += g_sums[left(i,d)];
     g_sums[left(i,d)] = temp;
   }
-  printf("Worker %i and spot $i\n", _cilk_ws->self, i);
+	//  printf("Worker %i and spot %i\n", ws->self, i);
+	//	USE_SHARED1(pending_batch)->array[i].status = DS_DONE;
 }
 
 cilk void prefixSumsInc(int *nums, size_t n, int *result)
@@ -38,6 +40,7 @@ cilk void prefixSumsInc(int *nums, size_t n, int *result)
 cilk void prefixSumsExc(int *nums, size_t n, int *result)
 {
   int i,d;
+	ws = _cilk_ws;
   g_size = n;
   g_sums = result;
 

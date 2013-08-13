@@ -28,15 +28,24 @@ void ds_work(int writes) {
 		__asm__ __volatile("movl %1, %%eax;\n\t addl $5, %%eax;\n\t movl %%eax, %0;":"=r"(k):"r"(j):"%eax");
 	}
 }
+int *workerList;
+Batch *pending;
 
 cilk void work_function(int index, void* writes)
 {
+	int i;
 	int* works = (int*) writes;
 	ds_work(works[index]);
-	sync;
+	//	printf("DS spot: %i, real: %i\n", index, workerList[index]);
+	//	if (USE_PARAMETER2(options->btest) > 0) {
+		i = workerList[index];
+		pending->array[i].status = DS_DONE;
+		//	}
 }
 
-cilk void batch_function(void* ds, void *input, size_t size, void* useless) {
+cilk void batch_function(void* ds, void *input, size_t size, void* useless, int* w, void *b) {
+	pending = (Batch*)b;
+	workerList = w;
 	spawn parforpar_1(0,size-1,&work_function,(int*)input);
 	sync;
 	Cilk_terminate_batch(_cilk_ws);

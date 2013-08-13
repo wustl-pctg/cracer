@@ -43,7 +43,7 @@ cilk:
 tests:  param counter btree dynArray concHash omPMA omTree
 
 # Parameterized Test
-param:
+param: param.cilk
 	$(CILKC) $(CFLAGS) -o $@ $@.cilk
 
 # Data Structure Tests

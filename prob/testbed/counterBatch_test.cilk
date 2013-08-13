@@ -59,7 +59,7 @@ cilk int main(int argc, char *argv[])
     data[i] = rand() % (2*MAX_NUM) - MAX_NUM;
     sum += data[i];
   }
-
+	//printf("Reg: %p, slow: %p\n", fastSum, _cilk_fastSum_slow);
   counter = 0;
   startTimer();
   spawn parforpar_1(0, nNums-1, batchIncrement, (void*)data);
