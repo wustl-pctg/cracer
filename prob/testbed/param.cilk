@@ -28,24 +28,14 @@ void ds_work(int writes) {
 		__asm__ __volatile("movl %1, %%eax;\n\t addl $5, %%eax;\n\t movl %%eax, %0;":"=r"(k):"r"(j):"%eax");
 	}
 }
-int *workerList;
-Batch *pending;
 
 cilk void work_function(int index, void* writes)
 {
-	int i;
 	int* works = (int*) writes;
 	ds_work(works[index]);
-	//	printf("DS spot: %i, real: %i\n", index, workerList[index]);
-	//	if (USE_PARAMETER2(options->btest) > 0) {
-		i = workerList[index];
-		pending->array[i].status = DS_DONE;
-		//	}
 }
 
-cilk void batch_function(void* ds, void *input, size_t size, void* useless, int* w, void *b) {
-	pending = (Batch*)b;
-	workerList = w;
+cilk void batch_function(void* ds, void *input, size_t size, void* useless) {
 	spawn parforpar_1(0,size-1,&work_function,(int*)input);
 	sync;
 	Cilk_terminate_batch(_cilk_ws);
@@ -73,8 +63,9 @@ cilk int main(int argc, char** argv) {
 	int iterations = DEFAULT_ITERS;
 
 	int verbose = 0;
-	double batchTime = 0, lockTime = 0, temp;
+	double batchTime = 0, lockTime = 0;
 	double workTime = 0;
+	double temp, l, b;
 
 	static struct option all_options[] = {
 		{"work", required_argument,0,'w'},
@@ -163,8 +154,10 @@ cilk int main(int argc, char** argv) {
 	}
 
 	//Print the averages:
-	printf("%lf,%d,%d,%d,%d,%lf,%lf\n", workTime,opWork, opCount, USE_PARAMETER2(active_size),
-				 iterations, lockTime/(double)iterations, batchTime/(double)iterations);
+	l = lockTime/(double)iterations;
+	b = batchTime/(double)iterations;
+	printf("%lf,%d,%d,%d,%d,%lf,%lf,%lf\n", workTime,opWork, opCount, USE_PARAMETER2(active_size),
+				 iterations, l, b, l/b);
 
 	return 0;
 }

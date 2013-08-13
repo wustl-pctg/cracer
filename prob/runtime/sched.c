@@ -1886,47 +1886,48 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 			// I think would be slower, and 2. would make it harder to support 
 			// general batch operations.
 			// This seems to work without issue, so far.
-			Cilk_enter_state(ws, STATE_DS_WORKING);
-			op(ws, dataStruct, workArray, numJobs, workArray);
-			Cilk_exit_state(ws, STATE_DS_WORKING);
+			 Cilk_enter_state(ws, STATE_DS_WORKING);
+			 op(ws, dataStruct, workArray, numJobs, workArray);
+			 Cilk_exit_state(ws, STATE_DS_WORKING);
 
-			ws->current_cache = &ws->cache;
+			 ws->current_cache = &ws->cache;
 
-			// I think that's it's possible for the main operation to get stolen,
-			// but I've *never* seen it happen, so maybe not. Maybe it would happen
-			// with a very sequential batch operation.
-			if (pending->array[ws->self].status != DS_DONE) {
-				batch_scheduler(ws, NULL);
-			}
-			ws->batch_id = 0;
-			USE_SHARED(batch_owner) = -1;
-			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
-			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
-			Cilk_exit_state(ws, STATE_BATCH_TOTAL);
-		}
-		batch_scheduler(ws, NULL);
-	}
+			 // I think that's it's possible for the main operation to get stolen,
+			 // but I've *never* seen it happen, so maybe not. Maybe it would happen
+			 // with a very sequential batch operation.
+			 if (pending->array[ws->self].status != DS_DONE) {
+				 batch_scheduler(ws, NULL);
+			 }
+			 ws->batch_id = 0;
+			 USE_SHARED(batch_owner) = -1;
+			 CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
+			 Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
+			 Cilk_exit_state(ws, STATE_BATCH_TOTAL);
+		 }
+		 batch_scheduler(ws, NULL);
+	 }
 
-	return;
-}
+	 return;
+ }
 
-void Cilk_terminate_batch(CilkWorkerState *const ws)
-{
-	int i, index;
-	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
-	Batch *current = &USE_SHARED(pending_batch);
-	void* results = USE_SHARED(batch_work_array);
-	size_t dataSize = current->dataSize;
+ void Cilk_terminate_batch(CilkWorkerState *const ws)
+ {
+	 int i, index;
+	 Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
+	 Batch *current = &USE_SHARED(pending_batch);
+	 void* results = USE_SHARED(batch_work_array);
+	 size_t dataSize = current->dataSize;
 
-	for (i = 0; i < USE_PARAMETER(active_size); i++) {
-		if (current->array[i].status == DS_IN_PROGRESS) {
-			index = current->array[i].packedIndex;
-			if (current->array[i].result) {
-				memcpy(current->array[i].result, &results[index], dataSize);
-			}
-			current->array[i].status = DS_DONE;
-		}
-	}
+	 for (i = 0; i < USE_PARAMETER(active_size); i++) {
+		 if (current->array[i].status == DS_IN_PROGRESS) {
+			 index = current->array[i].packedIndex;
+			 if (current->array[i].result) {
+				 memcpy(current->array[i].result, &results[index], dataSize);
+			 }
+			 current->array[i].status = DS_DONE;
+		 }
+	 }
+
 	USE_SHARED(current_batch_id)++; // signal end of this batch
 	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
