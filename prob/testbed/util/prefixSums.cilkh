@@ -1,3 +1,6 @@
+#ifndef _PREFIX_SUMS_H
+#define _PREFIX_SUMS_H
+
 #include <cilk-lib.cilkh>
 
 #include "parfor.cilkh"
@@ -53,7 +56,7 @@ cilk void prefixSumsExc(int *nums, size_t n, int *result)
   // Up-Sweep (Reduce)
   // for d = 0 to log_2 n-1
   for (d = 1; d <= g_size; d <<= 1) {
-    spawn parfor(d-1, g_size-1, upSweep, &d, d << 1);
+    spawn parfor(d-1, g_size-1, d << 1, upSweep, &d);
     sync;
   }
 
@@ -63,7 +66,9 @@ cilk void prefixSumsExc(int *nums, size_t n, int *result)
   // Down-Sweep
   // for d= log_2 n-1 down to 0
   for (d >>= 1; d > 0; d >>= 1) {
-    spawn parfor(d - 1, g_size - 1, downSweep, &d, d << 1);
+    spawn parfor(d - 1, g_size - 1, d << 1, downSweep, &d);
     sync;
   }
 }
+
+#endif

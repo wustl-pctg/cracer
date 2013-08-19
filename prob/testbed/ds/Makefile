@@ -1,5 +1,5 @@
 CILKC = ../../support/cilkclocal
-CFLAGS =
+CFLAGS = -c
 MAKEDEPEND = $(CILKC) -MM
 # DEPS = $(wildcard util/*.h util/*.cilkh)
 #SRCS = $(wildcard *.cilk)
@@ -32,6 +32,7 @@ SRCS = btree.cilk concHash.cilk dynArray.cilk omPMA.cilk omTree.cilk
 OBJS = $(SRCS:.cilk=.o)
 all: $(OBJS)
 
+counter: counter.o
 btree: btree.o
 concHash: concHash.o
 dynArray: dynArray.o
@@ -42,7 +43,7 @@ omTree: omTree.o
 $(OBJS): $<
 
 %.o: %.cilk %.cilkh
-	$(CILKC) -c $(CFLAGS) $< -o $@
+	$(CILKC) $(CFLAGS) $< -o $@
 
 .PHONY: clean check-syntax all
 

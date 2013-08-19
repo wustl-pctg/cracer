@@ -1,58 +1,13 @@
 #ifndef _PARFOR_CILKH
 #define _PARFOR_CILKH
 
-#include "defaults.h"
-
 typedef void (*loopBodyFunc)(int, void*);
 typedef cilk void (*parallelBody)(int, void*);
 
-cilk void parforpar_1(const int begin, const int end,
-											const parallelBody body, void *data)
-{
-  int i;
-
-  if (end - begin <= PARFORPAR_THRESHOLD) {
-    for (i = begin; i <= end; i++) {
-      spawn body(i, data);
-    }
-  } else {
-    i = begin+(end-begin)/2;
-    spawn parforpar_1(begin, i, body, data);
-    spawn parforpar_1(i + 1, end, body, data);
-  }
-}
-
-cilk void parfor_1(const int begin, const int end,
-									 const loopBodyFunc body, void *data)
-{
-  int i;
-
-  if (end - begin <= PARFOR_THRESHOLD) {
-    for (i = begin; i <= end; i++) {
-      body(i, data);
-    }
-  } else {
-    i = begin+(end-begin)/2;
-    spawn parfor_1(begin, i, body, data);
-    spawn parfor_1(i + 1, end, body, data);
-  }
-}
-
-cilk void parfor(const int begin, const int end,
-								 const loopBodyFunc body, void *data,
-								 const int increment)
-{
-  int i;
-
-  if ((end-begin)/increment <= PARFOR_THRESHOLD) {
-    for (i = begin; i <= end; i += increment) {
-      body(i, data);
-    }
-  } else {
-    i = begin+(end-begin)/2;
-    spawn parfor(begin, i, body, data, increment);
-    spawn parfor(i + 1, end, body, data, increment);
-  }
-}
-
+extern cilk void parforpar(const int begin, const int end, const int incr,
+													 const parallelBody body, void *data);
+extern cilk void parforpar_1(const int begin, const int end,
+														 const parallelBody body, void *data);
+extern cilk void parfor(const int begin, const int end, const int incr,
+												const loopBodyFunc body, void *data);
 #endif

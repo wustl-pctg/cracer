@@ -7,6 +7,7 @@
 #include "util/parfor.cilkh"
 #include "util/prefixSums.cilkh"
 #include "util/timer.h"
+#include "util/defaults.h"
 
 #define MAX_NUM 100
 int counter = 0;
@@ -27,7 +28,7 @@ cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)	//bat
     spawn prefixSumsExc(nums, size, nums);
     sync;
 
-    //  result = data;
+		result = data;
     *count += temp + nums[size-1];
   }
   Cilk_terminate_batch(_cilk_ws);
@@ -62,7 +63,7 @@ cilk int main(int argc, char *argv[])
 	//printf("Reg: %p, slow: %p\n", fastSum, _cilk_fastSum_slow);
   counter = 0;
   startTimer();
-  spawn parforpar_1(0, nNums-1, batchIncrement, (void*)data);
+  spawn parforpar(0, nNums-1, 1, batchIncrement, (void*)data);
   sync;
   stopTimer();
   printf("%lf ms\n", getWallTime());

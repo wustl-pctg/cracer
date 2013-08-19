@@ -55,6 +55,7 @@ concHash: LD += -lm
 concHash: concHashLock_test concHashBatch_test
 omPMA: LD += -lm
 omPMA: omPMALock_test omPMABatch_test
+omTree: LD += -lm
 omTree: omTreeLock_test omTreeBatch_test
 
 .PHONY: clean cilk-clean check-syntax doc information all
