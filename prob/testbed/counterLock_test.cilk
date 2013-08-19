@@ -44,7 +44,7 @@ cilk int main(int argc, char *argv[])
   counter = 0;
   startTimer();
   Cilk_lock_init(lock_counter);
-  spawn parfor_1(0, nNums-1, lockIncrement, (void*)data);
+  spawn parfor(0, nNums-1, 1, lockIncrement, (void*)data);
   sync;
   stopTimer();
   printf("%lf ms\n", getWallTime());

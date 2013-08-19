@@ -3,6 +3,7 @@ CFLAGS =
 MAKEDEPEND = $(CILKC) -MM
 DEPS = $(wildcard util/*.h util/*.cilkh)
 SRCS = $(wildcard *.cilk)
+INC = util/parfor.cilk
 DS =
 LD =
 
@@ -26,13 +27,12 @@ ifeq ($(profile),1)
 	CFLAGS += -cilk-profile -Wc,"-pg"
 endif
 
-all: cilk tests
+all: tests
 
 # Rule for all actual source files
 # May need to add -DUSE_LOCKS for ...Lock_test files
 %_test: $(DEPS) $(@:=.cilk)
-	$(CILKC) $(CFLAGS) $(@:=.cilk) $(DS) -o $@ $(LD)
-
+	$(CILKC) $(CFLAGS) $(@:=.cilk) $(INC) $(DS) -o $@ $(LD)
 
 # Rule for rebuilding CILK (BATCHER)
 cilk:
@@ -44,7 +44,7 @@ tests:  param counter btree dynArray concHash omPMA omTree
 
 # Parameterized Test
 param: param.cilk
-	$(CILKC) $(CFLAGS) -o $@ $@.cilk
+	$(CILKC) $(CFLAGS) $@.cilk $(INC) -o $@
 
 # Data Structure Tests
 counter: counterLock_test counterBatch_test

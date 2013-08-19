@@ -1,7 +1,10 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <stdlib.h>
+
 #include "util/timer.h"
+#include "util/defaults.h"
+
 #include "ds/omPMA.cilk"
 
 #define SIZE 32
