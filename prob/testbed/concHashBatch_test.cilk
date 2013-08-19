@@ -3,9 +3,31 @@
 #include <getopt.h>
 #include "util/timer.h"
 #include <string.h>
+#include <stdlib.h>
+#include "util/defaults.h"
 
 void usage() {
   printf("use default arguments");
+}
+
+cilk void insertItem(hashTable * table, int* keys, int i){
+  spawn hashTable_insertItem(table,keys[i]);
+}
+
+cilk void parfor_ins(hashTable* current_table, int* temp, cilk void(*parallel_function)(hashTable*,int*,int), int start, int end)
+{
+	int middle = start+(end-start)/2;
+	if (end-start<=PARALLEL_CUTOFF) {
+		for (start; start < end; ++start) {
+            spawn parallel_function(current_table, temp, start);
+		}
+    }
+	else
+	{		
+		spawn parallel_for3(current_table, temp, parallel_function, start, middle); 	//start -> middle-1
+		spawn parallel_for3(current_table, temp, parallel_function, middle+1, end); 	//middle+1 -> end-1
+		spawn parallel_function(current_table, temp, middle);						//middle
+	}
 }
 
 cilk int main(int argc, char **argv)
@@ -68,7 +90,8 @@ cilk int main(int argc, char **argv)
 	#endif
 	
 	startTimer();
-	spawn hashTable_parallelInsert(test_table, integer_array, test_size);
+	spawn parfor_ins(test_table, integer_array,insertItem, 0,test_size);
+	sync;
 	stopTimer();
 	
 	if (verbose){

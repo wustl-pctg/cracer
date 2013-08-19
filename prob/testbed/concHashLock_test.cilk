@@ -2,9 +2,31 @@
 #include "ds/concHash.cilk"
 #include <getopt.h>
 #include "util/timer.h"
+#include <string.h>
+#include "util/defaults.h"
 
 void usage() {
   printf("use default arguments");
+}
+
+cilk void insertItem(hashTable * table, int* keys, int i){
+  spawn hashTable_lockInsert(table,keys[i]);
+}
+
+cilk void parfor_ins(hashTable* current_table, int* temp, cilk void(*parallel_function)(hashTable*,int*,int), int start, int end)
+{
+	int middle = start+(end-start)/2;
+	if (end-start<=PARALLEL_CUTOFF) {
+		for (start; start < end; ++start) {
+            spawn parallel_function(current_table, temp, start);
+		}
+    }
+	else
+	{		
+		spawn parallel_for3(current_table, temp, parallel_function, start, middle); 	//start -> middle-1
+		spawn parallel_for3(current_table, temp, parallel_function, middle+1, end); 	//middle+1 -> end-1
+		spawn parallel_function(current_table, temp, middle);						//middle
+	}
 }
 
 cilk int main(int argc, char **argv)
@@ -12,7 +34,7 @@ cilk int main(int argc, char **argv)
 	
 	hashTable* test_table;
 	int i;
-	
+	int* integer_array;
 	int test_size = 10;
 	int verbose = 0;
 	int option;
@@ -47,7 +69,10 @@ cilk int main(int argc, char **argv)
     }
 	
 	test_table = hashTable_create(10);
-
+	integer_array = malloc(sizeof(int)*test_size);
+	for(i=0;i<test_size;++i){
+	  integer_array[i]=i;
+	}
 	//Perform Tests--------------------------
 	#ifdef USE_LOCKS
 		if (verbose) {
@@ -60,10 +85,7 @@ cilk int main(int argc, char **argv)
 	#endif
 	
 	startTimer();
-	for(i=0; i<test_size; ++i)
-	{
-		spawn hashTable_lockInsert(test_table, i);
-	}
+	spawn parfor_ins(test_table,integer_array,&insertItem,0,test_size);
 	sync;
 	stopTimer();
 	

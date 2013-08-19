@@ -117,7 +117,7 @@ cilk void hashTable_insert(hashTable* table, int key) {
 	\param key the data to insert
 */
 cilk void hashTable_insertItem(hashTable* table, int key){
-    Cilk_batchify(_cilk_ws, &hashTable_batchInsert, table, &key, sizeof(int), NULL);
+    Cilk_batchify(_cilk_ws, hashTable_batchInsert, table, &key, sizeof(int), NULL);
 }
 
 //! Insert an array of items into the Hash Table in parallel
@@ -128,8 +128,9 @@ cilk void hashTable_insertItem(hashTable* table, int key){
 	\param results a neccessary parameter for Cilk_batchify, pass in NULL
 	\sa hashTable_insertItem(), hashTable_insert()
 */
-cilk void hashTable_batchInsert(hashTable* table, void* insertions, int input_size,void* results){
+cilk void hashTable_batchInsert(void* ds, void* insertions, int input_size,void* results){
     //Insertions will always be a int key followed by a void*
+    hashTable* table = ds;
 	int* inputs = insertions;
 	
 	if(input_size+table->load > (table->size * 0.7))	//If current_array needs more space
@@ -281,8 +282,9 @@ cilk void hashTable_remove(hashTable* table, hashTableItem* item) {
 	\param results A parameter required by Cilk_batchify. Pass in NULL
 	\sa hashTable_Remove()
 */
-cilk void hashTable_batchRemove(hashTable* table, void* removals, int input_size, void* results){
+cilk void hashTable_batchRemove(void* ds, void* removals, int input_size, void* results){
     //Insertions will always be a int key followed by a void*
+  hashTable* table = ds;
 	hashTableItem** inputs = (hashTableItem**)removals;
 
     table->load-=input_size;
