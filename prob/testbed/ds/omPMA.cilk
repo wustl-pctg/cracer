@@ -192,8 +192,8 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
   void* in[2];
   in[0]=input;
   in[1]=ds;
-  //printf("%d\n",size);
-   size*=2;
+  size*=2;
+  // printf("%d\n",size);
   /*for (i=0;i<size;i++){
     printf("size? %d\n",sizeof(pItem*));
     printf("item: %p,%p\n",input[i][0],input[i][1]);
@@ -205,7 +205,7 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
   ds->load+=size/2;
   
   //Store into temporary slot, in parallel. See comment below for sequential.
-  spawn parfor(0, size-1, &insertTemp, in, 2);
+  spawn parfor(0, size-1, 2, &insertTemp, in);
   sync;
   /* This is the loop if using non-parallel.
   //KL: Hack#1 to re-use memory. Hopefully pointers have same size.

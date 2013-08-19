@@ -90,7 +90,6 @@ cilk int main(int argc, char** argv) {
     array  = pArray_create(testSize*4);
     setup = calloc(testSize,sizeof(pItem*));
     initializeTest(array, testSize, setup);
-    
     testInputs = calloc(testSize,sizeof(pItem*));
     for (i=0;i<testSize;i++){
       testInputs[i]=pItem_create(NULL);
