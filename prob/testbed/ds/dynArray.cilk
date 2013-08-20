@@ -137,8 +137,6 @@ cilk void parallel_for_batch_push_back(dyn_array* current_array, int* input, siz
 */
 cilk void lock_push_back(dyn_array* current_array, int input)
 {
-	int* temp;
-	int i;
 	#ifdef USE_LOCKS
 		Cilk_lock(current_array->lock);
 	#endif

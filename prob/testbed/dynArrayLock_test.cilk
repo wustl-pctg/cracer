@@ -1,6 +1,9 @@
 #define USE_LOCKS
-#include "ds/dynArray.cilk"
 #include <getopt.h>
+#include <string.h>
+#include <stdio.h>
+
+#include "ds/dynArray.cilk"
 #include "util/timer.h"
 
 void usage() {
@@ -45,12 +48,20 @@ cilk int main(int argc, char **argv)
 	return -1;
       }
     }
+	//Processes arugment (no -s option) also as size.
+	if (argc==1 || optind != argc-1){
+	  usage();
+	  return -1;
+	} else {
+	  test_size=atoi(argv[optind]);
+	}
 	
 	test_array = create_array();
 
 	//Perform Tests--------------------------
 	#ifdef USE_LOCKS
 	if (verbose) {
+
       printf("begin test - USE_LOCKS is on\n");
     }
 	#else

@@ -2,6 +2,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
+
 #include "util/timer.h"
 #include "ds/omPMA.cilk"
 
@@ -87,6 +89,14 @@ cilk int main(int argc, char** argv) {
 	return -1;
       }
     }
+    	//Processes arugment (no -s option) also as size.
+	if (argc==1 || optind != argc-1){
+	  usage();
+	  return -1;
+	} else {
+	  testSize=atoi(argv[optind]);
+	}
+
     array  = pArray_create(testSize*4);
     setup = calloc(testSize,sizeof(pItem*));
     initializeTest(array, testSize, setup);
@@ -98,6 +108,7 @@ cilk int main(int argc, char** argv) {
 	printf("out of memory\n");
       }
     }
+    //BEGIN TESTS
     if (verbose) {
       printf("begin test\n");
     }

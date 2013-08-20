@@ -1,6 +1,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "util/timer.h"
 #include "util/defaults.h"
@@ -87,6 +88,14 @@ cilk int main(int argc, char** argv) {
 	return -1;
       }
     }
+    	//Processes arugment (no -s option) also as size.
+	if (argc==1 || optind != argc-1){
+	  usage();
+	  return -1;
+	} else {
+	  testSize=atoi(argv[optind]);
+	}
+
     array  = pArray_create(testSize*4);
     setup = calloc(testSize,sizeof(pItem*));
     initializeTest(array, testSize, setup);
@@ -97,7 +106,8 @@ cilk int main(int argc, char** argv) {
 	printf("out of memory\n");
       }
     }
-    if (verbose) {
+    //Begin running tests and start the timer. 
+   if (verbose) {
       printf("begin test\n");
     }
     startTimer();

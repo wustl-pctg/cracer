@@ -2,11 +2,11 @@
 #include "ds/concHash.cilk"
 #include <getopt.h>
 #include "util/timer.h"
-#include <string.h>
 #include "util/defaults.h"
+#include <string.h>
 
 void usage() {
-  printf("use default arguments");
+  printf("progname <test_size> [-v]\n");
 }
 
 cilk void insertItem(hashTable * table, int* keys, int i){
@@ -67,7 +67,13 @@ cilk int main(int argc, char **argv)
 	return -1;
       }
     }
-	
+	//Processes arugment (no -s option) also as size.
+	if (argc==1 || optind != argc-1){
+	  usage();
+	  return -1;
+	} else {
+	  test_size=atoi(argv[optind]);
+	}
 	test_table = hashTable_create(10);
 	integer_array = malloc(sizeof(int)*test_size);
 	for(i=0;i<test_size;++i){

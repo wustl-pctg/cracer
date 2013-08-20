@@ -2,6 +2,8 @@
 #include "ds/btree.cilkh"
 #include <getopt.h>
 #include "util/timer.h"
+#include <string.h>
+#include <stdio.h>
 
 void usage() {
   printf("use default arguments");
@@ -44,7 +46,14 @@ cilk int main(int argc, char **argv)
 	return -1;
       }
     }
-	
+	//Processes arugment (no -s option) also as size.
+	if (argc==1 || optind != argc-1){
+	  usage();
+	  return -1;
+	} else {
+	  test_size=atoi(argv[optind]);
+	}
+
 	test_tree = create_tree(-1);
 
 	

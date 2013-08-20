@@ -3,7 +3,7 @@
 
 #include <sys/time.h>
 #include <sys/resource.h>
-
+#include "defaults.h"
 typedef double msec;
 
 struct timeval _timer_wallBegin, _timer_wallEnd;

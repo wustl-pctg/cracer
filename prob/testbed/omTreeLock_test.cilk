@@ -2,6 +2,7 @@
 #include "ds/omSimpleTree.cilk"
 #include <getopt.h>
 #include "util/timer.h"
+#include <string.h>
 
 //Test is ready
 
@@ -49,6 +50,13 @@ cilk int main(int argc, char **argv)
 	return -1;
       }
     }
+	//Processes arugment (no -s option) also as size.
+	if (argc==1 || optind != argc-1){
+	  usage();
+	  return -1;
+	} else {
+	  test_size=atoi(argv[optind]);
+	}
 	
 	test_array = malloc(sizeof(itemOM*) * test_size);
 	insert_array = malloc(sizeof(itemOM*) * test_size);

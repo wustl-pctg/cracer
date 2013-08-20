@@ -1,6 +1,9 @@
 //#define USE_LOCKS			//Should be un-defined for batch tests
-#include "ds/dynArray.cilk"
 #include <getopt.h>
+#include <string.h>
+#include <stdio.h>
+
+#include "ds/dynArray.cilk"
 #include "util/timer.h"
 
 void usage() {
@@ -46,6 +49,13 @@ cilk int main(int argc, char **argv)
 	return -1;
       }
     }
+	//Processes arugment (no -s option) also as size.
+	if (argc==1 || optind != argc-1){
+	  usage();
+	  return -1;
+	} else {
+	  test_size=atoi(argv[optind]);
+	}
 	
 	integer_array = malloc(sizeof(int)*test_size);
 	test_array = create_array();
