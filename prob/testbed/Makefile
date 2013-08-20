@@ -21,7 +21,7 @@ ifeq ($(mode),bench)
 	CFLAGS += -O3 -DNDEBUG
 endif
 ifeq ($(mode),debug)
-	CFLAGS += -O0 -g -cilk-debug -save-temps -DDEBUG -Wall
+	CFLAGS += -O0 -g -cilk-debug -save-temps -Wall
 endif
 ifeq ($(profile),1)
 	CFLAGS += -cilk-profile -Wc,"-pg"

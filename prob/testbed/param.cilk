@@ -158,6 +158,5 @@ cilk int main(int argc, char** argv) {
 		 b = batchTime/(double)iterations;
 		 printf("%lf,%d,%d,%d,%d,%lf,%lf,%lf\n", workTime,opWork, opCount, USE_PARAMETER2(active_size),
 						iterations, l, b, l/b);
-
 		 return 0;
 }

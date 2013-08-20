@@ -163,7 +163,6 @@ static void create_deques(CilkContext *const context)
 	}
 
 	Cilk_mutex_init(context, &USE_SHARED1(batch_lock));
-
 }
 
 static void init_deques(CilkContext *const context)
@@ -1820,6 +1819,7 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 	void *workArray;
 	int i, numJobs = 0;
 	Batch *pending;
+	int x;
 
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
 
@@ -1837,6 +1837,7 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 		ws->batch_id = USE_SHARED(current_batch_id);
 
 		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
+		//		if (__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
 			Cilk_enter_state(ws, STATE_BATCH_TOTAL);
 			Cilk_enter_state(ws, STATE_BATCH_START);
 
@@ -1873,9 +1874,9 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 			}
 
 			pending->size = numJobs;
+
 #if CILK_STATS
-			USE_SHARED(total_batch_ops) += numJobs;
-			USE_SHARED(num_batches)++;
+			USE_SHARED(batch_sizes)[numJobs-1]++;
 #endif
 
 			Cilk_exit_state(ws, STATE_BATCH_START);
@@ -1927,9 +1928,8 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 			 current->array[i].status = DS_DONE;
 		 }
 	 }
-
-	USE_SHARED(current_batch_id)++; // signal end of this batch
-	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
+	 USE_SHARED(current_batch_id)++; // signal end of this batch
+	 Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
 
 /*

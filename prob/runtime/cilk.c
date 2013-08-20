@@ -47,11 +47,16 @@ static char *smart_sprint_time(double x)
 static void print_all_statistics(CilkContext *const context)
 {
 	// Batch stats
+	int i;
 #if CILK_STATS
 	if (USE_PARAMETER1(options->statlevel) == -1) {
 		Cilk_summarize_time_statistics(context);
-		fprintf(USE_PARAMETER1(infofile), "\nAverage Batch Size: %f\n\n",
-						(double)USE_SHARED1(total_batch_ops)/(double)USE_SHARED1(num_batches));
+
+		fprintf(USE_PARAMETER1(infofile), "Batch sizes:");
+		for (i = 0; i < USE_PARAMETER1(active_size); i++) {
+			fprintf(USE_PARAMETER1(infofile), " %i,", USE_SHARED1(batch_sizes)[i]);
+		}
+		fprintf(USE_PARAMETER1(infofile), "\n");
 	}
 #endif
 
@@ -66,7 +71,7 @@ static void print_all_statistics(CilkContext *const context)
 						USE_PARAMETER1(active_size),
 						USE_PARAMETER1(active_size) > 1 ? "s" : "",
 						smart_sprint_time(Cilk_wall_time_to_sec(
-																										Cilk_get_wall_time() - USE_PARAMETER1(start_time))));
+																Cilk_get_wall_time() - USE_PARAMETER1(start_time))));
     WHEN_CILK_TIMING({
 				fprintf(USE_PARAMETER1(infofile), "Total work = %s\n",
 								smart_sprint_time(Cilk_compute_work(context)));
@@ -83,11 +88,11 @@ static void print_all_statistics(CilkContext *const context)
 					fprintf(USE_PARAMETER1(infofile),
 									"Total work (accumulated) = %s\n",
 									smart_sprint_time(
-																		Cilk_time_to_sec(USE_SHARED1(total_work))));
+										Cilk_time_to_sec(USE_SHARED1(total_work))));
 					fprintf(USE_PARAMETER1(infofile),
 									"Span = %s\n",
 									smart_sprint_time(
-																		Cilk_time_to_sec(USE_SHARED1(critical_path))));
+										Cilk_time_to_sec(USE_SHARED1(critical_path))));
 					fprintf(USE_PARAMETER1(infofile),
 									"Parallelism = %f\n",
 									(double) USE_SHARED1(total_work) /
@@ -107,9 +112,9 @@ static void print_all_statistics(CilkContext *const context)
 					fprintf(USE_PARAMETER1(infofile),
 									"AVERAGE THREAD LENGTH = %s\n",
 									smart_sprint_time(
-																		Cilk_time_to_sec(
-																										 USE_SHARED1(total_work)) /
-																		(double) USE_PARAMETER1(num_threads)));
+										Cilk_time_to_sec(
+											USE_SHARED1(total_work)) /
+										(double) USE_PARAMETER1(num_threads)));
 				}
 
 				if (Cilk_time_to_sec(USE_SHARED1(total_work)) > 0.001
@@ -117,9 +122,9 @@ static void print_all_statistics(CilkContext *const context)
 					fprintf(USE_PARAMETER1(infofile),
 									"AVERAGE SUBCOMPUTATION LENGTH = %s\n",
 									smart_sprint_time(
-																		Cilk_time_to_sec(
-																										 USE_SHARED1(total_work)) /
-																		((double) USE_PARAMETER1(num_steals) + 1.0)));
+										Cilk_time_to_sec(
+											USE_SHARED1(total_work)) /
+										((double) USE_PARAMETER1(num_steals) + 1.0)));
 				}
 				fprintf(USE_PARAMETER1(infofile),
 								"MAX STACK DEPTH = %d\n",
@@ -423,7 +428,7 @@ void Cilk_start(CilkContext *const context,
 void Cilk_really_exit_1(CilkWorkerState *const ws,
 												int res) {
   Cilk_exit_from_user_main(
-													 ws, USE_PARAMETER(invoke_main), res);
+		ws, USE_PARAMETER(invoke_main), res);
 }
 
 /* magic consistency check - for compilation/link*/

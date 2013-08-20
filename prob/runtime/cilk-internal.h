@@ -1,5 +1,5 @@
 FILE_IDENTITY(ident_cilk_internal_h,
-	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-internal.h $ $LastChangedBy: bradley $ $Rev: 1465 $ $Date: 2004-08-02 06:31:06 -0400 (Mon, 02 Aug 2004) $");
+							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-internal.h $ $LastChangedBy: bradley $ $Rev: 1465 $ $Date: 2004-08-02 06:31:06 -0400 (Mon, 02 Aug 2004) $");
 
 /*
  * Copyright (c) 2000 Massachusetts Institute of Technology
@@ -151,15 +151,15 @@ extern void Cilk_scheduler_init(CilkContext *const context);
 extern void Cilk_scheduler_terminate(CilkContext *const);
 extern void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws);
 extern Closure *Cilk_create_initial_thread(
-					   CilkContext *const context,
-					   void (*import_main)(CilkWorkerState *const ws, void *args),
-					   void *args,
-					   int return_size);
+	CilkContext *const context,
+	void (*import_main)(CilkWorkerState *const ws, void *args),
+	void *args,
+	int return_size);
 extern void Cilk_scheduler(CilkWorkerState *const ws, Closure *t);
 void Cilk_remove_and_free_closure_and_frame(
-					    CilkWorkerState *const ws, CilkStackFrame *f, int pn);
+	CilkWorkerState *const ws, CilkStackFrame *f, int pn);
 extern void Cilk_destroy_frame(
-			       CilkWorkerState *const ws, CilkStackFrame *f, size_t size);
+	CilkWorkerState *const ws, CilkStackFrame *f, size_t size);
 extern void Cilk_worker_wait_for_invocation(CilkContext *const /*context*/, long /*self*/, int */*local_terminating*/);
 extern void Cilk_worker_is_done(CilkContext *const /*context*/, int */*local_terminating*/);
 extern void Cilk_scheduler_per_worker_terminate(CilkWorkerState *const /*ws*/);
@@ -169,7 +169,7 @@ extern void Cilk_wakeup_workers(CilkContext *const /*context*/);
 
 /* exit protocol */
 extern void Cilk_exit_from_user_main(
-				     CilkWorkerState *const ws, Closure *cl, int res);
+	CilkWorkerState *const ws, Closure *cl, int res);
 extern void Cilk_really_exit(CilkWorkerState *const ws, int res);
 extern void Cilk_really_exit_1(CilkWorkerState *const ws, int res);
 /* Ofra and Sivan: changed Cilk_die to Cilk_die_external, 19 June 2003 */
@@ -194,12 +194,11 @@ struct CilkGlobalState_s{
   int batch_owner;
   Batch pending_batch;
   void *batch_work_array;
-  Cilk_mutex batch_lock;
-#if CILK_STATS
-	unsigned int total_batch_ops;
-	unsigned int num_batches;
-#endif
+	Cilk_mutex batch_lock;
 	int *batch_workers_list;
+#if CILK_STATS
+	int *batch_sizes;
+#endif
   /* End BATCHER */
   int terminating; /* Cilk_terminate was called */
   Cilk_mutex barrier_lock;
@@ -402,7 +401,7 @@ extern void Cilk_debug_init(CilkContext *const context);
 extern void Cilk_debug_terminate(CilkContext *const context);
 extern void Cilk_arch_specific_per_worker_init(void);
 extern void Cilk_create_children(CilkContext *const context,
-				 void (*child)(CilkChildParams*));
+																 void (*child)(CilkChildParams*));
 extern void Cilk_terminate_children(CilkContext *const context);
 extern void Cilk_lower_priority(CilkWorkerState *const ws);
 extern void Cilk_raise_priority(CilkWorkerState *const ws);
@@ -436,20 +435,20 @@ struct Cilk_options_s
 
 /* command-line parser */
 extern int Cilk_parse_command_line(
-				   Cilk_options *options, int *argc, char *argv[]);
+	Cilk_options *options, int *argc, char *argv[]);
 
-#define CILK_DEFAULT_OPTIONS			\
-  {						\
-    1,						\
-      0.5,					\
-			0,           \
-      CILK_DEFAULT_STACK_DEPTH,			\
-      0,					\
-      0,					\
-      "-",					\
-      0,					\
-      64,					\
-      0,					\
-      0,					\
-      1024					\
+#define CILK_DEFAULT_OPTIONS										\
+  {																							\
+    1,																					\
+      0.5,																			\
+			0,																				\
+      CILK_DEFAULT_STACK_DEPTH,									\
+      0,																				\
+      0,																				\
+      "-",																			\
+      0,																				\
+      64,																				\
+      0,																				\
+      0,																				\
+      1024																			\
       }

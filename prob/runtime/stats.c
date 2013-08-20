@@ -39,8 +39,8 @@ void Cilk_stats_init(CilkContext *const context)
 	INIT_PARAMETER1(stat_array,
 									(StatsT *) Cilk_malloc_fixed(sizeof(StatsT) *
 																							 USE_PARAMETER1(active_size)));
-	USE_SHARED1(total_batch_ops) = 0;
-	USE_SHARED1(num_batches) = 0;
+	USE_SHARED1(batch_sizes) =
+		Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(int));
 #endif
 
 	if (strcmp(USE_PARAMETER1(options->infofile_name),"-") == 0 )
@@ -259,9 +259,6 @@ void Cilk_print_rts_statistics(CilkContext *const context)
 								total.event_count[p->event]);
 			fprintf(USE_PARAMETER1(infofile), "\n");
 	  }
-
-	  fprintf(USE_PARAMETER1(infofile), "\nAverage Batch Size: %f\n\n",
-						((double)USE_SHARED1(total_batch_ops))/((double)USE_SHARED1(num_batches)));
 
 	}
 }
