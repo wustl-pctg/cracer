@@ -82,7 +82,7 @@ cilk int main(int argc, char **argv)
     printf("%lf\n", getWallTime());
 	
 	//print_tree(test_tree->root, 0);
-	delete_tree(test_tree);
+//	delete_tree(test_tree);
 	return 0;
 }
 

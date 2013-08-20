@@ -3,6 +3,7 @@
 
 #define VOID_DATA (int)-INFINITY
 #define PARALLEL_CUTOFF 50
+#define USE_LOCKS 1
 
 #include <cilk-lib.cilkh>
 /*! \file
