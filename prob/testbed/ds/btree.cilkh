@@ -75,7 +75,7 @@ int search_mark_and_height(struct node23* current_node, int key, int height);
 void search_for_delete(struct node23* root, int key);
 	
 //Batch Insert Function and helper functions
-cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size, void*useless);
+cilk void complex_batch_insert(void* current_tree, void *input_integers, size_t size, void*useless);
 cilk struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size);
 cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c);
 	

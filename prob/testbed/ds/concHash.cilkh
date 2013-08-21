@@ -38,10 +38,10 @@ hashTableItem* hashTable_createItem(int key);
 void hashTable_delete(hashTable* dead_table);
 void hashTable_deleteItems(hashTableItem* dead_item);
 cilk void hashTable_insert(hashTable* table, int key);
-cilk void hashTable_batchInsert(void* ds, void* insertions, int size, void* results);
+cilk void hashTable_batchInsert(void* ds, void* insertions, size_t size, void* results);
 hashTableItem* hashTable_search(hashTable* table, int key); //search for the key, returns the dataItem.
 cilk void hashTable_remove(hashTable* table, hashTableItem* item);
-cilk void hashTable_batchRemove(void* ds, void* removals, int input_size, void* results);
+cilk void hashTable_batchRemove(void* ds, void* removals, size_t input_size, void* results);
 int hashTable_hash(int size, int key);
 void hashTable_print(hashTable* table, int (*printfunct)(void*));
 cilk void resize(hashTable* current_table, int new_size);

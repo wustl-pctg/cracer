@@ -178,7 +178,7 @@ void insertTemp(int i, void* temp){
 
 /*! \brief A batch version of the insert.
 */
-cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
+cilk void pArray_batchInsert(void* dstruct, void* opRec, size_t size, void* results){
   /*!
     Note that the operation record must contain two pointers - the insert and the insert_place.
      That is why the input pointer to pItem is strange.
@@ -187,8 +187,8 @@ cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results){
      The insert_place will be even elements.
   */
   pItem** input = opRec;
+  pArray* ds = dstruct;
   //pOpRec* recs = opRec;
-  int i;
   void* in[2];
   in[0]=input;
   in[1]=ds;
@@ -231,7 +231,6 @@ cilk void insertItem(pArray* ds, pItem** input, int size) {
   int round=0;
   int maxRounds=log(ds->topSize)/log(2);
   int notDone=1;
-  int i;
   //KL:Really should only spawn threads at the start. Then have each round be a "barrier" or some sort.
   //Though, need to find a barrier.
   //As of right now, respawns threads every round.
@@ -265,7 +264,6 @@ void processItem(pArray* ds, pItem** input, int round, int index, int* notDone) 
   int topIndex;
   pItem** temp;
   int maxHeight = log(ds->topSize)/log(2);
-  float result;
 
   //Nothing to be done if NULL. This item's work was completed in a previous round.
   //KL: If I get the barrier working, this part can be reworked to be much faster.

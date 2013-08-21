@@ -196,7 +196,7 @@ void print_array(dyn_array* current_array)
 		printf("%d  ", current_array->array[i]);
 	}
 	printf("]\n");
-	printf("Size: %d\tUsed: %d\n", current_array->size, current_array->used);
+	printf("Size: %d\tUsed: %d\n", (int)current_array->size, (int)current_array->used);
 }
 
 

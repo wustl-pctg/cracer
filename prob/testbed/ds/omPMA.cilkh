@@ -60,7 +60,7 @@ void pArray_destroy(pArray* victim); //Destructor
 pItem* pArray_order(pItem* x, pItem* y); 
 void pArray_insert(pArray* ds, pItem* x, pItem* y);
 void pArray_double(pArray* ds);
-cilk void pArray_batchInsert(pArray* ds, void* opRec, int size, void* results);
+cilk void pArray_batchInsert(void* ds, void* opRec, size_t size, void* results);
 
 /*Private Functions*/
 void redistributeLabel(pArray* ds, int index,pItem* newItem);
@@ -76,6 +76,6 @@ void processItem(pArray* ds, pItem** input, int round, int index, int* notDone);
 cilk void parallelProcessItem(pArray* ds, pItem** input, int round, int* notDone, int start, int end);
 void countSegment(pArray* ds, topItem* seg);
 void insertTemp(int index, void* ds);
-//extern bool __sync_bool_compare_and_swap(int*,int,int);
+//extern bool  __sync_bool_compare_and_swap(int*,int,int);
 
 #endif

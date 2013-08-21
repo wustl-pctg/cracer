@@ -368,13 +368,14 @@ struct node23* sequential_insert_helper(struct node23* node, struct node23* inse
 
     Parameters are the usuall parameters for a batch function. Note that the result array is useless for this operation and has been named accordingly.
 */
-cilk void complex_batch_insert(struct tree23* current_tree, int *input_integers, int size, void* useless) 
+cilk void complex_batch_insert(void* ds, void *input, size_t size, void* useless) 
 {
 	struct node23 **result_array = calloc(size, sizeof(struct node23*));
 	struct node23 **result;
+	struct tree23* current_tree = ds;
+	int* input_integers = input;
     void* temp;
 	int number_of_children=0;
-	int i;
    /* printf("starting with %d:\n",size);
     for (i=0;i<size;i++){
         printf("%d \n", input_integers[i]);
