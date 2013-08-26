@@ -420,8 +420,8 @@ extern Closure *Cilk_Closure_create_malloc(CilkContext *const context, CilkWorke
 struct Cilk_options_s
 {
   int nproc;
-	int btest;
   double dsprob;
+	int btest;
   int stackdepth;
   int statlevel;
   int yieldslice;

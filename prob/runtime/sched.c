@@ -1775,12 +1775,12 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 			// Otherwise, steal
 			Cilk_enter_state(ws, STATE_DS_STEALING);
 
-			if (USE_PARAMETER(options->btest) == 0) {
-				victim = rts_rand(ws) & USE_PARAMETER(active_size);
-			}	else {
+			if ( (USE_PARAMETER(options->btest) & 1)  == 1) {
 				int range = USE_SHARED(pending_batch).size;
 				victim = range == 1 ? 0 : rts_rand(ws) % (range-1) + 1;
 				victim = USE_SHARED(batch_workers_list)[victim];
+			}	else {
+				victim = rts_rand(ws) & USE_PARAMETER(active_size);
 			}
 			if (victim != ws->self &&
 					USE_SHARED(pending_batch).array[victim].status == DS_IN_PROGRESS) {
@@ -1866,7 +1866,7 @@ void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp op,
 					memcpy(workArray + dataSize*numJobs, pending->array[i].args, dataSize);
 					pending->array[i].packedIndex = numJobs;
 					pending->array[i].status = DS_IN_PROGRESS;
-					if (USE_PARAMETER(options->btest) > 0) {
+					if ((USE_PARAMETER(options->btest) & 1) == 1) {
 						USE_SHARED(batch_workers_list)[numJobs] = i;
 					}
 					numJobs++;

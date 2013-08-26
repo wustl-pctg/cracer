@@ -545,6 +545,7 @@ typedef struct {
   size_t dataSize;
   CilkBatchOp operation;
   BatchRecord  *array;
+	CILK_CACHE_LINE_PAD;
 } Batch;
 
 // rsu *** could also have a BatchResult, which would contain a

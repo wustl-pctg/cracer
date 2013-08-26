@@ -44,7 +44,7 @@ tests:  param counter btree dynArray concHash omPMA omTree
 
 # Parameterized Test
 param: param.cilk
-	$(CILKC) $(CFLAGS) $@.cilk $(INC) -o $@
+	$(CILKC) $(CFLAGS) $@.cilk $(INC) -lm -o $@
 
 # Data Structure Tests
 counter: counterLock_test counterBatch_test
