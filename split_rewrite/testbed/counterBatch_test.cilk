@@ -1,0 +1,76 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <cilk-lib.cilkh>
+#include <time.h>
+
+#include "util/parfor.cilkh"
+#include "util/prefixSums.cilkh"
+#include "util/timer.h"
+#include "util/defaults.h"
+
+#define MAX_NUM 100
+int counter = 0;
+
+cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)	//batch_op
+{
+  int *nums = (int*)data;
+  int *count = (int*)dataStruct;
+  int i;
+
+  if (size < BATCH_THRESHOLD) {
+    for (i = 0; i < size; i++) {
+      *count += nums[i];
+    }
+  } else {
+    int temp = nums[size-1];
+
+    spawn prefixSumsExc(nums, size, nums);
+    sync;
+
+		result = data;
+    *count += temp + nums[size-1];
+  }
+  Cilk_terminate_batch(_cilk_ws);
+  return;
+}
+
+cilk void batchIncrement(int i, void* nums)	//calls batch_op
+{
+  Cilk_batchify(_cilk_ws, fastSum, &counter, &((int*)nums)[i], sizeof(int), NULL);
+}
+
+cilk int main(int argc, char *argv[])
+{
+  int *data;
+  int nNums = 5;
+  int i, sum = 0;
+
+  if (argc > 2) {
+    fprintf(stderr, "Too many arguments\n");
+    Cilk_exit(1);
+  } else if (argc == 2) {
+    nNums = atoi(argv[1]);
+  }
+
+  data = malloc(nNums*sizeof(int));
+
+  srand(time(NULL));
+  for (i = 0; i < nNums; i++) {
+    data[i] = rand() % (2*MAX_NUM) - MAX_NUM;
+    sum += data[i];
+  }
+	//printf("Reg: %p, slow: %p\n", fastSum, _cilk_fastSum_slow);
+  counter = 0;
+  startTimer();
+  spawn parforpar(0, nNums-1, 1, batchIncrement, (void*)data);
+  sync;
+  stopTimer();
+  printf("%lf ms\n", getWallTime());
+
+  assert(counter == sum);
+
+  free(data);
+
+  return 0;
+}

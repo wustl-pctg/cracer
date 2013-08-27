@@ -1,0 +1,85 @@
+//#define USE_LOCKS //Should be commented out or not included in batch test files
+#include "ds/btree.cilkh"
+#include <getopt.h>
+#include <string.h>
+#include <stdio.h>
+#include "util/timer.h"
+#include <stdlib.h>
+
+void usage() {
+  printf("use default arguments");
+}
+
+cilk int main(int argc, char **argv)
+{
+	struct tree23* test_tree;
+
+	int test_size = 10;
+	int verbose = 0;
+	int option;
+	int opt_index;
+
+	struct option all_options[] ={
+		{"size",required_argument,0,'s'},
+		{"verbose", no_argument,0,'v'}
+	};
+
+	while((option = getopt_long(argc,argv,"s:v",all_options,&opt_index))!=-1){
+
+		switch(option){
+		case 0:
+			if (all_options[opt_index].flag!=0){
+				break;
+			}
+			else{
+				printf("Invalid option.\n");
+				break;
+			}
+		case 's':
+			test_size=atoi(optarg);
+			break;
+		case 'v':
+			verbose=1;
+			break;
+		default:
+			usage();
+			return -1;
+		}
+	}
+
+	//Processes arugment (no -s option) also as size.
+	if (argc==1 || optind != argc-1){
+	  usage();
+	  return -1;
+	} else {
+	  test_size=atoi(argv[optind]);
+	}
+
+	test_tree = create_tree(-1);
+
+
+	//Perform Tests--------------------------
+#ifdef USE_LOCKS
+	if (verbose) {
+		printf("begin test\nUSE_LOCKS is on - it should be off\n");
+	}
+#else
+	if (verbose) {
+		printf("begin test\nUSE_LOCKS is off\n");
+	}
+#endif
+
+	startTimer();
+	spawn parallel_for_batch_insert(test_tree, 0, test_size);
+	sync;
+	stopTimer();
+
+	if (verbose){
+		printf("Locks. Size %d. \n", test_size);
+	}
+	printf("%lf\n", getWallTime());
+
+	//print_tree(test_tree->root, 0);
+	delete_tree(test_tree);
+	return 0;
+}

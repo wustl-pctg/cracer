@@ -1,0 +1,112 @@
+#ifndef _BTREE_CILKH
+#define _BTREE_CILKH
+
+#define VOID_DATA (int)-INFINITY
+#define PARALLEL_CUTOFF 50
+#define USE_LOCKS 1
+
+#include <cilk-lib.cilkh>
+/*! \file
+	\brief A 2-3 Tree that supports parallel operations.
+
+	Tyler Romero and Kefu Lu
+*/
+/*
+	TODO: Use a Parallel sort from the cilk library instead of just calling qsort from the C library
+*/
+/*! \def PARALLEL_CUTOFF
+	\brief No parallel_for loops below this size.
+
+*/
+/*! \brief A node in a 2-3 tree.
+
+	Contains member variables:
+	Left, middle and right pointers.
+	Relevant data: the max of the left, the max of the middle, and the max of the entire node.
+	Height: by definition leafs have a height of 0.
+	mark_status is used in the insert/delete algorithms to mark nodes.
+
+	Note that by the C standard, compilers are not allowed to change the order of fields in a struct.
+*/
+struct node23
+{
+	struct node23 *left, *middle, *right;
+	int left_data, right_data;
+	int max;
+	int height;
+	enum mark_status{unmarked, marked} is_marked;
+};
+
+/*! \brief A 2-3 Tree. It has a root.
+ */
+struct tree23
+{
+	struct node23 *root;
+#ifdef USE_LOCKS
+	Cilk_lockvar lock;
+#endif
+};
+
+
+/*-----------------------------Function Declarations----------------------------------------------------------------------------*/
+//Initialization Functions
+struct node23* create_node(int node_data);
+struct tree23* create_tree(int node_data);
+
+//Delete Tree
+void delete_tree_helper(struct node23 *dead_node);
+void delete_tree(struct tree23 *dead_tree);
+
+//Special Search Functions
+int binary_search_function(int (*function_ptr)(int, int, struct node23**, struct node23*), struct node23** node_array, int size, struct node23* target);
+int find_first(int index, int bound, struct node23** node_array, struct node23* target); 		
+int find_last(int index, int bound, struct node23** node_array, struct node23* target); 		
+int find_insert_index(int *input_array, int size, struct node23* target);				
+
+//Datastructure functions (to act like a concurrent datastructure)
+cilk void insert_item(struct tree23* tree, int input);
+cilk void lock_insert(struct tree23* tree, int input);
+struct node23* sequential_insert_helper(struct node23* node, struct node23* insert);
+
+//Search and Mark
+struct node23* searchAndMark(struct node23* current_node, int key, int mark);					
+cilk struct node23* callSearchAndMark(struct node23* root, int key, int mark);					
+int search_mark_and_height(struct node23* current_node, int key, int height);
+void search_for_delete(struct node23* root, int key);
+	
+//Batch Insert Function and helper functions
+cilk void complex_batch_insert(void* current_tree, void *input_integers, size_t size, void*useless);
+cilk struct node23** recursive_split(struct node23* current_node, struct node23** search_array, int *input_integers, int size, int *return_size);
+cilk struct node23** create_and_link_parent_nodes(int size_a, int size_b, int size_c, struct node23 **node_array_a, struct node23 **node_array_b, struct node23 **node_array_c);
+	
+//Batch Remove Function and helper functions
+cilk void complex_batch_remove(struct tree23* current_tree, int *input_integers, int size);
+cilk struct node23* recursive_combine(struct node23* current_node);
+void fix_children(struct node23* current_node, struct node23** result_array);
+cilk void restructure_children(struct node23** current_node);
+struct node23** recursive_merge_tree(struct node23* current_node, struct node23* target_node, int *return_size);
+struct node23* merge_trees(struct node23* tree1, struct node23* tree2);
+void fix_node_values(struct node23* node);
+
+//Print Tree using an in-order tree-walk.
+void print_tree(struct node23 *current_node, int i);	
+
+//Other
+int compare_integers(const void *A, const void *B);		//Needed for the sort in the insertion.
+
+//Parallel Functions
+cilk void basic_parallel_for(int start, int end, int first, int insert, int last, struct node23** result, int *input_integers, cilk void (*function_ptr)(struct node23**,int*,int,int,int,int));
+cilk void parallel_for_mark(struct node23* root, int* input_integers, struct node23** result_array, int start, int end);
+cilk void create_node_array(struct node23** result, int* input_integers, int first, int insert, int last, int index);
+cilk void create_node_array_2(struct node23** result, int* input_integers, int first, int insert, int last, int index);
+cilk void parallel_for_parent_creator(int start, int end, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b,
+																			struct node23** node_array_c, cilk void (*function_ptr)(int, int, int, int, struct node23**, struct node23**, struct node23**, struct node23**));
+cilk void triplet_parent_creator(int i, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b, struct node23** node_array_c);
+cilk void pair_parent_creator(int pair_counter, int size_a, int size_b, int constant, struct node23** result, struct node23** node_array_a, struct node23** node_array_b, struct node23** node_array_c);
+cilk void mark_for_delete(struct node23* root, int* input, int first, int last);
+cilk void parallel_apply_funct(void* results, void (*func)(int, void*), int start, int end);
+void funct_create_nodes(int, void*);
+void funct_fix_values(int,void*);
+cilk void parallel_for_batch_insert(struct tree23* current_tree, int start, int end);
+
+#endif

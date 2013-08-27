@@ -1,0 +1,47 @@
+#ifndef _DYNARRAY_CILKH
+#define _DYNARRAY_CILKH
+
+#define VOID_DATA (int)-INFINITY
+#define DEFAULT_SIZE 10			//!<The default size to initalize a dynamic array to
+#define PARALLEL_CUTOFF 100		//!<The cutoff for converting from a parallel_for loop to a sequential for loop
+
+/*! \file
+	\brief Dynamically Resizing Array that supports copying and inserting in parallel
+*/
+
+//Tyler Romero
+//Push_back functions are finished
+
+/*-----------------------Structs------------------------------------------------*/
+//!	A Dynamically Resizing Array that supports parallel resizing and inserting
+/*! Holds integers
+*/
+struct dyn_array
+{
+	int* array;			//!<The actual array used to store data
+	size_t size;		//!<The total memory allocated to the array, in terms of integers
+	size_t used;		//!<The current number of intergs held in the array
+	#ifdef USE_LOCKS
+	Cilk_lockvar lock;
+	#endif
+};
+typedef struct dyn_array dyn_array;
+
+
+
+
+/*-----------------------Function Declarations----------------------------------*/
+dyn_array* create_array();		//Initializes a new dynamic array
+void delete_array(dyn_array* dead_array);
+cilk void resize(dyn_array* current_array, int new_size);
+cilk void batch_push_back(void* array, void* data, size_t input_size, void* result);	//Adds input array to the end of dynamic array
+cilk void push_back_iterator(dyn_array* current_array, int* input, int i);
+cilk void push_back(dyn_array* current_array, int* input);		//Adds integer to the end of the dynamic array
+cilk void parallel_push_back(dyn_array* current_array, int* input, size_t size);
+int safe_access(dyn_array* current_array, int index);		//Gives an error and returns VOID_DATA if index is out of range
+void print_array(dyn_array* current_array);
+cilk void parallel_for(dyn_array* current_array, int* other_array, cilk void(*parallel_function)(dyn_array*,int*,int), int start, int end);
+cilk void copy(dyn_array* current_array, int* temp, int i);
+cilk void insert(dyn_array* current_array, int* input, int i);
+
+#endif

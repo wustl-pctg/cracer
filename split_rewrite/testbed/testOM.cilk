@@ -1,0 +1,127 @@
+#include <getopt.h>
+#include "ds/omTree.cilk"
+#include "util/timer.h"
+
+//NEED TO SET UP DEFAULTS
+
+//DO NOT RUN ACTUAL TESTS WITH THIS YET, STILL NEED TO ADD LAYER OF INDIRECTION
+
+
+extern void printBatcherStats();
+
+void usage() {
+  printf("use default arguments");
+}
+
+cilk int main(int argc, char **argv)
+{
+	int* item_ints;
+	int* insert_ints;
+	itemOM* base;
+	itemOM** item_array;
+	itemOM** insert_array;
+	int int_base = -1;
+	int i;
+	OM* testOM;
+	
+	int test_size = 10;
+	int verbose = 0;
+	int option;
+	int opt_index;
+
+	struct option all_options[] ={
+     {"size",required_argument,0,'s'},
+     {"verbose", no_argument,0,'v'}
+    };
+	
+	base = create_itemOM(&int_base);
+	
+	
+	//---------Set Up Command Line Arguements---------------------
+	while((option = getopt_long(argc,argv,"s:v",all_options,&opt_index))!=-1){
+     
+	switch(option){
+      case 0:
+		if (all_options[opt_index].flag!=0){
+		  break;
+		}
+		else{
+		  printf("Invalid option.\n");
+		  break;
+		}
+      case 's':
+	test_size=atoi(optarg);
+	break;
+      case 'v':
+	verbose=1;
+	break;
+      default:
+	usage();
+	return -1;
+      }
+    }
+
+	testOM = spawn create_OM(base);
+	sync;
+	
+	
+	
+	//--------Initialize Arrays--------------
+	item_ints = (int*)malloc(sizeof(int) * test_size);
+	insert_ints = (int*)malloc(sizeof(int) * test_size);
+	item_array = (itemOM**)malloc(sizeof(itemOM*) * test_size);
+	insert_array = (itemOM**)malloc(sizeof(itemOM*) * test_size);
+	
+	if(item_ints == NULL || insert_ints == NULL || item_array == NULL || insert_array == NULL)
+		printf("Out of memory\n");
+	
+	for(i=0;i<test_size; ++i)
+	{
+		item_ints[i] = i;
+		item_array[i] = create_itemOM(NULL);
+		insert_array[i] = create_itemOM(NULL);
+		if(item_array[i] == NULL || insert_array[i] == NULL) printf("Out of memory\n");
+		
+	}
+	
+	
+	
+	//---------Insert "Existing" items-----------
+	for(i=0;i<test_size; ++i)
+	{
+		spawn lock_insert(testOM, base, item_array[i]);
+		sync;
+	}
+	
+	
+	
+	//----------TEST------------
+	if(verbose)
+	{
+		printf("Begin Test\n");
+	}
+	startTimer();
+	spawn parallel_for_lock_insert(testOM, item_array, insert_array, 0, test_size);
+	sync;
+	stopTimer();
+	
+	if(verbose)
+	{
+		printf("Batch\tsize: %d\n", test_size);
+	}
+	printf("%lf\n", getWallTime());
+	if(verbose)
+	{
+		printBatcherStats();
+	}
+	
+	//print_OM(testOM, 1);
+	
+	
+	free(item_ints);
+	free(insert_ints);
+	free(item_array);
+	free(insert_array);
+	
+	return 0;
+}
