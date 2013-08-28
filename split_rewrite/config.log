@@ -133,12 +133,12 @@ configure:3797: checking lex output file root
 configure:3813: result: lex.yy
 configure:3818: checking lex library
 configure:3837: gcc -o conftest -g -O0   conftest.c   >&5
-/tmp/ccfaxxNp.o: In function `yylex':
-/home/bss45/parallelDS/split_rewrite/lex.yy.c:845: undefined reference to `yywrap'
-/tmp/ccfaxxNp.o: In function `input':
-/home/bss45/parallelDS/split_rewrite/lex.yy.c:1146: undefined reference to `yywrap'
-/tmp/ccfaxxNp.o: In function `main':
-/home/bss45/parallelDS/split_rewrite/conftest.l:17: undefined reference to `yywrap'
+/tmp/ccMCC0DS.o: In function `yylex':
+/home/bss45/parallelDS_test/split_rewrite/lex.yy.c:845: undefined reference to `yywrap'
+/tmp/ccMCC0DS.o: In function `input':
+/home/bss45/parallelDS_test/split_rewrite/lex.yy.c:1146: undefined reference to `yywrap'
+/tmp/ccMCC0DS.o: In function `main':
+/home/bss45/parallelDS_test/split_rewrite/conftest.l:17: undefined reference to `yywrap'
 collect2: ld returned 1 exit status
 configure:3843: $? = 1
 configure: failed program was:
@@ -2480,8 +2480,8 @@ configure:20798: $? = 0
 configure:20816: result: yes
 configure:20830: checking for gethrtime
 configure:20886: gcc -o conftest -g -O0   conftest.c -lm  >&5
-/tmp/ccGrcP9j.o: In function `main':
-/home/bss45/parallelDS/split_rewrite/conftest.c:78: undefined reference to `gethrtime'
+/tmp/ccqI1fNs.o: In function `main':
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:78: undefined reference to `gethrtime'
 collect2: ld returned 1 exit status
 configure:20892: $? = 1
 configure: failed program was:
@@ -2569,8 +2569,8 @@ configure: failed program was:
 configure:20910: result: no
 configure:20924: checking for gethrvtime
 configure:20980: gcc -o conftest -g -O0   conftest.c -lm  >&5
-/tmp/ccQIUgZj.o: In function `main':
-/home/bss45/parallelDS/split_rewrite/conftest.c:78: undefined reference to `gethrvtime'
+/tmp/ccYOS9PE.o: In function `main':
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:78: undefined reference to `gethrvtime'
 collect2: ld returned 1 exit status
 configure:20986: $? = 1
 configure: failed program was:
@@ -2666,8 +2666,8 @@ configure:21174: $? = 0
 configure:21192: result: yes
 configure:21206: checking for yield
 configure:21262: gcc -o conftest -g -O0   conftest.c -lm  >&5
-/tmp/ccOQclzg.o: In function `main':
-/home/bss45/parallelDS/split_rewrite/conftest.c:80: undefined reference to `yield'
+/tmp/ccGEb9hX.o: In function `main':
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:80: undefined reference to `yield'
 collect2: ld returned 1 exit status
 configure:21268: $? = 1
 configure: failed program was:
@@ -2757,8 +2757,8 @@ configure: failed program was:
 configure:21286: result: no
 configure:21300: checking for sginap
 configure:21356: gcc -o conftest -g -O0   conftest.c -lm  >&5
-/tmp/ccOFNiaz.o: In function `main':
-/home/bss45/parallelDS/split_rewrite/conftest.c:80: undefined reference to `sginap'
+/tmp/cc6SGs7Z.o: In function `main':
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:80: undefined reference to `sginap'
 collect2: ld returned 1 exit status
 configure:21362: $? = 1
 configure: failed program was:
@@ -2918,11 +2918,11 @@ configure: failed program was:
 configure:21749: result: no
 configure:21622: checking whether pthreads work without any flags
 configure:21723: gcc -o conftest -g -O0    conftest.c  -lm  >&5
-/tmp/ccxcIdOj.o: In function `main':
-/home/bss45/parallelDS/split_rewrite/conftest.c:51: undefined reference to `pthread_join'
-/home/bss45/parallelDS/split_rewrite/conftest.c:53: undefined reference to `__pthread_register_cancel'
-/home/bss45/parallelDS/split_rewrite/conftest.c:54: undefined reference to `pthread_create'
-/home/bss45/parallelDS/split_rewrite/conftest.c:56: undefined reference to `__pthread_unregister_cancel'
+/tmp/ccQRcohj.o: In function `main':
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:51: undefined reference to `pthread_join'
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:53: undefined reference to `__pthread_register_cancel'
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:54: undefined reference to `pthread_create'
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:56: undefined reference to `__pthread_unregister_cancel'
 collect2: ld returned 1 exit status
 configure:21729: $? = 1
 configure: failed program was:
@@ -2989,11 +2989,11 @@ configure:21749: result: no
 configure:21627: checking whether pthreads work with -Kthread
 configure:21723: gcc -o conftest -g -O0 -Kthread   conftest.c  -lm  >&5
 gcc: unrecognized option '-Kthread'
-/tmp/cckPs0qt.o: In function `main':
-/home/bss45/parallelDS/split_rewrite/conftest.c:51: undefined reference to `pthread_join'
-/home/bss45/parallelDS/split_rewrite/conftest.c:53: undefined reference to `__pthread_register_cancel'
-/home/bss45/parallelDS/split_rewrite/conftest.c:54: undefined reference to `pthread_create'
-/home/bss45/parallelDS/split_rewrite/conftest.c:56: undefined reference to `__pthread_unregister_cancel'
+/tmp/ccS9iGtq.o: In function `main':
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:51: undefined reference to `pthread_join'
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:53: undefined reference to `__pthread_register_cancel'
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:54: undefined reference to `pthread_create'
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:56: undefined reference to `__pthread_unregister_cancel'
 collect2: ld returned 1 exit status
 configure:21729: $? = 1
 configure: failed program was:
@@ -3060,11 +3060,11 @@ configure:21749: result: no
 configure:21627: checking whether pthreads work with -kthread
 configure:21723: gcc -o conftest -g -O0 -kthread   conftest.c  -lm  >&5
 gcc: unrecognized option '-kthread'
-/tmp/cciVsOBM.o: In function `main':
-/home/bss45/parallelDS/split_rewrite/conftest.c:51: undefined reference to `pthread_join'
-/home/bss45/parallelDS/split_rewrite/conftest.c:53: undefined reference to `__pthread_register_cancel'
-/home/bss45/parallelDS/split_rewrite/conftest.c:54: undefined reference to `pthread_create'
-/home/bss45/parallelDS/split_rewrite/conftest.c:56: undefined reference to `__pthread_unregister_cancel'
+/tmp/cc66Apbb.o: In function `main':
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:51: undefined reference to `pthread_join'
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:53: undefined reference to `__pthread_register_cancel'
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:54: undefined reference to `pthread_create'
+/home/bss45/parallelDS_test/split_rewrite/conftest.c:56: undefined reference to `__pthread_unregister_cancel'
 collect2: ld returned 1 exit status
 configure:21729: $? = 1
 configure: failed program was:
@@ -3364,15 +3364,15 @@ lt_lt_cv_sys_global_symbol_to_cdecl='"sed -n -e '\''s/^. .* \\(.*\\)\$/extern in
 ## Output variables. ##
 ## ----------------- ##
 
-ACLOCAL='${SHELL} /home/bss45/parallelDS/split_rewrite/missing --run aclocal-1.10'
+ACLOCAL='${SHELL} /home/bss45/parallelDS_test/split_rewrite/missing --run aclocal-1.10'
 AMDEPBACKSLASH='\'
 AMDEP_FALSE='#'
 AMDEP_TRUE=''
-AMTAR='${SHELL} /home/bss45/parallelDS/split_rewrite/missing --run tar'
+AMTAR='${SHELL} /home/bss45/parallelDS_test/split_rewrite/missing --run tar'
 AR='ar'
-AUTOCONF='${SHELL} /home/bss45/parallelDS/split_rewrite/missing --run autoconf'
-AUTOHEADER='${SHELL} /home/bss45/parallelDS/split_rewrite/missing --run autoheader'
-AUTOMAKE='${SHELL} /home/bss45/parallelDS/split_rewrite/missing --run automake-1.10'
+AUTOCONF='${SHELL} /home/bss45/parallelDS_test/split_rewrite/missing --run autoconf'
+AUTOHEADER='${SHELL} /home/bss45/parallelDS_test/split_rewrite/missing --run autoheader'
+AUTOMAKE='${SHELL} /home/bss45/parallelDS_test/split_rewrite/missing --run automake-1.10'
 AWK='mawk'
 CC='gcc'
 CCDEPMODE='depmode=gcc3'
@@ -3408,7 +3408,7 @@ LIBS='-lm '
 LIBTOOL='$(SHELL) $(top_builddir)/libtool'
 LN_S='ln -s'
 LTLIBOBJS=''
-MAKEINFO='${SHELL} /home/bss45/parallelDS/split_rewrite/missing --run makeinfo'
+MAKEINFO='${SHELL} /home/bss45/parallelDS_test/split_rewrite/missing --run makeinfo'
 OBJEXT='o'
 PACKAGE='cilk'
 PACKAGE_BUGREPORT=''
@@ -3461,7 +3461,7 @@ host_vendor='pc'
 htmldir='${docdir}'
 includedir='${prefix}/include'
 infodir='${datarootdir}/info'
-install_sh='$(SHELL) /home/bss45/parallelDS/split_rewrite/install-sh'
+install_sh='$(SHELL) /home/bss45/parallelDS_test/split_rewrite/install-sh'
 libdir='${exec_prefix}/lib'
 libexecdir='${exec_prefix}/libexec'
 localedir='${datarootdir}/locale'
