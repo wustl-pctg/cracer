@@ -207,6 +207,7 @@ static void init_variables(CilkContext *context)
   /* initialize all shared_ro variables declared above */
   INIT_PARAMETER1(active_size, USE_PARAMETER1(options->nproc));
   INIT_PARAMETER1(dsprob, USE_PARAMETER1(options->dsprob));
+  INIT_PARAMETER1(batchprob, USE_PARAMETER1(options->batchprob));
   INIT_PARAMETER1(infofile, (FILE *)0); /*pointer to the stats. output file)*/
   INIT_PARAMETER1(pthread_stacksize, USE_PARAMETER1(options->pthread_stacksize));
 

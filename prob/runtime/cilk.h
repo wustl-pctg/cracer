@@ -225,7 +225,8 @@ typedef struct {
   __CILKSAFE__ int pthread_stacksize;
 
   // Probability of DS-steal
-  __CILKSAFE__ double dsprob;
+  __CILKSAFE__ int dsprob;
+  __CILKSAFE__ int batchprob;
   
   /*
    * HACK: this should be FILE *; but using a void * simplifies the

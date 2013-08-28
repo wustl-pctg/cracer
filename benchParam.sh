@@ -1,7 +1,7 @@
 #!/bin/zsh
 
-NPROC=16
-ITER=10
+NPROC=8
+ITER=5
 
 WORKMIN=0.05
 WORKMAX=2.0
@@ -20,11 +20,11 @@ if [ $? -ne 0 ]; then
 fi
 cd ../..
 
-for ((BTEST = 0; BTEST <= 3; BTEST += 1))
+for ((BTEST = 0; BTEST <= 1; BTEST += 1))
 do
 		FILE="param${BTEST}.${DATE}.log"
 		echo "WORKTIME,REALTIME,WORK,OPS,NPROC,ITER,LOCKS,BATCH,RATIO" >> $FILE
-		for ((WORK = WORKMIN;WORK <= $WORKMAX;WORK += $WORKINTER))
+		for ((WORK = $WORKMIN;WORK <= $WORKMAX;WORK += $WORKINTER))
 		do
 				for ((OP = OPMIN;OP <= $OPMAX;OP += $OPINTER))
 				do

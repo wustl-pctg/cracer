@@ -35,7 +35,7 @@ FILE_IDENTITY(ident,
 							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cmdline.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
 enum {
-  NONE, NPROC, DSPROB, BTEST, STATS, NO_STATS, HELP, STACK, YIELD, NO_YIELD,
+  NONE, NPROC, DSPROB, BATCHPROB, BTEST, STATS, NO_STATS, HELP, STACK, YIELD, NO_YIELD,
   PTHREAD_STACKSIZE,
   POSIX_LOCKS, MEMORY_LOCKS,
   INFOFILE, DUMP_CORE, NO_DUMP_CORE, PINNED_PROC,  ALLOC_BATCH,
@@ -65,6 +65,9 @@ static struct options {
   },
   {
     "dsprob", DSPROB, "--dsprob <n>: the probability that a thread will steal from the data structure-level of deques"
+  },
+  {
+    "batchprob", BATCHPROB, "--batchprob <n>: the probability that a batch worker will steal in the batch"
   },
   {
     "btest", BTEST, "--btest <n>: enable extra batch features to test"
@@ -224,9 +227,16 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
     case DSPROB:
       ++i;
       CHECK(i < *argc, "argument missing");
-      options->dsprob = atof(argv[i]);
-      CHECK(options->dsprob < 1.0, "invalid ds-stealing probability");
-      CHECK(options->dsprob >= 0.0, "invalid ds-stealing probability");
+      options->dsprob = atoi(argv[i]);
+      CHECK(options->dsprob <= 100, "invalid ds-stealing probability");
+      CHECK(options->dsprob >= 0, "invalid ds-stealing probability");
+      break;
+    case BATCHPROB:
+      ++i;
+      CHECK(i < *argc, "argument missing");
+      options->batchprob = atoi(argv[i]);
+      CHECK(options->batchprob <= 100, "invalid ds-stealing probability");
+      CHECK(options->batchprob >= 0, "invalid ds-stealing probability");
       break;
     case BTEST:
       ++i;

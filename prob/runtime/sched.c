@@ -1692,8 +1692,9 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			Cilk_enter_state(ws, STATE_STEALING);
 
 			// Decide where to steal from
-			if ((rts_rand(ws) % 100) < (USE_PARAMETER(dsprob)*100)
-					&& !(USE_SHARED(pending_batch).size > MAX_BATCH_SIZE)) {
+			if (rts_rand(ws) % 100 <= USE_PARAMETER(dsprob)) {
+										/* && !(USE_SHARED(pending_batch).size >
+											 MAX_BATCH_SIZE)) { // test *** */
 				// data structure steal
 				ws->batch_id = USE_SHARED(current_batch_id);
 				batch_scheduler(ws, (Closure *) NULL);
@@ -1740,9 +1741,8 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
 {
 	Cilk_enter_state(ws, STATE_USER0);
-	int x = USE_SHARED(current_batch_id) > batch_id || USE_SHARED(batch_owner) == -1;
+	return USE_SHARED(current_batch_id) > batch_id || USE_SHARED(batch_owner) == -1;
 	Cilk_exit_state(ws, STATE_USER0);
-	return x;
 }
 
 void batch_scheduler(CilkWorkerState *const ws, Closure *t)
@@ -1765,38 +1765,38 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 			deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
 		}
 
-		//    if (!t && USE_SHARED(current_batch_id) != ws->batch_id) {	// finished the batch
 		if(!t && batch_done_yet(ws, ws->batch_id)) {
 			break;
 		}
 
-		//    while (!t && USE_SHARED(current_batch_id) == ws->batch_id) {
 		while (!t && !batch_done_yet(ws, ws->batch_id)) {
 			// Otherwise, steal
-			Cilk_enter_state(ws, STATE_DS_STEALING);
+			if (rts_rand(ws) % 100 <= USE_PARAMETER(batchprob)) {
+				Cilk_enter_state(ws, STATE_DS_STEALING);
 
-			if ( (USE_PARAMETER(options->btest) & 1)  == 1) {
-				int range = USE_SHARED(pending_batch).size;
-				victim = range == 1 ? 0 : rts_rand(ws) % (range-1) + 1;
-				victim = USE_SHARED(batch_workers_list)[victim];
-			}	else {
-				victim = rts_rand(ws) & USE_PARAMETER(active_size);
-			}
-			if (victim != ws->self &&
-					USE_SHARED(pending_batch).array[victim].status == DS_IN_PROGRESS) {
-				t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
-				if (!t && USE_PARAMETER(options->yieldslice) &&
-						USE_SHARED(current_batch_id) == ws->batch_id) {
-					Cilk_lower_priority(ws);
+				if ( (USE_PARAMETER(options->btest) & 1)  == 1) {
+					int range = USE_SHARED(pending_batch).size;
+					victim = range == 1 ? 0 : rts_rand(ws) % (range-1) + 1;
+					victim = USE_SHARED(batch_workers_list)[victim];
+				}	else {
+					victim = rts_rand(ws) & USE_PARAMETER(active_size);
 				}
+				if (victim != ws->self &&
+						USE_SHARED(pending_batch).array[victim].status == DS_IN_PROGRESS) {
+					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
+					if (!t && USE_PARAMETER(options->yieldslice) &&
+							USE_SHARED(current_batch_id) == ws->batch_id) {
+						Cilk_lower_priority(ws);
+					}
+				}
+				Cilk_exit_state(ws, STATE_DS_STEALING);
 			}
-			Cilk_exit_state(ws, STATE_DS_STEALING);
 		}
 
 		if (USE_PARAMETER(options->yieldslice))
 			Cilk_raise_priority(ws);
 
-		//    if (USE_SHARED(current_batch_id) == ws->batch_id) {
+		// I think we can just check t here, not if the batch is done ***test
 		if (t && !batch_done_yet(ws, ws->batch_id)) {
 			Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));

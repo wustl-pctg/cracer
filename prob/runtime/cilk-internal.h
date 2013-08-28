@@ -151,15 +151,15 @@ extern void Cilk_scheduler_init(CilkContext *const context);
 extern void Cilk_scheduler_terminate(CilkContext *const);
 extern void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws);
 extern Closure *Cilk_create_initial_thread(
-	CilkContext *const context,
-	void (*import_main)(CilkWorkerState *const ws, void *args),
-	void *args,
-	int return_size);
+																					 CilkContext *const context,
+																					 void (*import_main)(CilkWorkerState *const ws, void *args),
+																					 void *args,
+																					 int return_size);
 extern void Cilk_scheduler(CilkWorkerState *const ws, Closure *t);
 void Cilk_remove_and_free_closure_and_frame(
-	CilkWorkerState *const ws, CilkStackFrame *f, int pn);
+																						CilkWorkerState *const ws, CilkStackFrame *f, int pn);
 extern void Cilk_destroy_frame(
-	CilkWorkerState *const ws, CilkStackFrame *f, size_t size);
+															 CilkWorkerState *const ws, CilkStackFrame *f, size_t size);
 extern void Cilk_worker_wait_for_invocation(CilkContext *const /*context*/, long /*self*/, int */*local_terminating*/);
 extern void Cilk_worker_is_done(CilkContext *const /*context*/, int */*local_terminating*/);
 extern void Cilk_scheduler_per_worker_terminate(CilkWorkerState *const /*ws*/);
@@ -169,7 +169,7 @@ extern void Cilk_wakeup_workers(CilkContext *const /*context*/);
 
 /* exit protocol */
 extern void Cilk_exit_from_user_main(
-	CilkWorkerState *const ws, Closure *cl, int res);
+																		 CilkWorkerState *const ws, Closure *cl, int res);
 extern void Cilk_really_exit(CilkWorkerState *const ws, int res);
 extern void Cilk_really_exit_1(CilkWorkerState *const ws, int res);
 /* Ofra and Sivan: changed Cilk_die to Cilk_die_external, 19 June 2003 */
@@ -420,7 +420,8 @@ extern Closure *Cilk_Closure_create_malloc(CilkContext *const context, CilkWorke
 struct Cilk_options_s
 {
   int nproc;
-  double dsprob;
+	int dsprob;
+	int batchprob;
 	int btest;
   int stackdepth;
   int statlevel;
@@ -435,12 +436,13 @@ struct Cilk_options_s
 
 /* command-line parser */
 extern int Cilk_parse_command_line(
-	Cilk_options *options, int *argc, char *argv[]);
+																	 Cilk_options *options, int *argc, char *argv[]);
 
 #define CILK_DEFAULT_OPTIONS										\
   {																							\
     1,																					\
-      0.5,																			\
+      50,																				\
+      100,																				\
 			0,																				\
       CILK_DEFAULT_STACK_DEPTH,									\
       0,																				\

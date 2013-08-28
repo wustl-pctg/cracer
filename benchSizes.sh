@@ -24,7 +24,7 @@ HEADER=$(echo $HEADER | sed s'/,$//')
 for ((BTEST = 0; BTEST <= 3; BTEST += 1))
 do
 		FILE="sizes${BTEST}.${DATE}.log";
-		prob/testbed/param --nproc $NPROC --btest $BTEST --stats -1 -w $WORK -o $OP -i $ITER 2>> $FILE
+		prob/testbed/param --nproc $NPROC --btest $BTEST --stats -1 -w $WORK -o $OPS -i $ITER 2>> $FILE
 
 		echo $HEADER > temp
 		cat $FILE | grep "Batch sizes" | tr -d 'Batch sizes:' | tr -d ' ' | sed s'/,$//' >> temp

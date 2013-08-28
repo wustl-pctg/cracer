@@ -2,7 +2,7 @@
 #define _DEFAULTS_H
 
 #ifndef PARFOR_THRESHOLD
-#define PARFOR_THRESHOLD 128
+#define PARFOR_THRESHOLD 32
 #endif
 
 #ifndef PARFORPAR_THRESHOLD
@@ -10,7 +10,7 @@
 #endif
 
 #ifndef BATCH_THRESHOLD
-#define BATCH_THRESHOLD USE_PARAMETER2(active_size)/2
+#define BATCH_THRESHOLD USE_PARAMETER2(active_size)
 #endif
 
 #define DUMMY_WAIT 512 ///< Loop iteration to wait (to simulate operation time)
