@@ -440,8 +440,8 @@ extern int Cilk_parse_command_line(
 #define CILK_DEFAULT_OPTIONS			\
   {						\
     1,						\
-      0.5,					\
-			0,           \
+      0,					\
+			0.5,           \
       CILK_DEFAULT_STACK_DEPTH,			\
       0,					\
       0,					\
