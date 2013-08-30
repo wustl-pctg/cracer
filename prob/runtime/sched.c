@@ -1813,6 +1813,7 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 		// I think we can just check t here, not if the batch is done ***test
 		/* if (t && !batch_done_yet(ws, ws->batch_id)) { */
 		if (t) {
+			printf("Worker %i successfully stole from the batch.", ws->self);
 			Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
 			Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
