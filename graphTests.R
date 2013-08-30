@@ -13,11 +13,11 @@ if (is.na(args[2])) {
 }
 
 
-t1 <- "test.8.0.0.s.log"
-t2 <- "test.8.0.0.p.log"
-t3 <- "test.8.0.100.s.log"
-t4 <- "test.8.50.100.p.log"
-t5 <- "test.8.50.100.s.log"
+t1 <- paste("test.",nproc,".0.0.s.log",sep="")
+t2 <- paste("test.",nproc,".0.0.p.log",sep="")
+t3 <- paste("test.",nproc,".0.100.s.log",sep="")
+t4 <- paste("test.",nproc,".50.100.p.log",sep="")
+t5 <- paste("test.",nproc,".50.100.s.log",sep="")
 
 d1 <- read.csv(file=t1, header=TRUE, sep=",")
 d2 <- read.csv(file=t2, header=TRUE, sep=",")

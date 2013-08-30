@@ -17,7 +17,7 @@ if [ $? -ne 0 ]; then
 fi
 cd ../..
 
-for ((NPROC = 8; NPROC <= 8; NPROC += 8))
+for ((NPROC = 16; NPROC <= 16; NPROC += 8))
 do
 		echo "WORKTIME,REALTIME,WORK,OPS,NPROC,ITER,LOCKS,BATCH,RATIO" > test.$NPROC.0.0.s.log
 		echo "WORKTIME,REALTIME,WORK,OPS,NPROC,ITER,LOCKS,BATCH,RATIO" > test.$NPROC.0.0.p.log
