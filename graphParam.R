@@ -7,7 +7,7 @@ if (is.na(args[1])) {
 	logFile <- args[1]
 }
 if (is.na(args[2])) {
-	 outFile <- "graph.pdf"
+	 outFile <- "graphs/param.pdf"
 } else {
 	outFile <- args[2]
 }

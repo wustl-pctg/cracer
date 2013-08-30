@@ -14,7 +14,7 @@ if (is.na(args[1])) {
 	logFile <- args[1]
 }
 if (is.na(args[2])) {
-	 outFile <- "sizes.pdf"
+	 outFile <- "graphs/sizes.pdf"
 } else {
 	outFile <- args[2]
 }

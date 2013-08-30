@@ -173,6 +173,9 @@ void Cilk_create_children(CilkContext *const context,
   pthread_setconcurrency(USE_PARAMETER1(active_size));
 
 	cpu_set_t mask;
+	CPU_ZERO(&mask);
+	CPU_SET(1, &mask);
+	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &mask);
   for (i = 0; i < USE_PARAMETER1(active_size); i++)
     {
 			// Set thread affinity
@@ -191,13 +194,13 @@ void Cilk_create_children(CilkContext *const context,
       if (res)
 				Cilk_die_internal(context, NULL, "Can't create threads\n");
 
-			if ((USE_PARAMETER1(options->btest) & 2) == 2) {
-				ret_val = pthread_setaffinity_np((USE_SHARED1(tid) + i), sizeof(cpu_set_t), &mask);
-			}
+			/* if ((USE_PARAMETER1(options->btest) & 2) == 2) { */
+			/* 	ret_val = pthread_setaffinity_np((USE_SHARED1(tid) + i), sizeof(cpu_set_t), &mask); */
+			/* } */
 
-      if (ret_val != 0) {
-				//				printf("Warning: Could not set CPU affinity for %i with error %i\n", i, ret_val);
-      }
+      /* if (ret_val != 0) { */
+			/* 	printf("Warning: Could not set CPU affinity for %i with error %i\n", i, ret_val); */
+      /* } */
 
     }
 }
