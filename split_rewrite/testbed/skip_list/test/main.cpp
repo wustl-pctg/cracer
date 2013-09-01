@@ -36,7 +36,7 @@
 #include "Configuration.h"
 
 //FC research includes .................................
-//#include "../data_structures/FCQueue.h"
+#include "../data_structures/FCQueue.h"
 //#include "../data_structures/MSQueue.h"
 //#include "../data_structures/BasketQueue.h"
 //#include "../data_structures/LFStack.h"
@@ -417,7 +417,7 @@ void RunBenchmark() {
 
 ITest* CreateDataStructure(char* final alg_name) {
 	//queue ....................................................................
-	if(0 == strcmp(alg_name, "fcqueue")) {
+	/*if(0 == strcmp(alg_name, "fcqueue")) {
 		return (new FCQueue());
 	}
 	if(0 == strcmp(alg_name, "msqueue")) {
@@ -453,13 +453,13 @@ ITest* CreateDataStructure(char* final alg_name) {
 	}
 	if(0 == strcmp(alg_name, "fcpairheap")) {
 		return (new FCPairHeap());
-	}
+	}*/
 	if(0 == strcmp(alg_name, "fcskiplist")) {
 		return (new FCSkipList());
 	}
-	if(0 == strcmp(alg_name, "lazyskiplist")) {
+	/*if(0 == strcmp(alg_name, "lazyskiplist")) {
 		return (new LazySkipList());
-	}
+	}*/
 
 	//..........................................................................
 	return null;
