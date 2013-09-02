@@ -1,0 +1,101 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "../util/parfor.cilkh"
+#include "stack.cilkh"
+
+Stack* create_stack(){
+       Stack* result = malloc(sizeof(Stack));
+       Cilk_lock_init(result->lock);
+       result->size=0;
+       result->start=NULL;
+       result->end=NULL;
+       return result;
+}
+
+/* Sequential push method */
+void push(Stack* ds, int data){
+  //Get lock on stack
+  node* ins = malloc(sizeof(node));
+  ins->data=data;
+  ins->next=NULL;
+  Cilk_lock(ds->lock);
+  if (ds->size==0){
+    ds->start=ins;
+    ds->end=ins;
+    ins->prev=NULL;
+  } else {
+    ins->prev=ds->end;
+    ds->end=ins;
+  }
+  ds->size++;
+  //Releases the lock
+  Cilk_unlock(ds->lock);
+}
+
+/* Batchify-caller method*/
+cilk void pushBatchify(Stack* ds, int data){
+  Cilk_batchify(_cilk_ws,&push_batch,ds,&data,sizeof(int),NULL);
+}
+
+/* Batch push method.*/
+cilk void push_batch(void* ds, void* oprec, size_t size, void* result){
+  Stack* stack = ds;
+  int* data=oprec;
+  //^ all the needed variables cast as proper types.
+  
+  //Temporary varibles.
+  node* new_nodes;
+  //int i;
+  void* pair[2];
+  new_nodes = calloc(size,sizeof(node));
+  pair[0]=new_nodes;
+  pair[1]=data;
+
+  //Parallel_for
+  spawn parforpar(0,size-1,1,parallel_set,pair);
+  sync;
+  /*for (i=0;i<size;i++){
+    new_nodes[i].data=data[i];
+    new_nodes[i].next=&new_nodes[i+1];
+    new_nodes[i].prev=&new_nodes[i-1];
+    }*/
+  new_nodes[0].prev=stack->end;
+  new_nodes[size-1].next=NULL;
+  
+  //Special case for initial creation.
+  if (stack->size==0){
+    stack->start=new_nodes;
+    stack->end = new_nodes;
+  }
+  //Normal case, which requires setting the end of the stack to point to the new item.
+  else {
+    stack->end->next=&new_nodes[size-1];
+    stack->end=&new_nodes[size-1];
+  }
+ 
+  stack->size+=size;
+  Cilk_terminate_batch(_cilk_ws);
+}
+
+/* For use by parforpar*/
+cilk void parallel_set(int i, void* in){
+  //The second argument is actually a void** that has two elements.
+    void** data=in;
+    node* new_nodes=data[0];
+    int* inputs=data[1];
+    new_nodes[i].data=inputs[i];
+    new_nodes[i].next=&new_nodes[i+1];
+    new_nodes[i].prev=&new_nodes[i-1];
+}
+
+/* Prints out the stack sequentially*/
+void printStack(Stack* ds) {
+  node* it = ds->start;
+  while (it!=NULL) {
+    printf("%d\n",it->data);
+    it=it->next;
+  }
+  return;
+}

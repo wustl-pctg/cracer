@@ -40,7 +40,7 @@ cilk:
 	make clean
 
 # Building our tests
-tests:  param counter btree dynArray concHash omPMA omTree
+tests:  param counter btree dynArray concHash omPMA omTree stack
 
 # Parameterized Test
 param: param.cilk
@@ -57,6 +57,7 @@ omPMA: LD += -lm
 omPMA: omPMALock_test omPMABatch_test
 omTree: LD += -lm
 omTree: omTreeLock_test omTreeBatch_test
+stack: stackBatch_test stackLock_test
 
 .PHONY: clean cilk-clean check-syntax doc information all
 clean:

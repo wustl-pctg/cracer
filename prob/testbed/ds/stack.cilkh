@@ -1,0 +1,25 @@
+#ifndef _STACK_H
+#define _STACK_H
+typedef struct node_stack{
+	int data;
+        struct node_stack* prev;
+	struct node_stack* next;
+} node;
+
+typedef struct stacker {
+       node* start;
+       node* end;
+       int size;
+       Cilk_lockvar lock;
+} Stack;
+
+/*"Public" methods*/
+Stack* create_stack();
+void push(Stack* ds, int data);
+cilk void pushBatchify(Stack* ds, int data);
+void printStack(Stack* ds);
+
+/*More "private" methods*/
+cilk void push_batch(void* ds, void* oprec, size_t size, void* result);
+cilk void parallel_set(int i, void* data);
+#endif
