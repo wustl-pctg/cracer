@@ -23,7 +23,7 @@ for p in nproc:
       stderr=subprocess.STDOUT)
     output = process.communicate()[0]
     tp = string.split(output);
-    print "b",str(p)
+    print "batcher @nproc",str(p)
     print size/float(tp[0]);
     #print size/float(tp[1]);
     output
