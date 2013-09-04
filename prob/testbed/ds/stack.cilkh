@@ -18,8 +18,13 @@ Stack* create_stack();
 void push(Stack* ds, int data);
 cilk void pushBatchify(Stack* ds, int data);
 void printStack(Stack* ds);
+cilk node* pop(Stack* ds);
+cilk void popBatchify(Stack* ds);
 
 /*More "private" methods*/
 cilk void push_batch(void* ds, void* oprec, size_t size, void* result);
 cilk void parallel_set(int i, void* data);
+node* popInternal(Stack* ds);
+cilk void pop_batch(void* ds, void* oprec, size_t size, void* result);
+
 #endif

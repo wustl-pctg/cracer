@@ -17,8 +17,19 @@ cilk void makeInsert(int i, void* data){
     sync;
 }
 
+cilk void makeRemove(int i, void* data){
+  Stack* ds = data;
+  spawn pushBatchify(ds,i);
+  sync;
+}
+
 cilk void runTest(Stack* ds, int size){
      spawn parforpar(0,size-1,1,&makeInsert, ds);    
+     sync;
+}
+
+cilk void runRemoveTest(Stack* ds, int size){
+     spawn parforpar(0,size-1,1,&makeRemove, ds);    
      sync;
 }
 
@@ -32,6 +43,8 @@ cilk int main(int argc, char* argv[]){
     int verbose=0;
     int opt_index;
     int option;
+    float addTime;
+    float removeTime;
     struct option all_options[] ={
       {"size",required_argument,0,'s'},
       {"verbose", no_argument,0,'v'}
@@ -73,11 +86,20 @@ cilk int main(int argc, char* argv[]){
     spawn runTest(test_stack,testSize);
     sync;
     //End timing here.
+    stopTimer();    
+    addTime = getWallTime();
+    printf("%lf\n", addTime);
+    startTimer();
+    spawn runRemoveTest(test_stack,testSize);
+    sync;
     stopTimer();
+    removeTime=getWallTime();
     if (verbose){
       printf("Batch. Size %d. \n",testSize);
     }
-    printf("%lf\n", getWallTime());
-    //    printStack(test_stack);
+    printf("%lf\n", removeTime);
+    if(verbose) {
+      printStack(test_stack);
+    }
     return 0;
 }

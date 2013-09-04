@@ -65,6 +65,7 @@ for thread in $threads; do
 
         line="$algorithm 1 non 0 non 0 non 0 $count $thread $percent 0.0 $capacity 10 0 $isview 0"
         line=`echo $line | sed 's/_/ /g'`
+	echo $line
         echo "$line" 1>&2
         echo -n "$line" >> $test
 

@@ -79,6 +79,51 @@ cilk void push_batch(void* ds, void* oprec, size_t size, void* result){
   Cilk_terminate_batch(_cilk_ws);
 }
 
+/*Pop using a lock*/
+cilk node* pop(Stack* ds){
+  node* result;
+  Cilk_lock(ds->lock);
+  result=popInternal(ds);
+  Cilk_unlock(ds->lock);
+  return result;
+}
+
+/*Batchify-caller for pop */
+cilk void popBatchify(Stack* ds){
+  Cilk_batchify(_cilk_ws,&pop_batch,ds,NULL,0,NULL);
+//  return NULL;
+}
+
+/*Batch method to pop items*/
+cilk void pop_batch(void* ds, void* oprec, size_t size, void* result){
+  Stack* stack = ds;
+  int i;
+  node* res;
+  Cilk_lock(stack->lock);
+  for (i=0;i<size;i++){
+    res=popInternal(stack);
+    //result[i]=res;
+  } 
+  Cilk_terminate_batch(_cilk_ws);
+  Cilk_unlock(stack->lock);
+}
+
+/* Pop method without locks*/
+node* popInternal(Stack* ds){
+  node* result = ds->end;
+  //printf("s\n");
+  if (ds->size>0){
+    ds->end = result->prev;
+    ds->size--;
+  //    printf("q\n");
+      if (ds->end!=NULL){
+       ds->end->next=NULL;
+    }
+  }
+  //printf("g\n");
+  return NULL;
+}
+
 /* For use by parforpar*/
 cilk void parallel_set(int i, void* in){
   //The second argument is actually a void** that has two elements.
