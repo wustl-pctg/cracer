@@ -1,8 +1,8 @@
-#include "cpp_framework.h"
+#include "cpp_framework.hpp"
 
 //------------------------------------------------------------------------------
 // START
-// File    : cpp_framework.h
+// File    : cpp_framework.hpp
 // Author  : Ms.Moran Tzafrir;  email: morantza@gmail.com
 // Written : 13 April 2009
 // 
@@ -20,7 +20,7 @@ __thread__	CCP::Thread* CCP::_g_tls_current_thread = null;
 
 //------------------------------------------------------------------------------
 // END
-// File    : cpp_framework.h
+// File    : cpp_framework.hpp
 // Author  : Ms.Moran Tzafrir  email: morantza@gmail.com
 // Written : 13 April 2009
 // 

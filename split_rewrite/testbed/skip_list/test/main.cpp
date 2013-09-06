@@ -32,11 +32,11 @@
 #include <iostream>
 
 //general includes .....................................
-#include "../framework/cpp_framework.h"
-#include "Configuration.h"
+#include "../framework/cpp_framework.hpp"
+#include "Configuration.hpp"
 
 //FC research includes .................................
-#include "../data_structures/FCQueue.h"
+#include "../data_structures/FCQueue.hpp"
 //#include "../data_structures/MSQueue.h"
 //#include "../data_structures/BasketQueue.h"
 //#include "../data_structures/LFStack.h"
@@ -48,7 +48,7 @@
 //#include "../data_structures/EliminationStack.h"
 //#include "../data_structures/LFSkipList.h"
 //#include "../data_structures/FCPairingHeap.h"
-#include "../data_structures/FCSkipList.h"
+#include "../data_structures/FCSkipList.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////
 //CONSTS

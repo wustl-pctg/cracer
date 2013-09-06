@@ -26,8 +26,8 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "../framework/c_framework.h"
-#include "ITest.h"
+#include "../framework/cpp_framework.hpp"
+#include "ITest.hpp"
 
 using namespace CCP;
 

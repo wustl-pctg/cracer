@@ -1,17 +1,28 @@
 CPPSRCS		= main.cpp cpp_framework.cpp ITest.cpp
-TARGET		= test_intel64
+CSRCS			= dsmain.cilk
+TARGET		= test_intel64 
+DSTARGET	= test_cilk
 
 CPP		= g++
+CC		= ../../support/cilkclocal
 
 CPPFLAGS	= -O3 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -lrt -pthread  
+CFLAGS		= -O3 -g -Wall 
 LFLAGS		= -O3 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -lrt -pthread
+CLFLAGS		= -O3 -g -Wall 
+
 
 OBJS		= $(CPPSRCS:.cpp=.o)
+COBJS		= $(CSRCS:.cilk=.o)
 
-all: $(TARGET)
+all: $(TARGET) $(DSTARGET)
 
 main.o:
 	$(CPP) $(CPPFLAGS) -c ./test/main.cpp
+
+dsmain.o:
+	$(CC) $(CFLAGS) -c ./test/dsmain.cilk
+	mv ./test/dsmain.o dsmain.o	
 
 cpp_framework.o:
 	$(CPP) $(CPPFLAGS) -c ./framework/cpp_framework.cpp
@@ -22,8 +33,12 @@ ITest.o:
 $(TARGET): $(OBJS)
 	$(CPP) $(LFLAGS) $(OBJS) -o $(TARGET)
 
+$(DSTARGET): $(COBJS)
+	$(CC) $(CLFLAGS) $(COBJS) -o $(DSTARGET)
+
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(COBJS) $(TARGET) $(DSTARGET)
 
 depend:
 	mkdep $(SRCS)
+

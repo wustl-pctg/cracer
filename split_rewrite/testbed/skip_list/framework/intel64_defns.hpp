@@ -33,7 +33,6 @@ typedef _u64               ptr_t;
 ////////////////////////////////////////////////////////////////////////////////
 #define inline_ __inline__
 #define CACHE_LINE_SIZE 64
-#define _NULL_VALUE 0
 
 #define get_marked_ref(_p)      ((void *)(((ptr_t)(_p)) | 1UL))
 #define get_unmarked_ref(_p)    ((void *)(((ptr_t)(_p)) & ~1UL))
@@ -62,17 +61,17 @@ typedef _u64               ptr_t;
 //	MB():  All preceding memory accesses must commit before any later accesses.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define RMB() asm volatile("lfence":::"memory")
-#define WMB() asm volatile("sfence":::"memory")
-#define MB()  asm volatile("mfence":::"memory")
+#define RMB() _GLIBCXX_READ_MEM_BARRIER
+#define WMB() _GLIBCXX_WRITE_MEM_BARRIER
+#define MB()  __sync_synchronize()
 
-/*inline unsigned MUTEX_ENTER(unsigned volatile* x) {
+inline unsigned MUTEX_ENTER(unsigned volatile* x) {
 	return __sync_lock_test_and_set(x, 0xFF);
 }
 
 inline void MUTEX_EXIT(unsigned volatile* x) {
 	return __sync_lock_release (x);
-}*/
+}
 
 //////////////////////////////////////////////////////////////////////////
 //CPU counters
@@ -86,28 +85,24 @@ inline void MUTEX_EXIT(unsigned volatile* x) {
 #define bit_count(x) __builtin_popcount (x)
 #define bit_count64(x) __builtin_popcountll (x)
 
-extern int __builtin_ffs(_u32);
 inline_ int first_lsb_bit_indx(_u32 x) {
 	if(0==x) 
 		return -1;
 	return __builtin_ffs(x)-1;
 }
 
-extern int __builtin_ffsll(_u64);
 inline_ int first_lsb_bit_indx64(_u64 x) {
 	if(0==x) 
 		return -1;
 	return __builtin_ffsll(x)-1;
 }
 
-extern int __builtin_clz(_u32);
 inline_ int first_msb_bit_indx(_u32 x) {
 	if(0==x) 
 		return -1;
 	return  __builtin_clz(x)-1;
 }
 
-extern int __builtin_clzll(_u64);
 inline_ int first_msb_bit_indx64(_u64 x) {
 	if(0==x) 
 		return -1;
