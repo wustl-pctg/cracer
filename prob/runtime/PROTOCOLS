@@ -1,7 +1,7 @@
 % $HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/PROTOCOLS $ $LastChangedBy: bradley $ $Rev: 111 $ $Date: 2002-12-27 02:57:40 -0500 (Fri, 27 Dec 2002) $
 
 % This file describes the protocols used by the runtime system,
-% and how the various locks interact.  I find writing this 
+% and how the various locks interact.  I find writing this
 % document convenient for myself, and it may help other people.
 
 1) MEANING OF THE CLOSURE STATE
@@ -79,6 +79,3 @@ lock closure
 
 (the reason is that he wants to release the victim as soon as
 possible, for performance reasons).
-
-
-

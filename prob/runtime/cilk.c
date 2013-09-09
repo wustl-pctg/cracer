@@ -6,12 +6,12 @@
  *  under the terms of the GNU Lesser General Public License as published by
  *  the Free Software Foundation; either version 2.1 of the License, or (at
  *  your option) any later version.
- *  
+ *
  *  This library is distributed in the hope that it will be useful, but
  *  WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
@@ -308,7 +308,7 @@ static CilkWorkerState *create_worker_state(CilkContext *const context, long id)
   ws->self = id;
 
   ws->batch_id = 0; // rsu ***
-     
+
   ws->context = context;
 
 #ifdef CILK_USE_PERFCTR
@@ -326,7 +326,7 @@ static CilkWorkerState *create_worker_state(CilkContext *const context, long id)
   Cilk_run_hooks(USE_PARAMETER(Cilk_init_per_worker_hooks));
 
   Cilk_internal_malloc_per_worker_init(ws);
-     
+
   return ws;
 
 }
@@ -351,7 +351,7 @@ static void Cilk_child_main(CilkChildParams *const childParams)
     if(! local_terminating){
       if (id == 0)
 				Cilk_scheduler(ws, USE_PARAMETER(invoke_main));
-      else 
+      else
 				Cilk_scheduler(ws, (Closure *) NULL);
 
       Cilk_worker_is_done(context, &local_terminating);
@@ -379,7 +379,7 @@ CilkContext* Cilk_init( int* argc, char *argv[] )
     Cilk_free_context(context);
     return NULL;
   }
-     
+
 #ifdef HAVE_SCHED_SETAFFINITY
   /*default setting*/
   if( USE_PARAMETER1(options)->pinned_mask > 1023 ) {

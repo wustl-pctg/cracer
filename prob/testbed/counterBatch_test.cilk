@@ -18,11 +18,11 @@ cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)	//bat
   int *count = (int*)dataStruct;
   int i;
 
-  if (size < BATCH_THRESHOLD) {
-    for (i = 0; i < size; i++) {
-      *count += nums[i];
-    }
-  } else {
+  /* if (size < BATCH_THRESHOLD) { */
+  /*   for (i = 0; i < size; i++) { */
+  /*     *count += nums[i]; */
+  /*   } */
+  /* } else { */
     int temp = nums[size-1];
 
     spawn prefixSumsExc(nums, size, nums);
@@ -30,8 +30,7 @@ cilk void fastSum(void *dataStruct, void *data, size_t size, void *result)	//bat
 
 		result = data;
     *count += temp + nums[size-1];
-  }
-  Cilk_terminate_batch(_cilk_ws);
+  /* } */
   return;
 }
 

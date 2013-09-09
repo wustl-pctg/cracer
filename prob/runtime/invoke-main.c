@@ -6,12 +6,12 @@
  *  under the terms of the GNU Lesser General Public License as published by
  *  the Free Software Foundation; either version 2.1 of the License, or (at
  *  your option) any later version.
- *  
+ *
  *  This library is distributed in the hope that it will be useful, but
  *  WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
@@ -29,7 +29,7 @@
 #include <cilk-cilk2c.h>
 
 FILE_IDENTITY(ident,
-	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/invoke-main.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
+							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/invoke-main.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
 /************************************************************
  *  Initial thread
@@ -55,9 +55,9 @@ struct invoke_main_catch_inlet_args {int res;};
  */
 void
 invoke_main_catch_inlet(CilkWorkerState *const _cilk_ws,
-			struct invoke_main_frame *_cilk_frame,
-			void *inletargs,
-			void* UNUSED(inletresult))
+												struct invoke_main_frame *_cilk_frame,
+												void *inletargs,
+												void* UNUSED(inletresult))
 {
 
   memcpy(_cilk_frame->args, inletargs, _cilk_frame->return_size);
@@ -65,10 +65,10 @@ invoke_main_catch_inlet(CilkWorkerState *const _cilk_ws,
 }
 
 static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
-			     struct invoke_main_frame *_cilk_frame)
+														 struct invoke_main_frame *_cilk_frame)
 {
   void *args;
-     
+
   CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at the end of the func.*/
 
   CILK2C_START_THREAD_SLOW();
@@ -122,9 +122,8 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
   CILK_WMB();
   USE_SHARED(done) = 1;
 
-  Cilk_remove_and_free_closure_and_frame(_cilk_ws,
-					 &_cilk_frame->header,
-					 _cilk_ws->self);
+  Cilk_remove_and_free_closure_and_frame(_cilk_ws, &_cilk_frame->header,
+																				 _cilk_ws->self, USE_PARAMETER(deques));
 
   return;
 }
@@ -132,11 +131,10 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 
 
 
-Closure *Cilk_create_initial_thread(
-				    CilkContext *const context,
-				    void (*import_main)(CilkWorkerState *const ws, void *args),
-				    void *args,
-				    int return_size)
+Closure *Cilk_create_initial_thread(CilkContext *const context,
+																		void (*import_main)(CilkWorkerState *const ws, void *args),
+																		void *args,
+																		int return_size)
 {
   Closure *t;
   struct invoke_main_frame *f;
@@ -186,11 +184,11 @@ static CilkProcInfo _Cilk_really_exit_sig[] =
   };
 
 void Cilk_really_exit(CilkWorkerState *const _cilk_ws,
-		      int val)
+											int val)
 {
   struct _Cilk_really_exit_frame *_cilk_frame;
   CILK2C_INIT_FRAME(_cilk_frame, sizeof(struct _Cilk_really_exit_frame),
-		    _Cilk_really_exit_sig);
+										_Cilk_really_exit_sig);
   CILK2C_START_THREAD_FAST();
 
   {

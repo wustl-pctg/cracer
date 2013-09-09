@@ -9,12 +9,12 @@ FILE_IDENTITY(ident_cilk_internal_h,
  *  under the terms of the GNU Lesser General Public License as published by
  *  the Free Software Foundation; either version 2.1 of the License, or (at
  *  your option) any later version.
- *  
+ *
  *  This library is distributed in the hope that it will be useful, but
  *  WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
@@ -73,14 +73,14 @@ enum AbortStatus { ABORT_ALL = 30 , ALMOST_NO_ABORT, NO_ABORT};
 struct InletClosure {
   struct Closure_s *this;                /* child that structure is for */
   struct InletClosure *next;
-  
+
   void *receiver;
   void (*inlet) (CilkWorkerState *const, void *, void *, void *);
   int argsize;
   void *inlet_args;
 };
 
-/* 
+/*
  * the list of children is not distributed among
  * the children themselves, in order to avoid extra protocols
  * and locking.
@@ -123,7 +123,7 @@ struct Closure_s {
   WHEN_CILK_DEBUG(int malloced;)
 
   /* critical path and work */
-  Cilk_time cp;      
+  Cilk_time cp;
   Cilk_time work;
 
   CILK_CACHE_LINE_PAD;
@@ -147,6 +147,17 @@ extern void Cilk_barrier_per_worker_init(CilkWorkerState *const ws);
 void Cilk_barrier_terminate(CilkContext *const context);
 
 /* scheduler */
+/*
+ * The ready deque.  Each ready queue contains a list of ready closures;
+ * the last element of the deque may also be RUNNING or RETURNING
+ */
+typedef struct ReadyDeque {
+  Cilk_mutex mutex;
+  WHEN_CILK_DEBUG(int mutex_owner;)
+  Closure *top, *bottom;
+  CILK_CACHE_LINE_PAD;
+} ReadyDeque;
+
 extern void Cilk_scheduler_init(CilkContext *const context);
 extern void Cilk_scheduler_terminate(CilkContext *const);
 extern void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws);
@@ -156,8 +167,9 @@ extern Closure *Cilk_create_initial_thread(
 																					 void *args,
 																					 int return_size);
 extern void Cilk_scheduler(CilkWorkerState *const ws, Closure *t);
-void Cilk_remove_and_free_closure_and_frame(
-																						CilkWorkerState *const ws, CilkStackFrame *f, int pn);
+void Cilk_remove_and_free_closure_and_frame(CilkWorkerState *const ws,
+																						CilkStackFrame *f, int pn,
+																						ReadyDeque *const deque_pool);
 extern void Cilk_destroy_frame(
 															 CilkWorkerState *const ws, CilkStackFrame *f, size_t size);
 extern void Cilk_worker_wait_for_invocation(CilkContext *const /*context*/, long /*self*/, int */*local_terminating*/);
@@ -196,6 +208,9 @@ struct CilkGlobalState_s{
   void *batch_work_array;
 	Cilk_mutex batch_lock;
 	int *batch_workers_list;
+	/* Closure *invoke_batch; */
+	/* BatchArgs batch_args; */
+	/* invoke_batch_frame batch_frame; */
 #if CILK_STATS
 	int *batch_sizes;
 #endif
@@ -218,6 +233,7 @@ struct CilkGlobalState_s{
   Cilk_mutex dprintf_lock;
   Cilk_mutex die_lock;
   CilkProcInfo invoke_main_sig[3];
+	CilkProcInfo invoke_batch_sig[3];
   /*Children (threads) handling */
   pthread_t *tid;
   CilkChildParams *thrd_params_array;
@@ -232,16 +248,6 @@ struct CilkGlobalState_s{
   volatile long   workers_done_counter;
 };
 
-/*
- * The ready deque.  Each ready queue contains a list of ready closures;
- * the last element of the deque may also be RUNNING or RETURNING
- */
-typedef struct ReadyDeque {
-  Cilk_mutex mutex;
-  WHEN_CILK_DEBUG(int mutex_owner;)
-  Closure *top, *bottom;
-  CILK_CACHE_LINE_PAD;
-} ReadyDeque;
 
 /* handy syntactic sugar */
 #define USE_SHARED(id) (ws->context->Cilk_global_state->id)
@@ -299,7 +305,7 @@ enum {
   EVENT_USER7,
   EVENT_NTYPES  		/* this must be last */
 };
-     
+
 extern void Cilk_event(CilkWorkerState *const ws, int type);
 extern void Cilk_event_gathering_init(CilkContext *const context);
 extern void Cilk_stats_terminate(CilkContext *const context);

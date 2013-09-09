@@ -142,6 +142,8 @@ typedef struct {
   WHEN_CILK_DEBUG(volatile unsigned int magic;)
 } CilkStackFrame;
 
+
+
 /*
  * a stack is an array of frame pointers 
  */
@@ -179,7 +181,7 @@ struct Cilk_im_descriptor {
    * number of elements that can be freed before a global 
    * batch free is necessary.
    */
-  int count;            
+  int count;
 };
 
 /* statistics for Cilk_internal_malloc, used mainly for debugging */
@@ -254,7 +256,7 @@ typedef struct {
 #if CILK_STATS
   unsigned int max_stack_depth;
 #endif
-  
+
   /* dynamically-allocated arrays of deques, two per processor:
      one for real worker, one for DS work */
   struct ReadyDeque *deques;
@@ -263,6 +265,7 @@ typedef struct {
   Cilk_time start_time;
 
   Closure *invoke_main;
+  Closure *invoke_batch;
 
   /* declaration of the various hooks */
   HookList *Cilk_init_global_hooks;
@@ -288,7 +291,7 @@ typedef struct {
 typedef struct {
   CilkClosureCache *current_cache;
   CilkClosureCache cache;
-  CilkClosureCache ds_cache; // rsu*** Could we just make the cache point to the right deque, instead of keeping two caches?
+  CilkClosureCache ds_cache;
   int batch_id;
   int self;
   struct Cilk_im_descriptor im_descriptor [CILK_INTERNAL_MALLOC_BUCKETS];
@@ -525,14 +528,31 @@ void *Cilk_malloc_fixed(size_t);
 /*******************************************************************************
  * BATCHER
  ******************************************************************************/
-typedef void (*CilkBatchOp)(CilkWorkerState*const _cilk_ws,
-														void *dataStruct, void *data,
-														size_t numElements, void *result);
-
 enum DS_STATUS { DS_WAITING, DS_IN_PROGRESS, DS_DONE };
 
 typedef struct {
-  CilkBatchOp operation;
+	void *dataStruct;
+	void *data;
+	size_t numElements;
+	void *result;
+} BatchArgs; // **** move this later
+
+typedef void (*InternalBatchOperation)(CilkWorkerState *const _cilk_ws,
+																			 void *dataStruct, void *data,
+																			 size_t numElements, void *result);
+
+/* This is a hand-compiled procedure that calls a batch operation */
+typedef struct {
+  CilkStackFrame header;
+  BatchArgs *args;
+	int arg_size;
+	InternalBatchOperation batch_op;
+  int retval;
+} invoke_batch_frame;
+
+
+typedef struct {
+  InternalBatchOperation operation;
   void*       args;
   size_t      size;
   enum DS_STATUS   status;
@@ -544,10 +564,17 @@ typedef struct {
 typedef struct {
   size_t size;
   size_t dataSize;
-  CilkBatchOp operation;
+  InternalBatchOperation operation;
   BatchRecord  *array;
 	CILK_CACHE_LINE_PAD;
 } Batch;
+
+/* typedef struct { */
+/* 	void *dataStruct; */
+/* 	void *data; */
+/* 	size_t numElements; */
+/* 	void *result; */
+/* } BatchArgs; */
 
 // rsu *** could also have a BatchResult, which would contain a
 // void* array pointer for result values and a

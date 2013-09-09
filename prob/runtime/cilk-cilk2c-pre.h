@@ -1,7 +1,8 @@
 /* config.h and compiler-dep.h are included by the includer of this file. */
 FILE_IDENTITY(ident_cilk_cilk2c_pre,
-	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-cilk2c-pre.h $ $LastChangedBy: bradley $ $Rev: 1465 $ $Date: 2004-08-02 06:31:06 -0400 (Mon, 02 Aug 2004) $");
-
+							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-cilk2c-pre.h $ $LastChangedBy: bradley $ $Rev: 1465 $ $Date: 2004-08-02 06:31:06 -0400 (Mon, 02 Aug 2004) $");
+#define BATCH_ASSERT(args...) CILK_ASSERT(args) // ***
+#include <stdio.h>
 /*
  * Copyright (c) 2000 Massachusetts Institute of Technology
  * Copyright (c) 2000 Matteo Frigo
@@ -10,12 +11,12 @@ FILE_IDENTITY(ident_cilk_cilk2c_pre,
  *  under the terms of the GNU Lesser General Public License as published by
  *  the Free Software Foundation; either version 2.1 of the License, or (at
  *  your option) any later version.
- *  
+ *
  *  This library is distributed in the hope that it will be useful, but
  *  WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
@@ -24,11 +25,10 @@ FILE_IDENTITY(ident_cilk_cilk2c_pre,
  */
 
 /*************************************************************
- * internal malloc 
+ * internal malloc
  *************************************************************/
-
 static inline void *Cilk_internal_malloc_fast(CilkWorkerState *const ws,
-					      size_t size)
+																							size_t size)
 {
   int bucket;
   void *mem;
@@ -47,10 +47,10 @@ static inline void *Cilk_internal_malloc_fast(CilkWorkerState *const ws,
     d->free_list = ((void **) mem)[0];
     d->count++;
     WHEN_CILK_DEBUG(
-		    {
-		      USE_PARAMETER(im_info)[ws->self].used += size;
-		      USE_PARAMETER(im_info)[ws->self].nmalloc += 1;
-		    })
+										{
+											USE_PARAMETER(im_info)[ws->self].used += size;
+											USE_PARAMETER(im_info)[ws->self].nmalloc += 1;
+										})
       } else {
     mem = Cilk_internal_malloc(ws, size);
   }
@@ -59,7 +59,7 @@ static inline void *Cilk_internal_malloc_fast(CilkWorkerState *const ws,
 }
 
 static inline void Cilk_internal_free_fast(CilkWorkerState *const ws,
-					   void *p, size_t size)
+																					 void *p, size_t size)
 {
   int bucket;
   struct Cilk_im_descriptor *d;
@@ -80,26 +80,26 @@ static inline void Cilk_internal_free_fast(CilkWorkerState *const ws,
     d->count--;
 
     WHEN_CILK_DEBUG({
-	USE_PARAMETER(im_info)[ws->self].used -= size;
-	USE_PARAMETER(im_info)[ws->self].nmalloc -= 1;
+				USE_PARAMETER(im_info)[ws->self].used -= size;
+				USE_PARAMETER(im_info)[ws->self].nmalloc -= 1;
       });
   }
 }
 
 static inline void Cilk_destroy_frame_fast(CilkWorkerState *const ws, 
-					   CilkStackFrame *f, size_t size)
+																					 CilkStackFrame *f, size_t size)
 {
-  WHEN_CILK_ALLOCA( 
-		   {
-		     if (f->alloca_h)
-		       Cilk_unalloca_internal(ws, f);
-		   });
+  WHEN_CILK_ALLOCA(
+									 {
+										 if (f->alloca_h)
+											 Cilk_unalloca_internal(ws, f);
+									 });
 
   Cilk_internal_free_fast(ws, f, size);
 }
 
 static inline void *Cilk_create_frame(CilkWorkerState *const ws,
-				      size_t size, CilkProcInfo *sig)
+																			size_t size, CilkProcInfo *sig)
 {
   CilkStackFrame *f = Cilk_internal_malloc_fast(ws, size);
   f->sig = sig;
@@ -110,7 +110,7 @@ static inline void *Cilk_create_frame(CilkWorkerState *const ws,
 }
 
 static inline void Cilk_cilk2c_push_frame(CilkWorkerState *const UNUSED(ws),
-					  CilkStackFrame *UNUSED(frame))
+																					CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws); USE_UNUSED(frame);
   CILK_ASSERT(ws, frame->magic == CILK_STACKFRAME_MAGIC);
@@ -118,23 +118,22 @@ static inline void Cilk_cilk2c_push_frame(CilkWorkerState *const UNUSED(ws),
 }
 
 static inline void *Cilk_cilk2c_init_frame(CilkWorkerState *const ws,
-					   size_t s, CilkProcInfo *signat)
+																					 size_t s, CilkProcInfo *signat)
 {
   volatile CilkStackFrame **t;
   void *f;
+	if (ws->batch_id) BATCH_ASSERT(ws, ws->current_cache == &ws->ds_cache);
+	else BATCH_ASSERT(ws, ws->current_cache == &ws->cache);
 
   f = Cilk_create_frame(ws, s, signat);
-  //  t = ws->cache.tail;
   t = ws->current_cache->tail;
 
-  //  CILK_COMPLAIN((CilkStackFrame **) t < ws->cache.stack + ws->stackdepth,
   CILK_COMPLAIN((CilkStackFrame **) t < ws->current_cache->stack + ws->stackdepth,
-		(ws->context, ws, USE_PARAMETER(stack_overflow_msg)));
+								(ws->context, ws, USE_PARAMETER(stack_overflow_msg)));
 
 
   *t = (CilkStackFrame *) f;
   Cilk_membar_StoreStore();
-  //  ws->cache.tail = t + 1;
   ws->current_cache->tail = t + 1;
 
   return f;
@@ -146,17 +145,20 @@ static inline void *Cilk_cilk2c_init_frame(CilkWorkerState *const ws,
 static inline int Cilk_cilk2c_pop_check(CilkWorkerState *const ws)
 {
   volatile CilkStackFrame **t;
-  //  t = ws->cache.tail;
+	if (ws->batch_id) BATCH_ASSERT(ws, ws->current_cache == &ws->ds_cache);
+	else BATCH_ASSERT(ws, ws->current_cache == &ws->cache);
+
   t = ws->current_cache->tail;
 
   Cilk_membar_StoreLoad();
-  //  return (ws->cache.exception >= t);
   return (ws->current_cache->exception >= t);
 }
 
 static inline void Cilk_cilk2c_pop(CilkWorkerState *const ws)
 {
-  //  --ws->cache.tail;
+	if (ws->batch_id) BATCH_ASSERT(ws, ws->current_cache == &ws->ds_cache);
+	else BATCH_ASSERT(ws, ws->current_cache == &ws->cache);
+
   --ws->current_cache->tail;
 }
 
@@ -168,7 +170,7 @@ Cilk_cilk2c_event_new_thread_maybe(CilkWorkerState *const UNUSED(ws))
 }
 
 static inline void Cilk_cilk2c_start_thread_slow(CilkWorkerState *const UNUSED(ws),
-						 CilkStackFrame *UNUSED(frame))
+																								 CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
@@ -176,19 +178,25 @@ static inline void Cilk_cilk2c_start_thread_slow(CilkWorkerState *const UNUSED(w
 }
 
 static inline void Cilk_cilk2c_before_return_fast(CilkWorkerState *const ws,
-						  CilkStackFrame *frame,
-						  size_t size)
+																									CilkStackFrame *frame,
+																									size_t size)
 {
+	if (ws->batch_id) BATCH_ASSERT(ws, ws->current_cache == &ws->ds_cache);
+	else BATCH_ASSERT(ws, ws->current_cache == &ws->cache);
+
   CILK_ASSERT(ws, frame->magic == CILK_STACKFRAME_MAGIC);
+
+	/* if (frame) { */
+	/* 	printf("Frame %p with inlet %p destroyed by worker %i.\n", frame, frame->sig->inlet, ws->self); */
+	/* } */
   WHEN_CILK_DEBUG(frame->magic = ~CILK_STACKFRAME_MAGIC);
   Cilk_destroy_frame_fast(ws, (CilkStackFrame *) frame, size);
-  //  --ws->cache.tail;
   --ws->current_cache->tail;
 }
 
 static inline void Cilk_cilk2c_before_return_slow(CilkWorkerState *const ws,
-						  CilkStackFrame *frame,
-						  size_t size)
+																									CilkStackFrame *frame,
+																									size_t size)
 {
   Cilk_cilk2c_before_return_fast(ws, frame, size);
 }
@@ -227,7 +235,7 @@ static inline void Cilk_cilk2c_before_return_slow(CilkWorkerState *const ws,
 /* at begin of thread, set my critical path to the one of the parent */
 static inline void
 Cilk_cilk2c_start_thread_fast_cp(CilkWorkerState *const ws,
-				 CilkStackFrame *frame)
+																 CilkStackFrame *frame)
 {
   frame->cp = 0;
   frame->mycp = ws->cp_hack;
@@ -243,7 +251,7 @@ Cilk_cilk2c_start_thread_fast_cp(CilkWorkerState *const ws,
  */
 static inline void
 Cilk_cilk2c_start_thread_slow_cp(CilkWorkerState *const ws,
-				 CilkStackFrame *frame)
+																 CilkStackFrame *frame)
 {
   WHEN_CILK_USER_TIMERS(ws->user_work = frame->work);
   WHEN_CILK_USER_TIMERS(ws->user_critical_path = frame->mycp);
@@ -251,7 +259,7 @@ Cilk_cilk2c_start_thread_slow_cp(CilkWorkerState *const ws,
 
 static inline void
 Cilk_cilk2c_at_thread_boundary_slow_cp(CilkWorkerState *const ws,
-				       CilkStackFrame *UNUSED(frame))
+																			 CilkStackFrame *UNUSED(frame))
 {
   ws->last_cp_time = Cilk_get_time();
 }
@@ -261,7 +269,7 @@ Cilk_cilk2c_at_thread_boundary_slow_cp(CilkWorkerState *const ws,
  */
 static inline void 
 Cilk_cilk2c_before_spawn_fast_cp(CilkWorkerState *const ws,
-				 CilkStackFrame *frame)
+																 CilkStackFrame *frame)
 {
   Cilk_time Cilk_elapsed = Cilk_get_elapsed_time(ws);
   ws->cp_hack = (frame->mycp += Cilk_elapsed);
@@ -270,7 +278,7 @@ Cilk_cilk2c_before_spawn_fast_cp(CilkWorkerState *const ws,
 
 static inline void
 Cilk_cilk2c_before_spawn_slow_cp(CilkWorkerState *const ws,
-				 CilkStackFrame *frame)
+																 CilkStackFrame *frame)
 {
   Cilk_cilk2c_before_spawn_fast_cp(ws, frame);
 }
@@ -278,7 +286,7 @@ Cilk_cilk2c_before_spawn_slow_cp(CilkWorkerState *const ws,
 /* after a spawn, maximize CP and accumulate WORK */
 static inline void 
 Cilk_cilk2c_after_spawn_fast_cp(CilkWorkerState *const ws,
-				CilkStackFrame *frame)
+																CilkStackFrame *frame)
 {
   if (ws->cp_hack > frame->cp)
     frame->cp = ws->cp_hack;
@@ -289,7 +297,7 @@ Cilk_cilk2c_after_spawn_fast_cp(CilkWorkerState *const ws,
 
 static inline void 
 Cilk_cilk2c_after_spawn_slow_cp(CilkWorkerState *const ws,
-				CilkStackFrame *frame)
+																CilkStackFrame *frame)
 {
   Cilk_cilk2c_after_spawn_fast_cp(ws, frame);
 }
@@ -297,7 +305,7 @@ Cilk_cilk2c_after_spawn_slow_cp(CilkWorkerState *const ws,
 /* at a sync, set MYCP = CP = max(CP, MYCP) and accumulate work */
 static inline void 
 Cilk_cilk2c_at_sync_fast_cp(CilkWorkerState *const ws,
-			    CilkStackFrame *frame)
+														CilkStackFrame *frame)
 {
   Cilk_time Cilk_elapsed = Cilk_get_elapsed_time(ws);
   frame->mycp += Cilk_elapsed;
@@ -317,7 +325,7 @@ Cilk_cilk2c_at_sync_fast_cp(CilkWorkerState *const ws,
  * do that.
  */
 static inline void Cilk_cilk2c_before_sync_slow_cp(CilkWorkerState *const ws,
-						   CilkStackFrame *frame)
+																									 CilkStackFrame *frame)
 {
   Cilk_time Cilk_elapsed = Cilk_get_elapsed_time(ws);
   frame->mycp += Cilk_elapsed;
@@ -327,7 +335,7 @@ static inline void Cilk_cilk2c_before_sync_slow_cp(CilkWorkerState *const ws,
 }
 
 static inline void Cilk_cilk2c_after_sync_slow_cp(CilkWorkerState *const ws,
-						  CilkStackFrame *frame)
+																									CilkStackFrame *frame)
 {
   Cilk_after_sync_slow_cp(ws, &frame->work, &frame->mycp);
   WHEN_CILK_USER_TIMERS(ws->user_work = frame->work);
@@ -337,7 +345,7 @@ static inline void Cilk_cilk2c_after_sync_slow_cp(CilkWorkerState *const ws,
 /* return is like sync, but also sets CP for the parent */
 /* we should be sync'd at a return, so just use mycp */
 static inline void Cilk_cilk2c_before_return_fast_cp(
-						     CilkWorkerState *const ws, CilkStackFrame *frame)
+																										 CilkWorkerState *const ws, CilkStackFrame *frame)
 {
   Cilk_time Cilk_elapsed = Cilk_get_elapsed_time(ws);
 
@@ -346,7 +354,7 @@ static inline void Cilk_cilk2c_before_return_fast_cp(
 }
 
 static inline void Cilk_cilk2c_before_return_slow_cp(
-						     CilkWorkerState *const ws, CilkStackFrame *frame)
+																										 CilkWorkerState *const ws, CilkStackFrame *frame)
 {
   Cilk_cilk2c_before_return_fast_cp(ws, frame);
 }
@@ -354,73 +362,73 @@ static inline void Cilk_cilk2c_before_return_slow_cp(
 #else
 
 static inline void Cilk_cilk2c_start_thread_fast_cp(
-						    CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																										CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
 }
 static inline void Cilk_cilk2c_start_thread_slow_cp(
-						    CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																										CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
 }
 static inline void Cilk_cilk2c_at_thread_boundary_slow_cp(
-							  CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																													CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
 }
 static inline void Cilk_cilk2c_before_spawn_fast_cp(
-						    CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																										CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
 }
 static inline void Cilk_cilk2c_before_spawn_slow_cp(
-						    CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																										CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
 }
 static inline void Cilk_cilk2c_after_spawn_fast_cp(
-						   CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																									 CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
 }
 static inline void Cilk_cilk2c_after_spawn_slow_cp(
-						   CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																									 CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
 }
 static inline void Cilk_cilk2c_at_sync_fast_cp(
-					       CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																							 CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
 }
 static inline void Cilk_cilk2c_before_sync_slow_cp(
-						   CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																									 CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
 }
 static inline void Cilk_cilk2c_after_sync_slow_cp(
-						  CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																									CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
 }
 static inline void Cilk_cilk2c_before_return_fast_cp(
-						     CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																										 CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
 }
 static inline void Cilk_cilk2c_before_return_slow_cp(
-						     CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
+																										 CilkWorkerState *const UNUSED(ws), CilkStackFrame *UNUSED(frame))
 {
   USE_UNUSED(ws);
   USE_UNUSED(frame);
