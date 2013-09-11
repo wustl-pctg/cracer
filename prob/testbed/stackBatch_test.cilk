@@ -13,13 +13,22 @@ Stack* setUp(){
 
 cilk void makeInsert(int i, void* data){
     Stack* ds = data;
-    spawn pushBatchify(ds,i);
+    Operation op;
+    op.data=i;
+    op.add=1;
+    spawn mixedBatchify(ds,op);
+    //spawn pushBatchify(ds,i);
+    //push(ds,i);
     sync;
 }
 
 cilk void makeRemove(int i, void* data){
-  Stack* ds = data;
-  spawn pushBatchify(ds,i);
+    Stack* ds = data;
+    Operation op;
+    op.data=i;
+    op.add=0;
+    spawn mixedBatchify(ds,op);
+    //spawn popBatchify(ds);
   sync;
 }
 
@@ -81,15 +90,15 @@ cilk int main(int argc, char* argv[]){
    if (verbose) {
       printf("begin test\n");
     }
-    startTimer();
+   //Halve the test size so that the total is testSize
+   testSize/=2; 
+   startTimer();
     //Start timing here.
     spawn runTest(test_stack,testSize);
     sync;
-    //End timing here.
-    stopTimer();    
-    addTime = getWallTime();
-    printf("%lf\n", addTime);
-    startTimer();
+    if (verbose){
+        printStack(test_stack);
+   }
     spawn runRemoveTest(test_stack,testSize);
     sync;
     stopTimer();
