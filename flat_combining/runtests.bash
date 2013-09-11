@@ -14,10 +14,11 @@ isviewary="0 64 128 192 256 320 384"
 isviewary="0"
 
 percents="50_50"
-threads="1 2 4 8 12 16 24 32 40 48 56 64"
+#threads="1 2 4 8 12 16 24 32 40 48 56 64"
 #threads="1 2 4 8 12 16 24 32"
 #threads="1 8 16 32 48 64" 
 #threads="1 2 8 48"
+threads="1 2 4 8 12 16 20"
 #threads="1 2 4 8 12 16 24 32"
 #threads="1 2 4 8 12 16 32 48 56 64 72 80"
 #threads="1 2 4 8 12 32 48 64 80"
@@ -26,13 +27,14 @@ threads="1 2 4 8 12 16 24 32 40 48 56 64"
 #threads="1 16 32 64"
 #threads="1 4 8 16 32 63"
 #threads="56"
+algorithms="fcstack lfstack"
 #algorithms="fcstack lfstack elstack"
 #algorithms="fclist fclistc fcpq lazylist"
 #algorithms="fcqueue msqueue basketqueue ctqueue oyqueue oyqueuecom lsqueue"
 #algorithms="fcstack lfstack elstack"
 #algorithms="fcstack lfstack elstack"
 #algorithms="fcskiplist fcpairheap fcskiplist lfskiplist lazyskiplist"
-algorithms="ctqueue fcqueue msqueue basketqueue ctqueue oyqueue oyqueuecom lsqueue"
+#algorithms="ctqueue fcqueue msqueue basketqueue ctqueue oyqueue oyqueuecom lsqueue"
 #algorithms="tmlist"
 #algorithms="fcsoftheap fcpairheap"
 
@@ -63,7 +65,7 @@ for thread in $threads; do
 
 	count=$(($count + 1))
 
-        line="$algorithm 1 non 0 non 0 non 0 $count $thread $percent 0.0 $capacity 10 0 $isview 0"
+        line="$algorithm 1 non 0 non 0 non 0 $count $thread $percent 0.0 $capacity 20 0 $isview 0"
         line=`echo $line | sed 's/_/ /g'`
 	echo $line
         echo "$line" 1>&2
