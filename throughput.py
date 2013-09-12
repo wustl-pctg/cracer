@@ -26,7 +26,7 @@ for p in nproc:
     output = process.communicate()[0]
     tp = string.split(output)
     batchThroughput= size/float(tp[0])
-    
+
     #now run FC
     #print fccmd,fcargs
     process = subprocess.Popen(fccmd + fcargs, shell=True,
@@ -36,4 +36,3 @@ for p in nproc:
     tp = string.split(output);
     fcThroughput = tp[0]
     outFile.write("{0},{1},{2}".format(str(p),math.floor(batchThroughput),fcThroughput));
-

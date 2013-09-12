@@ -76,7 +76,7 @@ cilk void doMixedOps(void* ds, void* oprec, size_t size, void*result){
       popInternal(stack);
     }
   }
-  Cilk_terminate_batch(_cilk_ws);
+	//  Cilk_terminate_batch(_cilk_ws);
 }
 
 /* Batch push method.*/
@@ -117,7 +117,7 @@ cilk void push_batch(void* ds, void* oprec, size_t size, void* result){
   stack->end=&new_nodes[size-1];
   stack->size+=size;
   //printStack(stack);
-  Cilk_terminate_batch(_cilk_ws);
+	//  Cilk_terminate_batch(_cilk_ws);
 }
 
 /*Pop using a lock*/
@@ -143,7 +143,7 @@ cilk void pop_batch(void* ds, void* oprec, size_t size, void* result){
     res=popInternal(stack);
     //result[i]=res;
   } 
-  Cilk_terminate_batch(_cilk_ws);
+	//  Cilk_terminate_batch(_cilk_ws);
 }
 
 /* Pop method without locks*/
