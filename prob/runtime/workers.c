@@ -6,12 +6,12 @@
  *  under the terms of the GNU Lesser General Public License as published by
  *  the Free Software Foundation; either version 2.1 of the License, or (at
  *  your option) any later version.
- *  
+ *
  *  This library is distributed in the hope that it will be useful, but
  *  WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
@@ -131,7 +131,7 @@ void Cilk_create_children(CilkContext *const context,
 #ifdef CILK_USE_PERFCTR
   __cilk_vperfctr_init(1);
 #endif
-	
+
   init_sync_variables(context);
 
   /* Create thread-id array */
@@ -172,20 +172,29 @@ void Cilk_create_children(CilkContext *const context,
   }
   pthread_setconcurrency(USE_PARAMETER1(active_size));
 
+	// I would imagine it's helpful to set the main thread affinity the
+	// same as worker 0, disallowing cache validation for the initial
+	// closure.
+#ifdef HAVE_SCHED_SETAFFINITY
 	cpu_set_t mask;
 	CPU_ZERO(&mask);
 	CPU_SET(1, &mask);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &mask);
+#endif
+
   for (i = 0; i < USE_PARAMETER1(active_size); i++)
     {
 			// Set thread affinity
+#ifdef HAVE_SCHED_SETAFFINITY
+			int ret_val;
 			CPU_ZERO(&mask);
       CPU_SET(i, &mask);
-			int ret_val;
+
 
 			if ((USE_PARAMETER1(options->btest) & 2) == 0) {
 				ret_val = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &mask);
 			}
+#endif
 
       res = pthread_create(USE_SHARED1(tid) + i,
 													 &attr,
@@ -194,13 +203,15 @@ void Cilk_create_children(CilkContext *const context,
       if (res)
 				Cilk_die_internal(context, NULL, "Can't create threads\n");
 
-			/* if ((USE_PARAMETER1(options->btest) & 2) == 2) { */
-			/* 	ret_val = pthread_setaffinity_np((USE_SHARED1(tid) + i), sizeof(cpu_set_t), &mask); */
-			/* } */
+/* #ifdef HAVE_SCHED_SETAFFINITY */
+/* 			if ((USE_PARAMETER1(options->btest) & 2) == 2) { */
+/* 				ret_val = pthread_setaffinity_np((USE_SHARED1(tid) + i), sizeof(cpu_set_t), &mask); */
+/* 			} */
 
-      /* if (ret_val != 0) { */
-			/* 	printf("Warning: Could not set CPU affinity for %i with error %i\n", i, ret_val); */
-      /* } */
+/*       if (ret_val != 0) { */
+/* 				printf("Warning: Could not set CPU affinity for %i with error %i\n", i, ret_val); */
+/*       } */
+/* #endif */
 
     }
 }
