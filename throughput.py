@@ -13,7 +13,7 @@ probdir = 'prob'
 fcdir = 'flat_combining'
 size=2000000
 outFile = open("stackLog.txt","w");
-outFile.write("PROCS,BATCH,FC")
+outFile.write("PROCS,BATCH,FC\n")
 for p in nproc:
   for i in iterations:
     probcmd = probdir + '/testbed/' + test
@@ -36,4 +36,4 @@ for p in nproc:
     output = process.communicate()[0]
     tp = string.split(output);
     fcThroughput = tp[0]
-    outFile.write("{0},{1},{2}".format(str(p),math.floor(batchThroughput),fcThroughput));
+    outFile.write("{0},{1},{2}\n".format(str(p),math.floor(batchThroughput),fcThroughput));
