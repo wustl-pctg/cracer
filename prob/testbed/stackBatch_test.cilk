@@ -95,7 +95,6 @@ cilk int main(int argc, char* argv[]){
    startTimer();
     //Start timing here.
     spawn runTest(test_stack,testSize);
-    sync;
     if (verbose){
         printStack(test_stack);
    }

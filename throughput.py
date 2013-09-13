@@ -8,12 +8,12 @@ import math
 
 test='stackBatch_test'
 iterations = range(1)
-nproc = range(4, 17, 4)
+nproc = range(1, 17, 1)
 probdir = 'prob'
 fcdir = 'flat_combining'
-size=2000000
-outFile = open("stackLog.txt","w");
-outFile.write("PROCS,BATCH,FC\n")
+size=20000000
+outFile = open("stack.log","w");
+outFile.write("PROCS,BATCH,FC\n");
 for p in nproc:
   for i in iterations:
     probcmd = probdir + '/testbed/' + test
