@@ -4,6 +4,7 @@
 import subprocess
 import time
 import string
+import math
 
 test='stackBatch_test'
 iterations = range(1)
