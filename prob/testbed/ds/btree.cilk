@@ -219,33 +219,12 @@ void search_for_delete(struct node23* current_node, int key)
 	}
 }
 
-/*! \brief A parallel for loop that calls insert_item, used by the batch test
-*/
-cilk void parallel_for_batch_insert(struct tree23* current_tree, int start, int end)
-{
-	int middle = start+(end-start)/2;
-	
-	if(end-start<=PARALLEL_CUTOFF)
-	{
-		for(start; start<end; ++start)
-		{
-			spawn insert_item(current_tree, start);
-		}
-	}
-	else
-	{
-		spawn parallel_for_batch_insert(current_tree, start, middle);
-		spawn parallel_for_batch_insert(current_tree, middle+1, end);
-		spawn insert_item(current_tree, middle);
-	}
-}
-
 /*! \brief The insert functions - calls batchify.
 
     \param tree the tree to insert into
     \param input the item to insert into tree
 */
-cilk void insert_item(struct tree23* tree, int input){
+cilk void insertBatchify(struct tree23* tree, int input){
     Cilk_batchify(_cilk_ws, &complex_batch_insert, tree, &input, sizeof(int), NULL);
 }
 
@@ -254,7 +233,7 @@ cilk void insert_item(struct tree23* tree, int input){
      This needs a lock on the tree before it does any sort of re-arranging.
      It also moves up the tree and fixes values.
 */
-cilk void lock_insert(struct tree23* tree, int input) {
+cilk void insertLock(struct tree23* tree, int input) {
     struct node23* node = create_node(input);
     struct node23* new_node;
     #ifdef USE_LOCKS
@@ -414,11 +393,10 @@ cilk void complex_batch_insert(void* ds, void *input, size_t size, void* useless
     
 	current_tree->root = *result;
     //Free the temporary memory that has been used.
-   // printf("free memory\n");
 	free(result_array);
 	free(result);
-    Cilk_terminate_batch(_cilk_ws);
-    //printf("finished\n");
+    //No longer needed for new batcher.
+    //Cilk_terminate_batch(_cilk_ws);
 }
 
 /*! \brief A helper for batch_insert.

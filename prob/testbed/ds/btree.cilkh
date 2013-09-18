@@ -64,8 +64,8 @@ int find_last(int index, int bound, struct node23** node_array, struct node23* t
 int find_insert_index(int *input_array, int size, struct node23* target);				
 
 //Datastructure functions (to act like a concurrent datastructure)
-cilk void insert_item(struct tree23* tree, int input);
-cilk void lock_insert(struct tree23* tree, int input);
+cilk void insertBatchify(struct tree23* tree, int input);
+cilk void insertLock(struct tree23* tree, int input);
 struct node23* sequential_insert_helper(struct node23* node, struct node23* insert);
 
 //Search and Mark

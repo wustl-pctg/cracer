@@ -30,7 +30,7 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 	int optIndex = 0;
 	int option;
 
-	while((option = getopt_long(argc, argv, "o:i:", longOptions, &optIndex))
+	while((option = getopt_long(argc, argv, "o:i:vbl", longOptions, &optIndex))
 				!= -1)
 	{
 		switch(option)

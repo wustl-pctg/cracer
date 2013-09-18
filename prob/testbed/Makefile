@@ -3,7 +3,7 @@ CFLAGS =
 MAKEDEPEND = $(CILKC) -MM
 DEPS = $(wildcard util/*.h util/*.cilkh)
 SRCS = $(wildcard *.cilk)
-INC = util/parfor.cilk
+INC = util/parfor.cilk util/benchOptions.c
 DS =
 LD =
 
@@ -49,7 +49,7 @@ param: param.cilk
 # Data Structure Tests
 counter: counterLock_test counterBatch_test
 btree: DS = ds/btree.cilk
-btree: btreeLock_test btreeBatch_test
+btree: btree_test
 dynArray: dynArrayLock_test dynArrayBatch_test
 concHash: LD += -lm
 concHash: concHashLock_test concHashBatch_test
