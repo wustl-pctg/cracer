@@ -4,15 +4,13 @@ args <- commandArgs(trailingOnly = TRUE)
 if (is.na(args[1])) {
     outFile <- "graphs/tests.pdf"
 } else {
-    logFile <- args[1]
+    outFile <- args[1]
 }
 if (is.na(args[2])) {
     nproc <- 8
 } else {
-    nproc <- as.numeric(args[1])
+    nproc <- as.numeric(args[2])
 }
-
-
 t1 <- paste("test.",nproc,".0.0.s.log",sep="")
 t2 <- paste("test.",nproc,".0.0.p.log",sep="")
 t3 <- paste("test.",nproc,".0.100.s.log",sep="")

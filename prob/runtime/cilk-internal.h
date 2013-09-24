@@ -208,12 +208,14 @@ struct CilkGlobalState_s{
   void *batch_work_array;
 	Cilk_mutex batch_lock;
 	int *batch_workers_list;
-	/* Closure *invoke_batch; */
+	/* Closure *invoke_batch; *** */
 	/* BatchArgs batch_args; */
 	/* invoke_batch_frame batch_frame; */
+
 #if CILK_STATS
 	int *batch_sizes;
 #endif
+
   /* End BATCHER */
   int terminating; /* Cilk_terminate was called */
   Cilk_mutex barrier_lock;
