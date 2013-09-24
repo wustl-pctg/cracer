@@ -79,7 +79,7 @@ information:
 ifneq ($(mode),bench)
 ifneq ($(mode),debug)
 	@echo "Invalid build mode."
-	@echo "Only 'mode=test' and 'mode=debug' are currently supported."
+	@echo "Only 'mode=bench' and 'mode=debug' are currently supported."
 	@exit 1
 endif
 endif
