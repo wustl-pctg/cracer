@@ -29,7 +29,6 @@
 #include <cilk-internal.h>
 #include <string.h>
 
-#include <stdio.h> // rsu ***
 #include "invoke-batch.c"
 
 #define BATCH_ASSERT(args...) CILK_ASSERT(args)
@@ -1723,6 +1722,7 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 
 			// Decide where to steal from
 			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(dsprob)) {
+				Cilk_enter_state(ws, STATE_DS_STEALING);
 						/* && !(USE_SHARED(pending_batch).size >
 					 MAX_BATCH_SIZE)) { // test *** */
 				// data structure steal
@@ -1739,7 +1739,8 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 					ws->current_cache = &ws->ds_cache;
 					deque_pool = USE_PARAMETER(ds_deques);
 				}
-
+				t = Closure_steal(ws, victim, deque_pool);
+				Cilk_exit_state(ws, STATE_DS_STEALING);
 			} else { // regular steal */
 				victim = rts_rand(ws) % USE_PARAMETER(active_size);
 				if (victim != ws->self) {
@@ -1752,8 +1753,9 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 					ws->current_cache = &ws->cache;
 					deque_pool = USE_PARAMETER(deques);
 					}
+				t = Closure_steal(ws, victim, deque_pool);
 				}
-			t = Closure_steal(ws, victim, deque_pool);
+			//			t = Closure_steal(ws, victim, deque_pool);
 
 			if (!t && USE_PARAMETER(options->yieldslice) &&
 					!USE_SHARED(done)) {
@@ -1852,11 +1854,11 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 
 		// I think we can just check t here, not if the batch is done ***test
 		/* if (t && !batch_done_yet(ws, ws->batch_id)) { */
+		Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 		if (t) {
-			Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
-			Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 		}
+		Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 
 	}
 	ws->batch_id = 0;
@@ -1886,15 +1888,12 @@ void Cilk_batchify(CilkWorkerState *const ws,
 	pending->array[ws->self].result = indvResult;
 	pending->array[ws->self].status = DS_WAITING;
 
-	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
-
 	while (pending->array[ws->self].status != DS_DONE) {
 		ws->batch_id = USE_SHARED(current_batch_id);
 
 		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
-						BatchArgs args;
-						Cilk_enter_state(ws, STATE_BATCH_TOTAL);
-						Cilk_enter_state(ws, STATE_BATCH_START);
+			BatchArgs args;
+			Cilk_enter_state(ws, STATE_BATCH_START);
 
 			ws->current_cache = &ws->ds_cache;
 
@@ -1937,15 +1936,16 @@ void Cilk_batchify(CilkWorkerState *const ws,
 			USE_SHARED(batch_sizes)[numJobs-1]++;
 #endif
 
-			Cilk_exit_state(ws, STATE_BATCH_START);
 
-			//			Cilk_enter_state(ws, STATE_DS_WORKING);
 			USE_PARAMETER(invoke_batch) = Batcher_create_batch_closure(ws,
 																																 op, &args);
-			/* USE_SHARED(invoke_batch) = Batcher_create_batch_closure(ws, op, */
-			/* 																													 dataSize, */
-			/* 																													 dataStruct); */
+			Cilk_exit_state(ws, STATE_BATCH_START);
+			Cilk_enter_state(ws, STATE_DS_WORKING);
+
 			batch_scheduler(ws, USE_PARAMETER(invoke_batch));
+
+			Cilk_exit_state(ws, STATE_DS_WORKING);
+
 			/* Cilk_internal_free(ws, cl, sizeof(Closure)); */
 			/* op(ws, dataStruct, workArray, numJobs, workArray); */
 			//			Cilk_exit_state(ws, STATE_DS_WORKING);
@@ -1960,7 +1960,6 @@ void Cilk_batchify(CilkWorkerState *const ws,
 			USE_SHARED(batch_owner) = -1;
 			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
 			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
-			Cilk_exit_state(ws, STATE_BATCH_TOTAL);
 		} else {
 			batch_scheduler(ws, NULL);
 		}
