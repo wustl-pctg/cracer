@@ -2,7 +2,7 @@
 // File    : main.cpp
 // Author  : Ms.Moran Tzafrir  email: morantza@gmail.com
 // Written : 13 October 2009
-// 
+//
 // Multi-Platform C++ framework example benchamrk programm
 //
 // Copyright (C) 2009 Moran Tzafrir.
@@ -13,11 +13,11 @@
 // (at your option) any later version.
 //
 // This program is distributed in the hope that it will be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of 
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 // General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License 
+// You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software Foundation
 // Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +201,7 @@ int main(int argc, char **argv) {
 		void* final rand_mem = malloc( _gRand.nextInt(128)+1 );
 		free(rand_mem);
 	}
-	
+
 	//read benchmark configuration .............................................
 	if(!_gConfiguration.read(argc, argv)) {
 		if(!_gConfiguration.read()) {
@@ -236,7 +236,7 @@ int main(int argc, char **argv) {
 	Thread::sleep(1*1000);
 	for (int iDb=0; iDb<_num_ds; ++iDb) {
 		_gDS[iDb]->print_custom();
-		delete _gDS[iDb]; 
+		delete _gDS[iDb];
 		_gDS[iDb] = null;
 	}
 }
@@ -491,7 +491,7 @@ void PrepareRandomNumbers(final int size) {
 	for (int iRandNum = 0; iRandNum < size; ++iRandNum) {
 		if(0 == _gConfiguration._capacity) {
 			_gRandNumAry[iRandNum] = iRandNum+2;
-		} else { 
+		} else {
 			_gRandNumAry[iRandNum] = _gRand.nextInt(_gConfiguration._capacity) + 2;
 			if(_gRandNumAry[iRandNum] <= 0 || _gRandNumAry[iRandNum] >= (_gConfiguration._capacity+2)) {
 				System_err_println("PrepareRandomNumbers: Error random number" + Integer::toString(_gRandNumAry[iRandNum]));

@@ -32,7 +32,9 @@ threads="1 2 4 8 12 16 24 32 40 48 56 64"
 #algorithms="fcstack lfstack elstack"
 #algorithms="fcstack lfstack elstack"
 #algorithms="fcskiplist fcpairheap fcskiplist lfskiplist lazyskiplist"
-algorithms="ctqueue fcqueue msqueue basketqueue ctqueue oyqueue oyqueuecom lsqueue"
+#algorithms="ctqueue fcqueue msqueue basketqueue ctqueue oyqueue
+#oyqueuecom lsqueue"
+algorithms="fcqueue"
 #algorithms="tmlist"
 #algorithms="fcsoftheap fcpairheap"
 

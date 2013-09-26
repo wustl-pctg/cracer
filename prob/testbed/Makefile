@@ -3,7 +3,7 @@ CFLAGS =
 MAKEDEPEND = $(CILKC) -MM
 DEPS = $(wildcard util/*.h util/*.cilkh)
 SRCS = $(wildcard *.cilk)
-INC = util/parfor.cilk util/benchOptions.c
+INC = util/parfor.cilk
 DS =
 LD =
 

@@ -33,12 +33,12 @@ cilk void makeRemove(int i, void* data){
 }
 
 cilk void runTest(Stack* ds, int size){
-     spawn parforpar(0,size-1,1,&makeInsert, ds);    
+     spawn parforpar(0,size-1,1,&makeInsert, ds);
      sync;
 }
 
 cilk void runRemoveTest(Stack* ds, int size){
-     spawn parforpar(0,size-1,1,&makeRemove, ds);    
+     spawn parforpar(0,size-1,1,&makeRemove, ds);
      sync;
 }
 
@@ -86,12 +86,12 @@ cilk int main(int argc, char* argv[]){
 	} else {
 	  testSize=atoi(argv[optind]);
 	}
-    //Begin running tests and start the timer. 
+    //Begin running tests and start the timer.
    if (verbose) {
       printf("begin test\n");
     }
    //Halve the test size so that the total is testSize
-   testSize/=2; 
+   testSize/=2;
    startTimer();
     //Start timing here.
     spawn runTest(test_stack,testSize);
