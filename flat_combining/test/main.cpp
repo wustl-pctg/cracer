@@ -408,7 +408,8 @@ void RunBenchmark() {
 	_gThreadResultAry = null;
 	_gThreads = null;
 
-	//return benchmark results ................................................
+	//return benchmark results
+	//................................................
 	_gResult         /= (long)(_gEndTime - _gStartTime);
 	_gResultAdd      /= (long)(_gEndTime - _gStartTime);
 	_gResultRemove   /= (long)(_gEndTime - _gStartTime);

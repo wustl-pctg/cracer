@@ -45,6 +45,6 @@ for p in nproc:
                                stderr=subprocess.PIPE)
     output = process.communicate()[0]
     tp = string.split(output);
-    fcThroughput = float(tp[0])/float(fctime * 1000)
+    fcThroughput = tp[0]
     outFile.write("{0},{1},{2}\n".format(str(p),math.floor(batchThroughput),
                                          math.floor(fcThroughput)));
