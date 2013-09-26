@@ -66,6 +66,8 @@ typedef _u64               ptr_t;
 #define WMB() asm volatile("sfence":::"memory")
 #define MB()  asm volatile("mfence":::"memory")
 
+//int __sync_val_compare_and_swap(_u32*, _u32, _u32);
+
 /*inline unsigned MUTEX_ENTER(unsigned volatile* x) {
 	return __sync_lock_test_and_set(x, 0xFF);
 }

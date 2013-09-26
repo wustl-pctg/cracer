@@ -1,4 +1,4 @@
-CILKC = ../support/cilkclocal
+CILKC = ../../prob/support/cilkclocal
 CFLAGS =
 MAKEDEPEND = $(CILKC) -MM
 DEPS = $(wildcard util/*.h util/*.cilkh)

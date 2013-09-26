@@ -3,9 +3,19 @@
 
 #include "../framework/c_framework.h"
 
-#define lock_fc(x,b) ( 0 == x.getNotSafe() &&  0 == x.getNotSafe() &&  0 == x.getNotSafe() && (b=x.compareAndSet(0, 0xFF)) )
+//#define lock_fc(x,b) ( 0 == x.getNotSafe() &&  0 == x.getNotSafe() &&  0 == x.getNotSafe() && (b=x.compareAndSet(0, 0xFF)) )
+
+#define _MAX_THREADS 1024
+#define false 0
+//#define boolean char
 
 extern int _gNumThreads;
+static int _num_post_read_write;
+//static int _MAX_THREADS	= 1024;
+//static int _NULL_VALUE	= 0;
+//static int _DEQ_VALUE		= (INT_MIN+2);
+//static int _OK_DEQ		= (INT_MIN+3);
+
 
 typedef struct CasInfo {
 		int _failed;
@@ -29,13 +39,15 @@ void CasInfo_reset(CasInfo* info) {
 }
 	
 //list inner types ------------------------------
-typedef struct SlotInfo {
+typedef struct SlotInfo SlotInfo;
+
+struct SlotInfo {
 	int volatile		_req_ans;		//here 1 can post the request and wait for answer
 	int volatile		_time_stamp;	//when 0 not connected
 	volatile SlotInfo* 	_next;			//when null not connected
 	void*			_custem_info;
-  bool      _deq_pending;
-} SlotInfo;
+  char      _deq_pending;
+};
 
 SlotInfo* new_SlotInfo() {
 	SlotInfo* info;
@@ -44,18 +56,14 @@ SlotInfo* new_SlotInfo() {
   info->_time_stamp  = 0;
 	info->_next        = null;
 	info->_custem_info = null;
-  info->_deq_pending = false;
+  info->_deq_pending = 0;
+  return info;
 }
 
 typedef struct ITest {
-  static int _num_post_read_write;
-	static final int _MAX_THREADS	= 1024;
-	static final int _NULL_VALUE	= 0;
-	static final int _DEQ_VALUE		= (INT_MIN+2);
-	static final int _OK_DEQ		= (INT_MIN+3);
 	//constants -----------------------------------
-	final int		_NUM_THREADS;
-	final boolean	_IS_USE_CONDITION;
+	int		_NUM_THREADS;
+	boolean	_IS_USE_CONDITION;
 
 	CasInfo		_cas_info_ary[_MAX_THREADS];
 	int				_cpu_cash_contamination[8*1024*1024];
@@ -63,18 +71,16 @@ typedef struct ITest {
 
 
 	//list fields -----------------------------------
-  CCP::ThreadLocal<SlotInfo*>	_tls_slot_info;
-	CCP::AtomicReference<SlotInfo>	_tail_slot;
-	int volatile					_timestamp;
-
-
+  //CCP::ThreadLocal<SlotInfo*>	_tls_slot_info;
+	//CCP::AtomicReference<SlotInfo>	_tail_slot;
+	//int volatile					_timestamp;
 } ITest;
 
 //ITest helper function -----------------------------
 inline void ITest_init_architecture_specific(ITest* test) { }
 inline void ITest_machine_start_fc(ITest* test, final int iThread) { }
 inline void ITest_machine_end_fc(ITest* test, final int iThread) { }
-inline void ITest_thread_wait
+/*inline void ITest_thread_wait
   (ITest* test, final int iThread, final boolean is_short=false) 
 { 
   if(test->_NUM_THREADS < 8) {
@@ -96,9 +102,9 @@ SlotInfo* ITest_get_new_slot(ITest* test) {
 	} while(false == test->_tail_slot.compareAndSet(curr_tail, my_slot));
 
 	return my_slot;
-}
+}*/
 
-void ITest_enq_slot(ITest* test, SlotInfo* p_slot) {
+/*void ITest_enq_slot(ITest* test, SlotInfo* p_slot) {
 	SlotInfo* curr_tail;
 	do {
 		curr_tail = test->_tail_slot.get();
@@ -110,11 +116,7 @@ void ITest_enq_slot_if_needed(ITest* test, SlotInfo* p_slot) {
 	if(null == p_slot->_next) {
 		ITest_enq_slot(test, p_slot);
 	}
-}
-	
-ITest* new_ITest_def(){
-  return new_ITest(_gNumThreads, false);
-} 
+}*/
 
 ITest* new_ITest(final int num_threads, final boolean is_use_condition) {
   ITest* test;
@@ -124,10 +126,15 @@ ITest* new_ITest(final int num_threads, final boolean is_use_condition) {
   return test;  
 }
 	
+ITest* new_ITest_def(){
+  return new_ITest(_gNumThreads, false);
+} 
+
+	
 //virtual ~ITest() {}
 	
 void ITest_cas_reset(ITest* test, final int iThread) {
-	CasInfo_reset(test->_cas_info_ary[test->_MAX_THREADS]);
+	CasInfo_reset(&test->_cas_info_ary[_MAX_THREADS]);
 }
 
 void ITest_print_cas(ITest* test) {
@@ -150,13 +157,13 @@ void ITest_print_custom(ITest* test) {
 int ITest_post_computation(ITest* test, final int iThread) {
 	int sum=1;
   unsigned long i;
-	if(test->_num_post_read_write > 0) {
-		++test->_iTry[iThread];
+	if(_num_post_read_write > 0) {
 		unsigned long start_indx = 
       ((unsigned long)(test->_iTry[iThread] * (iThread+1) * 17777675))%
       (7*1024*1024);
+		++test->_iTry[iThread];
 
-		for (i=start_indx; i<start_indx+test->_num_post_read_write; ++i) {
+		for (i=start_indx; i<start_indx+_num_post_read_write; ++i) {
 			sum += test->_cpu_cash_contamination[i];
 			test->_cpu_cash_contamination[i] =  sum;
 		}
@@ -165,11 +172,11 @@ int ITest_post_computation(ITest* test, final int iThread) {
 }
 	
 //..........................................................................
-boolean ITest_add(ITest* test, final int iThread, final int inValue) = 0;
-int ITest_remove(ITest* test, final int iThread, final int inValue) = 0;
-int ITest_contain(ITest* test, final int iThread, final int inValue) = 0;
+//boolean ITest_add(ITest* test, final int iThread, final int inValue) = 0;
+//int ITest_remove(ITest* test, final int iThread, final int inValue) = 0;
+//int ITest_contain(ITest* test, final int iThread, final int inValue) = 0;
 
 //..........................................................................
-int ITest_size(ITest* test) = 0;
-final char* ITest_name(ITest* test) = 0;
+//int ITest_size(ITest* test) = 0;
+//final char* ITest_name(ITest* test) = 0;
 #endif

@@ -186,8 +186,10 @@ public:
 	virtual ~ITest() {}
 	
 	virtual void cas_reset(final int iThread) {
-		_cas_info_ary[_MAX_THREADS].reset();;
-	}
+		//TODO: figure out if this was really a bug
+    //_cas_info_ary[_MAX_THREADS].reset();;
+	  _cas_info_ary[iThread].reset();
+  }
 
 	virtual void print_cas() {
 	}

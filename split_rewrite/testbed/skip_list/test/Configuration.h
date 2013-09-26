@@ -14,11 +14,9 @@
 // You can use this file only by explicit written approval from Moran Tzafrir.
 //------------------------------------------------------------------------------
 
-#include <string>
-#include "../framework/cpp_framework.h"
+#include "../framework/c_framework.h"
 
-class Configuration {
-public:
+typedef struct Configuration {
 	//..................................................
 	char	_alg1_name[1024];
 	int		_alg1_num;
@@ -47,51 +45,43 @@ public:
 
 	int		_tm_status;
 	int     _read_write_delay;
+} Configuration;
+	
+//..................................................
+Configuration* new_Configuration() {
+  Configuration* config;
+  config = (Configuration*)malloc(sizeof(Configuration));
+  return config;
+}
 
-	//..................................................
-	bool read() {
-		try {
-			//read configuration from input stream
-			int num_read = fscanf(stdin, "%s %d %s %d %s %d %s %d %d %d %d %d %f %d %d", 
-									_alg1_name, &_alg1_num, _alg2_name, &_alg2_num, _alg3_name, &_alg3_num, _alg4_name, &_alg4_num,
-									&_test_no, &_no_of_threads, &_add_ops, &_remove_ops, &_load_factor, &_capacity, &_throughput_time, &_is_dedicated_mode, &_tm_status, &_read_write_delay );
+char Configuration_read(Configuration* config, int argc, char **argv) {
+  int curr_arg=1;
+	
+  if (argc != 19)
+    return 0;
+	
+  strcpy(config->_alg1_name, argv[curr_arg++]);
+	config->_alg1_num   = atoi(argv[curr_arg++]);
+	strcpy(config->_alg2_name, argv[curr_arg++]);
+	config->_alg2_num		= atoi(argv[curr_arg++]);
+	strcpy(config->_alg3_name, argv[curr_arg++]);
+	config->_alg3_num		= atoi(argv[curr_arg++]);
+	strcpy(config->_alg4_name, argv[curr_arg++]);
+	config->_alg4_num		= atoi(argv[curr_arg++]);
 
-			return (15 == num_read);
-		} catch (...) {
-			return false;
-		}
-	}
+	config->_test_no		         = atoi(argv[curr_arg++]);
+	config->_no_of_threads       = atoi(argv[curr_arg++]);
+	config->_add_ops             = atoi(argv[curr_arg++]);
+	config->_remove_ops          = atoi(argv[curr_arg++]);
+	config->_load_factor         = (float)atof(argv[curr_arg++]);
+	config->_capacity            = atoi(argv[curr_arg++]);
+	config->_throughput_time     = atoi(argv[curr_arg++]);
+	config->_is_dedicated_mode   = atoi(argv[curr_arg++]);
+	config->_tm_status			     = atoi(argv[curr_arg++]);
+	config->_read_write_delay	   = atoi(argv[curr_arg++]);
 
-	//..................................................
-	bool read(int argc, char **argv) {
-		try {
-			int curr_arg=1;
-			strcpy(_alg1_name, argv[curr_arg++]);
-			_alg1_num			 = CCP::Integer::parseInt(argv[curr_arg++]);
-			strcpy(_alg2_name, argv[curr_arg++]);
-			_alg2_num			 = CCP::Integer::parseInt(argv[curr_arg++]);
-			strcpy(_alg3_name, argv[curr_arg++]);
-			_alg3_num			 = CCP::Integer::parseInt(argv[curr_arg++]);
-			strcpy(_alg4_name, argv[curr_arg++]);
-			_alg4_num			 = CCP::Integer::parseInt(argv[curr_arg++]);
-
-			_test_no			 = CCP::Integer::parseInt(argv[curr_arg++]);
-			_no_of_threads       = CCP::Integer::parseInt(argv[curr_arg++]);
-			_add_ops             = CCP::Integer::parseInt(argv[curr_arg++]);
-			_remove_ops          = CCP::Integer::parseInt(argv[curr_arg++]);
-			_load_factor         = (float)atof(argv[curr_arg++]);
-			_capacity            = CCP::Integer::parseInt(argv[curr_arg++]);
-			_throughput_time     = CCP::Integer::parseInt(argv[curr_arg++]);
-			_is_dedicated_mode   = CCP::Integer::parseInt(argv[curr_arg++]);
-			_tm_status			 = CCP::Integer::parseInt(argv[curr_arg++]);
-			_read_write_delay	 = CCP::Integer::parseInt(argv[curr_arg++]);
-
-			return true;
-		} catch (...) {
-			return false;
-		}
-	}
-};
+	return 1;
+}
 
 #endif
 
