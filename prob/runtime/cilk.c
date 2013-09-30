@@ -49,14 +49,20 @@ static void print_all_statistics(CilkContext *const context)
 	// Batch stats
 	int i;
 #if CILK_STATS
+	int batch_steals = 0;
+	int total_steals = 0;
 	if (USE_PARAMETER1(options->statlevel) == -1) {
 		Cilk_summarize_time_statistics(context);
 
 		fprintf(USE_PARAMETER1(infofile), "Batch sizes:");
 		for (i = 0; i < USE_PARAMETER1(active_size); i++) {
 			fprintf(USE_PARAMETER1(infofile), " %i,", USE_SHARED1(batch_sizes)[i]);
+			batch_steals += USE_SHARED1(batch_steals)[i];
+			total_steals += USE_SHARED1(num_steals)[i];
 		}
 		fprintf(USE_PARAMETER1(infofile), "\n");
+		fprintf(USE_PARAMETER1(infofile), "Batch steals: %i \n", batch_steals);
+		fprintf(USE_PARAMETER1(infofile), "Total steals: %i \n", total_steals);
 	}
 #endif
 

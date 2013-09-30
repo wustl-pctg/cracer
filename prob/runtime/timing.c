@@ -67,11 +67,14 @@ static const struct state_desc {
   {
     "Waiting for locks", STATE_WAITING_FOR_LOCK
   },
+	{
+		"Invoking a batch", STATE_BATCH_INVOKE
+	},
   {
-    "Batch DS operations time", STATE_DS_WORKING
+    "Batch DS operations time", STATE_BATCH_WORKING
   },
   {
-    "DS Stealing", STATE_DS_STEALING
+    "DS Stealing", STATE_BATCH_STEALING
   },
   {
     "Total batch time", STATE_BATCH_TOTAL

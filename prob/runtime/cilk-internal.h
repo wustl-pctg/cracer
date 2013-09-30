@@ -214,6 +214,8 @@ struct CilkGlobalState_s{
 
 #if CILK_STATS
 	int *batch_sizes;
+	int *batch_steals;
+	int *num_steals;
 #endif
 
   /* End BATCHER */
@@ -353,8 +355,9 @@ enum {
   STATE_TOTAL,
   STATE_WORKING,
   STATE_WAITING_FOR_LOCK,
-  STATE_DS_WORKING,
-  STATE_DS_STEALING,
+	STATE_BATCH_INVOKE,
+  STATE_BATCH_WORKING,
+  STATE_BATCH_STEALING,
   STATE_BATCH_TOTAL,
 	STATE_BATCH_SCHEDULING,
   STATE_BATCH_START,

@@ -48,7 +48,8 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
 	void *data;
 	size_t numElements;
 	void *result;
-  CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at the end of the func.*/
+  CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at
+																					the end of the func.*/
 
   CILK2C_START_THREAD_SLOW();
   switch (_cilk_frame->header.entry) {
@@ -57,6 +58,7 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   case 2:
     goto _sync2;
   }
+	Cilk_enter_state(ws, STATE_BATCH_INVOKE);
 
   _cilk_ws->cp_hack = 0;
   _cilk_ws->work_hack = 0;
@@ -76,11 +78,11 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   _cilk_frame->header.entry=1;
   CILK2C_BEFORE_SPAWN_SLOW();
   CILK2C_PUSH_FRAME(_cilk_frame);
+	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
 
   _cilk_frame->batch_op(_cilk_ws, dataStruct, data, numElements, result);
   CILK2C_XPOP_FRAME_NORESULT(_cilk_frame,/* return nothing */);
   CILK2C_AFTER_SPAWN_SLOW();
-
 
   if (0) {
   _sync1:
@@ -90,6 +92,7 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
 
   CILK2C_BEFORE_SYNC_SLOW();
   _cilk_frame->header.entry=2;
+
   if (CILK2C_SYNC) {
     return;
   _sync2:
@@ -97,6 +100,7 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   }
   CILK2C_AFTER_SYNC_SLOW();
   CILK2C_AT_THREAD_BOUNDARY_SLOW();
+	Cilk_enter_state(ws, STATE_BATCH_INVOKE);
 
   WHEN_CILK_TIMING(USE_SHARED(critical_path) = _cilk_frame->header.mycp);
   WHEN_CILK_TIMING(USE_SHARED(total_work) = _cilk_frame->header.work);
@@ -107,6 +111,7 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   Cilk_remove_and_free_closure_and_frame(_cilk_ws, &_cilk_frame->header,
 																				 _cilk_ws->self,
 																				 USE_PARAMETER(ds_deques));
+	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
   return;
 
 }

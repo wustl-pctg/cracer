@@ -990,6 +990,12 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim,
 		deque_unlock(ws, victim, deque_pool);
 		Cilk_event(ws, EVENT_STEAL_EMPTY_DEQUE);
 	}
+#if CILK_STATS
+	if (res && ws->batch_id)
+			USE_SHARED(batch_steals)[ws->self]++;
+	USE_SHARED(num_steals)[ws->self]++;
+#endif
+
 	return res;
 }
 
@@ -1657,13 +1663,13 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 
 			/* now execute it */
 			if (ws->batch_id) {
-				Cilk_enter_state(ws, STATE_DS_WORKING);
+				Cilk_enter_state(ws, STATE_BATCH_WORKING);
 			} else {
 				Cilk_enter_state(ws, STATE_WORKING);
 			}
 			(get_proc_slow(f->sig)) (ws, f);
 			if (ws->batch_id) {
-				Cilk_exit_state(ws, STATE_DS_WORKING);
+				Cilk_exit_state(ws, STATE_BATCH_WORKING);
 			} else {
 				Cilk_exit_state(ws, STATE_WORKING);
 			}
@@ -1722,7 +1728,7 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 
 			// Decide where to steal from
 			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(dsprob)) {
-				Cilk_enter_state(ws, STATE_DS_STEALING);
+				Cilk_enter_state(ws, STATE_BATCH_STEALING);
 						/* && !(USE_SHARED(pending_batch).size >
 					 MAX_BATCH_SIZE)) { // test *** */
 				// data structure steal
@@ -1740,7 +1746,7 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 					deque_pool = USE_PARAMETER(ds_deques);
 				}
 				t = Closure_steal(ws, victim, deque_pool);
-				Cilk_exit_state(ws, STATE_DS_STEALING);
+				Cilk_exit_state(ws, STATE_BATCH_STEALING);
 			} else { // regular steal */
 				victim = rts_rand(ws) % USE_PARAMETER(active_size);
 				if (victim != ws->self) {
@@ -1822,7 +1828,7 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 			/* while (!t) { */
 			// Otherwise, steal
 			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(batchprob)) {
-				Cilk_enter_state(ws, STATE_DS_STEALING);
+				Cilk_enter_state(ws, STATE_BATCH_STEALING);
 
 				if ( (USE_PARAMETER(options->btest) & 1)  == 1) {
 					int range = USE_SHARED(pending_batch).size;
@@ -1840,7 +1846,7 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 						Cilk_lower_priority(ws);
 					}
 				}
-				Cilk_exit_state(ws, STATE_DS_STEALING);
+				Cilk_exit_state(ws, STATE_BATCH_STEALING);
 			}
 			/* if (batch_done_yet(ws, ws->batch_id)) { */
 			/* 	done = 1; */
@@ -1936,15 +1942,14 @@ void Cilk_batchify(CilkWorkerState *const ws,
 			USE_SHARED(batch_sizes)[numJobs-1]++;
 #endif
 
-
 			USE_PARAMETER(invoke_batch) = Batcher_create_batch_closure(ws,
 																																 op, &args);
 			Cilk_exit_state(ws, STATE_BATCH_START);
-			Cilk_enter_state(ws, STATE_DS_WORKING);
+			Cilk_enter_state(ws, STATE_BATCH_WORKING);
 
 			batch_scheduler(ws, USE_PARAMETER(invoke_batch));
 
-			Cilk_exit_state(ws, STATE_DS_WORKING);
+			Cilk_exit_state(ws, STATE_BATCH_WORKING);
 
 			/* Cilk_internal_free(ws, cl, sizeof(Closure)); */
 			/* op(ws, dataStruct, workArray, numJobs, workArray); */
