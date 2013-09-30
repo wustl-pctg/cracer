@@ -5,14 +5,14 @@
 #include <stdlib.h>
 #include "util/defaults.h"
 #include <string.h>
-
-void usage() {
-  printf("use default arguments");
-}
+#include "util/benchOptions.h"
 
 cilk void insertItem(hashTable * table, int* keys, int i){
   spawn hashTable_insertItem(table,keys[i]);
-  sync;
+}
+
+cilk void insertLock(hashTable * table, int* keys, int i){
+  spawn hashTable_lockInsert(table,keys[i]);
 }
 
 cilk void parfor_ins(hashTable* current_table, int* temp, cilk void(*parallel_function)(hashTable*,int*,int), int start, int end)

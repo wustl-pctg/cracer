@@ -25,12 +25,13 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 		{"noLock", no_argument, 0, 'l'},
 		{"operations", required_argument, 0, 'o'},
 		{"iterations", required_argument, 0, 'i'},
+		{"dedicated", no_argument,0,"d"},
 	};
 
 	int optIndex = 0;
 	int option;
 
-	while((option = getopt_long(argc, argv, "o:i:vbl", longOptions, &optIndex))
+	while((option = getopt_long(argc, argv, "o:i:vbld", longOptions, &optIndex))
 				!= -1)
 	{
 		switch(option)
@@ -56,6 +57,9 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 		case 'i':
 			opt->iterations = atoi(optarg);
 			break;
+		case 'd':
+		        opt->dedicated = 1;
+		        break;
 		default:
 			usage();
 			exit(1);

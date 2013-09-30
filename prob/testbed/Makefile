@@ -3,7 +3,7 @@ CFLAGS =
 MAKEDEPEND = $(CILKC) -MM
 DEPS = $(wildcard util/*.h util/*.cilkh)
 SRCS = $(wildcard *.cilk)
-INC = util/parfor.cilk
+INC = util/parfor.cilk util/benchOptions.c
 DS =
 LD =
 
@@ -57,7 +57,7 @@ omPMA: LD += -lm
 omPMA: omPMALock_test omPMABatch_test
 omTree: LD += -lm
 omTree: omTreeLock_test omTreeBatch_test
-stack: stackBatch_test stackLock_test
+stack: stackBatch_test 
 
 .PHONY: clean cilk-clean check-syntax doc information all
 clean:

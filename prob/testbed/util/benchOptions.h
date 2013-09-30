@@ -8,6 +8,7 @@ typedef struct
 	int noLock;
 	int operations;
 	int iterations;
+        int dedicated;
 } BenchOptions;
 
 int getOptions(int argc, char **argv, BenchOptions *opt);

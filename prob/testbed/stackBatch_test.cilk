@@ -1,9 +1,9 @@
-#include <getopt.h>
-#include <unistd.h>
-#include <string.h>
 
 #include "util/timer.h"
 #include "ds/stack.cilk"
+#include "util/benchOptions.h"
+#include "util/parfor.cilkh"
+
 #define TSIZE 20
 
 Stack* setUp(){
@@ -13,26 +13,35 @@ Stack* setUp(){
 
 cilk void makeInsert(int i, void* data){
     Stack* ds = data;
-    Operation op;
-    op.data=i;
-    op.add=1;
-    spawn mixedBatchify(ds,op);
-    //spawn pushBatchify(ds,i);
-    //push(ds,i);
+    spawn pushBatchify(ds,i);
     sync;
 }
 
 cilk void makeRemove(int i, void* data){
     Stack* ds = data;
-    Operation op;
-    op.data=i;
-    op.add=0;
-    spawn mixedBatchify(ds,op);
-    //spawn popBatchify(ds);
+    spawn popBatchify(ds);
+    sync;
+}
+
+cilk void mixedInsert(int i, void* data){
+  Stack* ds = data;
+  Operation op;
+  op.data=i;
+  op.add=1;
+  spawn mixedBatchify(ds,op);
   sync;
 }
 
-cilk void runTest(Stack* ds, int size){
+cilk void mixedRemove(int i, void* data){
+  Stack* ds = data;
+  Operation op;
+  op.data=i;
+  op.add=0;
+  spawn mixedBatchify(ds,op);
+  sync;
+}
+
+cilk void runAddTest(Stack* ds, int size){
      spawn parforpar(0,size-1,1,&makeInsert, ds);
      sync;
 }
@@ -42,72 +51,46 @@ cilk void runRemoveTest(Stack* ds, int size){
      sync;
 }
 
-void usage(){
-  printf("prog_num [-s] <test_size> [-v]\n");
+cilk void runMixedTest(Stack* ds, int size){
+  spawn parforpar(0,(size/2),1,&makeInsert,ds);
+  spawn parforpar(0,(size/2),1,&makeRemove,ds);
+  sync;
 }
 
 cilk int main(int argc, char* argv[]){
     Stack* test_stack = setUp();
-    int testSize=TSIZE;
-    int verbose=0;
-    int opt_index;
-    int option;
-    float addTime;
-    float removeTime;
-    struct option all_options[] ={
-      {"size",required_argument,0,'s'},
-      {"verbose", no_argument,0,'v'}
-    };
-    while((option = getopt_long(argc,argv,"s:v",all_options,&opt_index))!=-1){
-      switch(option){
-      case 0:
-	if (all_options[opt_index].flag!=0){
-	  break;
+    BenchOptions options;
+    int testSize;
+   
+    getOptions(argc, argv, &options);
+    testSize=options.operations;
+    if (options.dedicated){
+	startTimer();
+	spawn runAddTest(test_stack,testSize);
+	sync;
+	stopTimer();
+	if (options.verbose){
+	  printf("Batch Add. Size %d. \n", testSize);
 	}
-	else{
-	  printf("Invalid option.\n");
-	  break;
+	printf("%lf\n",getWallTime());
+	startTimer();
+	spawn runRemoveTest(test_stack,testSize);
+	sync;
+	stopTimer();
+	if (options.verbose){
+	  printf("Batch Remove. Size %d. \n",testSize);
 	}
-      case 's':
-	testSize=atoi(optarg);
-	break;
-      case 'v':
-	verbose=1;
-	break;
-      default:
-	usage();
-	return -1;
+	printf("%lf\n",getWallTime());
+    }
+    else {
+      startTimer();
+      spawn runMixedTest(test_stack,testSize);
+      sync;
+      stopTimer();
+      if (options.verbose){
+	printf("Batch Mixed. Size %d. \n",testSize);
       }
-    }
-       //Processes arugment (no -s option) also as size.
-	if (argc==1 || optind != argc-1){
-	  usage();
-	  return -1;
-	} else {
-	  testSize=atoi(argv[optind]);
-	}
-    //Begin running tests and start the timer.
-   if (verbose) {
-      printf("begin test\n");
-    }
-   //Halve the test size so that the total is testSize
-   testSize/=2;
-   startTimer();
-    //Start timing here.
-    spawn runTest(test_stack,testSize);
-    if (verbose){
-        printStack(test_stack);
-   }
-    spawn runRemoveTest(test_stack,testSize);
-    sync;
-    stopTimer();
-    removeTime=getWallTime();
-    if (verbose){
-      printf("Batch. Size %d. \n",testSize);
-    }
-    printf("%lf\n", removeTime);
-    if(verbose) {
-      printStack(test_stack);
+      printf("%lf\n",getWallTime());
     }
     return 0;
 }
