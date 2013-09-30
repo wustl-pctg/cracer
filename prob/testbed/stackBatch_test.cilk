@@ -5,6 +5,7 @@
 #include "util/parfor.cilkh"
 
 #define TSIZE 20
+int parThreshold;
 
 Stack* setUp(){
      Stack* ds = create_stack();
@@ -52,8 +53,9 @@ cilk void runRemoveTest(Stack* ds, int size){
 }
 
 cilk void runMixedTest(Stack* ds, int size){
-  spawn parforpar(0,(size/2),1,&makeInsert,ds);
-  spawn parforpar(0,(size/2),1,&makeRemove,ds);
+  int threshold = parThreshold?parThreshold:PARFOR_THRESHOLD;
+  spawn parforpar_thresh(0,(size/2),1,threshold,&mixedInsert,ds);
+  spawn parforpar_thresh(0,(size/2),1,threshold,&mixedRemove,ds);
   sync;
 }
 

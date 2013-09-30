@@ -21,10 +21,6 @@ cilk void runTest(Stack* ds, int size){
      sync;
 }
 
-void usage(){
-  printf("prog_num [-s] <test_size> [-v]\n");
-}
-
 cilk int main(int argc, char* argv[]){
     Stack* test_stack = setUp();
     int testSize=TSIZE;

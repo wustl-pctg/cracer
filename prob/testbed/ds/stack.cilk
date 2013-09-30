@@ -76,7 +76,6 @@ cilk void doMixedOps(void* ds, void* oprec, size_t size, void*result){
       popInternal(stack);
     }
   }
-	//  Cilk_terminate_batch(_cilk_ws);
 }
 
 /* Batch push method.*/
@@ -87,7 +86,6 @@ cilk void push_batch(void* ds, void* oprec, size_t size, void* result){
   
   //Temporary varibles.
   node* new_nodes;
-  int i;
   /*  for (i=0;i<size;i++){
     push(ds,data[i]);
     }*/
