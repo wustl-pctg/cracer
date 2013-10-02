@@ -374,7 +374,7 @@ cilk void worker_run(int _threadNo) {
   int end_counter;
   tick_t action_counter;
 
-  printf("In worker_run\n");
+  //printf("In worker_run\n");
   for (iNum=0; iNum < (_g_thread_fill_table_size/16); ++iNum) {
     for (iDb=0; iDb<_num_ds; ++iDb) {
       for (i=0; i<16; ++i) {
@@ -385,7 +385,7 @@ cilk void worker_run(int _threadNo) {
     }
   }
 
-  printf("Finished initial building\n");
+  //printf("Finished initial building\n");
   //TODO: what is this for?
   /*for(iDb=0; iDb<_num_ds; ++iDb) {
     DSSkipList_cas_reset(_gDS[iDb],_threadNo);
@@ -398,7 +398,7 @@ cilk void worker_run(int _threadNo) {
   //while((_gNumThreads) != AtomicInteger_get(_gThreadStartCounter))
   //  {/*int j=AtomicInteger_get(_gThreadStartCounter);*/continue;}
 
-  printf("Finished waiting on start counter\n");
+  //printf("Finished waiting on start counter\n");
 
   action_counter = 0;
   iNumAdd = start_counter*1024;

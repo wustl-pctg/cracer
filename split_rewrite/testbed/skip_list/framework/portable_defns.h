@@ -1,7 +1,6 @@
 #ifndef __PORTABLE_DEFNS_H__
 #define __PORTABLE_DEFNS_H__
 
-#include "intel64_defns.h"
 
 #if defined(WIN32) || defined(WIN64)
 	#define __thread__ __declspec(thread)
@@ -9,6 +8,7 @@
 	#define __thread__ __thread
 #endif
 
+#include "intel64_defns.h"
 
 #include <time.h>
 #include <math.h>

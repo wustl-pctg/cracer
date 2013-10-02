@@ -4,12 +4,12 @@ TARGET		= test_intel64
 DSTARGET	= test_cilk
 
 CPP		= g++
-CC		= ../../support/cilkclocal
+CC		= ../../../prob/support/cilkclocal
 
-CPPFLAGS	= -O3 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -lrt -pthread  
-CFLAGS		= -O3 -g -Wall 
-LFLAGS		= -O3 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -lrt -pthread
-CLFLAGS		= -O3 -g -Wall 
+CPPFLAGS	= -O0 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -lrt -pthread  
+CFLAGS		= -O0 -g -Wall 
+LFLAGS		= -O0 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -lrt -pthread
+CLFLAGS		= -O0 -g -Wall 
 
 
 OBJS		= $(CPPSRCS:.cpp=.o)

@@ -41,8 +41,8 @@ typedef struct DSSkipList {
 	//char							_pad1[CACHE_LINE_SIZE];
 	int		    _NUM_REP;
 	int		    _REP_THRESHOLD;
-	Node*			preds[_MAX_LEVEL + 1];
-	Node*			succs[_MAX_LEVEL + 1];
+	//Node*			preds[_MAX_LEVEL + 1];
+	//Node*			succs[_MAX_LEVEL + 1];
 	//SlotInfo*		_saved_remove_node[1024];
 } DSSkipList;
 
@@ -87,7 +87,7 @@ inline_ int DSSkipList_randomLevel(DSSkipList* list) {
 		return level;
 }
 
-inline_ Node* DSSkipList_find(DSSkipList* list, final int key) {
+/*inline_ Node* DSSkipList_find(DSSkipList* list, final int key) {
 	Node* pPred;
 	Node* pCurr;
 	Node* found_node;
@@ -113,6 +113,52 @@ inline_ Node* DSSkipList_find(DSSkipList* list, final int key) {
 	}
 
 	return found_node;
+}*/
+	
+Node* DSSkipList_find 
+    (DSSkipList* list, final int key, Node** preds, Node** succs) 
+{
+	//boolean marked = false;
+	//boolean snip;
+	Node* pPred;
+	Node* pCurr;
+	Node* pSucc;
+
+	int iLevel;
+	while (true) {
+		pPred = list->_head;
+		for (iLevel = _MAX_LEVEL-1; iLevel >= 0; --iLevel) {
+		  pCurr = pPred->_next[iLevel];
+			while (true) {
+				pSucc = pCurr->_next[iLevel];
+				/*while (marked) {           // replace curr if marked
+					snip = pPred->_next[iLevel].compareAndSet(pCurr, pSucc, false, false);
+
+					//if(++(pCurr->_level_removed) == pCurr->_topLevel)
+					//	pCurr.retire();
+
+					pCurr = pPred->_next[iLevel];
+					pSucc = pCurr->_next[iLevel];
+				}*/
+				if (pCurr->_key < key) { // move forward same iLevel
+					pPred = pCurr;
+					pCurr = pSucc;
+				} else {
+					break; // move to _next iLevel
+				}
+			}
+			if(null != preds)
+				preds[iLevel] = pPred;
+			if(null != succs)
+				succs[iLevel] = pCurr;
+		}
+
+		if (pCurr->_key == key) // bottom iLevel curr._key == key
+			return pCurr;
+		else 
+			return null;
+	}
+  return null;
 }
 
 
@@ -254,6 +300,7 @@ DSSkipList* new_DSSkipList() {
   list = (DSSkipList*)malloc(sizeof(DSSkipList));
   list->_random_seed = new_Volatile_u64(Random_getSeed());
   list->_head = getNewNode(INT_MIN);
+  printf("list %p set _head to %p\n", list, list->_head); 
   list->_tail = getNewNode(INT_MAX);
   //list->_NUM_REP = Min(2, _NUM_THREADS);
   //list->_REP_THRESHOLD((int)(ceil(_NUM_THREADS/(1.7))));
@@ -338,8 +385,8 @@ DSSkipList* new_DSSkipList() {
 
 
 void DSSkipList_unsafe_add (DSSkipList* list, final int inValue) {
-	//Node* preds[_MAX_LEVEL + 1];
-	//Node* succs[_MAX_LEVEL + 1];
+	Node* preds[_MAX_LEVEL + 1];
+	Node* succs[_MAX_LEVEL + 1];
 	Node* pPred;
 	Node* pSucc;
 	Node* new_node = null;
@@ -347,14 +394,14 @@ void DSSkipList_unsafe_add (DSSkipList* list, final int inValue) {
   int iLevel;
 
 	while (true) {
-		Node* final found_node = DSSkipList_find(list, inValue);//, preds, succs);
+		Node* final found_node = DSSkipList_find(list, inValue, preds, succs);
 		if(null != found_node) {
 			return;
 		}
 
 		// try to splice in new node in 0 going up
-		pPred = list->preds[0];
-		pSucc = list->succs[0];
+		pPred = preds[0];
+		pSucc = succs[0];
 
 		if (null == new_node) {
 			topLevel = DSSkipList_randomLevel(list);
@@ -363,7 +410,7 @@ void DSSkipList_unsafe_add (DSSkipList* list, final int inValue) {
 
 		// prepare new node
 		for (iLevel = 1; iLevel < topLevel; ++iLevel) {
-			new_node->_next[iLevel] = list->succs[iLevel];
+			new_node->_next[iLevel] = succs[iLevel];
 		}
 		new_node->_next[0] = pSucc;
 
@@ -375,13 +422,13 @@ void DSSkipList_unsafe_add (DSSkipList* list, final int inValue) {
 		// splice in remaining levels going up
 		for (iLevel = 1; iLevel < topLevel; ++iLevel) {
 			while (true) {
-				pPred = list->preds[iLevel];
-				pSucc = list->succs[iLevel];
+				pPred = preds[iLevel];
+				pSucc = succs[iLevel];
 				if (pSucc == new_node) {
 					pPred->_next[iLevel] = pSucc;
           break;
 				}
-				DSSkipList_find(list, inValue); // find new preds and succs
+				DSSkipList_find(list, inValue, preds, succs);// find new preds and succs
 			}
 		}
     return;
