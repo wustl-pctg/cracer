@@ -49,6 +49,7 @@ param: param.cilk
 # Data Structure Tests
 counter: counterLock_test counterBatch_test
 btree: DS = ds/btree.cilk
+btree: INC += util/benchOptions.c
 btree: btree_test
 dynArray: dynArrayLock_test dynArrayBatch_test
 concHash: LD += -lm

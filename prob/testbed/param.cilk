@@ -57,9 +57,7 @@ cilk void batch_function(void* ds, void *input, size_t size, void* useless) {
 cilk void work_batch(int i, void* work)
 {
 	i = *(int*) work;
-	printf("Entering batch.\n");
 	Cilk_batchify(_cilk_ws, batch_function, NULL, &i, sizeof(int), NULL);
-	printf("Ending batch.\n");
 }
 
 cilk void work_lock(int i, void* work)
