@@ -52,10 +52,11 @@ cilk void runRemoveTest(Stack* ds, int size){
      sync;
 }
 
-cilk void runMixedTest(Stack* ds, int size){
+cilk void runMixedTest(Stack* ds, int size, int add_part){
   int threshold = parThreshold?parThreshold:PARFOR_THRESHOLD;
-  spawn parforpar_thresh(0,(size/2),1,threshold,&mixedInsert,ds);
-  spawn parforpar_thresh(0,(size/2),1,threshold,&mixedRemove,ds);
+  int add_size = (add_part * size)/100;
+  spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert,ds);
+  spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove,ds);
   sync;
 }
 
@@ -63,7 +64,8 @@ cilk int main(int argc, char* argv[]){
     Stack* test_stack = setUp();
     BenchOptions options;
     int testSize;
-   
+    int add_percentage;
+
     getOptions(argc, argv, &options);
     testSize=options.operations;
     if (options.dedicated){
@@ -85,8 +87,14 @@ cilk int main(int argc, char* argv[]){
 	printf("%lf\n",getWallTime());
     }
     else {
+      if (options.x_special){
+      	 add_percentage=options.x_special;
+      }
+      else {
+      	 add_percentage=50;
+      }
       startTimer();
-      spawn runMixedTest(test_stack,testSize);
+      spawn runMixedTest(test_stack,testSize,add_percentage);
       sync;
       stopTimer();
       if (options.verbose){
