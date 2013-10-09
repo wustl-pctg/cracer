@@ -176,8 +176,8 @@ Closure * Batcher_create_batch_closure(CilkWorkerState *const ws,
 	//	Batch_create(ws, op, dataSize);
 
   /* create a frame for invoke_batch */
-	/* t = Cilk_Closure_create_malloc(ws->context, NULL); */
-	t = &USE_SHARED(invoke_batch_closure);
+	t = Cilk_Closure_create_malloc(ws->context, NULL);
+	/* t = &USE_SHARED(invoke_batch_closure); */
   t->parent = (Closure *) NULL;
   t->join_counter = 0;
 	t->status = CLOSURE_READY;
