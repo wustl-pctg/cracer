@@ -11,17 +11,17 @@ test='stackBatch_test'
 iterations = range(1)
 #nproc = range(1, 17, 1)
 nproc = range(16,17,1)
-probdir = 'prob'
-fcdir = 'flat_combining'
+probdir = '../prob'
+fcdir = '../flat_combining'
 fctime = 10 # seconds to run the flat combining benchmark
 batchops=200000
 fcinitialsize=20000
 dedicated=0
 
 current = datetime.datetime.now();
-filename = "stack{0}-{1}-{2}-{3}.log".format(current.month,current.day,current.hour,current.minute)
-outFile = open(filename,"w");
-outFile.write("PROCS,BATCH,FC\n");
+#filename = "stack{0}-{1}-{2}-{3}.log".format(current.month,current.day,current.hour,current.minute)
+#outFile = open(filename,"w");
+#outFile.write("PROCS,BATCH,FC\n");
 for p in nproc:
   for i in iterations:
     throughput=[0,0]
@@ -56,5 +56,5 @@ for p in nproc:
  
     #then print output
 #    print throughput
-    outFile.write("{0},{1},{2}\n".format(str(p),math.floor(throughput[0]),throughput[1]))
+#    outFile.write("{0},{1},{2}\n".format(str(p),math.floor(throughput[0]),throughput[1]))
     print "batch,fc",throughput[0],throughput[1]
