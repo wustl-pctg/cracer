@@ -421,7 +421,7 @@ void Cilk_start(CilkContext *const context,
 
   USE_PARAMETER1(invoke_main) =
     Cilk_create_initial_thread(context, main, args, return_size);
-	Closure_init(context, NULL, &USE_SHARED1(invoke_batch_closure));
+  //	Closure_init(context, NULL, &USE_SHARED1(invoke_batch_closure));
 
   /*When this returns we are done */
   Cilk_wakeup_workers(context);
