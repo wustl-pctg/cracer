@@ -59,6 +59,7 @@ omPMA: omPMALock_test omPMABatch_test
 omTree: LD += -lm
 omTree: omTreeLock_test omTreeBatch_test
 stack: stackBatch_test stackLock_test
+skip: DSSkipList_test 
 
 .PHONY: clean cilk-clean check-syntax doc information all
 clean:
