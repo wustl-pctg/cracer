@@ -138,7 +138,8 @@ extern void Cilk_internal_malloc_global_init(CilkContext *const context);
 extern void Cilk_internal_malloc_global_cleanup(CilkContext *const context);
 extern void Cilk_internal_malloc_global_terminate(CilkContext *const context);
 extern void Cilk_internal_malloc_global_init_2(CilkContext *const /*context*/);
-extern void Cilk_internal_malloc_global_terminate_2(CilkContext *const /*context*/);
+extern
+void Cilk_internal_malloc_global_terminate_2(CilkContext *const /*context*/);
 
 /* barriers */
 extern void Cilk_barrier(CilkWorkerState *const ws);

@@ -49,7 +49,6 @@ param: param.cilk
 # Data Structure Tests
 counter: counterLock_test counterBatch_test
 btree: DS = ds/btree.cilk
-btree: INC += util/benchOptions.c
 btree: btree_test
 dynArray: dynArrayLock_test dynArrayBatch_test
 concHash: LD += -lm
@@ -59,7 +58,7 @@ omPMA: omPMALock_test omPMABatch_test
 omTree: LD += -lm
 omTree: omTreeLock_test omTreeBatch_test
 stack: stackBatch_test stackLock_test
-skip: DSSkipList_test 
+skip: DSSkipList_test
 
 .PHONY: clean cilk-clean check-syntax doc information all
 clean:

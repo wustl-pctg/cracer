@@ -1811,8 +1811,8 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 
 	ws->current_cache = &ws->ds_cache;
 
-	while (!batch_done_yet(ws, ws->batch_id)) {
-		/* while (1) { */
+	/* while (!batch_done_yet(ws, ws->batch_id)) { */
+	while (1) {
 		if (!t) {
 			/* try to get work from the local ds queue */
 			deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
@@ -1820,12 +1820,12 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 			deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
 		}
 
-		if(!t && batch_done_yet(ws, ws->batch_id)) {
-			break;
-		}
+		/* if(!t && batch_done_yet(ws, ws->batch_id)) { */
+		/* 	break; */
+		/* } */
 
-		while (!t && !batch_done_yet(ws, ws->batch_id)) {
-			/* while (!t) { */
+		/* while (!t && !batch_done_yet(ws, ws->batch_id)) { */
+		while (!t) {
 			// Otherwise, steal
 			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(batchprob)) {
 				Cilk_enter_state(ws, STATE_BATCH_STEALING);
@@ -1841,24 +1841,23 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 						USE_SHARED(pending_batch).array[victim].status == DS_IN_PROGRESS) {
 					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
 
-					if (!t && USE_PARAMETER(options->yieldslice) &&
-							USE_SHARED(current_batch_id) == ws->batch_id) {
-						Cilk_lower_priority(ws);
-					}
+					/* if (!t && USE_PARAMETER(options->yieldslice) && */
+					/* 		USE_SHARED(current_batch_id) == ws->batch_id) { */
+					/* 	Cilk_lower_priority(ws); */
+					/* } */
 				}
 				Cilk_exit_state(ws, STATE_BATCH_STEALING);
 			}
-			/* if (batch_done_yet(ws, ws->batch_id)) { */
-			/* 	done = 1; */
-			/* 	break; */
-			/* } */
+			if (batch_done_yet(ws, ws->batch_id)) {
+				done = 1;
+				break;
+			}
 		}
-		/* if (!t && done) break; */
+		if (!t && done) break;
 
 		if (USE_PARAMETER(options->yieldslice))
 			Cilk_raise_priority(ws);
 
-		// I think we can just check t here, not if the batch is done ***test
 		/* if (t && !batch_done_yet(ws, ws->batch_id)) { */
 		Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 		if (t) {

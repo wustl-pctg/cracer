@@ -1,4 +1,4 @@
-//#define USE_LOCKS //Should be commented out or not included in batch test files
+//#define USE_LOCKS 1 //Should be commented out or not included in batch test files
 #include "ds/btree.cilkh"
 //#include <getopt.h>
 #include <string.h>
