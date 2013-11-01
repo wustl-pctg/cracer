@@ -85,7 +85,7 @@ for p in nproc:
     output = ",".join(str(item) for item in throughput)
     outFile.write(output);
     outFile.write("\n");
-    
+'''    
     #graph the output
     plotscript="plot.gnu"
     arguments="\"filename='{0}';cols={1};outfile='{2}'".format(logdir+filename,len(throughput),graphdir+filename);
@@ -97,3 +97,4 @@ for p in nproc:
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
     output = process.communicate()[0]
+'''
