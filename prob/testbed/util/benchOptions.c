@@ -14,6 +14,7 @@ void usage()
 	printf("\t-l, --noLock\t\t\tDon't run the lock version of the benchmark.\n");
 	printf("\t-o, --operations\t\tHow many operations to perform.\n");
 	printf("\t-i, --iterations\t\tHow many iterations of the benchmark to perform.\n");
+	printf("\t-x, --special paramemter\t\tAny special integer paramter for the benchmark. I.e. Operation ratio for Stack.\n");
 }
 
 int getOptions(int argc, char **argv, BenchOptions *opt)
@@ -23,16 +24,16 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 		{"verbose", no_argument, 0, 'v'},
 		{"noBatch", no_argument, 0, 'b'},
 		{"noLock", no_argument, 0, 'l'},
+		{"dedicated", no_argument,0,"d"},
 		{"operations", required_argument, 0, 'o'},
 		{"iterations", required_argument, 0, 'i'},
-		{"dedicated", no_argument,0,"d"},
-		{"xspecial", required_argument,0,"x"},
+		{"special", required_argument,0,'x'},
 	};
 
 	int optIndex = 0;
 	int option;
 
-	while((option = getopt_long(argc, argv, "o:i:vbldx", longOptions, &optIndex))
+	while((option = getopt_long(argc, argv, "o:i:vbldx:", longOptions, &optIndex))
 				!= -1)
 	{
 		switch(option)
@@ -62,7 +63,7 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 		        opt->dedicated = 1;
 		        break;
 		case 'x':
-		        opt->x_special = atoi(optarg);
+		        opt->special = atoi(optarg);
 		        break;
 		default:
 			usage();

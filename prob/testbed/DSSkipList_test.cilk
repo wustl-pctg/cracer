@@ -1,8 +1,8 @@
 
 #include "util/timer.h"
-#include "ds/DSSkipList.cilkh"
 #include "util/benchOptions.h"
 #include "util/parfor.cilkh"
+#include "ds/DSSkipList.cilkh"
 
 #define TSIZE 20
 int parThreshold;

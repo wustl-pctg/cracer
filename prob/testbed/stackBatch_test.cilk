@@ -65,7 +65,6 @@ cilk int main(int argc, char* argv[]){
     BenchOptions options;
     int testSize;
     int add_percentage;
-
     getOptions(argc, argv, &options);
     testSize=options.operations;
     if (options.dedicated){
@@ -87,8 +86,8 @@ cilk int main(int argc, char* argv[]){
 	printf("%lf\n",getWallTime());
     }
     else {
-      if (options.x_special){
-      	 add_percentage=options.x_special;
+      if (options.special){
+      	 add_percentage=options.special;
       }
       else {
       	 add_percentage=50;

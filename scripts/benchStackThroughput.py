@@ -9,13 +9,13 @@ import datetime
 
 test='stackBatch_test'
 iterations = range(1)
-#nproc = range(1, 17, 1)
-nproc = range(16,17,1)
+nproc = range(1, 17, 1)
+#nproc = range(16,17,1)
 probdir = '../prob'
 fcdir = '../flat_combining'
-fctime = 5 # seconds to run the flat combining benchmark
-batchops=20000
-fcinitialsize=20000
+fctime = 10 # seconds to run the flat combining benchmark
+batchops=10000000
+fcinitialsize=10000000
 dedicated=0
 logdir = '../logs/'
 graphdir = '../graphs/'
@@ -23,12 +23,13 @@ graphdir = '../graphs/'
 current = datetime.datetime.now();
 filename = "stackBench{0}-{1}-{2}-{3}.log".format(current.month,current.day,current.hour,current.minute)
 outFile = open(logdir+filename,"w");
-outFile.write("PROCS,B50_50,B50_50_NS,FC_50_50,FC_80_20\n");
+outFile.write("PROCS,B50_50,B50_50_NS,B80_20,B80_20NS,FC_50_50,FC_80_20,FC_90_10\n");
 for p in nproc:
   for i in iterations:
     throughput=[str(p)]
     batchcmd = probdir + '/testbed/' + test
     batch_args = ' --nproc ' + str(p) + ' -o ' + str(batchops) 
+    batch_percent=50;
     batch_no_steal_args = ' --nproc ' + str(p) +' --batchprob 0 --dsprob 0 ' + ' -o ' + str(batchops) 
     
     # Arguments:
@@ -46,20 +47,36 @@ for p in nproc:
 
     
     #First run batch
-    process = subprocess.Popen(batchcmd+batch_args, shell=True,
+    batch_percent=50;
+    process = subprocess.Popen(batchcmd+batch_args+' -x ' + str(batch_percent), shell=True,
       stdout=subprocess.PIPE,
       stderr=subprocess.STDOUT)
     output = process.communicate()[0]
     tp = string.split(output)
     throughput.append(math.floor(batchops/float(tp[0])))
 
-    process = subprocess.Popen(batchcmd+batch_no_steal_args, shell=True,
+    process = subprocess.Popen(batchcmd+batch_no_steal_args + ' -x ' + str(batch_percent), shell=True,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT)
+    output = process.communicate()[0]
+    tp = string.split(output)
+    throughput.append(math.floor(batchops/float(tp[0])))
+    #80_20 for batch
+    batch_percent=80;
+    process = subprocess.Popen(batchcmd+batch_args+' -x ' + str(batch_percent), shell=True,
       stdout=subprocess.PIPE,
       stderr=subprocess.STDOUT)
     output = process.communicate()[0]
     tp = string.split(output)
     throughput.append(math.floor(batchops/float(tp[0])))
 
+    process = subprocess.Popen(batchcmd+batch_no_steal_args + ' -x ' + str(batch_percent), shell=True,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT)
+    output = process.communicate()[0]
+    tp = string.split(output)
+    throughput.append(math.floor(batchops/float(tp[0])))
+   
     #now run FC tests
     #50_50
     process = subprocess.Popen(fccmd + fc_50_50_args, shell=True,

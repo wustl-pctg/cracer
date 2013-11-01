@@ -9,7 +9,7 @@ typedef struct
 	int operations;
 	int iterations;
         int dedicated;
-        int x_special;
+        int special;
 } BenchOptions;
 
 int getOptions(int argc, char **argv, BenchOptions *opt);

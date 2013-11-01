@@ -61,7 +61,7 @@ cilk void pushBatchify(Stack* ds, int data){
 
 /* Batchify for mixed*/
 cilk void mixedBatchify(Stack* ds, Operation op){
-  Cilk_batchify(_cilk_ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
+  Cilk_batchify(_cilk_ws,&doCleverMixedOps,ds,&op,sizeof(Operation),NULL);
 }
 
 /* Batch mixed function*/
@@ -75,6 +75,37 @@ cilk void doMixedOps(void* ds, void* oprec, size_t size, void*result){
     } else {
       popInternal(stack);
     }
+  }
+}
+
+/* Batch "clever" mixed function*/
+cilk void doCleverMixedOps(void* ds, void* oprec, size_t size, void*result){
+  Stack* stack = ds;
+  Operation* ops = oprec;
+  int i;
+  int num_ops=0;
+  for (i=0;i<size;i++){
+    if (ops[i].add){
+      num_ops++;
+    } else {
+      num_ops--;
+    }
+  }
+  while (num_ops>0){
+    i=0;
+    if (ops[i].add){
+       pushInternal(stack,ops[i].data);
+       num_ops--;
+    }
+    i++;
+  }
+  while (num_ops<0){
+    i=0;
+    if (!(ops[i].add)){
+       popInternal(stack);
+       num_ops++;
+    }
+    i++;
   }
 }
 
@@ -93,7 +124,6 @@ cilk void push_batch(void* ds, void* oprec, size_t size, void* result){
   new_nodes = calloc(size,sizeof(node));
   pair[0]=new_nodes;
   pair[1]=data;
-  //printf("add %d\n",size);
   //Parallel_for
   /*for (i=0;i<size;i++){
     new_nodes[i].data=data[i];
@@ -114,8 +144,6 @@ cilk void push_batch(void* ds, void* oprec, size_t size, void* result){
   }
   stack->end=&new_nodes[size-1];
   stack->size+=size;
-  //printStack(stack);
-	//  Cilk_terminate_batch(_cilk_ws);
 }
 
 /*Pop using a lock*/
@@ -139,9 +167,7 @@ cilk void pop_batch(void* ds, void* oprec, size_t size, void* result){
   node* res;
   for (i=0;i<size;i++){
     res=popInternal(stack);
-    //result[i]=res;
   } 
-	//  Cilk_terminate_batch(_cilk_ws);
 }
 
 /* Pop method without locks*/
@@ -153,15 +179,14 @@ node* popInternal(Stack* ds){
      }
     ds->end = result->prev;
     ds->size--;
-      if (ds->end!=NULL){
+    if (ds->end!=NULL){
        ds->end->next=NULL;
     }
     if (ds->size==0){
        ds->start=NULL;
     }
-      return result;
+    return result;
   } else {
-    //printf("early remove\n");
     return NULL;
   }
 }
