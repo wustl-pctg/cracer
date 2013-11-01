@@ -33,8 +33,9 @@ cilk void parfor(const int begin, const int end, const int incr,
   }
 }
 
-cilk void parforpar_thresh(const int begin, const int end, const int incr, const int thresh,
-											const parallelBody body, void *data)
+cilk void parforpar_thresh(const int begin, const int end, const int incr,
+													 const int thresh, const parallelBody body,
+													 void *data)
 {
   int i;
 
@@ -44,7 +45,7 @@ cilk void parforpar_thresh(const int begin, const int end, const int incr, const
     }
   } else {
     i = begin+(end-begin)/2;
-    spawn parforpar(begin, i, incr, body, data);
-    spawn parforpar(i + 1, end, incr, body, data);
+    spawn parforpar_thresh(begin, i, incr, thresh, body, data);
+    spawn parforpar_thresh(i + 1, end, incr, thresh, body, data);
   }
 }
