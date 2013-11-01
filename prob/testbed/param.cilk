@@ -18,7 +18,8 @@
 Cilk_lockvar global_lock;
 int sequential = 0;
 static int numBatches = 0;
-void usage(){
+
+void param_usage(){
 	printf("Usage is:\n");
 	printf("doWork [--nproc <processors>] [-w <work per op>] [-o <operation count>] [-i <iterations>]\n");
 	printf("[--brief]\n");
@@ -120,7 +121,7 @@ cilk int main(int argc, char** argv) {
 			sequential = 1;
 			break;
 		default:
-			usage();
+			param_usage();
 			return -1;
 		}
 	}
@@ -154,16 +155,16 @@ cilk int main(int argc, char** argv) {
 	for (i = 0;i < iterations;i++){
 
 		// Test with locks
-		/* startTimer(); */
-		/* spawn parforpar(0, opCount-1, 1, &work_lock, (void*) &opWork); */
-		/* sync; */
-		/* stopTimer(); */
-		/* temp = getWallTime(); */
-		/* lockTime += temp; */
-		/* if (verbose){ */
-		/* 	printf("Locks\n"); */
-		/* 	printf("Wall time: %lf ms\n", temp); */
-		/* } */
+		startTimer();
+		spawn parforpar(0, opCount-1, 1, &work_lock, (void*) &opWork);
+		sync;
+		stopTimer();
+		temp = getWallTime();
+		lockTime += temp;
+		if (verbose){
+			printf("Locks\n");
+			printf("Wall time: %lf ms\n", temp);
+		}
 
 		// Test with batches
 		startTimer();
@@ -179,7 +180,7 @@ cilk int main(int argc, char** argv) {
 	}
 
 	//Print the averages:
-	/* l = lockTime/(double)iterations; */
+	l = lockTime/(double)iterations;
 	b = batchTime/(double)iterations;
 	if (verbose) {
 		printf("Given Time Per Op\tActual Time Per Op\tWrites Per Op\tNum Ops\tNPROC\titerations\tLock Time\tBatch Time\tLock-Batch Ratio\n");
