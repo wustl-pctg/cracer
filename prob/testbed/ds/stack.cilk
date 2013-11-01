@@ -61,7 +61,7 @@ cilk void pushBatchify(Stack* ds, int data){
 
 /* Batchify for mixed*/
 cilk void mixedBatchify(Stack* ds, Operation op){
-  Cilk_batchify(_cilk_ws,&doCleverMixedOps,ds,&op,sizeof(Operation),NULL);
+  Cilk_batchify(_cilk_ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
 }
 
 /* Batch mixed function*/

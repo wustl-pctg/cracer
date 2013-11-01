@@ -64,6 +64,5 @@ cilk void batchIncrement(void *dataStruct, void *data, size_t size, void *result
 		result = data;
 		*count += temp + nums[size-1];
 	}
-	Cilk_terminate_batch(_cilk_ws);
 	return;
 }
