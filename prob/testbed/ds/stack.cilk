@@ -77,22 +77,8 @@ cilk void mixedBatchify_raw(Stack* ds, Operation op){
   Cilk_batchify_raw(_cilk_ws,&doRawMixedOps,ds,&op,sizeof(Operation),NULL);
 }
 
-/* Batch mixed function*/
-cilk void doMixedOps(void* ds, void* oprec, size_t size, void*result){
-//  return;
-   Stack* stack = ds;
-  BatchRecord** ops = oprec;
-  BatchRecord* op;
-  int i;
-  for (i=0;i<size;i++){
-    if (ops[i]!=NULL){
-      pushInternal(stack,ops[i].data);
-      popInternal(stack);
-    }
-}
-
-/* Uses the raw oprec array*/
-cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result){
+/* Uses the regular batchify*/
+cilk void doMixedOps(void* ds, void* oprec, size_t size, void* result){
   Stack* stack = ds;
   Operation* ops = oprec;
   int i;
@@ -103,6 +89,36 @@ cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result){
       popInternal(stack);
     }
     }
+}
+
+/* Uses the raw oprec array*/
+cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result){
+  Stack* stack = ds;
+  BatchRecord* ops = oprec;
+  Operation* op;
+  int i;
+  printf("do raw mixed\n");
+  for (i=0;i<size;i++){
+    if (ops[i].status!=DS_DONE){
+      if (ops[i].status==DS_WAITING){
+	op=ops[i].args;
+	printf("before deref\n");
+	if ((*op).add){
+	  pushInternal(stack,(*op).data);
+	}
+	else {
+	  popInternal(stack);
+	}
+	printf("set done\n");
+	ops[i].status=DS_DONE;
+      }
+    }
+  }
+  //Terminate the batch
+  /*Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
+  USE_SHARED(current_batch_id)++;
+  Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
+  */
 }
 
 /* Batch "clever" mixed function*/

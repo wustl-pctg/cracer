@@ -27,6 +27,7 @@ void printStack(Stack* ds);
 node* pop(Stack* ds);
 cilk void popBatchify(Stack* ds);
 cilk void mixedBatchify(Stack*, Operation);
+cilk void mixedBatchify_raw(Stack*, Operation);
 
 /*More "private" methods*/
 cilk void push_batch(void* ds, void* oprec, size_t size, void* result);
