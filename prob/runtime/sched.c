@@ -1798,6 +1798,7 @@ inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
 {
 	return USE_SHARED(current_batch_id) > batch_id
 		|| USE_SHARED(batch_owner) == -1;
+		//		|| USE_SHARED(pending_batch).array[ws->self].status == DS_DONE;
 }
 
 void batch_scheduler(CilkWorkerState *const ws, Closure *t)
