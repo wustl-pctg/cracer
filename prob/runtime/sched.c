@@ -1875,13 +1875,6 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 
 }
 
-void Cilk_batchify_raw(CilkWorkerState *const ws,
-									 InternalBatchOperation op, void *dataStruct,
-									 void *data, size_t dataSize, void *indvResult)
-{
-
-}
-
 BatchRecord* Batcher_insert(CilkWorkerState *const ws,
 														InternalBatchOperation op, void *dataStruct,
 														void *data, size_t dataSize, void *indvResult)
@@ -1897,13 +1890,13 @@ BatchRecord* Batcher_insert(CilkWorkerState *const ws,
 	return &pending->array[ws->self];
 }
 
-void* Batcher_allocate_work_array(CilkWorkerState *const ws, int dataSize)
+inline void* Batcher_allocate_work_array(CilkWorkerState *const ws, int dataSize)
 {
 	void *work_array = USE_SHARED(batch_work_array);
 
 	if (work_array == NULL) {
 		work_array = Cilk_malloc(dataSize * USE_PARAMETER(active_size));
-		//		USE_SHARED(batch_work_array) = work_array; // necessary***?
+		USE_SHARED(batch_work_array) = work_array;
 	}
 	return work_array;
 }
@@ -1944,8 +1937,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
 {
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
 
-	void *workArray;
-	int i, numJobs = 0;
+	int i, num_ops = 0;
 	Batch *pending = &USE_SHARED(pending_batch);
 	BatchRecord *record  = Batcher_insert(ws, op, dataStruct, data,
 																				dataSize, indvResult);
@@ -1960,17 +1952,20 @@ void Cilk_batchify(CilkWorkerState *const ws,
 
 			USE_SHARED(batch_owner) = ws->self;
 
-			Batcher_collect(ws, pending, record);
-
+			num_ops = Batcher_collect(ws, pending, record);
+			args.numElements = num_ops;
 			args.dataStruct = dataStruct;
-			args.data = workArray;
-			args.numElements = numJobs;
+			args.data = USE_SHARED(batch_work_array);
 			args.result = NULL;
 
 #if CILK_STATS
-			USE_SHARED(batch_sizes)[numJobs-1]++;
+			USE_SHARED(batch_sizes)[num_ops-1]++;
 #endif
 
+			/* TODO: If num_ops < SOME_THRESHOLD (e.g. batch of size 1)
+				 then don't bother invoking the full batch operation,
+				 just call the operation directly.
+			 */
 			USE_PARAMETER(invoke_batch) = Batcher_create_batch_closure(ws,
 																																 op, &args);
 			Cilk_exit_state(ws, STATE_BATCH_START);
@@ -1994,6 +1989,53 @@ void Cilk_batchify(CilkWorkerState *const ws,
 	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
 
 	return;
+}
+
+void Cilk_batchify_raw(CilkWorkerState *const ws,
+											 InternalRawOp op, void *dataStruct,
+											 void *data, size_t dataSize, void *indvResult)
+{
+	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
+
+	int i, num_ops = 0;
+	Batch *pending = &USE_SHARED(pending_batch);
+	BatchRecord *record  = Batcher_insert(ws, op, dataStruct, data,
+																				dataSize, indvResult);
+
+	while (pending->array[ws->self].status != DS_DONE) {
+		ws->batch_id = USE_SHARED(current_batch_id);
+
+		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
+
+			Cilk_enter_state(ws, STATE_BATCH_START);
+
+			USE_SHARED(batch_owner) = ws->self;
+
+			Cilk_exit_state(ws, STATE_BATCH_START);
+			Cilk_enter_state(ws, STATE_BATCH_WORKING);
+
+			ws->current_cache = &ws->ds_cache;
+			op(ws, dataStruct, pending->array, USE_PARAMETER(active_size));
+			ws->current_cache = &ws->cache;
+			ws->batch_id = 0;
+
+			Cilk_exit_state(ws, STATE_BATCH_WORKING);
+
+			if (pending->array[ws->self].status != DS_DONE) {
+				batch_scheduler(ws, NULL);
+			}
+
+			USE_SHARED(batch_owner) = -1;
+			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
+			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
+		} else {
+			batch_scheduler(ws, NULL);
+		}
+	}
+	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
+
+	return;
+
 }
 
 /*

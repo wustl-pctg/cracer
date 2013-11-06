@@ -533,14 +533,13 @@ enum DS_STATUS { DS_WAITING, DS_IN_PROGRESS, DS_DONE };
 typedef struct {
   void *dataStruct;
   void *data;
-  size_t numElements;
   void *result;
+  size_t numElements;
 } BatchArgs; // **** move this later
 
 typedef void (*InternalBatchOperation)(CilkWorkerState *const _cilk_ws,
                                        void *dataStruct, void *data,
                                        size_t numElements, void *result);
-
 /* This is a hand-compiled procedure that calls a batch operation */
 typedef struct {
   CilkStackFrame header;
@@ -549,7 +548,6 @@ typedef struct {
   InternalBatchOperation batch_op;
   int retval;
 } invoke_batch_frame;
-
 
 typedef struct {
   InternalBatchOperation operation;
@@ -569,16 +567,9 @@ typedef struct {
   CILK_CACHE_LINE_PAD;
 } Batch;
 
-/* typedef struct { */
-/*  void *dataStruct; */
-/*  void *data; */
-/*  size_t numElements; */
-/*  void *result; */
-/* } BatchArgs; */
-
-// rsu *** could also have a BatchResult, which would contain a
-// void* array pointer for result values and a
-// void* array pointer for integer indices
+typedef void (*InternalRawOp)(CilkWorkerState *const _cilk_ws,
+															void *dataStruct, BatchRecord*,
+															int nproc);
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__

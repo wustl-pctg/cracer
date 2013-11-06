@@ -1,7 +1,6 @@
 #include <stdio.h> // ***
 #include <string.h>
 #include <cilk.h>
-//#include <cilk-internal.h>
 #include <cilk-cilk2c-pre.h>
 #include <cilk-cilk2c.h>
 
@@ -25,7 +24,7 @@ void Cilk_terminate_batch(CilkWorkerState *const ws)
 			current->array[i].status = DS_DONE;
 		}
 	}
-	i = USE_SHARED(current_batch_id);
+
 	USE_SHARED(current_batch_id)++; // signal end of this batch
 	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
@@ -120,51 +119,6 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
 
 }
 
-static void Batch_create(CilkWorkerState *const ws, InternalBatchOperation op,
-												 size_t dataSize)
-{
-	int numJobs = 0, i;
-	void *workArray = USE_SHARED(batch_work_array);
-	Batch *pending = &USE_SHARED(pending_batch);
-	USE_SHARED(batch_owner) = ws->self; // need this?***
-
-	if (workArray == NULL) {
-		workArray = Cilk_malloc(dataSize * USE_PARAMETER(active_size));
-		USE_SHARED(batch_work_array) = workArray;
-	} else if (pending->dataSize < dataSize) { // last time we used a different operation with different datasize
-		Cilk_free(workArray);
-		workArray = Cilk_malloc(dataSize * USE_PARAMETER(active_size));
-		USE_SHARED(batch_work_array) = workArray;
-	}
-
-	for (i = 0; i < USE_PARAMETER(active_size); i++) {
-		if (pending->array[i].status == DS_WAITING &&
-				pending->array[i].operation == op) {
-			memcpy(workArray + dataSize*numJobs,
-						 pending->array[i].args, dataSize);
-			pending->array[i].packedIndex = numJobs;
-			pending->array[i].status = DS_IN_PROGRESS;
-			if ((USE_PARAMETER(options->btest) & 1) == 1) {
-				USE_SHARED(batch_workers_list)[numJobs] = i;
-			}
-			numJobs++;
-		}
-	}
-
-	pending->dataSize = dataSize;
-	pending->operation = op;
-	pending->size = numJobs;
-#if CILK_STATS
-	USE_SHARED(batch_sizes)[numJobs-1]++;
-#endif
-
-}
-
-/* Closure * Batcher_create_batch_closure(CilkWorkerState *const ws, */
-/* 																			 InternalBatchOperation op, */
-/* 																			 size_t dataSize, */
-/* 																			 void *dataStruct) */
-//Closure * Batcher_create_batch_closure(CilkContext *const context,
 Closure * Batcher_create_batch_closure(CilkWorkerState *const ws,
 																			 InternalBatchOperation op,
 																			 BatchArgs *args)
@@ -195,10 +149,10 @@ Closure * Batcher_create_batch_closure(CilkWorkerState *const ws,
 
 	f->args = args;
 	/* f->args = &USE_SHARED(batch_args); */
-	/* f->args->dataStruct = dataStruct; */
-	/* f->args->data = &USE_SHARED(batch_work_array); */
+	/* f->args->dataStruct = ds; */
+	/* f->args->data = pending->data; */
+	/* f->args->result = result; */
 	/* f->args->numElements = pending->size; */
-	/* f->args->result = f->args->data; */
   f->arg_size = arg_size;
   f->batch_op = op;
 
