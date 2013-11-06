@@ -1875,63 +1875,93 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 
 }
 
-void Cilk_batchify(CilkWorkerState *const ws,
+void Cilk_batchify_raw(CilkWorkerState *const ws,
 									 InternalBatchOperation op, void *dataStruct,
 									 void *data, size_t dataSize, void *indvResult)
 {
-	void *workArray;
-	int i, numJobs = 0;
-	Batch *pending;
 
-	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
+}
 
+BatchRecord* Batcher_insert(CilkWorkerState *const ws,
+														InternalBatchOperation op, void *dataStruct,
+														void *data, size_t dataSize, void *indvResult)
+{
 	// add operation to pending array
-	pending = &USE_SHARED(pending_batch);
+	Batch *pending = &USE_SHARED(pending_batch);
 	pending->array[ws->self].operation = op;
 	pending->array[ws->self].args = data;
 	pending->array[ws->self].size = dataSize;
 	pending->array[ws->self].result = indvResult;
 	pending->array[ws->self].status = DS_WAITING;
 
+	return &pending->array[ws->self];
+}
+
+void* Batcher_allocate_work_array(CilkWorkerState *const ws, int dataSize)
+{
+	void *work_array = USE_SHARED(batch_work_array);
+
+	if (work_array == NULL) {
+		work_array = Cilk_malloc(dataSize * USE_PARAMETER(active_size));
+		//		USE_SHARED(batch_work_array) = work_array; // necessary***?
+	}
+	return work_array;
+}
+
+
+int Batcher_collect(CilkWorkerState *const ws,
+										Batch *pending, BatchRecord *record)
+{
+	int i, num_ops = 0;
+	int dataSize = record->size;
+	InternalBatchOperation op = record->operation;
+	void *work_array = Batcher_allocate_work_array(ws, dataSize);
+
+	for (i = 0; i < USE_PARAMETER(active_size); i++) {
+
+		if (pending->array[i].status == DS_WAITING &&
+				pending->array[i].operation == op) {
+
+			memcpy(work_array + (dataSize * num_ops),
+						 pending->array[i].args, dataSize);
+
+			pending->array[i].packedIndex = num_ops;
+			pending->array[i].status = DS_IN_PROGRESS;
+
+			num_ops++;
+		}
+	}
+	pending->dataSize = dataSize;
+	pending->operation = op;
+	pending->size = num_ops;
+
+	return num_ops;
+}
+
+void Cilk_batchify(CilkWorkerState *const ws,
+									 InternalBatchOperation op, void *dataStruct,
+									 void *data, size_t dataSize, void *indvResult)
+{
+	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
+
+	void *workArray;
+	int i, numJobs = 0;
+	Batch *pending = &USE_SHARED(pending_batch);
+	BatchRecord *record  = Batcher_insert(ws, op, dataStruct, data,
+																				dataSize, indvResult);
+
 	while (pending->array[ws->self].status != DS_DONE) {
 		ws->batch_id = USE_SHARED(current_batch_id);
 
 		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
 			BatchArgs args;
+
 			Cilk_enter_state(ws, STATE_BATCH_START);
 
-			ws->current_cache = &ws->ds_cache;
-
 			USE_SHARED(batch_owner) = ws->self;
-			workArray = USE_SHARED(batch_work_array);
 
-			if (workArray == NULL) {
-				workArray = Cilk_malloc(dataSize * USE_PARAMETER(active_size));
-				USE_SHARED(batch_work_array) = workArray;
-			} else if (pending->dataSize < dataSize) { // last time we used a different operation with different datasize
-				Cilk_free(workArray);
-				workArray = Cilk_malloc(dataSize * USE_PARAMETER(active_size));
-				USE_SHARED(batch_work_array) = workArray;
-			}
+			Batcher_collect(ws, pending, record);
 
-			pending->dataSize = dataSize;
-			pending->operation = op;
-
-			for (i = 0; i < USE_PARAMETER(active_size); i++) {
-				if (pending->array[i].status == DS_WAITING &&
-						pending->array[i].operation == op) {
-					memcpy(workArray + dataSize*numJobs,
-								 pending->array[i].args, dataSize);
-					pending->array[i].packedIndex = numJobs;
-					pending->array[i].status = DS_IN_PROGRESS;
-					if ((USE_PARAMETER(options->btest) & 1) == 1) {
-						USE_SHARED(batch_workers_list)[numJobs] = i;
-					}
-					numJobs++;
-				}
-			}
-
-			pending->size = numJobs;
 			args.dataStruct = dataStruct;
 			args.data = workArray;
 			args.numElements = numJobs;
@@ -1950,16 +1980,9 @@ void Cilk_batchify(CilkWorkerState *const ws,
 
 			Cilk_exit_state(ws, STATE_BATCH_WORKING);
 
-			/* Cilk_internal_free(ws, cl, sizeof(Closure)); */
-			/* op(ws, dataStruct, workArray, numJobs, workArray); */
-			//			Cilk_exit_state(ws, STATE_DS_WORKING);
-
 			if (pending->array[ws->self].status != DS_DONE) {
 				batch_scheduler(ws, NULL);
 			}
-			// Won't need these when using invoke_batch_slow
-			/* ws->current_cache = &ws->cache; */
-			/* ws->batch_id = 0; */
 
 			USE_SHARED(batch_owner) = -1;
 			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);

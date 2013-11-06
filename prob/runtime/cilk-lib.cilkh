@@ -111,6 +111,11 @@ typedef cilk void (*CilkBatchOperation)(void *dataStruct, void *data,
 extern void Cilk_terminate_batch(CilkWorkerState *const ws);
 extern void Cilk_batchify(CilkWorkerState *const ws,
 													CilkBatchOperation op, void *dataStruct,
-													void *data, size_t dataSize, void *indvResult);
+													void *data, size_t dataSize,
+													void *indvResult);
+extern void Cilk_batchify_raw(CilkWorkerState *const ws,
+															CilkBatchOperation op, void *dataStruct,
+															void *data, size_t dataSize,
+															void *indvResult);
 
 #endif				/* _CILK_LIB_H */

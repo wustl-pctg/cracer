@@ -1,4 +1,3 @@
-
 #include "util/timer.h"
 #include "ds/stack.cilk"
 #include "util/benchOptions.h"
@@ -8,20 +7,20 @@
 int parThreshold;
 
 Stack* setUp(){
-     Stack* ds = create_stack();
-     return ds;
+	Stack* ds = create_stack();
+	return ds;
 }
 
 cilk void makeInsert(int i, void* data){
-    Stack* ds = data;
-    spawn pushBatchify(ds,i);
-    sync;
+	Stack* ds = data;
+	spawn pushBatchify(ds,i);
+	sync;
 }
 
 cilk void makeRemove(int i, void* data){
-    Stack* ds = data;
-    spawn popBatchify(ds);
-    sync;
+	Stack* ds = data;
+	spawn popBatchify(ds);
+	sync;
 }
 
 cilk void mixedInsert(int i, void* data){
@@ -43,17 +42,17 @@ cilk void mixedRemove(int i, void* data){
 }
 
 cilk void runAddTest(Stack* ds, int size){
-     spawn parforpar(0,size-1,1,&makeInsert, ds);
-     sync;
+	spawn parforpar(0,size-1,1,&makeInsert, ds);
+	sync;
 }
 
 cilk void runRemoveTest(Stack* ds, int size){
-     spawn parforpar(0,size-1,1,&makeRemove, ds);
-     sync;
+	spawn parforpar(0,size-1,1,&makeRemove, ds);
+	sync;
 }
 
 cilk void runMixedTest(Stack* ds, int size, int add_part){
-  int threshold = parThreshold?parThreshold:PARFOR_THRESHOLD;
+  int threshold = parThreshold ? parThreshold : PARFOR_THRESHOLD;
   int add_size = (add_part * size)/100;
   spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert,ds);
   spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove,ds);
@@ -61,45 +60,44 @@ cilk void runMixedTest(Stack* ds, int size, int add_part){
 }
 
 cilk int main(int argc, char* argv[]){
-    Stack* test_stack = setUp();
-    BenchOptions options;
-    int testSize;
-    int add_percentage;
-    getOptions(argc, argv, &options);
-    testSize=options.operations;
-    if (options.dedicated){
-	startTimer();
-	spawn runAddTest(test_stack,testSize);
-	sync;
-	stopTimer();
-	if (options.verbose){
-	  printf("Batch Add. Size %d. \n", testSize);
+	Stack* test_stack = setUp();
+	BenchOptions options;
+	int testSize;
+	int add_percentage;
+	getOptions(argc, argv, &options);
+	testSize=options.operations;
+	if (options.dedicated){
+		startTimer();
+		spawn runAddTest(test_stack,testSize);
+		sync;
+		stopTimer();
+		if (options.verbose){
+			printf("Batch Add. Size %d. \n", testSize);
+		}
+		printf("%lf\n",getWallTime());
+		startTimer();
+		spawn runRemoveTest(test_stack,testSize);
+		sync;
+		stopTimer();
+		if (options.verbose){
+			printf("Batch Remove. Size %d. \n",testSize);
+		}
+		printf("%lf\n",getWallTime());
+	} else {
+		if (options.special){
+			add_percentage=options.special;
+		}
+		else {
+			add_percentage=50;
+		}
+		startTimer();
+		spawn runMixedTest(test_stack,testSize,add_percentage);
+		sync;
+		stopTimer();
+		if (options.verbose){
+			printf("Batch Mixed. Size %d. \n",testSize);
+		}
+		printf("%lf\n",getWallTime());
 	}
-	printf("%lf\n",getWallTime());
-	startTimer();
-	spawn runRemoveTest(test_stack,testSize);
-	sync;
-	stopTimer();
-	if (options.verbose){
-	  printf("Batch Remove. Size %d. \n",testSize);
-	}
-	printf("%lf\n",getWallTime());
-    }
-    else {
-      if (options.special){
-      	 add_percentage=options.special;
-      }
-      else {
-      	 add_percentage=50;
-      }
-      startTimer();
-      spawn runMixedTest(test_stack,testSize,add_percentage);
-      sync;
-      stopTimer();
-      if (options.verbose){
-	printf("Batch Mixed. Size %d. \n",testSize);
-      }
-      printf("%lf\n",getWallTime());
-    }
-    return 0;
+	return 0;
 }
