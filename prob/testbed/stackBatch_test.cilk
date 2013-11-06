@@ -29,15 +29,18 @@ cilk void mixedInsert(int i, void* data){
   op.data=i;
   op.add=1;
   spawn mixedBatchify(ds,op);
+  //push(ds,i);
   sync;
 }
 
 cilk void mixedRemove(int i, void* data){
   Stack* ds = data;
   Operation op;
+  //node* res;
   op.data=i;
   op.add=0;
   spawn mixedBatchify(ds,op);
+  //pop(ds);
   sync;
 }
 

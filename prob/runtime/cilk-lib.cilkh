@@ -119,7 +119,6 @@ typedef cilk void (*CilkBatchOperation)(void *dataStruct, void *data,
 /*   void*       result; */
 /*   CILK_CACHE_LINE_PAD; */
 /* } BatchRecord; */
-*/
 
 extern void Cilk_terminate_batch(CilkWorkerState *const ws);
 extern void Cilk_batchify(CilkWorkerState *const ws,

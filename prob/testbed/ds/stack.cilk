@@ -5,12 +5,15 @@
 #include "../util/parfor.cilkh"
 #include "stack.cilkh"
 
+#define MAX_SIZE 100000000
+
 Stack* create_stack(){
        Stack* result = malloc(sizeof(Stack));
        Cilk_lock_init(result->lock);
        result->size=0;
        result->start=NULL;
        result->end=NULL;
+       result->nodes=calloc(MAX_SIZE,sizeof(node));
        return result;
 }
 
@@ -37,8 +40,13 @@ void push(Stack* ds, int data){
 
 /* Sequential push method with no lock */
 void pushInternal(Stack* ds, int data){
-  //Get lock on stack
-  node* ins = malloc(sizeof(node));
+ node* ins;
+ if (ds->size>=MAX_SIZE){
+    ins = malloc(sizeof(node));
+ }
+ else {
+     ins = &(ds->nodes[ds->size]);
+  }
   ins->data=data;
   ins->next=NULL;
   if (ds->size==0){
@@ -61,11 +69,30 @@ cilk void pushBatchify(Stack* ds, int data){
 
 /* Batchify for mixed*/
 cilk void mixedBatchify(Stack* ds, Operation op){
-  Cilk_batchify(_cilk_ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
+  //return;
+    Cilk_batchify(_cilk_ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
+}
+
+cilk void mixedBatchify_raw(Stack* ds, Operation op){
+  Cilk_batchify_raw(_cilk_ws,&doRawMixedOps,ds,&op,sizeof(Operation),NULL);
 }
 
 /* Batch mixed function*/
 cilk void doMixedOps(void* ds, void* oprec, size_t size, void*result){
+//  return;
+   Stack* stack = ds;
+  BatchRecord** ops = oprec;
+  BatchRecord* op;
+  int i;
+  for (i=0;i<size;i++){
+    if (ops[i]!=NULL){
+      pushInternal(stack,ops[i].data);
+      popInternal(stack);
+    }
+}
+
+/* Uses the raw oprec array*/
+cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result){
   Stack* stack = ds;
   Operation* ops = oprec;
   int i;
@@ -75,7 +102,7 @@ cilk void doMixedOps(void* ds, void* oprec, size_t size, void*result){
     } else {
       popInternal(stack);
     }
-  }
+    }
 }
 
 /* Batch "clever" mixed function*/

@@ -36,7 +36,6 @@ cilk int main(int argc, char **argv)
 	data = malloc(opt.operations * sizeof(int));
 
 	for (i = 0; i < opt.iterations; i++) {
-
 		srand(time(NULL));
 		for (i = 0; i < opt.operations; i++) {
 			data[i] = rand() % (2*MAX_NUM) - MAX_NUM;
@@ -63,7 +62,7 @@ cilk int main(int argc, char **argv)
 			startTimer();
 			counter = counterLockCreate(0);
 			args.counter = counter;
-			spawn parforpar(0, opt.operations - 1, 1,
+		spawn parforpar(0, opt.operations - 1, 1,
 											parforCounterLockIncrement, (void*) &args);
 			sync;
 			stopTimer();
