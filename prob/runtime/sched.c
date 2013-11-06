@@ -2002,7 +2002,11 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 			Cilk_exit_state(ws, STATE_BATCH_START);
 			Cilk_enter_state(ws, STATE_BATCH_WORKING);
 
+
 			Cilk_switch2batch(ws);
+			ws->current_cache->head = ws->current_cache->stack;
+			ws->current_cache->tail = ws->current_cache->stack+1;
+
 			op(ws, dataStruct, (void*)pending->array,
 				 USE_PARAMETER(active_size), NULL);
 			Cilk_switch2core(ws);
@@ -2071,9 +2075,8 @@ void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws)
 		Cilk_malloc_fixed(USE_PARAMETER(options->stackdepth) *
 											sizeof(CilkStackFrame *));
 	ws->stackdepth = USE_PARAMETER(options->stackdepth);
-	/* ws->current_cache = &ws->cache; */
-	/* ws->current_deque_pool = USE_PARAMETER(deques); */
 	Cilk_switch2core(ws);
+
 	Cilk_reset_stack_depth_stats(ws);
 
 	CILK_CHECK(ws->cache.stack, (ws->context, ws, "failed to allocate stack\n"));
