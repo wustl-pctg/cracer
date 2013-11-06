@@ -106,19 +106,8 @@ extern __cilksafe__ __nooutput__ __cilkonly__ CilkWorkerState *const _cilk_ws;
 /***********************************************************\
  * BATCHER
 \***********************************************************/
-//enum DS_STATUS { DS_WAITING, DS_IN_PROGRESS, DS_DONE };
-
 typedef cilk void (*CilkBatchOperation)(void *dataStruct, void *data,
 																				size_t numElements, void *result);
-/* typedef struct { */
-/* 	CilkBatchOperation operation; */
-/*   void*       args; */
-/*   size_t      size; */
-/*   enum DS_STATUS   status; */
-/*   int         packedIndex; */
-/*   void*       result; */
-/*   CILK_CACHE_LINE_PAD; */
-/* } BatchRecord; */
 
 extern void Cilk_terminate_batch(CilkWorkerState *const ws);
 extern void Cilk_batchify(CilkWorkerState *const ws,

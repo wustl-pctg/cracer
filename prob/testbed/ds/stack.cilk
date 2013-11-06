@@ -88,7 +88,7 @@ cilk void doMixedOps(void* ds, void* oprec, size_t size, void* result){
     } else {
       popInternal(stack);
     }
-    }
+	}
 }
 
 /* Uses the raw oprec array*/

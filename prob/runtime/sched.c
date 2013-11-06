@@ -2009,6 +2009,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 
 			op(ws, dataStruct, (void*)pending->array,
 				 USE_PARAMETER(active_size), NULL);
+			USE_SHARED(current_batch_id)++;
 			Cilk_switch2core(ws);
 
 			Cilk_exit_state(ws, STATE_BATCH_WORKING);

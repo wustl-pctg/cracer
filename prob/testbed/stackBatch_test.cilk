@@ -28,8 +28,8 @@ cilk void mixedInsert(int i, void* data){
   Operation op;
   op.data=i;
   op.add=1;
-  //spawn mixedBatchify(ds,op); 
-  spawn mixedBatchify_raw(ds,op);
+  spawn mixedBatchify(ds,op);
+  //spawn mixedBatchify_raw(ds,op);
   //push(ds,i);
   sync;
 }
@@ -40,8 +40,8 @@ cilk void mixedRemove(int i, void* data){
   //node* res;
   op.data=i;
   op.add=0;
- // spawn mixedBatchify(ds,op);
-  spawn mixedBatchify_raw(ds,op);
+	spawn mixedBatchify(ds,op);
+	//  spawn mixedBatchify_raw(ds,op);
   //pop(ds);
   sync;
 }
