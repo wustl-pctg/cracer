@@ -1992,7 +1992,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
 }
 
 void Cilk_batchify_raw(CilkWorkerState *const ws,
-											 InternalRawOp op, void *dataStruct,
+											 InternalBatchOperation op, void *dataStruct,
 											 void *data, size_t dataSize, void *indvResult)
 {
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
@@ -2015,7 +2015,8 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 			Cilk_enter_state(ws, STATE_BATCH_WORKING);
 
 			ws->current_cache = &ws->ds_cache;
-			op(ws, dataStruct, pending->array, USE_PARAMETER(active_size));
+			op(ws, dataStruct, (void*)pending->array,
+				 USE_PARAMETER(active_size), NULL);
 			ws->current_cache = &ws->cache;
 			ws->batch_id = 0;
 

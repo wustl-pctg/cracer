@@ -567,10 +567,6 @@ typedef struct {
   CILK_CACHE_LINE_PAD;
 } Batch;
 
-typedef void (*InternalRawOp)(CilkWorkerState *const _cilk_ws,
-															void *dataStruct, BatchRecord*,
-															int nproc);
-
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__
 #pragma nd +
