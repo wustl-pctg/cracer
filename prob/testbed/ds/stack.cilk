@@ -5,7 +5,7 @@
 #include "../util/parfor.cilkh"
 #include "stack.cilkh"
 
-#define MAX_SIZE 100000000
+#define MAX_SIZE 1000000000
 
 Stack* create_stack(){
        Stack* result = malloc(sizeof(Stack));
@@ -97,23 +97,22 @@ cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result){
   BatchRecord* ops = oprec;
   Operation* op;
   int i;
-  printf("do raw mixed\n");
   for (i=0;i<size;i++){
     if (ops[i].status!=DS_DONE){
       if (ops[i].status==DS_WAITING){
 	op=ops[i].args;
-	printf("before deref\n");
 	if ((*op).add){
 	  pushInternal(stack,(*op).data);
 	}
 	else {
 	  popInternal(stack);
 	}
-	printf("set done\n");
 	ops[i].status=DS_DONE;
       }
     }
   }
+  //_cilk_ws->context->Cilk_global_state->current_batch_id++;
+  //  USE_SHARED2(current_batch_id)++;
   //Terminate the batch
   /*Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
   USE_SHARED(current_batch_id)++;

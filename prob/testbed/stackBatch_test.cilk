@@ -28,21 +28,34 @@ cilk void mixedInsert(int i, void* data){
   Operation op;
   op.data=i;
   op.add=1;
-  spawn mixedBatchify(ds,op);
-  //spawn mixedBatchify_raw(ds,op);
-  //push(ds,i);
+   spawn mixedBatchify(ds,op);
+  sync;
+}
+
+cilk void mixedInsert_raw(int i, void* data){
+  Stack* ds = data;
+  Operation op;
+  op.data=i;
+  op.add=1;
+  spawn mixedBatchify_raw(ds,op);
   sync;
 }
 
 cilk void mixedRemove(int i, void* data){
   Stack* ds = data;
   Operation op;
-  //node* res;
   op.data=i;
   op.add=0;
-	spawn mixedBatchify(ds,op);
-	//  spawn mixedBatchify_raw(ds,op);
-  //pop(ds);
+  spawn mixedBatchify(ds,op);
+  sync;
+}
+
+cilk void mixedRemove_raw(int i, void* data){
+  Stack* ds = data;
+  Operation op;
+  op.data=i;
+  op.add=0;
+  spawn mixedBatchify_raw(ds,op);
   sync;
 }
 
@@ -56,11 +69,17 @@ cilk void runRemoveTest(Stack* ds, int size){
 	sync;
 }
 
-cilk void runMixedTest(Stack* ds, int size, int add_part){
+cilk void runMixedTest(Stack* ds, int size, int add_part, int raw){
   int threshold = parThreshold ? parThreshold : PARFOR_THRESHOLD;
   int add_size = (add_part * size)/100;
-  spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert,ds);
-  spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove,ds);
+  if (raw){
+    spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert_raw,ds);
+    spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove_raw,ds);
+  }
+  else {
+    spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert,ds);
+    spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove,ds);
+  }
   sync;
 }
 
@@ -96,7 +115,7 @@ cilk int main(int argc, char* argv[]){
 			add_percentage=50;
 		}
 		startTimer();
-		spawn runMixedTest(test_stack,testSize,add_percentage);
+		spawn runMixedTest(test_stack,testSize,add_percentage,options.raw);
 		sync;
 		stopTimer();
 		if (options.verbose){

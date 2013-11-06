@@ -1,6 +1,1 @@
-fcskiplist 1 non 0 non 0 non 0 1 1 100 0 0.0 200000 5 0 0 06 0 0 0 0 0 0 ( 0, 0, 0, 0 )
-fcskiplist 1 non 0 non 0 non 0 2 2 100 0 0.0 200000 5 0 0 09 0 0 0 0 0 0 ( 0, 0, 0, 0 )
-fcskiplist 1 non 0 non 0 non 0 3 4 100 0 0.0 200000 5 0 0 011 0 0 0 0 0 0 ( 0, 0, 0, 0 )
-fcskiplist 1 non 0 non 0 non 0 4 8 100 0 0.0 200000 5 0 0 012 0 0 0 0 0 0 ( 0, 0, 0, 0 )
-fcskiplist 1 non 0 non 0 non 0 5 16 100 0 0.0 200000 5 0 0 08 0 0 0 0 0 0 ( 0, 0, 0, 0 )
-fcskiplist 1 non 0 non 0 non 0 6 32 100 0 0.0 200000 5 0 0 05 0 0 0 0 0 0 ( 0, 0, 0, 0 ) TIME
+fcstack 1 non 0 non 0 non 0 1 1 100 0 0.0 200000 5 0 0 014407 0 0 0 0 0 0 ( 0, 0, 0, 0 ) TIME
