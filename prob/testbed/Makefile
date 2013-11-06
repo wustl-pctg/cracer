@@ -15,7 +15,7 @@ ifeq ($(shell uname -s),Darwin)
 endif
 
 ifeq ($(mode),)
-	mode = bench
+	mode = debug
 endif
 ifeq ($(mode),bench)
 	CFLAGS += -O3 -DNDEBUG
