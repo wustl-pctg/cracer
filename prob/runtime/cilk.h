@@ -290,6 +290,7 @@ typedef struct {
 /* worker state */
 typedef struct {
   CilkClosureCache *current_cache;
+	struct ReadyDeque *current_deque_pool;
   CilkClosureCache cache;
   CilkClosureCache ds_cache;
   int batch_id;

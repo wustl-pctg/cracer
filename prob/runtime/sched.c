@@ -43,7 +43,7 @@ FILE_IDENTITY(ident,
 #define CLOSURE_ABORT(cl) (cl->abort_status)
 
 #define NOBODY (-1)   /* invalid processor number */
-#define MAX_BATCH_SIZE USE_PARAMETER(active_size) / 2 // ***
+//#define MAX_BATCH_SIZE USE_PARAMETER(active_size) / 2 // ***
 
 /*
  * SCHEDULER LOCK DIAGRAM
@@ -1016,10 +1016,7 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim,
 static void signal_abort_from_inlet(CilkWorkerState *const ws, Closure *cl)
 {
 	Closure *child;
-	ReadyDeque *deque_pool;
 	Closure_assert_ownership(ws, cl);
- 	if (ws->batch_id) deque_pool = USE_PARAMETER(ds_deques);
- 	else deque_pool = USE_PARAMETER(deques);
 
 	if (cl->status == CLOSURE_RUNNING &&
 			!Closure_at_top_of_stack(cl)) {
@@ -1028,10 +1025,10 @@ static void signal_abort_from_inlet(CilkWorkerState *const ws, Closure *cl)
 		 * then, poll_inlets is called in exception_handler.  So,
 		 * the worker "ws->self" should own ready deque.
 		 */
-		deque_assert_ownership(ws, ws->self, deque_pool);
+		deque_assert_ownership(ws, ws->self, ws->current_deque_pool);
 
 		/* promote the child frame, and detach the parent from deque */
-		child = promote_child(ws, cl, ws->self, deque_pool);
+		child = promote_child(ws, cl, ws->self, ws->current_deque_pool);
 		finish_promote(ws, cl, child);
 
 		/*
@@ -1105,9 +1102,6 @@ static void apply_inlet(CilkWorkerState *const ws,
 static void poll_inlets(CilkWorkerState *const ws, Closure *cl)
 {
 	struct InletClosure *i;
-	ReadyDeque *deque_pool;
-	if (ws->batch_id) deque_pool = USE_PARAMETER(ds_deques);
-	else deque_pool = USE_PARAMETER(deques);
 
 	Closure_assert_ownership(ws, cl);
 	if (cl->status == CLOSURE_RUNNING &&
@@ -1116,7 +1110,7 @@ static void poll_inlets(CilkWorkerState *const ws, Closure *cl)
 		 * If we get here, poll_inlets has been called by
 		 * the exception handler
 		 */
-		deque_assert_ownership(ws, ws->self, deque_pool);
+		deque_assert_ownership(ws, ws->self, ws->current_deque_pool);
 
 	Cilk_event(ws, EVENT_POLL_INLETS);
 
@@ -1324,17 +1318,14 @@ void Cilk_destroy_frame(CilkWorkerState *const ws,
 int Cilk_sync(CilkWorkerState *const ws)
 {
 	Closure *t;
-	ReadyDeque *deque_pool;
-	if (ws->batch_id) deque_pool = USE_PARAMETER(ds_deques);
-	else deque_pool = USE_PARAMETER(deques);
 
 	int res = 0;
 
 	Cilk_event(ws, EVENT_CILK_SYNC);
 
-	deque_lock(ws, ws->self, deque_pool);
+	deque_lock(ws, ws->self, ws->current_deque_pool);
 
-	t = deque_peek_bottom(ws, ws->self, deque_pool);
+	t = deque_peek_bottom(ws, ws->self, ws->current_deque_pool);
 
 	Closure_lock(ws, t);
 	CILK_ASSERT(ws, t->status == CLOSURE_RUNNING);
@@ -1344,18 +1335,18 @@ int Cilk_sync(CilkWorkerState *const ws)
 	CILK_ASSERT(ws, Closure_at_top_of_stack(t));
 
 	poll_inlets(ws, t);
-	deque_assert_is_bottom(ws, t, deque_pool);
+	deque_assert_is_bottom(ws, t, ws->current_deque_pool);
 
 	maybe_reset_abort(t);
 
 	if (Closure_has_children(t)) {
-		Closure_suspend(ws, t, deque_pool);
+		Closure_suspend(ws, t, ws->current_deque_pool);
 		res = 1;
 	}
 
 	Closure_unlock(ws, t);
 
-	deque_unlock(ws, ws->self, deque_pool);
+	deque_unlock(ws, ws->self, ws->current_deque_pool);
 	return res;
 }
 
@@ -1365,12 +1356,9 @@ void Cilk_after_sync_slow_cp(CilkWorkerState *const ws,
 														 Cilk_time *work, Cilk_time *cp)
 {
 	Closure *t;
-	ReadyDeque *deque_pool;
-	if (ws->batch_id) deque_pool = USE_PARAMETER(ds_deques);
-	else deque_pool = USE_PARAMETER(deques);
 
-	deque_lock(ws, ws->self, deque_pool);
-	t = deque_peek_bottom(ws, ws->self, deque_pool);
+	deque_lock(ws, ws->self, ws->current_deque_pool);
+	t = deque_peek_bottom(ws, ws->self, ws->current_deque_pool);
 
 	Closure_lock(ws, t);
 
@@ -1387,7 +1375,7 @@ void Cilk_after_sync_slow_cp(CilkWorkerState *const ws,
 	t->work = 0;
 
 	Closure_unlock(ws, t);
-	deque_unlock(ws, ws->self, deque_pool);
+	deque_unlock(ws, ws->self, ws->current_deque_pool);
 }
 #endif
 
@@ -1440,22 +1428,19 @@ static void move_result_into_closure(CilkWorkerState *const ws,
 int Cilk_exception_handler(CilkWorkerState *const ws, void *resultp, int size)
 {
 	Closure *t, *t1;
-	ReadyDeque *deque_pool;
-	if (ws->batch_id) deque_pool = USE_PARAMETER(ds_deques);
-	else deque_pool = USE_PARAMETER(deques);
 
 	int res = 0;
 
 	Cilk_event(ws, EVENT_EXCEPTION);
 
-	deque_lock(ws, ws->self, deque_pool);
-	t = deque_peek_bottom(ws, ws->self, deque_pool);
+	deque_lock(ws, ws->self, ws->current_deque_pool);
+	t = deque_peek_bottom(ws, ws->self, ws->current_deque_pool);
 
 	CILK_ASSERT(ws, t);
 	Closure_lock(ws, t);
 	poll_inlets(ws, t);
 
-	t1 = deque_peek_bottom(ws, ws->self, deque_pool);
+	t1 = deque_peek_bottom(ws, ws->self, ws->current_deque_pool);
 	CILK_ASSERT(ws, t1);
 
 	/*
@@ -1495,7 +1480,7 @@ int Cilk_exception_handler(CilkWorkerState *const ws, void *resultp, int size)
 					Cilk_event(ws, EVENT_EXCEPTION_ABORT_SUSPEND);
 					/* pretend to sync */
 					maybe_reset_abort(t);
-					Closure_suspend(ws, t, deque_pool);
+					Closure_suspend(ws, t, ws->current_deque_pool);
 					goto skip_free;
 				} else {
 					/* pretend we are returning */
@@ -1515,7 +1500,7 @@ int Cilk_exception_handler(CilkWorkerState *const ws, void *resultp, int size)
 	}
 
 	Closure_unlock(ws, t);
-	deque_unlock(ws, ws->self, deque_pool);
+	deque_unlock(ws, ws->self, ws->current_deque_pool);
 	return res;
 
 }
@@ -1526,14 +1511,11 @@ int Cilk_exception_handler(CilkWorkerState *const ws, void *resultp, int size)
 void Cilk_set_result(CilkWorkerState *const ws, void *resultp, int size)
 {
 	Closure *t;
-	ReadyDeque *deque_pool;
-	if (ws->batch_id) deque_pool = USE_PARAMETER(ds_deques);
-	else deque_pool = USE_PARAMETER(deques);
 
 	Cilk_event(ws, EVENT_RETURN_SLOW);
 
-	deque_lock(ws, ws->self, deque_pool);
-	t = deque_peek_bottom(ws, ws->self, deque_pool);
+	deque_lock(ws, ws->self, ws->current_deque_pool);
+	t = deque_peek_bottom(ws, ws->self, ws->current_deque_pool);
 	Closure_lock(ws, t);
 
 	CILK_ASSERT(ws, t->status == CLOSURE_RUNNING);
@@ -1552,19 +1534,16 @@ void Cilk_set_result(CilkWorkerState *const ws, void *resultp, int size)
 	move_result_into_closure(ws, t, resultp, size);
 
 	Closure_unlock(ws, t);
-	deque_unlock(ws, ws->self, deque_pool);
+	deque_unlock(ws, ws->self, ws->current_deque_pool);
 }
 
 
 void Cilk_abort_slow(CilkWorkerState *const ws)
 {
 	Closure *cl;
-	ReadyDeque *deque_pool;
-	if (ws->batch_id) deque_pool = USE_PARAMETER(ds_deques);
-	else deque_pool = USE_PARAMETER(deques);
 
-	deque_lock(ws, ws->self, deque_pool);
-	cl = deque_peek_bottom(ws, ws->self, deque_pool);
+	deque_lock(ws, ws->self, ws->current_deque_pool);
+	cl = deque_peek_bottom(ws, ws->self, ws->current_deque_pool);
 	Closure_lock(ws, cl);
 
 	CILK_ASSERT(ws, cl->status == CLOSURE_RUNNING);
@@ -1578,7 +1557,7 @@ void Cilk_abort_slow(CilkWorkerState *const ws)
 	poll_inlets(ws, cl);
 
 	Closure_unlock(ws, cl);
-	deque_unlock(ws, ws->self, deque_pool);
+	deque_unlock(ws, ws->self, ws->current_deque_pool);
 }
 
 void Cilk_abort_standalone(CilkWorkerState *const ws)
@@ -1595,10 +1574,6 @@ static Closure *setup_for_execution(CilkWorkerState *const ws, Closure *t)
 	Closure_assert_ownership(ws, t);
 
 	CILK_ASSERT(ws, t->frame->magic == CILK_STACKFRAME_MAGIC);
-
-	if (ws->batch_id) BATCH_ASSERT(ws, ws->current_cache == &ws->ds_cache);
-	else BATCH_ASSERT(ws, ws->current_cache == &ws->cache);
-
 
 	t->status = CLOSURE_RUNNING;
 	t->cache = ws->current_cache;
@@ -1741,8 +1716,9 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 				}
 
 				if (victim != ws->self) {
-					ws->batch_id = USE_SHARED(current_batch_id);
-					ws->current_cache = &ws->ds_cache;
+					/* ws->batch_id = USE_SHARED(current_batch_id); */
+					/* ws->current_cache = &ws->ds_cache; */
+					Cilk_switch2batch(ws);
 					deque_pool = USE_PARAMETER(ds_deques);
 				}
 				t = Closure_steal(ws, victim, deque_pool);
@@ -1755,8 +1731,9 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 					// Otherwise we may have to wait until the entire batch is completed.
 					// Probably better to just continue and steal from someone
 					// else.
-					ws->batch_id = 0;
-					ws->current_cache = &ws->cache;
+					/* ws->batch_id = 0; */
+					/* ws->current_cache = &ws->cache; */
+					Cilk_switch2core(ws);
 					deque_pool = USE_PARAMETER(deques);
 					}
 				t = Closure_steal(ws, victim, deque_pool);
@@ -1810,7 +1787,7 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
 	Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 
-	ws->current_cache = &ws->ds_cache;
+	Cilk_switch2batch(ws);
 
 	/* while (!batch_done_yet(ws, ws->batch_id)) { */
 	while (1) {
@@ -1831,21 +1808,16 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(batchprob)) {
 				Cilk_enter_state(ws, STATE_BATCH_STEALING);
 
-				if ( (USE_PARAMETER(options->btest) & 1)  == 1) {
-					int range = USE_SHARED(pending_batch).size;
-					victim = range == 1 ? 0 : rts_rand(ws) % (range-1) + 1;
-					victim = USE_SHARED(batch_workers_list)[victim];
-				}	else {
-					victim = rts_rand(ws) % USE_PARAMETER(active_size);
-				}
+				victim = rts_rand(ws) % USE_PARAMETER(active_size);
+
 				if (victim != ws->self &&
 						USE_SHARED(pending_batch).array[victim].status == DS_IN_PROGRESS) {
 					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
 
-					/* if (!t && USE_PARAMETER(options->yieldslice) && */
-					/* 		USE_SHARED(current_batch_id) == ws->batch_id) { */
-					/* 	Cilk_lower_priority(ws); */
-					/* } */
+					if (!t && USE_PARAMETER(options->yieldslice) &&
+							USE_SHARED(current_batch_id) == ws->batch_id) {
+						Cilk_lower_priority(ws);
+					}
 				}
 				Cilk_exit_state(ws, STATE_BATCH_STEALING);
 			}
@@ -1867,8 +1839,8 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t)
 		Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 
 	}
-	ws->batch_id = 0;
-	ws->current_cache = &ws->cache;
+
+	Cilk_switch2core(ws);
 	Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
 
@@ -1902,6 +1874,19 @@ inline void* Batcher_allocate_work_array(CilkWorkerState *const ws, int dataSize
 	return work_array;
 }
 
+inline void Cilk_switch2batch(CilkWorkerState *const ws)
+{
+	ws->batch_id = USE_SHARED(current_batch_id);
+	ws->current_cache = &ws->ds_cache;
+	ws->current_deque_pool = USE_PARAMETER(ds_deques);
+}
+
+inline void Cilk_switch2core(CilkWorkerState *const ws)
+{
+	ws->batch_id = 0;
+	ws->current_cache = &ws->cache;
+	ws->current_deque_pool = USE_PARAMETER(deques);
+}
 
 int Batcher_collect(CilkWorkerState *const ws,
 										Batch *pending, BatchRecord *record)
@@ -1944,7 +1929,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
 																				dataSize, indvResult);
 
 	while (pending->array[ws->self].status != DS_DONE) {
-		ws->batch_id = USE_SHARED(current_batch_id);
+		//		ws->batch_id = USE_SHARED(current_batch_id);
 
 		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
 			BatchArgs args;
@@ -1980,9 +1965,11 @@ void Cilk_batchify(CilkWorkerState *const ws,
 				batch_scheduler(ws, NULL);
 			}
 
+			Cilk_enter_state(ws, STATE_USER0);
 			USE_SHARED(batch_owner) = -1;
 			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
 			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
+			Cilk_exit_state(ws, STATE_USER0);
 		} else {
 			batch_scheduler(ws, NULL);
 		}
@@ -2015,11 +2002,10 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 			Cilk_exit_state(ws, STATE_BATCH_START);
 			Cilk_enter_state(ws, STATE_BATCH_WORKING);
 
-			ws->current_cache = &ws->ds_cache;
+			Cilk_switch2batch(ws);
 			op(ws, dataStruct, (void*)pending->array,
 				 USE_PARAMETER(active_size), NULL);
-			ws->current_cache = &ws->cache;
-			ws->batch_id = 0;
+			Cilk_switch2core(ws);
 
 			Cilk_exit_state(ws, STATE_BATCH_WORKING);
 
@@ -2027,9 +2013,11 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 				batch_scheduler(ws, NULL);
 			}
 
+			Cilk_enter_state(ws, STATE_USER0);
 			USE_SHARED(batch_owner) = -1;
 			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
 			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
+			Cilk_exit_state(ws, STATE_USER0);
 		} else {
 			batch_scheduler(ws, NULL);
 		}
@@ -2083,7 +2071,9 @@ void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws)
 		Cilk_malloc_fixed(USE_PARAMETER(options->stackdepth) *
 											sizeof(CilkStackFrame *));
 	ws->stackdepth = USE_PARAMETER(options->stackdepth);
-	ws->current_cache = &ws->cache;
+	/* ws->current_cache = &ws->cache; */
+	/* ws->current_deque_pool = USE_PARAMETER(deques); */
+	Cilk_switch2core(ws);
 	Cilk_reset_stack_depth_stats(ws);
 
 	CILK_CHECK(ws->cache.stack, (ws->context, ws, "failed to allocate stack\n"));
