@@ -537,6 +537,8 @@ typedef struct {
   void *result;
   size_t numElements;
 } BatchArgs; // **** move this later
+typedef void (*CilkBatchSeqOperation)(void *dataStruct, void *data,
+																			size_t numElements, void *result);
 
 typedef void (*InternalBatchOperation)(CilkWorkerState *const _cilk_ws,
                                        void *dataStruct, void *data,

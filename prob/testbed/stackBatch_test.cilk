@@ -28,7 +28,7 @@ cilk void mixedInsert(int i, void* data){
   Operation op;
   op.data=i;
   op.add=1;
-   spawn mixedBatchify(ds,op);
+	spawn mixedBatchify(ds,op);
   sync;
 }
 
@@ -77,8 +77,16 @@ cilk void runMixedTest(Stack* ds, int size, int add_part, int raw){
     spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove_raw,ds);
   }
   else {
-    spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert,ds);
-    spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove,ds);
+    /* spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert,ds); */
+    /* spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove,ds); */
+		int i;
+		for (i = 0; i < add_size; i++) {
+			spawn mixedInsert(i, ds);
+		}
+		sync;
+		for (i = 0; i < size-add_size; i++) {
+			spawn mixedRemove(i, ds);
+		}
   }
   sync;
 }

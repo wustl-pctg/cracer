@@ -60,31 +60,33 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   }
 	//	Cilk_enter_state(ws, STATE_BATCH_INVOKE);
 
-  _cilk_ws->cp_hack = 0;
-  _cilk_ws->work_hack = 0;
-  _cilk_ws->user_work = 0;
-  _cilk_ws->user_critical_path = 0;
-  WHEN_CILK_TIMING(_cilk_frame->header.cp = (Cilk_time) 0);
-  WHEN_CILK_TIMING(_cilk_frame->header.work = (Cilk_time) 0);
-  WHEN_CILK_TIMING(_cilk_frame->header.mycp = (Cilk_time) 0);
-  WHEN_CILK_TIMING(_cilk_ws->last_cp_time = Cilk_get_time());
+  /* _cilk_ws->cp_hack = 0; */
+  /* _cilk_ws->work_hack = 0; */
+  /* _cilk_ws->user_work = 0; */
+  /* _cilk_ws->user_critical_path = 0; */
+  /* WHEN_CILK_TIMING(_cilk_frame->header.cp = (Cilk_time) 0); */
+  /* WHEN_CILK_TIMING(_cilk_frame->header.work = (Cilk_time) 0); */
+  /* WHEN_CILK_TIMING(_cilk_frame->header.mycp = (Cilk_time) 0); */
+  /* WHEN_CILK_TIMING(_cilk_ws->last_cp_time = Cilk_get_time()); */
+
 
   dataStruct = _cilk_frame->args->dataStruct;
 	data = _cilk_frame->args->data;
 	numElements = _cilk_frame->args->numElements;
 	result = _cilk_frame->args->result;
 
+
   _cilk_frame->header.receiver = (void *) &_cilk_frame->retval;
   _cilk_frame->header.entry=1;
   CILK2C_BEFORE_SPAWN_SLOW();
   CILK2C_PUSH_FRAME(_cilk_frame);
+
 	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
 
-  _cilk_frame->batch_op(_cilk_ws, dataStruct, data, numElements, result);
+	_cilk_frame->batch_op(_cilk_ws, dataStruct, data, numElements, result);
+	Cilk_enter_state(ws, STATE_BATCH_INVOKE);
   CILK2C_XPOP_FRAME_NORESULT(_cilk_frame,/* return nothing */);
   CILK2C_AFTER_SPAWN_SLOW();
-
-	Cilk_enter_state(ws, STATE_BATCH_INVOKE);
 
   if (0) {
   _sync1:
@@ -103,7 +105,6 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   }
   CILK2C_AFTER_SYNC_SLOW();
   CILK2C_AT_THREAD_BOUNDARY_SLOW();
-	//	Cilk_enter_state(ws, STATE_BATCH_INVOKE);
 
   WHEN_CILK_TIMING(USE_SHARED(critical_path) = _cilk_frame->header.mycp);
   WHEN_CILK_TIMING(USE_SHARED(total_work) = _cilk_frame->header.work);
@@ -114,6 +115,7 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   Cilk_remove_and_free_closure_and_frame(_cilk_ws, &_cilk_frame->header,
 																				 _cilk_ws->self,
 																				 USE_PARAMETER(ds_deques));
+
 	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
   return;
 
