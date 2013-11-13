@@ -8,22 +8,21 @@
 
 Stack *ds;
 
-/* Uses the regular batchify*/
 void batchFunc(void* ds, void* oprec, size_t size, void* result) {
 	pushInternal((Stack*)ds, 0);
 }
 
-/* Batchify for mixed*/
-void dsOp(CilkWorkerState *const _cilk_ws){
+void dsOp(int i, void *ds){
 	Cilk_batchify_raw_sequential(&batchFunc,ds,NULL,0,NULL);
 }
 
 cilk void runTest(int size)
 {
 	int i;
-	for (i = 0; i < size; i++) {
-		dsOp(_cilk_ws);
-	}
+	/* for (i = 0; i < size; i++) { */
+	/* 	dsOp(_cilk_ws); */
+	/* } */
+	spawn parfor(0, size-1, 1, &dsOp, ds);
 }
 
 cilk int main(int argc, char* argv[]){

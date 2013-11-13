@@ -7,7 +7,13 @@
 
 #define TSIZE 20
 int parThreshold;
-int algWork = 0;
+int algWork = 100;
+void doAlgWork(int writes) {
+	int j, k;
+	for (j=0; j < writes; j++){
+		__asm__ __volatile("movl %1, %%eax;\n\t addl $5, %%eax;\n\t movl %%eax, %0;":"=r"(k):"r"(j):"%eax");
+	}
+}
 
 void doFunnyProcedure() {
   int i;
@@ -42,15 +48,9 @@ cilk void mixedInsert(int i, void* data){
   Operation op;
   op.data=i;
   op.add=1;
+	doAlgWork(algWork);
 	spawn mixedBatchify(ds,op);
   sync;
-}
-
-void doAlgWork(int writes) {
-	int j, k;
-	for (j=0; j < writes; j++){
-		__asm__ __volatile("movl %1, %%eax;\n\t addl $5, %%eax;\n\t movl %%eax, %0;":"=r"(k):"r"(j):"%eax");
-	}
 }
 
 cilk void mixedInsert_raw(int i, void* data){
@@ -68,6 +68,7 @@ cilk void mixedRemove(int i, void* data){
   Operation op;
   op.data=i;
   op.add=0;
+	doAlgWork(algWork);
   spawn mixedBatchify(ds,op);
   sync;
 }
