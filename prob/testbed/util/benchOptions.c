@@ -16,6 +16,7 @@ void usage()
 	printf("\t-i, --iterations\t\tHow many iterations of the benchmark to perform.\n");
 	printf("\t-x, --special paramemter\t\tAny special integer paramter for the benchmark. I.e. Operation ratio for Stack.\n");
 	printf("\t-r, --raw\t\t Specify to run using a batchify_raw functin.\n");
+	printf("\t-c, --contaminate\t\t To use the memory manager contamination.\n");
 }
 
 int getOptions(int argc, char **argv, BenchOptions *opt)
@@ -30,12 +31,13 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 			{"iterations", required_argument, 0, 'i'},
 			{"special", required_argument, 0, 'x'},
 			{"raw", no_argument, 0, 'r'},
+			{"contaminate", no_argument, 0, 'c'},
 		};
 
 	int optIndex = 0;
 	int option;
 
-	while((option = getopt_long(argc, argv, "o:i:vbldx:r", longOptions, &optIndex))
+	while((option = getopt_long(argc, argv, "o:i:vbldx:cr", longOptions, &optIndex))
 				!= -1)
 		{
 			switch(option)
@@ -69,6 +71,9 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 					break;
 				case 'r':
 				  opt->raw=1;
+				  break;
+				case 'c':
+				  opt->contaminate=1;
 				  break;
 				default:
 					usage();

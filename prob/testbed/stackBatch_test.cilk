@@ -2,9 +2,22 @@
 #include "ds/stack.cilk"
 #include "util/benchOptions.h"
 #include "util/parfor.cilkh"
+#include <stdlib.h>
+#include <time.h>
 
 #define TSIZE 20
 int parThreshold;
+
+void doFunnyProcedure() {
+  int i;
+  void* rand_mem;
+  printf("do memory thing!\n");
+  srand(time(NULL));
+  for (i=0; i< (1024*64); ++i) {
+    rand_mem = malloc(rand()%128+1 );
+    free(rand_mem);
+  }
+}
 
 Stack* setUp(){
 	Stack* ds = create_stack();
@@ -98,6 +111,9 @@ cilk int main(int argc, char* argv[]){
 	int add_percentage;
 	getOptions(argc, argv, &options);
 	testSize=options.operations;
+	if (options.contaminate){
+	   doFunnyProcedure();
+	}
 	if (options.dedicated){
 		startTimer();
 		spawn runAddTest(test_stack,testSize);

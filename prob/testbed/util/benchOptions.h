@@ -11,6 +11,7 @@ typedef struct
 	int dedicated;
 	int special;
         int raw;
+  int contaminate;
 } BenchOptions;
 
 int getOptions(int argc, char **argv, BenchOptions *opt);
