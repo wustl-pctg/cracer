@@ -7,6 +7,7 @@
 
 #define TSIZE 20
 int parThreshold;
+int algWork = 0;
 
 void doFunnyProcedure() {
   int i;
@@ -45,11 +46,19 @@ cilk void mixedInsert(int i, void* data){
   sync;
 }
 
+void doAlgWork(int writes) {
+	int j, k;
+	for (j=0; j < writes; j++){
+		__asm__ __volatile("movl %1, %%eax;\n\t addl $5, %%eax;\n\t movl %%eax, %0;":"=r"(k):"r"(j):"%eax");
+	}
+}
+
 cilk void mixedInsert_raw(int i, void* data){
   Stack* ds = data;
   Operation op;
   op.data=i;
   op.add=1;
+	doAlgWork(algWork);
   spawn mixedBatchify_raw(ds,op);
   sync;
 }
@@ -68,6 +77,7 @@ cilk void mixedRemove_raw(int i, void* data){
   Operation op;
   op.data=i;
   op.add=0;
+	doAlgWork(algWork);
   spawn mixedBatchify_raw(ds,op);
   sync;
 }
@@ -90,16 +100,8 @@ cilk void runMixedTest(Stack* ds, int size, int add_part, int raw){
     spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove_raw,ds);
   }
   else {
-    /* spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert,ds); */
-    /* spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove,ds); */
-		int i;
-		for (i = 0; i < add_size; i++) {
-			spawn mixedInsert(i, ds);
-		}
-		sync;
-		for (i = 0; i < size-add_size; i++) {
-			spawn mixedRemove(i, ds);
-		}
+    spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert,ds);
+    spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove,ds);
   }
   sync;
 }

@@ -32,6 +32,7 @@ all: tests
 # Rule for all actual source files
 # May need to add -DUSE_LOCKS for ...Lock_test files
 %_test: $(DEPS) $(@:=.cilk)
+	@echo $(@:=.cilk)
 	$(CILKC) $(CFLAGS) $(@:=.cilk) $(INC) $(DS) -o $@ $(LD)
 
 # Rule for rebuilding CILK (BATCHER)
@@ -45,6 +46,8 @@ tests:  param counter btree dynArray concHash omPMA omTree stack
 # Parameterized Test
 param: param.cilk
 	$(CILKC) $(CFLAGS) $@.cilk $(INC) -lm -o $@
+null: null.cilk
+	$(CILKC) $(CFLAGS) $@.cilk $(INC) -o $@
 
 # Data Structure Tests
 counter: counterLock_test counterBatch_test
@@ -57,7 +60,7 @@ omPMA: LD += -lm
 omPMA: omPMALock_test omPMABatch_test
 omTree: LD += -lm
 omTree: omTreeLock_test omTreeBatch_test
-stack: stackBatch_test 
+stack: stackBatch_test
 skip: DSSkipList_test
 
 .PHONY: clean cilk-clean check-syntax doc information all
