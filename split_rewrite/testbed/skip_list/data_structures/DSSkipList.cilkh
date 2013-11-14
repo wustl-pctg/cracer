@@ -17,6 +17,7 @@
 //globals
 extern int _gNumThreads;
 static int _num_post_read_write;
+static int num_adds;
 
 //types
 typedef struct Node Node;
@@ -307,6 +308,8 @@ DSSkipList* new_DSSkipList() {
   for(iLevel=0; iLevel < list->_head->_top_level; ++iLevel)
     list->_head->_next[iLevel] = list->_tail;
   //list->_tail_slot.set(new_SlotInfo());
+  sleep(1);
+  num_adds = 0;
   return list;
 } 
 
@@ -431,6 +434,8 @@ void DSSkipList_unsafe_add (DSSkipList* list, final int inValue) {
 				DSSkipList_find(list, inValue, preds, succs);// find new preds and succs
 			}
 		}
+    ++num_adds;
+    printf("Successful add\n");
     return;
 		//return true;
 	}
@@ -460,7 +465,7 @@ cilk boolean DSSkipList_add
   int* input_pair = (int*)malloc(sizeof(int)*2);
   input_pair[0] = iThread;
   input_pair[1] = inValue;
-  Cilk_batchify(_cilk_ws, DSSkipList_batch_add, list,
+  Cilk_batchify(_cilk_ws, &DSSkipList_batch_add, list,
     &input_pair,sizeof(int)*2, NULL);
   return true;
 }
