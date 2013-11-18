@@ -81,10 +81,10 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
 
 	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
 	_cilk_frame->batch_op(_cilk_ws, dataStruct, data, numElements, result);
-	Cilk_enter_state(ws, STATE_BATCH_INVOKE);
 
   CILK2C_XPOP_FRAME_NORESULT(_cilk_frame,/* return nothing */);
   CILK2C_AFTER_SPAWN_SLOW();
+	Cilk_enter_state(ws, STATE_BATCH_INVOKE);
 
   if (0) {
   _sync1:
