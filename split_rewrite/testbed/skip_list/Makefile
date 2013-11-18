@@ -7,9 +7,9 @@ DYNTARGET = test_dyn
 CPP		= g++
 CC		= ../../../prob/support/cilkclocal
 
-CPPFLAGS	= -O0 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -lrt -pthread  
+CPPFLAGS	= -O0 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -pthread  
 CFLAGS		= -O0 -g -Wall 
-LFLAGS		= -O0 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -lrt -pthread
+LFLAGS		= -O0 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -pthread
 DYNFLAGS	= -O2 -g -Wall 
 
 

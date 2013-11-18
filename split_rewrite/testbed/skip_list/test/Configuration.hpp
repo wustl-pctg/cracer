@@ -66,7 +66,7 @@ public:
 	bool read(int argc, char **argv) {
 		try {
 			int curr_arg=1;
-      printf("argc: %d\n", argc);
+      //printf("argc: %d\n", argc);
 			strcpy(_alg1_name, argv[curr_arg++]);
 			_alg1_num			 = CCP::Integer::parseInt(argv[curr_arg++]);
 			strcpy(_alg2_name, argv[curr_arg++]);
