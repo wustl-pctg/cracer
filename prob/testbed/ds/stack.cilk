@@ -1,11 +1,13 @@
 #include <cilk-lib.cilkh>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "../util/parfor.cilkh"
 #include "stack.cilkh"
 
-#define MAX_SIZE 1000000000
+//#define MAX_SIZE 1000000000
+#define MAX_SIZE 10000000
 
 Stack* create_stack(){
        Stack* result = malloc(sizeof(Stack));
@@ -14,6 +16,7 @@ Stack* create_stack(){
        result->start=NULL;
        result->end=NULL;
        result->nodes=calloc(MAX_SIZE,sizeof(node));
+       assert(result->nodes != NULL);
        return result;
 }
 

@@ -135,6 +135,8 @@ Closure * Batcher_create_batch_closure(CilkWorkerState *const ws,
 
   /* create a frame for invoke_batch */
 	t = Cilk_Closure_create_malloc(ws->context, NULL);
+  // *** Calls Closure_init, which calls mutex_init and sets up inlets
+
 	/* t = &USE_SHARED(invoke_batch_closure); */
   t->parent = (Closure *) NULL;
   t->join_counter = 0;
