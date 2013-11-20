@@ -23,11 +23,11 @@ typedef struct {
 /*"Public" methods*/
 Stack* create_stack();
 void push(Stack* ds, int data);
-cilk void pushBatchify(Stack* ds, int data);
 void printStack(Stack* ds);
 node* pop(Stack* ds);
-cilk void popBatchify(Stack* ds);
-cilk void mixedBatchify(Stack*, Operation);
+void pushBatchify(Stack*, int, CilkWorkerState*);
+void popBatchify(Stack*, CilkWorkerState*);
+void mixedBatchify(Stack*, Operation, CilkWorkerState*);
 void mixedBatchify_raw(Stack*, Operation, CilkWorkerState*);
 
 /*More "private" methods*/

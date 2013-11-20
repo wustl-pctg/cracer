@@ -20,6 +20,33 @@ Stack* create_stack(){
        return result;
 }
 
+/*Batchify methods!*/
+
+
+/* Batchify-caller method*/
+void pushBatchify(Stack* ds, int data, CilkWorkerState* ws){
+  Cilk_batchify(ws,&push_batch,ds,&data,sizeof(int),NULL);
+}
+
+/* Batchify for mixed*/
+void mixedBatchify(Stack* ds, Operation op, CilkWorkerState* ws){
+	//  return;
+	Cilk_batchify(ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
+}
+/* Batchify for mixed_raw*/
+void mixedBatchify_raw(Stack* ds, Operation op, CilkWorkerState* ws){
+  Cilk_batchify_raw(ws,&doRawMixedOps,ds,&op,sizeof(Operation),NULL);
+}
+
+/*Batchify-caller for pop */
+void popBatchify(Stack* ds, CilkWorkerState* ws){
+  Cilk_batchify(ws,&pop_batch,ds,NULL,0,NULL);
+}
+
+
+
+/*Helper methods!*/
+
 /* Sequential push method */
 void push(Stack* ds, int data){
   //Get lock on stack
@@ -64,25 +91,8 @@ void pushInternal(Stack* ds, int data){
   ds->size++;
 }
 
-
-/* Batchify-caller method*/
-cilk void pushBatchify(Stack* ds, int data){
-  Cilk_batchify(_cilk_ws,&push_batch,ds,&data,sizeof(int),NULL);
-}
-
-/* Batchify for mixed*/
-cilk void mixedBatchify(Stack* ds, Operation op){
-	//  return;
-	Cilk_batchify(_cilk_ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
-}
-/* Batchify for mixed_raw*/
-
-void mixedBatchify_raw(Stack* ds, Operation op, CilkWorkerState* ws){
-  Cilk_batchify_raw(ws,&doRawMixedOps,ds,&op,sizeof(Operation),NULL);
-}
-
 /* Uses the regular batchify*/
-cilk  void doMixedOps(void* ds, void* oprec, size_t size, void* result){
+cilk void doMixedOps(void* ds, void* oprec, size_t size, void* result){
   Stack* stack = ds;
   Operation* ops = oprec;
   int i;
@@ -199,11 +209,6 @@ node* pop(Stack* ds){
   result=popInternal(ds);
   Cilk_unlock(ds->lock);
   return result;
-}
-
-/*Batchify-caller for pop */
-cilk void popBatchify(Stack* ds){
-  Cilk_batchify(_cilk_ws,&pop_batch,ds,NULL,0,NULL);
 }
 
 /*Batch method to pop items*/

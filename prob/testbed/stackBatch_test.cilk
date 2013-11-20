@@ -31,78 +31,60 @@ Stack* setUp(){
 	return ds;
 }
 
-cilk void mixedInsert(int i, void* data){
-  Stack* ds = data;
-  Operation op;
-  op.data=i;
-  op.add=1;
-	//doAlgWork(algWork);
-	spawn mixedBatchify(ds,op);
-  sync;
-}
-
-cilk void mixedRemove(int i, void* data){
-  Stack* ds = data;
-  Operation op;
-  op.data=i;
-  op.add=0;
-  //doAlgWork(algWork);
-  spawn mixedBatchify(ds,op);
-  sync;
-}
-
 cilk void parforpar_add(const int begin, const int end, const int incr,
 													 const int thresh,
-													 void *data)
+													 void *data, int raw)
 {
   int i;
 
   if ((end - begin)/incr <= thresh) {
       Stack* ds = data;
       Operation op;
-    for (i = begin; i <= end; i += incr) {
-      op.data=i;
       op.add=1;
-      mixedBatchify_raw(ds,op,_cilk_ws);
+      for (i = begin; i <= end; i += incr) {
+       op.data=i;
+       if (raw){
+        mixedBatchify_raw(ds,op,_cilk_ws); }
+       else {
+        mixedBatchify(ds,op,_cilk_ws);
+      }
      }
   } else {
     i = begin+(end-begin)/2;
-    spawn parforpar_add(begin, i, incr, thresh, data);
-    spawn parforpar_add(i + 1, end, incr, thresh,data);
+    spawn parforpar_add(begin, i, incr, thresh, data, raw);
+    spawn parforpar_add(i + 1, end, incr, thresh,data, raw);
   }
 }
 cilk void parforpar_rem(const int begin, const int end, const int incr,
 													 const int thresh,
-													 void *data)
+													 void *data, int raw)
 {
   int i;
 
   if ((end - begin)/incr <= thresh) {
     Stack* ds = data;
     Operation op;
+    op.add=0;
     for (i = begin; i <= end; i += incr) {
       op.data=i;
-      op.add=0;
-      mixedBatchify_raw(ds,op,_cilk_ws);
+      if (raw){
+      mixedBatchify_raw(ds,op,_cilk_ws); }
+      else {
+      mixedBatchify(ds,op,_cilk_ws);
+      } 
      }
   } else {
     i = begin+(end-begin)/2;
-    spawn parforpar_rem(begin, i, incr, thresh, data);
-    spawn parforpar_rem(i + 1, end, incr, thresh,data);
+    spawn parforpar_rem(begin, i, incr, thresh, data, raw);
+    spawn parforpar_rem(i + 1, end, incr, thresh,data, raw);
   }
 }
 
 cilk void runMixedTest(Stack* ds, int size, int add_part, int raw){
   int threshold = parThreshold ? parThreshold : PARFOR_THRESHOLD;
   int add_size = (add_part * size)/100;
-  if (raw){
-    spawn parforpar_add(0,add_size,1,threshold,ds);
-    spawn parforpar_rem(0,size-add_size,1,threshold,ds);
-  }
-  else {
-    spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert,ds);
-    spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove,ds);
-  }
+  spawn parforpar_add(0,add_size,1,threshold,ds, raw);
+  spawn parforpar_rem(0,size-add_size,1,threshold,ds, raw);
   sync;
 }
 
