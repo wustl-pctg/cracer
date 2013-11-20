@@ -45,7 +45,7 @@ tests:  param counter btree dynArray concHash omPMA omTree stack
 # Parameterized Test
 param: param.cilk
 	$(CILKC) $(CFLAGS) $@.cilk $(INC) -lm -o $@
-null: null.cilk
+stackNoSpawn: stackNoSpawn.cilk
 	$(CILKC) $(CFLAGS) $@.cilk $(INC) -o $@
 
 # Data Structure Tests

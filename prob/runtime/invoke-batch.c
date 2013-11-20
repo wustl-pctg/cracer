@@ -58,16 +58,6 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   case 2:
     goto _sync2;
   }
-	//	Cilk_enter_state(ws, STATE_BATCH_INVOKE);
-
-  _cilk_ws->cp_hack = 0;
-  _cilk_ws->work_hack = 0;
-  _cilk_ws->user_work = 0;
-  _cilk_ws->user_critical_path = 0;
-  WHEN_CILK_TIMING(_cilk_frame->header.cp = (Cilk_time) 0);
-  WHEN_CILK_TIMING(_cilk_frame->header.work = (Cilk_time) 0);
-  WHEN_CILK_TIMING(_cilk_frame->header.mycp = (Cilk_time) 0);
-  WHEN_CILK_TIMING(_cilk_ws->last_cp_time = Cilk_get_time());
 
   dataStruct = _cilk_frame->args->dataStruct;
 	data = _cilk_frame->args->data;

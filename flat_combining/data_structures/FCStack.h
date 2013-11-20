@@ -75,7 +75,7 @@ private:
 					} else {
 						*req_ary = _NULL_VALUE;
 					}
-				} 
+				}
 				++req_ary;
 				++iReq;
 			}
