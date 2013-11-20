@@ -61,6 +61,7 @@ omTree: LD += -lm
 omTree: omTreeLock_test omTreeBatch_test
 stack: stackBatch_test
 skip: DSSkipList_test
+noSpawn: stackNoSpawn_test
 
 .PHONY: clean cilk-clean check-syntax doc information all
 clean:

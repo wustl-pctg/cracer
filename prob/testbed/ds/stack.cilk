@@ -75,13 +75,14 @@ cilk void mixedBatchify(Stack* ds, Operation op){
 	//  return;
 	Cilk_batchify(_cilk_ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
 }
+/* Batchify for mixed_raw*/
 
-cilk void mixedBatchify_raw(Stack* ds, Operation op){
-  Cilk_batchify_raw(_cilk_ws,&doRawMixedOps,ds,&op,sizeof(Operation),NULL);
+void mixedBatchify_raw(Stack* ds, Operation op, CilkWorkerState* ws){
+  Cilk_batchify_raw(ws,&doRawMixedOps,ds,&op,sizeof(Operation),NULL);
 }
 
 /* Uses the regular batchify*/
-cilk void doMixedOps(void* ds, void* oprec, size_t size, void* result){
+cilk  void doMixedOps(void* ds, void* oprec, size_t size, void* result){
   Stack* stack = ds;
   Operation* ops = oprec;
   int i;

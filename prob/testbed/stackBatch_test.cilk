@@ -6,7 +6,7 @@
 #include <time.h>
 
 #define TSIZE 20
-int parThreshold;
+int parThreshold=1024;
 int algWork = 100;
 void doAlgWork(int writes) {
 	int j, k;
@@ -31,35 +31,13 @@ Stack* setUp(){
 	return ds;
 }
 
-cilk void makeInsert(int i, void* data){
-	Stack* ds = data;
-	spawn pushBatchify(ds,i);
-	sync;
-}
-
-cilk void makeRemove(int i, void* data){
-	Stack* ds = data;
-	spawn popBatchify(ds);
-	sync;
-}
-
 cilk void mixedInsert(int i, void* data){
   Stack* ds = data;
   Operation op;
   op.data=i;
   op.add=1;
-	doAlgWork(algWork);
+	//doAlgWork(algWork);
 	spawn mixedBatchify(ds,op);
-  sync;
-}
-
-cilk void mixedInsert_raw(int i, void* data){
-  Stack* ds = data;
-  Operation op;
-  op.data=i;
-  op.add=1;
-	doAlgWork(algWork);
-  spawn mixedBatchify_raw(ds,op);
   sync;
 }
 
@@ -68,37 +46,58 @@ cilk void mixedRemove(int i, void* data){
   Operation op;
   op.data=i;
   op.add=0;
-	doAlgWork(algWork);
+  //doAlgWork(algWork);
   spawn mixedBatchify(ds,op);
   sync;
 }
 
-cilk void mixedRemove_raw(int i, void* data){
-  Stack* ds = data;
-  Operation op;
-  op.data=i;
-  op.add=0;
-	doAlgWork(algWork);
-  spawn mixedBatchify_raw(ds,op);
-  sync;
-}
+cilk void parforpar_add(const int begin, const int end, const int incr,
+													 const int thresh,
+													 void *data)
+{
+  int i;
 
-cilk void runAddTest(Stack* ds, int size){
-	spawn parforpar(0,size-1,1,&makeInsert, ds);
-	sync;
+  if ((end - begin)/incr <= thresh) {
+      Stack* ds = data;
+      Operation op;
+    for (i = begin; i <= end; i += incr) {
+      op.data=i;
+      op.add=1;
+      mixedBatchify_raw(ds,op,_cilk_ws);
+     }
+  } else {
+    i = begin+(end-begin)/2;
+    spawn parforpar_add(begin, i, incr, thresh, data);
+    spawn parforpar_add(i + 1, end, incr, thresh,data);
+  }
 }
+cilk void parforpar_rem(const int begin, const int end, const int incr,
+													 const int thresh,
+													 void *data)
+{
+  int i;
 
-cilk void runRemoveTest(Stack* ds, int size){
-	spawn parforpar(0,size-1,1,&makeRemove, ds);
-	sync;
+  if ((end - begin)/incr <= thresh) {
+    Stack* ds = data;
+    Operation op;
+    for (i = begin; i <= end; i += incr) {
+      op.data=i;
+      op.add=0;
+      mixedBatchify_raw(ds,op,_cilk_ws);
+     }
+  } else {
+    i = begin+(end-begin)/2;
+    spawn parforpar_rem(begin, i, incr, thresh, data);
+    spawn parforpar_rem(i + 1, end, incr, thresh,data);
+  }
 }
 
 cilk void runMixedTest(Stack* ds, int size, int add_part, int raw){
   int threshold = parThreshold ? parThreshold : PARFOR_THRESHOLD;
   int add_size = (add_part * size)/100;
   if (raw){
-    spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert_raw,ds);
-    spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove_raw,ds);
+    spawn parforpar_add(0,add_size,1,threshold,ds);
+    spawn parforpar_rem(0,size-add_size,1,threshold,ds);
   }
   else {
     spawn parforpar_thresh(0,add_size,1,threshold,&mixedInsert,ds);
@@ -117,38 +116,19 @@ cilk int main(int argc, char* argv[]){
 	if (options.contaminate){
 	   doFunnyProcedure();
 	}
-	if (options.dedicated){
-		startTimer();
-		spawn runAddTest(test_stack,testSize);
-		sync;
-		stopTimer();
-		if (options.verbose){
-			printf("Batch Add. Size %d. \n", testSize);
-		}
-		printf("%lf\n",getWallTime());
-		startTimer();
-		spawn runRemoveTest(test_stack,testSize);
-		sync;
-		stopTimer();
-		if (options.verbose){
-			printf("Batch Remove. Size %d. \n",testSize);
-		}
-		printf("%lf\n",getWallTime());
-	} else {
-		if (options.special){
-			add_percentage=options.special;
-		}
-		else {
-			add_percentage=50;
-		}
-		startTimer();
-		spawn runMixedTest(test_stack,testSize,add_percentage,options.raw);
-		sync;
-		stopTimer();
-		if (options.verbose){
-			printf("Batch Mixed. Size %d. \n",testSize);
-		}
-		printf("%lf\n",getWallTime());
+	if (options.special){
+		add_percentage=options.special;
 	}
+	else {
+		add_percentage=50;
+	}
+	startTimer();
+	spawn runMixedTest(test_stack,testSize,add_percentage,options.raw);
+	sync;
+	stopTimer();
+	if (options.verbose){
+		printf("Batch Mixed. Size %d. \n",testSize);
+	}
+	printf("%lf\n",getWallTime());
 	return 0;
 }

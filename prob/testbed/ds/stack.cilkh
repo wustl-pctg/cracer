@@ -1,5 +1,6 @@
 #ifndef _STACK_H
 #define _STACK_H
+#include <cilk-lib.cilkh>
 typedef struct node_stack{
 	int data;
         struct node_stack* prev;
@@ -27,7 +28,7 @@ void printStack(Stack* ds);
 node* pop(Stack* ds);
 cilk void popBatchify(Stack* ds);
 cilk void mixedBatchify(Stack*, Operation);
-cilk void mixedBatchify_raw(Stack*, Operation);
+void mixedBatchify_raw(Stack*, Operation, CilkWorkerState*);
 
 /*More "private" methods*/
 cilk void push_batch(void* ds, void* oprec, size_t size, void* result);
