@@ -6,37 +6,30 @@
 #include "util/timer.h"
 #include "ds/stack.cilk"
 
-Stack *ds;
+Stack* g_stack;
 
-void batchFunc(void* ds, void* oprec, size_t size, void* result) {
+void batchFunc(void* ds, void* oprec, size_t size, void* result)
+{
 	pushInternal((Stack*)ds, 0);
 }
 
-void dsOp(int i, void *ds){
-	Cilk_batchify_raw_sequential(&batchFunc,ds,NULL,0,NULL);
-}
-
-cilk void runTest(int size)
+void dsOp(int i, void *ds)
 {
-	int i;
-	/* for (i = 0; i < size; i++) { */
-	/* 	dsOp(_cilk_ws); */
-	/* } */
-	spawn parfor(0, size-1, 1, &dsOp, ds);
+	Cilk_batchify_raw_sequential(&batchFunc, ds, NULL, 0, NULL);
 }
 
-cilk int main(int argc, char* argv[]){
+cilk int main(int argc, char* argv[])
+{
 	BenchOptions options;
-
-	int testSize;
 	getOptions(argc, argv, &options);
-	testSize=options.operations;
-	ds = create_stack();
+
+	g_stack = create_stack();
 
 	startTimer();
-	spawn runTest(testSize);
+	spawn parfor(0, options.operations - 1, 1, &dsOp, g_stack);
 	sync;
 	stopTimer();
+
 	printf("%lf\n",getWallTime());
 	return 0;
 }

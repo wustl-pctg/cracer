@@ -1,116 +1,61 @@
+#include <stdlib.h>
+#include <time.h>
+
 #include "util/timer.h"
 #include "ds/stack.cilk"
 #include "util/benchOptions.h"
 #include "util/parfor.cilkh"
-#include <stdlib.h>
-#include <time.h>
 
-#define TSIZE 20
-int parThreshold=1024;
-int algWork = 100;
-void doAlgWork(int writes) {
-	int j, k;
-	for (j=0; j < writes; j++){
-		__asm__ __volatile("movl %1, %%eax;\n\t addl $5, %%eax;\n\t movl %%eax, %0;":"=r"(k):"r"(j):"%eax");
-	}
-}
+int g_par_threshold = 1024;
+Stack* g_stack;
+Operation g_add_op = {1, 0};
+Operation g_rem_op = {0, 0};
 
-void doFunnyProcedure() {
-  int i;
-  void* rand_mem;
-  printf("do memory thing!\n");
-  srand(time(NULL));
-  for (i=0; i< (1024*64); ++i) {
-    rand_mem = malloc(rand()%128+1 );
-    free(rand_mem);
-  }
-}
-
-Stack* setUp(){
-	Stack* ds = create_stack();
-	return ds;
-}
-
-cilk void parforpar_add(const int begin, const int end, const int incr,
-													 const int thresh,
-													 void *data, int raw)
+cilk void parforpar_stack(const int begin, const int end, Operation op, int raw)
 {
   int i;
 
-  if ((end - begin)/incr <= thresh) {
-      Stack* ds = data;
-      Operation op;
-      op.add=1;
-      for (i = begin; i <= end; i += incr) {
-       op.data=i;
-       if (raw){
-        mixedBatchify_raw(ds,op,_cilk_ws); }
-       else {
-        mixedBatchify(ds,op,_cilk_ws);
-      }
-     }
+  if (end - begin <= g_par_threshold) {
+
+		for (i = begin; i <= end; ++i) {
+
+			op.data=i;
+
+			if (raw) mixedBatchify_raw(g_stack, op, _cilk_ws);
+			else mixedBatchify(g_stack, op, _cilk_ws);
+
+		}
   } else {
     i = begin+(end-begin)/2;
-    spawn parforpar_add(begin, i, incr, thresh, data, raw);
-    spawn parforpar_add(i + 1, end, incr, thresh,data, raw);
+    spawn parforpar_stack(begin, i, op, raw);
+    spawn parforpar_stack(i + 1, end, op, raw);
   }
 }
-cilk void parforpar_rem(const int begin, const int end, const int incr,
-													 const int thresh,
-													 void *data, int raw)
+
+cilk int main(int argc, char* argv[])
 {
-  int i;
-
-  if ((end - begin)/incr <= thresh) {
-    Stack* ds = data;
-    Operation op;
-    op.add=0;
-    for (i = begin; i <= end; i += incr) {
-      op.data=i;
-      if (raw){
-      mixedBatchify_raw(ds,op,_cilk_ws); }
-      else {
-      mixedBatchify(ds,op,_cilk_ws);
-      } 
-     }
-  } else {
-    i = begin+(end-begin)/2;
-    spawn parforpar_rem(begin, i, incr, thresh, data, raw);
-    spawn parforpar_rem(i + 1, end, incr, thresh,data, raw);
-  }
-}
-
-cilk void runMixedTest(Stack* ds, int size, int add_part, int raw){
-  int threshold = parThreshold ? parThreshold : PARFOR_THRESHOLD;
-  int add_size = (add_part * size)/100;
-  spawn parforpar_add(0,add_size,1,threshold,ds, raw);
-  spawn parforpar_rem(0,size-add_size,1,threshold,ds, raw);
-  sync;
-}
-
-cilk int main(int argc, char* argv[]){
-	Stack* test_stack = setUp();
 	BenchOptions options;
-	int testSize;
-	int add_percentage;
+	int test_size, add_percentage;
+	int threshold, add_size;
+
 	getOptions(argc, argv, &options);
-	testSize=options.operations;
-	if (options.contaminate){
-	   doFunnyProcedure();
-	}
-	if (options.special){
-		add_percentage=options.special;
-	}
-	else {
-		add_percentage=50;
-	}
+	test_size = options.operations;
+	if (options.special) add_percentage = options.special;
+	else add_percentage = 50;
+
+  threshold = g_par_threshold ? g_par_threshold : PARFOR_THRESHOLD;
+  add_size = (add_percentage * test_size) / 100;
+
+	g_stack = create_stack();
+
 	startTimer();
-	spawn runMixedTest(test_stack,testSize,add_percentage,options.raw);
-	sync;
+  spawn parforpar_stack(0, add_size, g_add_op, options.raw);
+  spawn parforpar_stack(0, test_size-add_size, g_rem_op, options.raw);
+  sync;
 	stopTimer();
-	if (options.verbose){
-		printf("Batch Mixed. Size %d. \n",testSize);
-	}
+
+	if (options.verbose) printf("Batch Mixed. Size %d. \n", test_size);
 	printf("%lf\n",getWallTime());
+
 	return 0;
 }

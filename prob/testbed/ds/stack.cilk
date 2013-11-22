@@ -24,22 +24,25 @@ Stack* create_stack(){
 
 
 /* Batchify-caller method*/
-void pushBatchify(Stack* ds, int data, CilkWorkerState* ws){
+void pushBatchify(Stack* ds, int data, CilkWorkerState* const ws)
+{
   Cilk_batchify(ws,&push_batch,ds,&data,sizeof(int),NULL);
 }
 
 /* Batchify for mixed*/
-void mixedBatchify(Stack* ds, Operation op, CilkWorkerState* ws){
-	//  return;
+void mixedBatchify(Stack* ds, Operation op, CilkWorkerState* const ws)
+{
 	Cilk_batchify(ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
 }
 /* Batchify for mixed_raw*/
-void mixedBatchify_raw(Stack* ds, Operation op, CilkWorkerState* ws){
+void mixedBatchify_raw(Stack* ds, Operation op, CilkWorkerState* const ws)
+{
   Cilk_batchify_raw(ws,&doRawMixedOps,ds,&op,sizeof(Operation),NULL);
 }
 
 /*Batchify-caller for pop */
-void popBatchify(Stack* ds, CilkWorkerState* ws){
+void popBatchify(Stack* ds, CilkWorkerState* const ws)
+{
   Cilk_batchify(ws,&pop_batch,ds,NULL,0,NULL);
 }
 
