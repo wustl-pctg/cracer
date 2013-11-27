@@ -208,6 +208,7 @@ struct CilkGlobalState_s{
   Batch pending_batch;
   void *batch_work_array;
 	Cilk_mutex batch_lock;
+	volatile int batch_lock2; // volatile?
 	int *batch_workers_list;
 
 	Closure invoke_batch_closure;

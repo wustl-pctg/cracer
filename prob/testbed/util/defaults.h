@@ -16,7 +16,4 @@
 #define BATCH_THRESHOLD 2 ///< Below this, batches should execute sequentially
 #endif
 
-/* #define DUMMY_WAIT 512 ///< Loop iteration to wait (to simulate operation time) */
-/* #define DUMMY_ITERS 131072 ///< Number of times to execute operation */
-/* #define BASE_SIZE 128 */
 #endif

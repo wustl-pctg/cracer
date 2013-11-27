@@ -18,7 +18,7 @@ ifeq ($(mode),)
 	mode = bench
 endif
 ifeq ($(mode),bench)
-	CFLAGS += -O3 -DNDEBUG
+	CFLAGS += -O3 -DNDEBUG -m64
 endif
 ifeq ($(mode),debug)
 	CFLAGS += -O0 -g -cilk-debug -save-temps -Wall
@@ -45,8 +45,12 @@ tests:  param counter btree dynArray concHash omPMA omTree stack
 # Parameterized Test
 param: param.cilk
 	$(CILKC) $(CFLAGS) $@.cilk $(INC) -lm -o $@
-stackNoSpawn: stackNoSpawn.cilk
-	$(CILKC) $(CFLAGS) $@.cilk $(INC) -o $@
+race: DS = ds/stack.cilk
+race: race.cilk
+	$(CILKC) $(CFLAGS) $@.cilk $(INC) $(DS) -o $@
+seq: DS = ds/stack.cilk
+seq: seq.cilk
+	$(CILKC) $(CFLAGS) $@.cilk $(INC) $(DS) -o $@
 
 # Data Structure Tests
 counter: counterLock_test counterBatch_test
@@ -59,6 +63,7 @@ omPMA: LD += -lm
 omPMA: omPMALock_test omPMABatch_test
 omTree: LD += -lm
 omTree: omTreeLock_test omTreeBatch_test
+stack: DS = ds/stack.cilk
 stack: stackBatch_test
 skip: DSSkipList_test
 noSpawn: stackNoSpawn_test
