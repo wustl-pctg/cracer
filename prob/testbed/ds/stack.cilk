@@ -82,15 +82,15 @@ void pushInternal(Stack* ds, int data){
   }
   ins->data=data;
   ins->next=NULL;
-  if (ds->size==0){
-    ds->start=ins;
-    ds->end=ins;
-    ins->prev=NULL;
-  } else {
-    ins->prev=ds->end;
-    ds->end->next=ins;
-    ds->end=ins;
-  }
+  /* if (ds->size==0){ */
+  /*   ds->start=ins; */
+  /*   ds->end=ins; */
+  /*   ins->prev=NULL; */
+  /* } else { */
+  /*   ins->prev=ds->end; */
+  /*   ds->end->next=ins; */
+  /*   ds->end=ins; */
+  /* } */
   ds->size++;
 }
 
@@ -109,33 +109,39 @@ cilk void doMixedOps(void* ds, void* oprec, size_t size, void* result){
 }
 
 /* Uses the raw oprec array*/
-cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result) {
+/* cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result) { */
+/*   Stack* stack = ds; */
+/*   BatchRecord* ops = oprec; */
+/*   Operation* op; */
+/*   int i; */
+/*   for (i=0;i<size;i++){ */
+/*     if (ops[i].status!=DS_DONE){ */
+/*       if (ops[i].status==DS_WAITING){ */
+/* 				op=ops[i].args; */
+/* 				if ((*op).add){ */
+/* 					pushInternal(stack,(*op).data); */
+/* 				} */
+/* 				else { */
+/* 					popInternal(stack); */
+/* 				} */
+/* 				ops[i].status=DS_DONE; */
+/*       } */
+/*     } */
+/*   } */
+/* } */
+void doRawMixedOps(void* ds, void* oprec, size_t size, void* result) {
   Stack* stack = ds;
-  BatchRecord* ops = oprec;
-  Operation* op;
+  Operation* op = oprec;
   int i;
   for (i=0;i<size;i++){
-    if (ops[i].status!=DS_DONE){
-      if (ops[i].status==DS_WAITING){
-				op=ops[i].args;
-				if ((*op).add){
-					pushInternal(stack,(*op).data);
-				}
-				else {
-					popInternal(stack);
-				}
-				ops[i].status=DS_DONE;
-      }
-    }
-  }
-  //_cilk_ws->context->Cilk_global_state->current_batch_id++;
-  //  USE_SHARED2(current_batch_id)++;
-  //Terminate the batch
-  /*Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
-  USE_SHARED(current_batch_id)++;
-  Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
-  */
+		if (op[i].add){
+			pushInternal(stack, op[i].data);
+		} else {
+			popInternal(stack);
+		}
+	}
 }
+
 
 /* Batch "clever" mixed function*/
 cilk void doCleverMixedOps(void* ds, void* oprec, size_t size, void*result){
@@ -231,14 +237,14 @@ node* popInternal(Stack* ds){
      if (result==NULL){
      	return NULL;
      }
-    ds->end = result->prev;
+		 //    ds->end = result->prev;
     ds->size--;
-    if (ds->end!=NULL){
-       ds->end->next=NULL;
-    }
-    if (ds->size==0){
-       ds->start=NULL;
-    }
+    /* if (ds->end!=NULL){ */
+    /*    ds->end->next=NULL; */
+    /* } */
+    /* if (ds->size==0){ */
+    /*    ds->start=NULL; */
+    /* } */
     return result;
   } else {
     return NULL;
