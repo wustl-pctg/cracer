@@ -64,7 +64,7 @@ omPMA: omPMALock_test omPMABatch_test
 omTree: LD += -lm
 omTree: omTreeLock_test omTreeBatch_test
 stack: DS = ds/stack.cilk
-stack: stackBatch_test
+stack: stackBatch_test stackFC_test
 skip: DSSkipList_test
 noSpawn: stackNoSpawn_test
 

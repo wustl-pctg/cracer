@@ -1,0 +1,362 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+
+#include "../util/parfor.cilkh"
+#include "stack_fc.cilkh"
+
+//#define MAX_SIZE 1000000000
+#define MAX_SIZE 10000000
+#define PROCS 16
+
+Stack* create_stack(){
+       int i;
+       Stack* result = malloc(sizeof(Stack));
+       Cilk_lock_init(result->lock);
+       result->size=0;
+       result->start=NULL;
+       result->end=NULL;
+       result->nodes=calloc(MAX_SIZE,sizeof(node));
+       assert(result->nodes != NULL);
+       result->fc_locked=0;
+       for (i=0; i <PROCS; i++){
+	 result->fc_arry[i]=-1;
+       }
+       return result;
+}
+
+/*Batchify methods!*/
+
+
+/* Batchify-caller method*/
+void pushBatchify(Stack* ds, int data, CilkWorkerState* const ws)
+{
+  Cilk_batchify(ws,&push_batch,ds,&data,sizeof(int),NULL);
+}
+
+/* Batchify for mixed*/
+void mixedBatchify(Stack* ds, Operation op, CilkWorkerState* const ws)
+{
+	Cilk_batchify(ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
+}
+/* Batchify for mixed_raw*/
+void mixedBatchify_raw(Stack* ds, Operation op, CilkWorkerState* const ws)
+{
+  Cilk_batchify_raw(ws,&doRawMixedOps,ds,&op,sizeof(Operation),NULL);
+}
+
+/* Sequential in style of FC*/
+void mixedBatchify_seq(Stack* ds, Operation op, CilkWorkerState* const ws)
+{
+  Cilk_batchify_raw_sequential(ws,&doSeqMixedOps,ds,&op,sizeof(Operation),NULL);
+}
+
+/*Batchify-caller for pop */
+void popBatchify(Stack* ds, CilkWorkerState* const ws)
+{
+  Cilk_batchify(ws,&pop_batch,ds,NULL,0,NULL);
+}
+
+
+
+/*Helper methods!*/
+
+/* Sequential push method */
+void push(Stack* ds, int data){
+  //Get lock on stack
+  node* ins = malloc(sizeof(node));
+  ins->data=data;
+  ins->next=NULL;
+  Cilk_lock(ds->lock);
+  if (ds->size==0){
+    ds->start=ins;
+    ds->end=ins;
+    ins->prev=NULL;
+  } else {
+    ins->prev=ds->end;
+    ds->end->next=ins;
+    ds->end=ins;
+  }
+  ds->size++;
+  //Releases the lock
+  Cilk_unlock(ds->lock);
+}
+
+/* Sequential push method with no lock */
+void pushInternal(Stack* ds, int data){
+ node* ins;
+ if (ds->size>=MAX_SIZE){
+    ins = malloc(sizeof(node));
+ }
+ else {
+     ins = &(ds->nodes[ds->size]);
+  }
+  ins->data=data;
+  ins->next=NULL;
+  /*
+  if (ds->size==0){
+    ds->start=ins;
+    ds->end=ins;
+    ins->prev=NULL;
+  } else {
+    ins->prev=ds->end;
+    ds->end->next=ins;
+    ds->end=ins;
+  }
+  */
+  ds->size++;
+}
+
+/* Uses the regular batchify*/
+cilk void doMixedOps(void* ds, void* oprec, size_t size, void* result){
+  Stack* stack = ds;
+  Operation* ops = oprec;
+  int i;
+  for (i=0;i<size;i++){
+    if (ops[i].add){
+      pushInternal(stack,ops[i].data);
+    } else {
+      popInternal(stack);
+    }
+	}
+}
+
+/* Uses the raw oprec array*/
+cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result){
+  Stack* stack = ds;
+  BatchRecord* ops = oprec;
+  Operation* op;
+  int i;
+  for (i=0;i<size;i++){
+    if (ops[i].status!=DS_DONE){
+      if (ops[i].status==DS_WAITING){
+	op=ops[i].args;
+	if ((*op).add){
+	  pushInternal(stack,(*op).data);
+	}
+	else {
+	  popInternal(stack);
+	}
+	ops[i].status=DS_DONE;
+      }
+    }
+  }
+
+
+  //_cilk_ws->context->Cilk_global_state->current_batch_id++;
+  //  USE_SHARED2(current_batch_id)++;
+  //Terminate the batch
+  /*Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
+  USE_SHARED(current_batch_id)++;
+  Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
+  */
+}
+
+/* Uses the raw oprec array in fc fashion*/
+void doSeqMixedOps(void* ds, void* oprec, size_t size, void* result){
+  Stack* stack = ds;
+  BatchRecord* ops = oprec;
+  Operation* op;
+  int i;
+  for (i=0;i<size;i++){
+    if (ops[i].status!=DS_DONE){
+      if (ops[i].status==DS_WAITING){
+	op=ops[i].args;
+	if ((*op).add){
+	  pushInternal(stack,(*op).data);
+	}
+	else {
+	  popInternal(stack);
+	}
+	ops[i].status=DS_DONE;
+      }
+    }
+  }
+}
+
+/*do the flat combining*/
+void do_FC(Stack* ds){
+  int i,j;
+  for (j=0;j<1;++j){
+    //Repeat 3 times for some reason.
+    for (i=0; i<PROCS;i++){
+      if (ds->fc_arry[i]!=0 && ds->fc_arry[i]!=-1){
+	ds->end=&(ds->nodes[ds->size]);
+	ds->end->data=ds->fc_arry[i];
+	(ds->size)++;
+      }
+      else if (ds->fc_arry[i]==0){
+        if (ds->size>0){
+	  (ds->size)--;
+	 ds->end=&(ds->nodes[ds->size]);
+	}
+      }
+      else {
+
+      }
+      ds->fc_arry[i]=-1;
+    }
+  }
+}
+
+/*copies flat combining*/
+void mixedFC(Stack* ds, Operation op, CilkWorkerState* const ws){
+  int* my_val = &(ds->fc_arry[ws->self]);
+  if (op.add){
+    *my_val=op.data;
+  }
+  else {
+    *my_val=0;
+  } //Sets the status to either 0 for remove, or an int for add.
+  while (1) {
+    if(!(ds->fc_locked) && __sync_bool_compare_and_swap(&(ds->fc_locked),0,1)){
+      do_FC(ds);
+      ds->fc_locked=0;
+      return;
+    }
+    else {
+      while(-1 != *my_val){
+      }
+      return;
+    }
+  }
+
+}
+
+/* Batch "clever" mixed function*/
+cilk void doCleverMixedOps(void* ds, void* oprec, size_t size, void*result){
+  Stack* stack = ds;
+  Operation* ops = oprec;
+  int i;
+  int num_ops=0;
+  for (i=0;i<size;i++){
+    if (ops[i].add){
+      num_ops++;
+    } else {
+      num_ops--;
+    }
+  }
+  while (num_ops>0){
+    i=0;
+    if (ops[i].add){
+       pushInternal(stack,ops[i].data);
+       num_ops--;
+    }
+    i++;
+  }
+  while (num_ops<0){
+    i=0;
+    if (!(ops[i].add)){
+       popInternal(stack);
+       num_ops++;
+    }
+    i++;
+  }
+}
+
+/* Batch push method.*/
+cilk void push_batch(void* ds, void* oprec, size_t size, void* result){
+  Stack* stack = ds;
+  int* data=oprec;
+  //^ all the needed variables cast as proper types.
+  
+  //Temporary varibles.
+  node* new_nodes;
+  /*  for (i=0;i<size;i++){
+    push(ds,data[i]);
+    }*/
+  void* pair[2];
+  new_nodes = calloc(size,sizeof(node));
+  pair[0]=new_nodes;
+  pair[1]=data;
+  //Parallel_for
+  /*for (i=0;i<size;i++){
+    new_nodes[i].data=data[i];
+    new_nodes[i].next=&new_nodes[i+1];
+    new_nodes[i].prev=&new_nodes[i-1];
+    }*/
+  spawn parforpar(0,size-1,1,parallel_set,pair);
+  sync;
+  new_nodes[0].prev=stack->end;
+  new_nodes[size-1].next=NULL;
+  //Special case for initial creation.
+  if (stack->size==0){
+    stack->start=new_nodes;
+  }
+  //Normal case, which requires setting the end of the stack to point to the new item.
+  else {
+    stack->end->next=&new_nodes[0];
+  }
+  stack->end=&new_nodes[size-1];
+  stack->size+=size;
+}
+
+/*Pop using a lock*/
+node* pop(Stack* ds){
+  node* result;
+  Cilk_lock(ds->lock);
+  result=popInternal(ds);
+  Cilk_unlock(ds->lock);
+  return result;
+}
+
+/*Batch method to pop items*/
+cilk void pop_batch(void* ds, void* oprec, size_t size, void* result){
+  Stack* stack = ds;
+  int i;
+  node* res;
+  for (i=0;i<size;i++){
+    res=popInternal(stack);
+  } 
+}
+
+/* Pop method without locks*/
+node* popInternal(Stack* ds){
+  node* result = ds->end;
+  if (ds->size>0){
+     if (result==NULL){
+     	return NULL;
+     }
+     //ds->end = result->prev;
+    ds->size--;
+    ds->end=&(ds->nodes[ds->size]);
+  }
+  return result;
+    /*
+    if (ds->end!=NULL){
+       ds->end->next=NULL;
+    }
+    if (ds->size==0){
+       ds->start=NULL;
+    }
+    return result;
+  } else {
+    return NULL;
+  }
+    */
+}
+
+/* For use by parforpar*/
+cilk void parallel_set(int i, void* in){
+  //The second argument is actually a void** that has two elements.
+    void** data=in;
+    node* new_nodes=data[0];
+    int* inputs=data[1];
+    new_nodes[i].data=inputs[i];
+    new_nodes[i].next=&new_nodes[i+1];
+    new_nodes[i].prev=&new_nodes[i-1];
+}
+
+/* Prints out the stack sequentially*/
+void printStack(Stack* ds) {
+  node* it = ds->start;
+  int i=0;
+  while (it!=NULL) {
+    //printf("(%p %d,%p)\n",it,it->data,it->next);
+    it=it->next;
+    i++;
+  }
+  printf("size: %d/%d\n",i,ds->size);
+  return;
+}
