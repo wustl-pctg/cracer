@@ -8,7 +8,7 @@
 
 //#define MAX_SIZE 1000000000
 #define MAX_SIZE 10000000
-#define PROCS 16
+#define PROCS 1
 
 Stack* create_stack(){
 	int i;
@@ -20,6 +20,7 @@ Stack* create_stack(){
 	result->nodes=calloc(MAX_SIZE,sizeof(node));
 	assert(result->nodes != NULL);
 	result->fc_locked=0;
+	result->fc_arry = calloc(PROCS,sizeof(int));
 	for (i=0; i <PROCS; i++){
 		result->fc_arry[i]=-1;
 	}
@@ -28,35 +29,10 @@ Stack* create_stack(){
 
 /*Helper methods!*/
 
-/* Sequential push method with no lock */
-void pushInternal(Stack* ds, int data){
-	node* ins;
-	if (ds->size>=MAX_SIZE){
-    ins = malloc(sizeof(node));
-	}
-	else {
-		ins = &(ds->nodes[ds->size]);
-  }
-  ins->data=data;
-  ins->next=NULL;
-  /*
-		if (ds->size==0){
-    ds->start=ins;
-    ds->end=ins;
-    ins->prev=NULL;
-		} else {
-    ins->prev=ds->end;
-    ds->end->next=ins;
-    ds->end=ins;
-		}
-  */
-  ds->size++;
-}
-
 /*do the flat combining*/
 void do_FC(Stack* ds){
   int i,j;
-  for (j=0;j<1;++j){
+  for (j=0;j<3;++j){
     //Repeat 3 times for some reason.
     for (i=0; i<PROCS;i++){
       if (ds->fc_arry[i]!=0 && ds->fc_arry[i]!=-1){
@@ -101,42 +77,6 @@ void mixedFC(Stack* ds, Operation op, CilkWorkerState* const ws){
   }
 
 }
-
-/*Pop using a lock*/
-node* pop(Stack* ds){
-  node* result;
-  Cilk_lock(ds->lock);
-  result=popInternal(ds);
-  Cilk_unlock(ds->lock);
-  return result;
-}
-
-/* Pop method without locks*/
-node* popInternal(Stack* ds){
-  node* result = ds->end;
-  if (ds->size>0){
-		if (result==NULL){
-     	return NULL;
-		}
-		//ds->end = result->prev;
-    ds->size--;
-    ds->end=&(ds->nodes[ds->size]);
-  }
-  return result;
-	/*
-    if (ds->end!=NULL){
-		ds->end->next=NULL;
-    }
-    if (ds->size==0){
-		ds->start=NULL;
-    }
-    return result;
-		} else {
-    return NULL;
-		}
-	*/
-}
-
 
 /* Prints out the stack sequentially*/
 void printStack(Stack* ds) {
