@@ -11,6 +11,16 @@ Stack* g_stack;
 Operation g_add_op = {1, 0};
 Operation g_rem_op = {0, 0};
 
+cilk void fake_batch(void* ds, void* oprec, size_t size, void* result)
+{
+	return;
+}
+
+void call_batchify(Stack* ds, Operation op, CilkWorkerState* const ws)
+{
+	Cilk_batchify_raw(ws, &fake_batch, ds, &op, sizeof(Operation),NULL);
+}
+
 cilk void parforpar_stack(const int begin, const int end, Operation op, int raw)
 {
   int i;
@@ -22,6 +32,7 @@ cilk void parforpar_stack(const int begin, const int end, Operation op, int raw)
 			op.data=i;
 
 			if (raw) mixedBatchify_raw(g_stack, op, _cilk_ws);
+			//if (raw) call_batchify(g_stack, op, _cilk_ws);
 			else mixedBatchify(g_stack, op, _cilk_ws);
 
 		}

@@ -12,7 +12,25 @@ Operation g_add_op = {1, 0};
 
 void batchFunc(void* ds, void* oprec, size_t size, void* result)
 {
-	pushInternal((Stack*)ds, 0);
+	//pushInternal((Stack*)ds, 0);
+  Stack* stack = ds;
+  BatchRecord* ops = oprec;
+  Operation* op;
+  int i;
+  for (i=0;i<size;i++){
+    if (ops[i].status!=DS_DONE){
+      if (ops[i].status==DS_WAITING){
+				op=ops[i].args;
+				if ((*op).add){
+					pushInternal(stack,(*op).data);
+				}
+				else {
+					popInternal(stack);
+				}
+				ops[i].status=DS_DONE;
+      }
+    }
+  }
 }
 
 cilk void parfor_stack(const int begin, const int end, Operation op)

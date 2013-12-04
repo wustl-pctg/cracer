@@ -31,7 +31,7 @@ for p in nproc:
     batch_args = ' --nproc ' + str(p) + ' -o ' + str(batchops) 
     batch_percent=50;
     batch_no_steal_args = ' --nproc ' + str(p) +' --batchprob 0 --dsprob 0 ' + ' -o ' + str(batchops) 
-    
+
     # Arguments:
     # alg1_name alg1_num alg2_name alg2_num alg3_name alg3_num
     # alg4_name alg4_num test_no n_threads add_ops remove_ops
@@ -45,7 +45,7 @@ for p in nproc:
     fc_90_10_args = 'fcstack 1 non 0 non 0 non 0 1 '+ str(p) + ' 90 10 0.0 '
     fc_90_10_args += str(fcinitialsize) + ' ' + str(fctime) + ' ' + str(dedicated) + ' 0 0'
 
-    
+
     #First run batch
     batch_percent=50;
     process = subprocess.Popen(batchcmd+batch_args+' -x ' + str(batch_percent), shell=True,

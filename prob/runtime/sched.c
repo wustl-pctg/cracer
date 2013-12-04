@@ -163,8 +163,8 @@ static void create_deques(CilkContext *const context)
 		Cilk_mutex_init(context, &USE_PARAMETER1(ds_deques)[i].mutex);
 	}
 
-	Cilk_mutex_init(context, &USE_SHARED1(batch_lock));
-	USE_SHARED1(batch_lock2) = 0;
+	//	Cilk_mutex_init(context, &USE_SHARED1(batch_lock));
+	USE_SHARED1(batch_lock) = 0;
 }
 
 static void init_deques(CilkContext *const context)
@@ -193,7 +193,7 @@ static void free_deques(CilkContext *const context)
 
 	Cilk_free(USE_PARAMETER1(deques));
 	Cilk_free(USE_PARAMETER1(ds_deques));
-	Cilk_mutex_destroy(context, &USE_SHARED1(batch_lock));
+	//	Cilk_mutex_destroy(context, &USE_SHARED1(batch_lock));
 }
 
 /* assert that pn's deque be locked by ourselves */
@@ -1936,10 +1936,8 @@ void Cilk_batchify(CilkWorkerState *const ws,
 	while (pending->array[ws->self].status != DS_DONE) {
 		//		ws->batch_id = USE_SHARED(current_batch_id);
 
-		//if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
-		if (__sync_bool_compare_and_swap(&USE_SHARED(batch_lock2), 0, 1)) {
-
-
+		//		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
+		if (__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 0xFF)) {
 			BatchArgs args;
 
 			Cilk_enter_state(ws, STATE_BATCH_START);
@@ -1976,7 +1974,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
 			USE_SHARED(batch_owner) = -1;
 			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
 			//			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
-			USE_SHARED(batch_lock2) = 0;
+			USE_SHARED(batch_lock) = 0;
 		} else {
 			batch_scheduler(ws, NULL, 1);
 		}
@@ -1997,8 +1995,14 @@ void Cilk_batchify_raw_sequential(CilkWorkerState * const ws,
 																				dataSize, indvResult);
 
 	ws->batch_id = USE_SHARED(current_batch_id);
-	//	if (__sync_bool_compare_and_swap(&USE_SHARED(batch_lock2), 0, 1)) {
-		op(dataStruct, data, 1, NULL);
+	while (pending->array[ws->self].status != DS_DONE) {
+		if (USE_SHARED(batch_lock) == 0 &&
+				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 0xFF)) {
+			op(dataStruct, data, 1, NULL);
+			Cilk_terminate_batch(ws);
+			USE_SHARED(batch_lock) = 0;
+		}
+	}
 		//		USE_SHARED(batch_lock2) = 0;
 	/* } else { */
 	/* 	op(dataStruct, data, 1, NULL); */
@@ -2019,7 +2023,8 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
 
 	while (pending->array[ws->self].status != DS_DONE) {
 
-		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
+		//		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
+		if (__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 0xFF)) {
 			USE_SHARED(batch_owner) = ws->self;
 
 			num_ops = Batcher_collect(ws, pending, record);
@@ -2030,7 +2035,8 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
 
 			USE_SHARED(batch_owner) = -1;
 			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
-			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
+			//			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
+			USE_SHARED(batch_lock) = 0;
 		} else {
 			batch_scheduler(ws, NULL, 0);
 		}
@@ -2054,33 +2060,35 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 	while (pending->array[ws->self].status != DS_DONE) {
 		//		ws->batch_id = USE_SHARED(current_batch_id);
 
-		//if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
-		if (__sync_bool_compare_and_swap(&USE_SHARED(batch_lock2), 0, 1)) {
+		if (0 == USE_SHARED(batch_lock) &&
+				0 == USE_SHARED(batch_lock) &&
+				0 == USE_SHARED(batch_lock) &&
+				(0 == __sync_val_compare_and_swap(&USE_SHARED(batch_lock), 0, 0xFF))) {
 
-			Cilk_enter_state(ws, STATE_BATCH_START);
+			//			Cilk_enter_state(ws, STATE_BATCH_START);
 
 			USE_SHARED(batch_owner) = ws->self;
 
-			Cilk_exit_state(ws, STATE_BATCH_START);
-			Cilk_enter_state(ws, STATE_BATCH_WORKING);
+			/* Cilk_exit_state(ws, STATE_BATCH_START); */
+			/* Cilk_enter_state(ws, STATE_BATCH_WORKING); */
 
-			Cilk_switch2batch(ws);
-			ws->current_cache->head = ws->current_cache->stack;
-			ws->current_cache->tail = ws->current_cache->stack+1;
+			/* Cilk_switch2batch(ws); */
+			/* ws->current_cache->head = ws->current_cache->stack; */
+			/* ws->current_cache->tail = ws->current_cache->stack+1; */
 
 			op(ws, dataStruct, (void*)pending->array,
 				 USE_PARAMETER(active_size), NULL);
 			Cilk_terminate_batch(ws);
-			Cilk_switch2core(ws);
+			//			Cilk_switch2core(ws);
 
-			Cilk_exit_state(ws, STATE_BATCH_WORKING);
+			//			Cilk_exit_state(ws, STATE_BATCH_WORKING);
 
 			USE_SHARED(batch_owner) = -1;
 			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
 			//Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
-			USE_SHARED(batch_lock2) = 0;
+			USE_SHARED(batch_lock) = 0;
 		} else {
-			batch_scheduler(ws, NULL, 0);
+			//			batch_scheduler(ws, NULL, 0);
 		}
 	}
 	Cilk_exit_state(ws, STATE_BATCH_TOTAL);

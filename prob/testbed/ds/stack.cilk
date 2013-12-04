@@ -109,7 +109,7 @@ cilk void doMixedOps(void* ds, void* oprec, size_t size, void* result){
 }
 
 /* Uses the raw oprec array*/
-cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result){
+cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result) {
   Stack* stack = ds;
   BatchRecord* ops = oprec;
   Operation* op;
@@ -117,14 +117,14 @@ cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result){
   for (i=0;i<size;i++){
     if (ops[i].status!=DS_DONE){
       if (ops[i].status==DS_WAITING){
-	op=ops[i].args;
-	if ((*op).add){
-	  pushInternal(stack,(*op).data);
-	}
-	else {
-	  popInternal(stack);
-	}
-	ops[i].status=DS_DONE;
+				op=ops[i].args;
+				if ((*op).add){
+					pushInternal(stack,(*op).data);
+				}
+				else {
+					popInternal(stack);
+				}
+				ops[i].status=DS_DONE;
       }
     }
   }

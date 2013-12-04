@@ -71,7 +71,7 @@ static int*						_gRandNumAry;
 static tick_t volatile *		_gThreadResultAry;
 
 static int						_gNumProcessors;
-	   int						_gNumThreads;
+int						_gNumThreads;
 static int						_gThroughputTime;
 
 static Thread**					_gThreads;

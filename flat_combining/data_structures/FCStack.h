@@ -27,6 +27,8 @@
 #include "ITest.h"
 #include "../framework/cpp_framework.h"
 
+#include <iostream>
+
 using namespace CCP;
 
 class FCStack : public ITest {

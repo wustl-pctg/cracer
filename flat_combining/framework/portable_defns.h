@@ -26,7 +26,7 @@
 #endif
 
 #if defined(WIN32) || defined(WIN64)
-	#define __thread__ __declspec(thread)
+  #define __thread__ __declspec(thread)
 #else
 	#define __thread__ __thread
 #endif

@@ -199,16 +199,11 @@ extern void *Cilk_valloc(size_t size);
 
 /* global scheduler state */
 struct CilkGlobalState_s{
-  Cilk_time critical_path;
-  Cilk_time total_work;
-  int done; /* current calculation */
   /* BATCHER */
   int current_batch_id;
   int batch_owner;
   Batch pending_batch;
   void *batch_work_array;
-	Cilk_mutex batch_lock;
-	volatile int batch_lock2; // volatile?
 	int *batch_workers_list;
 
 	Closure invoke_batch_closure;
@@ -220,8 +215,13 @@ struct CilkGlobalState_s{
 	int *batch_steals;
 	int *num_steals;
 #endif
-
+	volatile unsigned int batch_lock;
+	//	CILK_CACHE_LINE_PAD;
   /* End BATCHER */
+
+  Cilk_time critical_path;
+  Cilk_time total_work;
+  int done; /* current calculation */
   int terminating; /* Cilk_terminate was called */
   Cilk_mutex barrier_lock;
   volatile int barrier_counter;
