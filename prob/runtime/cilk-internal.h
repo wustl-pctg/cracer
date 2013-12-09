@@ -197,14 +197,19 @@ extern void *Cilk_calloc(size_t nelem, size_t elsize);
 extern void *Cilk_realloc(void *s, size_t size);
 extern void *Cilk_valloc(size_t size);
 
+typedef struct helper
+{
+	int x;
+	int y;
+} helper;
+
 /* global scheduler state */
 struct CilkGlobalState_s{
   /* BATCHER */
   int current_batch_id;
   int batch_owner;
   Batch pending_batch;
-  void *batch_work_array;
-	int *batch_workers_list;
+  helper* batch_work_array;
 
 	Closure invoke_batch_closure;
 	/* BatchArgs batch_args; */

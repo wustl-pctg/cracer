@@ -59,6 +59,20 @@ FILE_IDENTITY(ident,
  * See also PROTOCOLS for a more verbose description.
  */
 
+static inline void Cilk_switch2batch(CilkWorkerState *const ws)
+{
+	ws->batch_id = USE_SHARED(current_batch_id);
+	ws->current_cache = &ws->ds_cache;
+	ws->current_deque_pool = USE_PARAMETER(ds_deques);
+}
+
+static inline void Cilk_switch2core(CilkWorkerState *const ws)
+{
+	ws->batch_id = 0;
+	ws->current_cache = &ws->cache;
+	ws->current_deque_pool = USE_PARAMETER(deques);
+}
+
 /*************************************************************
  * Basic operations on closures
  *************************************************************/
@@ -163,8 +177,11 @@ static void create_deques(CilkContext *const context)
 		Cilk_mutex_init(context, &USE_PARAMETER1(ds_deques)[i].mutex);
 	}
 
-	//	Cilk_mutex_init(context, &USE_SHARED1(batch_lock));
 	USE_SHARED1(batch_lock) = 0;
+
+	// This may not actually be sizeof(int)! It could actually change!***
+	USE_SHARED1(batch_work_array) = Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
+                                                    sizeof(helper));
 }
 
 static void init_deques(CilkContext *const context)
@@ -193,7 +210,6 @@ static void free_deques(CilkContext *const context)
 
 	Cilk_free(USE_PARAMETER1(deques));
 	Cilk_free(USE_PARAMETER1(ds_deques));
-	//	Cilk_mutex_destroy(context, &USE_SHARED1(batch_lock));
 }
 
 /* assert that pn's deque be locked by ourselves */
@@ -1865,6 +1881,8 @@ BatchRecord* Batcher_insert(CilkWorkerState *const ws,
 	pending->array[ws->self].result = indvResult;
 	pending->array[ws->self].status = DS_WAITING;
 
+	memcpy(&USE_SHARED(batch_work_array)[ws->self], data, dataSize);
+
 	return &pending->array[ws->self];
 }
 
@@ -1879,19 +1897,6 @@ inline void* Batcher_allocate_work_array(CilkWorkerState *const ws, int dataSize
 	return work_array;
 }
 
-inline void Cilk_switch2batch(CilkWorkerState *const ws)
-{
-	ws->batch_id = USE_SHARED(current_batch_id);
-	ws->current_cache = &ws->ds_cache;
-	ws->current_deque_pool = USE_PARAMETER(ds_deques);
-}
-
-inline void Cilk_switch2core(CilkWorkerState *const ws)
-{
-	ws->batch_id = 0;
-	ws->current_cache = &ws->cache;
-	ws->current_deque_pool = USE_PARAMETER(deques);
-}
 
 int Batcher_collect(CilkWorkerState *const ws,
 										Batch *pending, BatchRecord *record)
@@ -1984,32 +1989,6 @@ void Cilk_batchify(CilkWorkerState *const ws,
 	return;
 }
 
-void Cilk_batchify_raw_sequential(CilkWorkerState * const ws,
-																	CilkBatchSeqOperation op, void *dataStruct,
-																	void *data, size_t dataSize, void *indvResult)
-{
-	int i, num_ops = 0;
-	Batch *pending = &USE_SHARED(pending_batch);
-	BatchRecord *record  = Batcher_insert(ws, (InternalBatchOperation)op,
-																				dataStruct, data,
-																				dataSize, indvResult);
-
-	ws->batch_id = USE_SHARED(current_batch_id);
-	while (pending->array[ws->self].status != DS_DONE) {
-		if (USE_SHARED(batch_lock) == 0 &&
-				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 0xFF)) {
-			op(dataStruct, data, 1, NULL);
-			Cilk_terminate_batch(ws);
-			USE_SHARED(batch_lock) = 0;
-		}
-	}
-		//		USE_SHARED(batch_lock2) = 0;
-	/* } else { */
-	/* 	op(dataStruct, data, 1, NULL); */
-	/* } */
-
-}
-
 // Do the collect, but just call the operation - don't use invoke_batch_slow
 void Cilk_batchify_sequential(CilkWorkerState * const ws,
 															CilkBatchSeqOperation op, void *dataStruct,
@@ -2046,52 +2025,81 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
 
 }
 
+static helper helpop = {0,1};
+
 void Cilk_batchify_raw(CilkWorkerState *const ws,
-											 InternalBatchOperation op, void *dataStruct,
+											 CilkBatchSeqOperation op, void *dataStruct,
 											 void *data, size_t dataSize, void *indvResult)
 {
-	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
+	//	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
+  int i;
+	helper* work_array = USE_SHARED(batch_work_array);
 
-	int i, num_ops = 0;
-	Batch *pending = &USE_SHARED(pending_batch);
-	BatchRecord *record  = Batcher_insert(ws, op, dataStruct, data,
-																				dataSize, indvResult);
+	/* int i, num_ops = 0; */
+	/* Batch *pending = &USE_SHARED(pending_batch); */
+	/* BatchRecord *record  = Batcher_insert(ws, op, dataStruct, data, */
+	/* 																			dataSize, indvResult); */
 
-	while (pending->array[ws->self].status != DS_DONE) {
+  Batch *pending = &USE_SHARED(pending_batch);
+
+  /* pending->array[ws->self].operation = op; */
+  pending->array[ws->self].args = data;
+  /* pending->array[ws->self].size = dataSize; */
+  /* pending->array[ws->self].result = indvResult; */
+  pending->array[ws->self].status = DS_WAITING;
+
+	// Memcpy is slower than a simple array insertion. I'm not quite
+	//sure why this is so. Maybe the compiler can do some extra optimization?
+  //  __builtin_memcpy(work_array + dataSize*ws->self, data,
+	//dataSize);
+  //__builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
+  work_array[ws->self] = *(helper*)data;
+
+
+  //   while (pending->array[ws->self].status != DS_DONE) {
 		//		ws->batch_id = USE_SHARED(current_batch_id);
 
 		if (0 == USE_SHARED(batch_lock) &&
-				0 == USE_SHARED(batch_lock) &&
-				0 == USE_SHARED(batch_lock) &&
-				(0 == __sync_val_compare_and_swap(&USE_SHARED(batch_lock), 0, 0xFF))) {
+        0 == USE_SHARED(batch_lock) &&
+        0 == USE_SHARED(batch_lock) &&
+				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
 
 			//			Cilk_enter_state(ws, STATE_BATCH_START);
 
-			USE_SHARED(batch_owner) = ws->self;
+			//			USE_SHARED(batch_owner) = ws->self;
 
 			/* Cilk_exit_state(ws, STATE_BATCH_START); */
 			/* Cilk_enter_state(ws, STATE_BATCH_WORKING); */
 
-			/* Cilk_switch2batch(ws); */
+//      Cilk_switch2batch(ws);
 			/* ws->current_cache->head = ws->current_cache->stack; */
 			/* ws->current_cache->tail = ws->current_cache->stack+1; */
 
-			op(ws, dataStruct, (void*)pending->array,
-				 USE_PARAMETER(active_size), NULL);
-			Cilk_terminate_batch(ws);
-			//			Cilk_switch2core(ws);
+      //			op(dataStruct, (void*)work_array,
+      //			USE_PARAMETER(active_size), NULL);
+
+      /* for (i = 0; i < USE_PARAMETER(active_size); i++) */
+      /*   if (pending->array[i].status == DS_WAITING) */
+      /*     pending->array[i].status = DS_IN_PROGRESS; */
+
+			op(dataStruct, (void*)work_array, USE_PARAMETER(active_size), NULL);
+      //Cilk_terminate_batch(ws);
+      /* for (i = 0; i < USE_PARAMETER(active_size); i++) */
+      /*   if (pending->array[i].status == DS_IN_PROGRESS) */
+      /*     pending->array[i].status = DS_DONE; */
+      //      Cilk_switch2core(ws);
 
 			//			Cilk_exit_state(ws, STATE_BATCH_WORKING);
 
-			USE_SHARED(batch_owner) = -1;
-			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
-			//Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
-			USE_SHARED(batch_lock) = 0;
-		} else {
+			//			USE_SHARED(batch_owner) = -1;
+			//			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
+      USE_SHARED(batch_lock) = 0;
+    } else {
 			//			batch_scheduler(ws, NULL, 0);
+      //      while (pending->array[ws->self].status != DS_DONE) { }
 		}
-	}
-	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
+    //   }
+		//	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
 
 	return;
 

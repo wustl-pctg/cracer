@@ -559,7 +559,7 @@ typedef struct {
   enum DS_STATUS   status;
   int         packedIndex;
   void*       result;
-  CILK_CACHE_LINE_PAD;
+  //CILK_CACHE_LINE_PAD;
 } BatchRecord;
 
 typedef struct {
@@ -567,7 +567,7 @@ typedef struct {
   size_t dataSize;
   InternalBatchOperation operation;
   BatchRecord  *array;
-  CILK_CACHE_LINE_PAD;
+	//  CILK_CACHE_LINE_PAD;
 } Batch;
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */

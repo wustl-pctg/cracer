@@ -25,7 +25,7 @@
 #include "config.h"
 
 FILE_IDENTITY(ident,
-	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/examples/testall.cilk $ $LastChangedBy: bradley $ $Rev: 517 $ $Date: 2004-06-22 00:03:24 -0400 (Tue, 22 Jun 2004) $");
+							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/examples/testall.cilk $ $LastChangedBy: bradley $ $Rev: 517 $ $Date: 2004-06-22 00:03:24 -0400 (Tue, 22 Jun 2004) $");
 
 
 #if HAVE_MALLOC_H
@@ -42,7 +42,7 @@ extern void Cilk_srand(unsigned int seed);
 
 cilk void nop(void)
 {
-     /* this does no more than what it says it does */
+	/* this does no more than what it says it does */
 }
 
 /*******************************************************
@@ -55,177 +55,177 @@ cilk void nop(void)
 
 cilk void init_to_zero(int *p, int n)
 {
-     if (n == 1)
+	if (n == 1)
 	  *p = 0;
-     else {
+	else {
 	  spawn init_to_zero(p, n / 2);
 	  spawn init_to_zero(p + n / 2, n / 2);
 	  sync;
-     }
-     return;
+	}
+	return;
 }
 
 cilk int check_zero(int *p, int n)
 {
-     if (n == 1)
+	if (n == 1)
 	  return (*p == 0);
-     else {
+	else {
 	  int r1, r2;
 	  r1 = spawn check_zero(p, n / 2);
 	  r2 = spawn check_zero(p + n / 2, n / 2);
 	  sync;
 	  return (r1 || r2);
-     }
+	}
 }
 
 cilk void init_to_i(int *p, int n, int i)
 {
-     if (n == 1)
+	if (n == 1)
 	  *p = i;
-     else {
+	else {
 	  spawn init_to_i(p, n / 2, i);
 	  spawn init_to_i(p + n / 2, n / 2, i + n / 2);
 	  sync;
-     }
-     return;
+	}
+	return;
 }
 
 cilk int check_i(int *p, int n, int i)
 {
-     if (n == 1)
+	if (n == 1)
 	  return (*p == i);
-     else {
+	else {
 	  int r1, r2;
 	  r1 = spawn check_i(p, n / 2, i);
 	  r2 = spawn check_i(p + n / 2, n / 2, i + n / 2);
 	  sync;
 	  return (r1 || r2);
-     }
+	}
 }
 
 cilk void test_shmem_1(int *ok)
 {
-     int *p;
-     int res;
-     p = malloc(ASIZE * sizeof(int));
+	int *p;
+	int res;
+	p = malloc(ASIZE * sizeof(int));
 
-     spawn init_to_zero(p, ASIZE);
-     sync;
+	spawn init_to_zero(p, ASIZE);
+	sync;
 
-     res = spawn check_zero(p, ASIZE);
-     sync;
+	res = spawn check_zero(p, ASIZE);
+	sync;
 
-     if (res)
+	if (res)
 	  printf("test_shmem_1 OK\n");
-     else {
+	else {
 	  printf("test_shmem_1 BAD\n");
 	  *ok = 0;
-     }
+	}
 
-     free(p);
-     return;
+	free(p);
+	return;
 }
 
 cilk void test_shmem_2(int *ok)
 {
-     int *p;
-     int res;
-     p = malloc(ASIZE * sizeof(int));
+	int *p;
+	int res;
+	p = malloc(ASIZE * sizeof(int));
 
-     spawn init_to_i(p, ASIZE, 0);
-     sync;
+	spawn init_to_i(p, ASIZE, 0);
+	sync;
 
-     res = spawn check_i(p, ASIZE, 0);
-     sync;
+	res = spawn check_i(p, ASIZE, 0);
+	sync;
 
-     if (res)
+	if (res)
 	  printf("test_shmem_2 OK\n");
-     else {
+	else {
 	  printf("test_shmem_2 BAD\n");
 	  *ok = 0;
-     }
+	}
 
-     free(p);
-     return;
+	free(p);
+	return;
 }
 
 /* test for allocation on the frame */
 cilk void test_shmem_3(int *ok)
 {
-     int p[BSIZE];
-     int res;
+	int p[BSIZE];
+	int res;
 
-     spawn init_to_i(p, BSIZE, 42);
-     sync;
+	spawn init_to_i(p, BSIZE, 42);
+	sync;
 
-     res = spawn check_i(p, BSIZE, 42);
-     sync;
+	res = spawn check_i(p, BSIZE, 42);
+	sync;
 
-     if (res)
+	if (res)
 	  printf("test_shmem_3 OK\n");
-     else {
+	else {
 	  printf("test_shmem_3 BAD\n");
 	  *ok = 0;
-     }
+	}
 
-     return;
+	return;
 }
 
 cilk void shmem_write(volatile int *p, int v)
 {
-     *p = v;
-     return;
+	*p = v;
+	return;
 }
 
 cilk void test_shmem_4(int *ok)
 {
-     volatile int i1, i2;
-     int i;
+	volatile int i1, i2;
+	int i;
 
-     for (i = 0; i < 100000; ++i) {
+	for (i = 0; i < 100000; ++i) {
 	  spawn shmem_write(&i1, 1);
 	  spawn shmem_write(&i2, 1);
 	  sync;
 	  if (i1 != i2) {
-	       *ok = 0;
-	       printf("test_shmem_4: BAD. i1 != i2\n");
-	       if (i1 == i2) {
+			*ok = 0;
+			printf("test_shmem_4: BAD. i1 != i2\n");
+			if (i1 == i2) {
 		    printf("But now i1 == i2!\n");
-	       }
-	       return;
+			}
+			return;
 	  }
 	  spawn shmem_write(&i1, 0);
 	  spawn shmem_write(&i2, 0);
 	  sync;
 	  if (i1 != i2) {
-	       *ok = 0;
-	       printf("test_shmem_4: BAD. i1 != i2\n");
-	       if (i1 == i2) {
+			*ok = 0;
+			printf("test_shmem_4: BAD. i1 != i2\n");
+			if (i1 == i2) {
 		    printf("But now i1 == i2!\n");
-	       }
-	       return;
+			}
+			return;
 	  }
 	  spawn shmem_write(&i1, 2);
 	  spawn shmem_write(&i2, 3);
 	  sync;
 	  if (i1 == i2) {
-	       *ok = 0;
-	       printf("test_shmem_4: BAD. i1 == i2\n");
-	       if (i1 != i2) {
+			*ok = 0;
+			printf("test_shmem_4: BAD. i1 == i2\n");
+			if (i1 != i2) {
 		    printf("But now i1 != i2!\n");
-	       }
-	       return;
+			}
+			return;
 	  }
-     }
-     printf("test_shmem_4 OK\n");
+	}
+	printf("test_shmem_4 OK\n");
 }
 
 cilk void test_shmem_5_aux(int depth, int id, int *parent_page, int index)
 {
-     /* make sure own id is on parent's page */
-     Cilk_assert(id == parent_page[index]);
+	/* make sure own id is on parent's page */
+	Cilk_assert(id == parent_page[index]);
 
-     if (depth) {
+	if (depth) {
 	  int *page = malloc(3 * sizeof(int));
 	  depth--;
 
@@ -237,42 +237,42 @@ cilk void test_shmem_5_aux(int depth, int id, int *parent_page, int index)
 	  sync;
 
 	  Cilk_assert(page[2] == id - (1 << depth) ||
-		      page[2] == id + (1 << depth));
+								page[2] == id + (1 << depth));
 	  free(page);
-     }
-     parent_page[2] = id;
+	}
+	parent_page[2] = id;
 }
 
 cilk void test_shmem_5(int *ok)
 {
-     int depth = 20;
-     int *page;
+	int depth = 20;
+	int *page;
 
-     page = malloc(3 * sizeof(int));
-     page[0] = 1 << depth;
+	page = malloc(3 * sizeof(int));
+	page[0] = 1 << depth;
 
-     spawn test_shmem_5_aux(depth, 1 << depth, page, 0);
-     sync;
+	spawn test_shmem_5_aux(depth, 1 << depth, page, 0);
+	sync;
 
-     if (page[2] == (1 << depth)) {
+	if (page[2] == (1 << depth)) {
 	  printf("test_shmem_5 OK\n");
-     } else {
+	} else {
 	  printf("test_shmem_5 BAD\n");
 	  *ok = 0;
-     }
-     free(page);
+	}
+	free(page);
 }
 
 /* invoke all shared memory tests, serially and in parallel */
 cilk void test_shmem(int *ok)
 {
-     int i, res;
-     res = 1;
+	int i, res;
+	res = 1;
 
-     spawn test_shmem_4(ok);
-     sync;
+	spawn test_shmem_4(ok);
+	sync;
 
-     for (i = 0; i < NTIMES_SHMEM; ++i) {
+	for (i = 0; i < NTIMES_SHMEM; ++i) {
 	  spawn test_shmem_1(ok);
 	  sync;
 	  spawn test_shmem_2(ok);
@@ -281,16 +281,16 @@ cilk void test_shmem(int *ok)
 	  sync;
 	  spawn test_shmem_5(ok);
 	  sync;
-     }
+	}
 
-     for (i = 0; i < NTIMES_SHMEM; ++i) {
+	for (i = 0; i < NTIMES_SHMEM; ++i) {
 	  spawn test_shmem_1(ok);
 	  spawn test_shmem_2(ok);
 	  spawn test_shmem_3(ok);
 	  spawn test_shmem_5(ok);
-     }
-     sync;
-     return;
+	}
+	sync;
+	return;
 }
 
 /*******************************************************
@@ -300,79 +300,79 @@ cilk void test_shmem(int *ok)
 
 cilk int *allocator(int size)
 {
-     int i;
+	int i;
 
-     /* 
-      * do your best to be stolen
-      */
-     for (i = 0; i < 1000; ++i) {
+	/* 
+	 * do your best to be stolen
+	 */
+	for (i = 0; i < 1000; ++i) {
 	  spawn nop();
-     }
-     return (int *) malloc(size);
+	}
+	return (int *) malloc(size);
 }
 
 cilk void freer(void *p)
 {
-     int i;
+	int i;
 
-     /* 
-      * do your best to be stolen
-      */
-     for (i = 0; i < 1000; ++i) {
+	/* 
+	 * do your best to be stolen
+	 */
+	for (i = 0; i < 1000; ++i) {
 	  spawn nop();
-     }
-     free(p);
+	}
+	free(p);
 }
 
 cilk void test_malloc_1(int *ok)
 {
-     int *p;
-     int res;
+	int *p;
+	int res;
 
-     p = spawn allocator(BSIZE * sizeof(int));
-     sync;
+	p = spawn allocator(BSIZE * sizeof(int));
+	sync;
 
-     spawn init_to_zero(p, BSIZE);
-     sync;
+	spawn init_to_zero(p, BSIZE);
+	sync;
 
-     res = spawn check_zero(p, BSIZE);
-     sync;
+	res = spawn check_zero(p, BSIZE);
+	sync;
 
-     spawn freer(p);
-     sync;
+	spawn freer(p);
+	sync;
 
-     if (res)
+	if (res)
 	  printf("test_malloc_1 OK\n");
-     else {
+	else {
 	  printf("test_malloc_1 BAD\n");
 	  *ok = 0;
-     }
-     return;
+	}
+	return;
 }
 
 cilk void test_malloc_2_aux(int n)
 {
-     int *p;
-     p = spawn allocator(1 + rand() % (1 << 10));
-     if (n > 0) {
+	int *p;
+	p = spawn allocator(1 + rand() % (1 << 10));
+	if (n > 0) {
 	  spawn test_malloc_2_aux(n >> 1);
 	  spawn test_malloc_2_aux(n >> 1);
-     }
-     sync;
-     spawn freer(p);
+	}
+	sync;
+	spawn freer(p);
 }
 
 cilk void test_malloc_2(int *UNUSED(ok))
 {
-     /* 
-      * this test spawns 2^k allocators and freers. There should
-      * be at most Pk blocks allocated at any given time.
-      * Thus if the allocator does not die, the test is passed.
-      */
-     USE_UNUSED(ok);
-     spawn test_malloc_2_aux(1 << 10);
-     sync;
-     printf("test_malloc_2 OK\n");
+	/* 
+	 * this test spawns 2^k allocators and freers. There should
+	 * be at most Pk blocks allocated at any given time.
+	 * Thus if the allocator does not die, the test is passed.
+	 */
+	USE_UNUSED(ok);
+	spawn test_malloc_2_aux(1 << 10);
+	sync;
+	printf("test_malloc_2 OK\n");
 }
 
 #if HAVE_MEMALIGN
@@ -388,70 +388,70 @@ cilk void test_malloc_2(int *UNUSED(ok))
  */
 cilk int *align_allocator(int alignment, int size)
 {
-     int i;
-     int *p;
+	int i;
+	int *p;
 
-     /* 
-      * do your best to be stolen
-      */
-     for (i = 0; i < 1000; ++i) {
+	/* 
+	 * do your best to be stolen
+	 */
+	for (i = 0; i < 1000; ++i) {
 	  spawn nop();
-     }
-     p = (int *) memalign(alignment, size);
-     Cilk_assert((unsigned long) p % alignment == 0);
-     return p;
+	}
+	p = (int *) memalign(alignment, size);
+	Cilk_assert((unsigned long) p % alignment == 0);
+	return p;
 }
 
 cilk void test_memalign_1_aux(int n)
 {
-     int *p;
-     int shift = (rand ()) % 5;
+	int *p;
+	int shift = (rand ()) % 5;
 
-     p = spawn align_allocator(8 << shift,
-			       8 * (1 + rand() % (1 << 7)));
-     if (n > 0) {
+	p = spawn align_allocator(8 << shift,
+														8 * (1 + rand() % (1 << 7)));
+	if (n > 0) {
 	  spawn test_memalign_1_aux(n >> 1);
 	  spawn test_memalign_1_aux(n >> 1);
-     }
-     sync;
-     spawn freer(p);
+	}
+	sync;
+	spawn freer(p);
 }
 
 cilk void test_memalign_1(int *UNUSED(ok))
 {
-     USE_UNUSED(ok);
-     spawn test_memalign_1_aux(1 << 10);
-     sync;
-     printf("test_memalign_1 OK\n");
+	USE_UNUSED(ok);
+	spawn test_memalign_1_aux(1 << 10);
+	sync;
+	printf("test_memalign_1 OK\n");
 }
 #else /* HAVE_MEMALIGN */
 cilk void test_memalign_1(int *ok)
 {
-     printf("test_memalign_1 SKIPPED\n");
+	printf("test_memalign_1 SKIPPED\n");
 }
 #endif
 
 /* invoke all malloc tests, serially and in parallel */
 cilk void test_malloc(int *ok)
 {
-     int i;
+	int i;
 
-     for (i = 0; i < NTIMES_SHMEM; ++i) {
+	for (i = 0; i < NTIMES_SHMEM; ++i) {
 	  spawn test_malloc_1(ok);
 	  sync;
 	  spawn test_malloc_2(ok);
 	  sync;
 	  spawn test_memalign_1(ok);
 	  sync;
-     }
+	}
 
-     for (i = 0; i < NTIMES_SHMEM; ++i) {
+	for (i = 0; i < NTIMES_SHMEM; ++i) {
 	  spawn test_malloc_1(ok);
 	  spawn test_malloc_2(ok);
 	  spawn test_memalign_1(ok);
-     }
-     sync;
-     return;
+	}
+	sync;
+	return;
 }
 
 /*******************************************************
@@ -468,53 +468,53 @@ cilk void test_malloc(int *ok)
 /* invariant: p[i] = i+n, for 0 <= i < size */
 cilk int test_alloca_aux(int *p, int size, int depth, int n)
 {
-     int i;
-     int child, r[ALLOCA_NCHILD];
-     int res = 1;
-     int *q[ALLOCA_NCHILD];
-     int m[ALLOCA_NCHILD];
+	int i;
+	int child, r[ALLOCA_NCHILD];
+	int res = 1;
+	int *q[ALLOCA_NCHILD];
+	int m[ALLOCA_NCHILD];
 
-     /* check the input */
-     for (i = 0; i < size; ++i)
+	/* check the input */
+	for (i = 0; i < size; ++i)
 	  if (p[i] != i + n)
-	       return 0;
+			return 0;
 
-     if (depth > 0) {
+	if (depth > 0) {
 	  for (child = 0; child < ALLOCA_NCHILD; ++child) {
-	       r[child] = (rand() % 42043);
-	       m[child] = rand();
-	       q[child] = Cilk_alloca(r[child] * sizeof(int));
-	       for (i = 0; i < r[child]; ++i)
+			r[child] = (rand() % 42043);
+			m[child] = rand();
+			q[child] = Cilk_alloca(r[child] * sizeof(int));
+			for (i = 0; i < r[child]; ++i)
 		    q[child][i] = i + m[child];
-	       res &= spawn test_alloca_aux(q[child], r[child],
-					    depth - 1, m[child]);
+			res &= spawn test_alloca_aux(q[child], r[child],
+																	 depth - 1, m[child]);
 	  }
 
 	  sync;
 
 	  /* check the output */
 	  for (child = 0; child < ALLOCA_NCHILD; ++child)
-	       for (i = 0; i < r[child]; ++i)
+			for (i = 0; i < r[child]; ++i)
 		    if (q[child][i] != m[child] - i)
-			 return 0;
-     }
-     /* set the output */
-     for (i = 0; i < size; ++i)
+					return 0;
+	}
+	/* set the output */
+	for (i = 0; i < size; ++i)
 	  p[i] = n - i;
 
-     return res;
+	return res;
 }
 
 cilk void test_alloca(int *ok)
 {
-     int i;
-     i = spawn test_alloca_aux((void *) 0, 0, 4, 0);
+	int i;
+	i = spawn test_alloca_aux((void *) 0, 0, 4, 0);
 
-     sync;
-     if (!i) {
+	sync;
+	if (!i) {
 	  printf("test_alloca BAD\n");
 	  *ok = 0;
-     } else
+	} else
 	  printf("test_alloca OK\n");
 }
 
@@ -533,56 +533,56 @@ static int steal_worked_before = 0;
 
 cilk void ws_incr(volatile int *p)
 {
-     int i;
+	int i;
 
-     (*p)++;
+	(*p)++;
 
-     /* do your best to be stolen */
-     for (i = 0; i < 10000; ++i)
+	/* do your best to be stolen */
+	for (i = 0; i < 10000; ++i)
 	  spawn nop();
 }
 
 cilk void test_ws(int *ok, int *h)
 {
-     int k;
-     int i;
-     int steals = 0;
+	int k;
+	int i;
+	int steals = 0;
 
-     k = 0;
-     for (i = 0; i < NWS; ++i) {
+	k = 0;
+	for (i = 0; i < NWS; ++i) {
 	  int where = Self;
 	  spawn ws_incr(&k);
 	  if (where != Self)
-	       ++steals;
+			++steals;
 	  sync;
-     }
+	}
 
-     /*
-      * if the steal test worked sometimes in the past do not
-      * report failure, which would just confuse the user.
-      * Instead, pretend the test was ok.  The steal test sometimes
-      * fails if all processors are busy doing something else.
-      */
-     if (k == NWS || steal_worked_before) {
+	/*
+	 * if the steal test worked sometimes in the past do not
+	 * report failure, which would just confuse the user.
+	 * Instead, pretend the test was ok.  The steal test sometimes
+	 * fails if all processors are busy doing something else.
+	 */
+	if (k == NWS || steal_worked_before) {
 	  printf("test_ws OK\n");
 	  steal_worked_before = 1;
 	  ++(*h);
-     } else {
+	} else {
 	  printf("test_ws BAD\n");
 	  *ok = 0;
-     }
+	}
 
-     if (steals == 0 && !steal_worked_before) {
+	if (steals == 0 && !steal_worked_before) {
 	  if (Cilk_active_size == 1) {
-	       printf("WARNING: can't determine if stealing works correctly\n"
-		      "because testall is running on one processor\n");
+			printf("WARNING: can't determine if stealing works correctly\n"
+						 "because testall is running on one processor\n");
 	  } else {
-	       printf("WARNING: work stealing probably does not work\n");
+			printf("WARNING: work stealing probably does not work\n");
 	  }
-     } else if (steals != k && !steal_worked_before) {
+	} else if (steals != k && !steal_worked_before) {
 	  printf("WARNING: can't determine if stealing works correctly\n"
-		 "(but work stealing is likely to be ok)\n");
-     }
+					 "(but work stealing is likely to be ok)\n");
+	}
 }
 
 /*******************************************************
@@ -590,116 +590,116 @@ cilk void test_ws(int *ok, int *h)
  *******************************************************/
 cilk int fib(int n)
 {
-     if (n < 2)
+	if (n < 2)
 	  return (n);
-     else {
+	else {
 	  int x, y;
 	  x = spawn fib(n - 1);
 	  y = spawn fib(n - 2);
 	  sync;
 	  return (x + y);
-     }
+	}
 }
 
 cilk int fib_accum(int n)
 {
-     if (n < 2)
+	if (n < 2)
 	  return (n);
-     else {
+	else {
 	  int x[1];
 	  int j = 0;		/* 
-				 * confuse cilk2c enough so that it 
-				 * uses inlets + variable return index
-				 */
+									 * confuse cilk2c enough so that it 
+									 * uses inlets + variable return index
+									 */
 	  x[j] = 0;
 	  x[j] += spawn fib_accum(n - 1);
 	  x[j] += spawn fib_accum(n - 2);
 	  sync;
 	  return x[0];
-     }
+	}
 }
 
 cilk int fib_array(int n)
 {
-     if (n < 2)
+	if (n < 2)
 	  return (n);
-     else {
+	else {
 	  int x[2];
 	  int j;
 
 	  for (j = 1; j <= 2; ++j)
-	       x[j - 1] = spawn fib_array(n - j);
+			x[j - 1] = spawn fib_array(n - j);
 
 	  sync;
 	  return x[0] + x[1];
-     }
+	}
 }
 
 cilk long fib_ptr(int n)
 {
-     if (n < 2)
+	if (n < 2)
 	  return (n);
-     else {
+	else {
 	  char *x = (void *) 1;
 	  x--;			/* 
-				 * Originally, this was a test to make sure void pointer
-				 * arithmetic is OK
-				 * But ANSI C says it is *not* ok.  So I changed it to char arithmetic.  -Bradley Mon Jun 21 2004
-				 */
+							 * Originally, this was a test to make sure void pointer
+							 * arithmetic is OK
+							 * But ANSI C says it is *not* ok.  So I changed it to char arithmetic.  -Bradley Mon Jun 21 2004
+							 */
 	  x += spawn fib_ptr(n - 1);
 	  x += spawn fib_ptr(n - 2);
 	  sync;
 	  return (long) x;
-     }
+	}
 }
 
 cilk double fib_double(int n)
 {
-     if (n < 2)
+	if (n < 2)
 	  return ((double) n);
-     else {
+	else {
 	  double x, y;
 	  x = spawn fib_double(n - 1);
 	  y = spawn fib_double(n - 2);
 	  sync;
 	  return (x + y);
-     }
+	}
 }
 
 cilk float fib_float(int n)
 {
-     if (n < 2)
+	if (n < 2)
 	  return ((float) n);
-     else {
+	else {
 	  float x, y;
 	  x = spawn fib_float(n - 1);
 	  y = spawn fib_float(n - 2);
 	  sync;
 	  return (x + y);
-     }
+	}
 }
 
 struct fib_t {
-     int i;
-     double d;
-     float f;
+	int i;
+	double d;
+	float f;
 };
 
 struct fib_arg {
-     int n;
-     int n1;
+	int n;
+	int n1;
 };
 
 cilk struct fib_t fib_struct(struct fib_arg a)
 {
-     Cilk_assert(a.n == a.n1);
-     if (a.n < 2) {
+	Cilk_assert(a.n == a.n1);
+	if (a.n < 2) {
 	  struct fib_t res;
 	  res.i = a.n;
 	  res.f = (float) a.n1;
 	  res.d = (double) a.n;
 	  return res;
-     } else {
+	} else {
 	  struct fib_t x, y;
 	  --a.n;
 	  --a.n1;
@@ -713,57 +713,57 @@ cilk struct fib_t fib_struct(struct fib_arg a)
 	  x.f += y.f;
 	  x.d += y.d;
 	  return x;
-     }
+	}
 }
 
 typedef struct self_applicative_fib {
-     cilk int (*apply)(int n, struct self_applicative_fib *fib1);
+	cilk int (*apply)(int n, struct self_applicative_fib *fib1);
 } self_applicative_fib;
 
 cilk int fib_self_applicative(int n, self_applicative_fib *fibf)
 {
-     if (n < 2)
+	if (n < 2)
 	  return n;
-     else {
+	else {
 	  int x, y;
 	  x = spawn fibf->apply (n - 1, fibf);
 	  y = spawn fibf->apply (n - 2, fibf);
 	  sync;
 	  return x + y;
-     }
+	}
 }
 
 int fib_iter(int n)
 {
-     int f0, f1, f2, i;
-     if (n < 2)
+	int f0, f1, f2, i;
+	if (n < 2)
 	  return n;
-     f0 = 0;
-     f1 = 1;
-     f2 = 1;
-     for (i = 2; i <= n; ++i) {
+	f0 = 0;
+	f1 = 1;
+	f2 = 1;
+	for (i = 2; i <= n; ++i) {
 	  f2 = f0 + f1;
 	  f0 = f1;
 	  f1 = f2;
-     }
+	}
 
-     return f2;
+	return f2;
 }
 
 cilk int fib_paranoid(int n)
 {
-     /* 
-      * allocate some big space, to catch bugs dependent on the
-      * page granularity
-      */
-     struct {
+	/* 
+	 * allocate some big space, to catch bugs dependent on the
+	 * page granularity
+	 */
+	struct {
 	  int big[10000];
-     } dummy;
-     dummy.big[1] = 0;
+	} dummy;
+	dummy.big[1] = 0;
 
-     if (n < 2)
+	if (n < 2)
 	  return (n);
-     else {
+	else {
 	  int x = 42, y = 42;
 	  x = fib_iter(n - 1);
 	  x = spawn fib_paranoid(n - 1);
@@ -775,114 +775,114 @@ cilk int fib_paranoid(int n)
 	  Cilk_assert(x == fib_iter(n - 1));
 	  Cilk_assert(y == fib_iter(n - 2));
 	  return (x + y);
-     }
+	}
 }
 
 cilk void test_fib(int *ok)
 {
-     int n = 30;
-     int i;
-     int res_cilk;
-     int res_self_applicative;
-     int res_accum;
-     long res_ptr;
-     int res_array;
-     double res_double;
-     float res_float;
-     struct fib_t res_struct;
-     struct fib_arg arg =
-     {30, 30};
-     struct self_applicative_fib fibs = { fib_self_applicative };
+	int n = 30;
+	int i;
+	int res_cilk;
+	int res_self_applicative;
+	int res_accum;
+	long res_ptr;
+	int res_array;
+	double res_double;
+	float res_float;
+	struct fib_t res_struct;
+	struct fib_arg arg =
+		{30, 30};
+	struct self_applicative_fib fibs = { fib_self_applicative };
 
-     int res_iter;
+	int res_iter;
 
-     for (i = 0; i < 3; ++i) {
+	for (i = 0; i < 3; ++i) {
 	  res_cilk = spawn fib_paranoid(n);
 	  sync;
-     }
+	}
 
-     res_cilk = spawn fib(n);
-     sync;
-     res_self_applicative = spawn fib_self_applicative(n, &fibs);
-     sync;
-     res_accum = spawn fib_accum(n);
-     sync;
-     res_ptr = spawn fib_ptr(n);
-     sync;
-     res_array = spawn fib_array(n);
-     sync;
-     res_double = spawn fib_double(n);
-     sync;
-     res_float = spawn fib_float(n);
-     sync;
-     res_struct = spawn fib_struct(arg);
-     sync;
+	res_cilk = spawn fib(n);
+	sync;
+	res_self_applicative = spawn fib_self_applicative(n, &fibs);
+	sync;
+	res_accum = spawn fib_accum(n);
+	sync;
+	res_ptr = spawn fib_ptr(n);
+	sync;
+	res_array = spawn fib_array(n);
+	sync;
+	res_double = spawn fib_double(n);
+	sync;
+	res_float = spawn fib_float(n);
+	sync;
+	res_struct = spawn fib_struct(arg);
+	sync;
 
-     res_iter = fib_iter(n);
-     sync;
+	res_iter = fib_iter(n);
+	sync;
 
-     if (res_cilk == res_iter)
+	if (res_cilk == res_iter)
 	  printf("fib OK\n");
-     else {
+	else {
 	  printf("fib BAD, expected %d got %d\n", res_iter, res_cilk);
 	  *ok = 0;
-     }
+	}
 
-     if (res_self_applicative == res_iter)
+	if (res_self_applicative == res_iter)
 	  printf("fib_self_applicative OK\n");
-     else {
+	else {
 	  printf("fib_self_applicative BAD, expected %d got %d\n", 
-		 res_iter, res_self_applicative);
+					 res_iter, res_self_applicative);
 	  *ok = 0;
-     }
+	}
 
-     if (res_accum == res_iter)
+	if (res_accum == res_iter)
 	  printf("fib_accum OK\n");
-     else {
+	else {
 	  printf("fib_accum BAD, expected %d got %d\n", res_iter, res_accum);
 	  *ok = 0;
-     }
+	}
 
-     if (res_ptr == res_iter)
+	if (res_ptr == res_iter)
 	  printf("fib_ptr OK\n");
-     else {
+	else {
 	  printf("fib_ptr BAD, expected %d got %ld\n", res_iter, res_ptr);
 	  *ok = 0;
-     }
+	}
 
-     if (res_array == res_iter)
+	if (res_array == res_iter)
 	  printf("fib_array OK\n");
-     else {
+	else {
 	  printf("fib_array BAD, expected %d got %d\n", res_iter, res_array);
 	  *ok = 0;
-     }
+	}
 
-     if (res_double == (double) res_iter)
+	if (res_double == (double) res_iter)
 	  printf("fib_double OK\n");
-     else {
+	else {
 	  *ok = 0;
 	  printf("fib_double BAD, expected %f got %f\n",
-		 (double) res_iter, res_double);
-     }
+					 (double) res_iter, res_double);
+	}
 
-     if (res_float == (float) res_iter)
+	if (res_float == (float) res_iter)
 	  printf("fib_float OK\n");
-     else {
+	else {
 	  *ok = 0;
 	  printf("fib_float BAD, expected %f got %f\n",
-		 (float) res_iter, res_float);
-     }
+					 (float) res_iter, res_float);
+	}
 
-     if (res_struct.i == res_iter &&
-	 res_struct.f == (float) res_iter &&
-	 res_struct.d == (double) res_iter)
+	if (res_struct.i == res_iter &&
+			res_struct.f == (float) res_iter &&
+			res_struct.d == (double) res_iter)
 	  printf("fib_struct OK\n");
-     else {
+	else {
 	  *ok = 0;
 	  printf("fib_struct BAD\n");
-     }
+	}
 
-     return;
+	return;
 }
 
 /*******************************************************
@@ -895,39 +895,39 @@ cilk void test_fib(int *ok)
 
 int crazy_fib_iter(int n)
 {
-     int f0, f1, f2, f3, f4, i;
-     if (n < 4)
+	int f0, f1, f2, f3, f4, i;
+	if (n < 4)
 	  return n;
-     f0 = 0;
-     f1 = 1;
-     f2 = 2;
-     f3 = 3;
-     f4 = 6;
-     for (i = 4; i <= n; ++i) {
+	f0 = 0;
+	f1 = 1;
+	f2 = 2;
+	f3 = 3;
+	f4 = 6;
+	for (i = 4; i <= n; ++i) {
 	  f4 = f0 + f1 + f2 + f3;
 	  f0 = f1;
 	  f1 = f2;
 	  f2 = f3;
 	  f3 = f4;
-     }
+	}
 
-     return f4;
+	return f4;
 }
 
 cilk int crazy_fib(int n)
 {
-     /* 
-      * allocate some big space, to catch bugs dependent on the
-      * page granularity
-      */
-     struct {
+	/* 
+	 * allocate some big space, to catch bugs dependent on the
+	 * page granularity
+	 */
+	struct {
 	  int big[10000];
-     } dummy;
-     dummy.big[1] = 0;
+	} dummy;
+	dummy.big[1] = 0;
 
-     if (n < 4)
+	if (n < 4)
 	  return (n);
-     else {
+	else {
 	  int x1, x2, x3, x4;
 	  x1 = x2 = x3 = x4 = 42;
 
@@ -948,27 +948,27 @@ cilk int crazy_fib(int n)
 	  Cilk_assert(x4 == crazy_fib_iter(n - 4));
 
 	  return (x1 + x2 + x3 + x4);
-     }
+	}
 }
 
 cilk void test_crazy_fib(int *ok)
 {
-     int n = 20;
-     int i;
-     int res_cilk;
+	int n = 20;
+	int i;
+	int res_cilk;
 
-     for (i = 0; i < 4; ++i) {
+	for (i = 0; i < 4; ++i) {
 	  res_cilk = spawn crazy_fib(n);
 	  sync;
-     }
+	}
 
-     if (res_cilk != crazy_fib_iter(n)) {
+	if (res_cilk != crazy_fib_iter(n)) {
 	  *ok = 0;
 	  printf("crazy_fib BAD, expected %d got %d\n",
-		 crazy_fib_iter(n), res_cilk);
-     } else {
+					 crazy_fib_iter(n), res_cilk);
+	} else {
 	  printf("crazy_fib OK\n");
-     }
+	}
 }
 
 /*******************************************************
@@ -979,137 +979,137 @@ const int depth = 15;
 
 cilk int test_abort_aux(int d, int b, int seek_item, int arg)
 {
-     int i;
-     int done;
-     int *expected_value;
-     int *expected_child;
+	int i;
+	int done;
+	int *expected_value;
+	int *expected_child;
 
-     inlet void catch(int res, int index) {
+	inlet void catch(int res, int index) {
 	  int k;
 
 	  if (done)
-	        Cilk_die("bug --- done != 0\n");
+			Cilk_die("bug --- done != 0\n");
 
 	  if (!expected_child[index])
-	        Cilk_die("unexpected child\n");
-	   expected_child[index] = 0;
+			Cilk_die("unexpected child\n");
+		expected_child[index] = 0;
 
 	  if (res == -2) {
-	       done = 1;
+			done = 1;
 
-	       for (k = 0; k < branch; k++)
+			for (k = 0; k < branch; k++)
 		    expected_child[k] = 0;
-	       abort;
+			abort;
 	  } else {
-	       if (res != expected_value[index])
+			if (res != expected_value[index])
 		    Cilk_die("wrong return value\n");
 	  }
-     }
+	}
 
-     expected_value = Cilk_alloca(branch * sizeof(int));
-     expected_child = Cilk_alloca(branch * sizeof(int));
+	expected_value = Cilk_alloca(branch * sizeof(int));
+	expected_child = Cilk_alloca(branch * sizeof(int));
 
-     for (i = 0; i < branch; i++)
+	for (i = 0; i < branch; i++)
 	  expected_child[i] = 0;
 
-     done = 0;
+	done = 0;
 
-     if (d == depth) {
+	if (d == depth) {
 	  if (b == seek_item)
-	       return -2;
+			return -2;
 	  return arg - 200;
-     }
-     for (i = 0; i < branch; i++) {
+	}
+	for (i = 0; i < branch; i++) {
 	  expected_child[i] = 1;
 	  expected_value[i] = (Cilk_rand() & 0xFFFFF) + 42;
 	  catch(spawn test_abort_aux(d + 1, b * branch + i, seek_item,
-				     expected_value[i] + 200), i);
+															 expected_value[i] + 200), i);
 	  if (done)
-	       break;
-     }
+			break;
+	}
 
-     sync;
+	sync;
 
-     for (i = 0; i < branch; i++)
+	for (i = 0; i < branch; i++)
 	  if (expected_child[i] != 0)
-	       Cilk_die("child did not return\n");
+			Cilk_die("child did not return\n");
 
-     if (done)
+	if (done)
 	  return -2;
-     else
+	else
 	  return arg - 200;
 }
 
 cilk void test_abort(int *ok)
 {
-     int x = 0;
+	int x = 0;
 
-     x += spawn test_abort_aux(0, 0, 200000, 100 + 200);
-     sync;
+	x += spawn test_abort_aux(0, 0, 200000, 100 + 200);
+	sync;
 
-     if (x != -2) {
+	if (x != -2) {
 	  printf("abort test BAD\n");
 	  *ok = 0;
-     } else
+	} else
 	  printf("abort test OK\n");
 
-     return;
+	return;
 }
 
 /*******************************************************
  *         test of implicit inlets
  *******************************************************/
 struct inlet_t {
-     int i1;
-     int i2;
-     double d1;
-     double d2;
-     float f1;
-     float f2;
+	int i1;
+	int i2;
+	double d1;
+	double d2;
+	float f1;
+	float f2;
 };
 
 cilk void gimme_void(void)
 {
-     return;
+	return;
 }
 
 cilk int gimme_int(void)
 {
-     return 1;
+	return 1;
 }
 
 cilk float gimme_float(void)
 {
-     return 1.5;
+	return 1.5;
 }
 
 cilk double gimme_double(void)
 {
-     return 2.5;
+	return 2.5;
 }
 
 cilk struct inlet_t test_accum_aux(int n)
 {
-     struct inlet_t res;
-     int i;
-     /* 
-      * allocate some big space, to catch bugs dependent on the
-      * page granularity
-      */
-     struct {
+	struct inlet_t res;
+	int i;
+	/* 
+	 * allocate some big space, to catch bugs dependent on the
+	 * page granularity
+	 */
+	struct {
 	  int big[10000];
-     } dummy;
-     dummy.big[1] = 0;
+	} dummy;
+	dummy.big[1] = 0;
 
-     res.i1 = 0;
-     res.i2 = 0;
-     res.d1 = 0.0;
-     res.d2 = 0.0;
-     res.f1 = 0.0;
-     res.f2 = 0.0;
+	res.i1 = 0;
+	res.i2 = 0;
+	res.d1 = 0.0;
+	res.d2 = 0.0;
+	res.f1 = 0.0;
+	res.f2 = 0.0;
 
-     /* try to maximize the chance of being stolen */
-     for (i = 0; i < n; ++i) {
+	/* try to maximize the chance of being stolen */
+	for (i = 0; i < n; ++i) {
 	  /* cilk2c used to crash nicely here */
 	  res.i1 += spawn gimme_int();
 	  res.i2 -= spawn gimme_int();
@@ -1123,30 +1123,30 @@ cilk struct inlet_t test_accum_aux(int n)
 	  spawn gimme_void();
 	  spawn gimme_void();
 	  spawn gimme_void();
-     }
-     sync;
-     return res;
+	}
+	sync;
+	return res;
 }
 
 cilk void test_impl_inlet(int *ok)
 {
-     int n = 1000;
-     struct inlet_t res;
+	int n = 1000;
+	struct inlet_t res;
 
-     res = spawn test_accum_aux(n);
-     sync;
+	res = spawn test_accum_aux(n);
+	sync;
 
-     if (res.i1 != n || res.i2 != -2 * n ||
-	 res.f1 != 1.5 * n || res.f2 != -3.0 * n ||
-	 res.d1 != 2.5 * n || res.d2 != -5.0 * n) {
+	if (res.i1 != n || res.i2 != -2 * n ||
+			res.f1 != 1.5 * n || res.f2 != -3.0 * n ||
+			res.d1 != 2.5 * n || res.d2 != -5.0 * n) {
 	  printf("test_impl_inlet BAD\n");
 	  printf("got %d %d %f %f %f %f\n", res.i1, res.i2, res.f1, res.f2,
-		 res.d1, res.d2);
+					 res.d1, res.d2);
 	  printf("expected %d %d\n", n, -2 * n);
 	  *ok = 0;
-     } else {
+	} else {
 	  printf("test_impl_inlet OK\n");
-     }
+	}
 }
 
 /*******************************************************
@@ -1155,8 +1155,8 @@ cilk void test_impl_inlet(int *ok)
 
 /* this array should go to the data section, and the next to the bss */
 shared static int data_array[16] =
-{0, 1, 2, 3, 4, 5, 6, 7,
- 8, 9, 10, 11, 12, 13, 14, 15};
+	{0, 1, 2, 3, 4, 5, 6, 7,
+	 8, 9, 10, 11, 12, 13, 14, 15};
 
 shared static int bss_array[16];
 shared static int data_int = 42;
@@ -1169,71 +1169,71 @@ shared static int bss_int;
  * around.
  */
 shared char dummy_array_0[65536] =
-{1};
+	{1};
 shared char dummy_array_1[65536];
 
 shared int global_data_array[16] =
-{0, 1, 2, 3, 4, 5, 6, 7,
- 8, 9, 10, 11, 12, 13, 14, 15};
+	{0, 1, 2, 3, 4, 5, 6, 7,
+	 8, 9, 10, 11, 12, 13, 14, 15};
 shared int global_bss_array[16];
 shared int global_data_int = 42;
 shared int global_bss_int;
 
 cilk void gvar_checker(int *p, int v)
 {
-     int i;
+	int i;
 
-     /* 
-      * read the variable a great number of times,
-      * check *p = v, and do your best to be stolen in the meanwhile.
-      */
-     for (i = 0; i < 1000; ++i) {
+	/* 
+	 * read the variable a great number of times,
+	 * check *p = v, and do your best to be stolen in the meanwhile.
+	 */
+	for (i = 0; i < 1000; ++i) {
 	  if (*p != v) {
 	    /* Sivan and Ofra: Cilk_die is now a macro, takes one string arg 19/6/2003 */
-	     char msg[100];
-	     sprintf(msg, "read %d instead of %d\n", *p, v);
-	     Cilk_die(msg);
-	     /* Cilk_die("read %d instead of %d\n", *p, v);*/
+			char msg[100];
+			sprintf(msg, "read %d instead of %d\n", *p, v);
+			Cilk_die(msg);
+			/* Cilk_die("read %d instead of %d\n", *p, v);*/
 	  }
 	  spawn nop();
-     }
-     /* implicit sync */
+	}
+	/* implicit sync */
 }
 
 cilk void gvar_write(int *p, int v)
 {
-     int i;
+	int i;
 
-     /* 
-      * try to be stolen, then write the variable
-      */
-     for (i = 0; i < 1000; ++i) {
+	/* 
+	 * try to be stolen, then write the variable
+	 */
+	for (i = 0; i < 1000; ++i) {
 	  spawn nop();
-     }
-     *p = v;
-     /* implicit sync */
+	}
+	*p = v;
+	/* implicit sync */
 }
 
 cilk void test_shared_gvar(int *UNUSED(ok))
 {
-     int i, j;
-     USE_UNUSED(ok);
+	int i, j;
+	USE_UNUSED(ok);
 
-     /* first check initialized data */
-     for (i = 0; i < 16; ++i) {
+	/* first check initialized data */
+	for (i = 0; i < 16; ++i) {
 	  spawn gvar_checker(data_array + i, i);
 	  spawn gvar_checker(global_data_array + i, i);
-     }
-     spawn gvar_checker(&data_int, 42);
-     sync;
+	}
+	spawn gvar_checker(&data_int, 42);
+	sync;
 
-     /* do the test ten times */
-     for (j = 0; j < 10; ++j) {
+	/* do the test ten times */
+	for (j = 0; j < 10; ++j) {
 	  for (i = 0; i < 16; ++i) {
-	       spawn gvar_write(data_array + i, i + j);
-	       spawn gvar_write(bss_array + i, i + j);
-	       spawn gvar_write(global_data_array + i, i + j);
-	       spawn gvar_write(global_bss_array + i, i + j);
+			spawn gvar_write(data_array + i, i + j);
+			spawn gvar_write(bss_array + i, i + j);
+			spawn gvar_write(global_data_array + i, i + j);
+			spawn gvar_write(global_bss_array + i, i + j);
 	  }
 	  spawn gvar_write(&data_int, j);
 	  spawn gvar_write(&bss_int, -j);
@@ -1242,31 +1242,31 @@ cilk void test_shared_gvar(int *UNUSED(ok))
 	  sync;
 
 	  for (i = 0; i < 16; ++i) {
-	       spawn gvar_checker(data_array + i, i + j);
-	       spawn gvar_checker(bss_array + i, i + j);
-	       spawn gvar_checker(global_data_array + i, i + j);
-	       spawn gvar_checker(global_bss_array + i, i + j);
+			spawn gvar_checker(data_array + i, i + j);
+			spawn gvar_checker(bss_array + i, i + j);
+			spawn gvar_checker(global_data_array + i, i + j);
+			spawn gvar_checker(global_bss_array + i, i + j);
 	  }
 	  spawn gvar_checker(&data_int, j);
 	  spawn gvar_checker(&bss_int, -j);
 	  spawn gvar_checker(&global_data_int, j);
 	  spawn gvar_checker(&global_bss_int, -j);
 	  sync;
-     }
+	}
 
-     /* 
-      * restore original condition, in case this test is
-      * executed again.
-      */
-     for (i = 0; i < 16; ++i) {
+	/* 
+	 * restore original condition, in case this test is
+	 * executed again.
+	 */
+	for (i = 0; i < 16; ++i) {
 	  spawn gvar_write(data_array + i, i);
 	  spawn gvar_write(global_data_array + i, i);
-     }
-     data_int = 42;
-     global_data_int = 42;
+	}
+	data_int = 42;
+	global_data_int = 42;
 
-     sync;
-     printf("test_shared_gvar OK\n");
+	sync;
+	printf("test_shared_gvar OK\n");
 }
 
 /*******************************************************
@@ -1276,49 +1276,49 @@ cilk void test_shared_gvar(int *UNUSED(ok))
 
 cilk int main(int UNUSED(argc), UNUSED(char *argv[]))
 {
-     int i;
-     int ok;
-     int howmany_ws;
-     ok = 1;
-     USE_UNUSED(argc);
-     USE_UNUSED(argv);
+	int i;
+	int ok;
+	int howmany_ws;
+	ok = 1;
+	USE_UNUSED(argc);
+	USE_UNUSED(argv);
 
-     /* 
-      * do first of all some test_ws alone, since this seems to be
-      * critical.
-      */
-     howmany_ws = 0;
+	/* 
+	 * do first of all some test_ws alone, since this seems to be
+	 * critical.
+	 */
+	howmany_ws = 0;
 
-     for (i = 0; i < NTIMES; ++i) {
+	for (i = 0; i < NTIMES; ++i) {
 	  spawn test_ws(&ok, &howmany_ws);
 	  sync;
-     }
+	}
 
-     Cilk_assert(howmany_ws == NTIMES);
+	Cilk_assert(howmany_ws == NTIMES);
 
-     howmany_ws = 0;
+	howmany_ws = 0;
 
-     /* also this test is non-reentrant */
-     for (i = 0; i < NTIMES; ++i) {
+	/* also this test is non-reentrant */
+	for (i = 0; i < NTIMES; ++i) {
 	  spawn test_shared_gvar(&ok);
 	  sync;
-     }
+	}
 
-     /* do one test of malloc, alone */
-     spawn test_malloc(&ok);
-     sync;
+	/* do one test of malloc, alone */
+	spawn test_malloc(&ok);
+	sync;
 
-     /* do one test of alloca, alone */
-     spawn test_alloca(&ok);
-     sync;
+	/* do one test of alloca, alone */
+	spawn test_alloca(&ok);
+	sync;
 
-     spawn test_abort(&ok);
-     sync;
+	spawn test_abort(&ok);
+	sync;
 
-     /* 
-      * then do horrible things 
-      */
-     for (i = 0; i < NTIMES; ++i) {
+	/* 
+	 * then do horrible things 
+	 */
+	for (i = 0; i < NTIMES; ++i) {
 	  spawn test_malloc(&ok);
 	  SYNC;
 	  spawn test_ws(&ok, &howmany_ws);
@@ -1335,15 +1335,15 @@ cilk int main(int UNUSED(argc), UNUSED(char *argv[]))
 	  SYNC;
 	  spawn test_impl_inlet(&ok);
 	  SYNC;
-     }
-     sync;
-     Cilk_assert(howmany_ws == NTIMES);
+	}
+	sync;
+	Cilk_assert(howmany_ws == NTIMES);
 
-     printf("end of tests\n");
-     if (!ok) {
+	printf("end of tests\n");
+	if (!ok) {
 	  printf("SOME TESTS FAILED!!!!!\n");
 	  return 1;
-     }
+	}
 
-     return 0;
+	return 0;
 }

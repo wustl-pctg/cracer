@@ -10,7 +10,7 @@ PMIN=1
 PMAX=16
 PINTER=1
 
-cd ../prob/testbed && make clean && make cilk && make stack && make stackNoSpawn
+cd ../prob/testbed && make clean && make cilk && make stack #&& make stackNoSpawn
 if [ $? -ne 0 ]; then
     echo "Batcher compilation failed. Exiting."
     exit
@@ -35,26 +35,27 @@ do
     for ((OPS = $OPMIN; OPS <= $OPMAX; OPS += $OPINTER))
     do
         PROG=${BATCHPATH}/stackBatch_test
-        echo "Running full test."
-        OUT1=`$PROG --nproc $P --dsprob 0 --batchprob 0 -o $OPS`
+#        echo "Running full test."
+#        OUT1=`$PROG --nproc $P --dsprob 0 --batchprob 0 -o $OPS`
 
         ARGS+=" --raw"
         echo "Running raw test (no invoke_batch_slow, no collect)."
         OUT2=`$PROG --nproc $P --dsprob 0 --batchprob 0 --raw -o $OPS`
 
-        PROG=${BATCHPATH}/stackNoSpawn
-        ARGS=" --nproc ${P} --dsprob 0 --batchprob 0 -o ${OPS}"
-        echo "Running stackNoSpawn (no invoke_batch, no collect, no lock, just race)."
-        OUT3=`$PROG --nproc $P --dsprob 0 --batchprob 0 -o $OPS`
+        # PROG=${BATCHPATH}/stackNoSpawn
+        # ARGS=" --nproc ${P} --dsprob 0 --batchprob 0 -o ${OPS}"
+        # echo "Running stackNoSpawn (no invoke_batch, no collect, no lock, just race)."
+        # OUT3=`$PROG --nproc $P --dsprob 0 --batchprob 0 -o $OPS`
 
-				PROG=${FCPATH}/test_intel64
-				ARGS=" fcstack 1 non 0 non 0 non 0 1 {$P} 50 50 0.0 0 10 0 0 0"
-				echo "Running flat combingin - 50/50"
-				TEMP=`$PROG fcstack 1 non 0 non 0 non 0 1 $P 50 50 0.0 0 10 0 0 0 2> /dev/null`
-				OUT4=`echo $TEMP | cut -d" " -f1`
+				# PROG=${FCPATH}/test_intel64
+				# ARGS=" fcstack 1 non 0 non 0 non 0 1 {$P} 50 50 0.0 0 10 0 0 0"
+				# echo "Running flat combingin - 50/50"
+				# TEMP=`$PROG fcstack 1 non 0 non 0 non 0 1 $P 50 50 0.0 0 10 0 0 0 2> /dev/null`
+				# OUT4=`echo $TEMP | cut -d" " -f1`
 
 				# This isn't portable! For floating-point arithmetic, we
 				# should really pipe the expression to bc instead.
-        echo ${P},$((${OPS}/${OUT1})),$((${OPS}/${OUT2})),$((${OPS}/${OUT3})),${OUT4} >> ${FILE}
+        #echo ${P},$((${OPS}/${OUT1})),$((${OPS}/${OUT2})),$((${OPS}/${OUT3})),${OUT4} >> ${FILE}
+        echo ${P},$((${OPS}/${OUT2})) >> ${FILE}
     done
 done

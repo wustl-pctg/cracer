@@ -78,5 +78,3 @@ AC_CONFIG_FILES([FAQ/Makefile
                  support/Makefile])
 
 AC_OUTPUT
-
-
