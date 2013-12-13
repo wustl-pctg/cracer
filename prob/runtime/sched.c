@@ -1981,7 +1981,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
 			//			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
 			USE_SHARED(batch_lock) = 0;
 		} else {
-			batch_scheduler(ws, NULL, 1);
+      //			batch_scheduler(ws, NULL, 1);
 		}
 	}
 	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
@@ -2008,8 +2008,8 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
 
 			num_ops = Batcher_collect(ws, pending, record);
 
-			op(dataStruct, (void*)pending->array,
-				 USE_PARAMETER(active_size), NULL);
+			/* op(dataStruct, (void*)pending->array, */
+			/* 	 USE_PARAMETER(active_size), NULL); */
 			Cilk_terminate_batch(ws);
 
 			USE_SHARED(batch_owner) = -1;
@@ -2025,38 +2025,38 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
 
 }
 
-static helper helpop = {0,1};
-
 void Cilk_batchify_raw(CilkWorkerState *const ws,
 											 CilkBatchSeqOperation op, void *dataStruct,
 											 void *data, size_t dataSize, void *indvResult)
 {
 	//	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
   int i;
-	helper* work_array = USE_SHARED(batch_work_array);
+  helper* work_array = USE_SHARED(batch_work_array);
 
 	/* int i, num_ops = 0; */
 	/* Batch *pending = &USE_SHARED(pending_batch); */
 	/* BatchRecord *record  = Batcher_insert(ws, op, dataStruct, data, */
 	/* 																			dataSize, indvResult); */
 
-  Batch *pending = &USE_SHARED(pending_batch);
+  Batch pending = USE_SHARED(pending_batch);
 
   /* pending->array[ws->self].operation = op; */
-  pending->array[ws->self].args = data;
+  //pending->array[ws->self].args = data;
   /* pending->array[ws->self].size = dataSize; */
   /* pending->array[ws->self].result = indvResult; */
-  pending->array[ws->self].status = DS_WAITING;
+  pending.array[ws->self].status = DS_WAITING;
 
 	// Memcpy is slower than a simple array insertion. I'm not quite
 	//sure why this is so. Maybe the compiler can do some extra optimization?
   //  __builtin_memcpy(work_array + dataSize*ws->self, data,
 	//dataSize);
-  //__builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
+  ///  __builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
   work_array[ws->self] = *(helper*)data;
+  int* status = &pending.array[ws->self].status;
 
-
-  //   while (pending->array[ws->self].status != DS_DONE) {
+  //  while (pending->array[ws->self].status != DS_DONE) {
+  //  while (*status != DS_DONE) {
+  do {
 		//		ws->batch_id = USE_SHARED(current_batch_id);
 
 		if (0 == USE_SHARED(batch_lock) &&
@@ -2074,6 +2074,10 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 //      Cilk_switch2batch(ws);
 			/* ws->current_cache->head = ws->current_cache->stack; */
 			/* ws->current_cache->tail = ws->current_cache->stack+1; */
+      for (i = 0; i < USE_PARAMETER(active_size); i++) {
+        if (pending.array[i].status == DS_WAITING)
+          pending.array[i].status = DS_IN_PROGRESS;
+      }
 
       //			op(dataStruct, (void*)work_array,
       //			USE_PARAMETER(active_size), NULL);
@@ -2082,8 +2086,10 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
       /*   if (pending->array[i].status == DS_WAITING) */
       /*     pending->array[i].status = DS_IN_PROGRESS; */
 
-			op(dataStruct, (void*)work_array, USE_PARAMETER(active_size), NULL);
-      //Cilk_terminate_batch(ws);
+      op(&pending, dataStruct, (void*)work_array, USE_PARAMETER(active_size), NULL);
+
+      Cilk_terminate_batch(ws);
+
       /* for (i = 0; i < USE_PARAMETER(active_size); i++) */
       /*   if (pending->array[i].status == DS_IN_PROGRESS) */
       /*     pending->array[i].status = DS_DONE; */
@@ -2098,7 +2104,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 			//			batch_scheduler(ws, NULL, 0);
       //      while (pending->array[ws->self].status != DS_DONE) { }
 		}
-    //   }
+  } while (*status != DS_DONE);
 		//	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
 
 	return;

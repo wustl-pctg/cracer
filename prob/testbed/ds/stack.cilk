@@ -37,7 +37,6 @@ void mixedBatchify(Stack* ds, Operation op, CilkWorkerState* const ws)
 /* Batchify for mixed_raw*/
 void mixedBatchify_raw(Stack* ds, Operation op, CilkWorkerState* const ws)
 {
-  //  Cilk_batchify_raw(ws,&doRawMixedOps,ds,&op,sizeof(Operation),NULL);
   Cilk_batchify_raw(ws, &doRawMixedOps, ds, &op, sizeof(Operation),NULL);
 }
 
@@ -130,22 +129,26 @@ cilk void doMixedOps(void* ds, void* oprec, size_t size, void* result){
 /*     } */
 /*   } */
 /* } */
-void doRawMixedOps(void* ds, void* oprec, size_t size, void* result) {
+void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* result) {
   Stack* stack = ds;
   Operation* op = oprec;
   int i;
 
   for (i = 0; i < size; i++){
 
-		if (op[i].add){
+    if (pending->array[i].status == DS_IN_PROGRESS) {
 
-			pushInternal(stack, op[i].data);
+      if (op[i].add){
 
-		} else {
+        pushInternal(stack, op[i].data);
 
-			popInternal(stack);
+      } else {
 
-		}
+        popInternal(stack);
+
+      }
+      //      pending->array[i].status = DS_DONE;
+    }
 	}
 }
 

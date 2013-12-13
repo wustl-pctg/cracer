@@ -39,7 +39,7 @@ node* popInternal(Stack* ds);
 cilk void pop_batch(void* ds, void* oprec, size_t size, void* result);
 cilk void doMixedOps(void*,void*,size_t,void*);
 cilk void doCleverMixedOps(void*,void*,size_t,void*);
-void doRawMixedOps(void* ds, void* oprec, size_t size, void* result);
+void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* result);
 void pushInternal(Stack*,int);
 
 #endif // _STACK_H

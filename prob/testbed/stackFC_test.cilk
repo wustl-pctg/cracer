@@ -20,7 +20,7 @@ cilk void parforpar_stack(const int begin, const int end, Operation op, int raw)
 		for (i = begin; i <= end; ++i) {
 
 			op.data=i;
-			mixedFC(g_stack, op, _cilk_ws);
+      mixedFC(g_stack, op, _cilk_ws);
 		}
   } else {
     i = begin+(end-begin)/2;

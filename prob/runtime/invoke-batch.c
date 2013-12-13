@@ -11,21 +11,21 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 {
   int i, index;
 	//	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
-	Batch *current = &ws->context->Cilk_global_state->pending_batch;
-	void* results = USE_SHARED(batch_work_array);
-	size_t dataSize = current->dataSize;
+	Batch current = ws->context->Cilk_global_state->pending_batch;
+  //	void* results = USE_SHARED(batch_work_array);
+  //	size_t dataSize = current->dataSize;
 
 	for (i = 0; i < USE_PARAMETER(active_size); i++) {
-		if (current->array[i].status == DS_IN_PROGRESS) {
+    if (current.array[i].status == DS_IN_PROGRESS) {
 			//			index = current->array[i].packedIndex;
 			/* if (current->array[i].result) { */
 			/* 	memcpy(current->array[i].result, &results[index], dataSize); */
 			/* } */
-			current->array[i].status = DS_DONE;
+			current.array[i].status = DS_DONE;
 		}
 	}
 
-  USE_SHARED(current_batch_id)++; // signal end of this batch
+  //  USE_SHARED(current_batch_id)++; // signal end of this batch
 	//	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
 

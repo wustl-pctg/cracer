@@ -537,26 +537,17 @@ typedef struct {
   void *result;
   size_t numElements;
 } BatchArgs; // **** move this later
-typedef void (*CilkBatchSeqOperation)(void *dataStruct, void *data,
-																			size_t numElements, void *result);
 
 typedef void (*InternalBatchOperation)(CilkWorkerState *const _cilk_ws,
                                        void *dataStruct, void *data,
                                        size_t numElements, void *result);
-/* This is a hand-compiled procedure that calls a batch operation */
-typedef struct {
-  CilkStackFrame header;
-  BatchArgs *args;
-  int arg_size;
-  InternalBatchOperation batch_op;
-  int retval;
-} invoke_batch_frame;
+
 
 typedef struct {
   InternalBatchOperation operation;
   void*       args;
   size_t      size;
-  enum DS_STATUS   status;
+  volatile enum DS_STATUS   status;
   int         packedIndex;
   void*       result;
   //CILK_CACHE_LINE_PAD;
@@ -569,6 +560,22 @@ typedef struct {
   BatchRecord  *array;
 	//  CILK_CACHE_LINE_PAD;
 } Batch;
+
+
+typedef void (*CilkBatchSeqOperation)(Batch* pending,
+                                      void *dataStruct, void *data,
+																			size_t numElements, void *result);
+
+/* This is a hand-compiled procedure that calls a batch operation */
+typedef struct {
+  CilkStackFrame header;
+  BatchArgs *args;
+  int arg_size;
+  InternalBatchOperation batch_op;
+  int retval;
+} invoke_batch_frame;
+
+
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__
