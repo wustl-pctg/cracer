@@ -28,6 +28,7 @@
 #include <cilk.h>
 #include <cilk-internal.h>
 #include <string.h>
+#include <time.h>
 
 #include "invoke-batch.c"
 
@@ -2032,6 +2033,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 	//	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
   int i;
   helper* work_array = USE_SHARED(batch_work_array);
+  const struct timespec sleep_time = {0, 10000};
 
 	/* int i, num_ops = 0; */
 	/* Batch *pending = &USE_SHARED(pending_batch); */
@@ -2055,11 +2057,12 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
   int* status = &pending.array[ws->self].status;
 
   //  while (pending->array[ws->self].status != DS_DONE) {
-  //  while (*status != DS_DONE) {
+  //while (*status != DS_DONE) {
   do {
 		//		ws->batch_id = USE_SHARED(current_batch_id);
 
-		if (0 == USE_SHARED(batch_lock) &&
+		if (//*status == DS_WAITING &&
+        0 == USE_SHARED(batch_lock) &&
         0 == USE_SHARED(batch_lock) &&
         0 == USE_SHARED(batch_lock) &&
 				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
@@ -2074,6 +2077,8 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 //      Cilk_switch2batch(ws);
 			/* ws->current_cache->head = ws->current_cache->stack; */
 			/* ws->current_cache->tail = ws->current_cache->stack+1; */
+
+      // #2#
       for (i = 0; i < USE_PARAMETER(active_size); i++) {
         if (pending.array[i].status == DS_WAITING)
           pending.array[i].status = DS_IN_PROGRESS;
@@ -2088,6 +2093,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 
       op(&pending, dataStruct, (void*)work_array, USE_PARAMETER(active_size), NULL);
 
+      // #2#
       Cilk_terminate_batch(ws);
 
       /* for (i = 0; i < USE_PARAMETER(active_size); i++) */
@@ -2103,8 +2109,10 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
     } else {
 			//			batch_scheduler(ws, NULL, 0);
       //      while (pending->array[ws->self].status != DS_DONE) { }
+      nanosleep(&sleep_time, NULL);
 		}
   } while (*status != DS_DONE);
+
 		//	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
 
 	return;

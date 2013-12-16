@@ -136,7 +136,9 @@ void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* res
 
   for (i = 0; i < size; i++){
 
+    // #2#
     if (pending->array[i].status == DS_IN_PROGRESS) {
+    //    if (pending->array[i].status == DS_WAITING) {
 
       if (op[i].add){
 
@@ -147,7 +149,7 @@ void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* res
         popInternal(stack);
 
       }
-      //      pending->array[i].status = DS_DONE;
+      //pending->array[i].status = DS_DONE;
     }
 	}
 }

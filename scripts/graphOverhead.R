@@ -4,12 +4,12 @@ require(gplots)
 
 args <- commandArgs(trailingOnly = TRUE)
 if (is.na(args[1])) {
-	 logFile <- "../logs/overhead.345.log"
+	 logFile <- "../logs/overhead.349.log"
 } else {
 	logFile <- args[1]
 }
 if (is.na(args[2])) {
-	 outFile <- "../graphs/overhead.345.pdf"
+	 outFile <- "../graphs/overhead.349.austen.pdf"
 } else {
 	outFile <- args[2]
 }

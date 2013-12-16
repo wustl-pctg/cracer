@@ -9,7 +9,7 @@ import datetime
 
 test='stackBatch_test'
 iterations = range(1)
-nproc = range(1, 17, 1)
+nproc = range(1, 2, 1)
 #nproc = range(16,17,1)
 probdir = '../prob'
 fcdir = '../flat_combining'
