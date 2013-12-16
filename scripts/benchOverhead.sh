@@ -1,4 +1,4 @@
-#!/usr/local/bin/zsh
+#!/bin/zsh
 
 ITER=5
 
@@ -10,7 +10,7 @@ PMIN=1
 PMAX=16
 PINTER=1
 
-cd ../prob/testbed && make clean && make cilk && make stack #&& make stackNoSpawn
+cd ../prob/testbed && make cilk-clean && make clean && make cilk && make stack
 if [ $? -ne 0 ]; then
     echo "Batcher compilation failed. Exiting."
     exit
@@ -28,7 +28,7 @@ FCPATH=flat_combining
 # Should use a better timestamp later.
 TIMESTAMP=`date +%j`
 FILE="logs/overhead.${TIMESTAMP}.log"
-echo "NPROC,FC,RAW,TERM" > ${FILE}
+echo "NPROC,FC,TERM" > ${FILE}
 
 for ((P = $PMIN; P <= $PMAX; P += $PINTER))
 do
@@ -54,19 +54,10 @@ do
             echo "Running raw test (no invoke_batch_slow, no collect, term)."
             OUT2=$((${OUT2}+`$PROG --nproc $P --dsprob 0 --batchprob 0 --raw -o $OPS`))
 
-            # PROG=${BATCHPATH}/stackNoSpawn
-            # ARGS=" --nproc ${P} --dsprob 0 --batchprob 0 -o ${OPS}"
-            # echo "Running stackNoSpawn (no invoke_batch, no collect, no lock, just race)."
-            # OUT3=`$PROG --nproc $P --dsprob 0 --batchprob 0 -o $OPS`
-
-
-				    # This isn't portable! For floating-point arithmetic, we
-				    # should really pipe the expression to bc instead.
-            #echo
-				    # ${P},$((${OPS}/${OUT1})),$((${OPS}/${OUT2})),$((${OPS}/${OUT3})),${OUT4}
-				    # >> ${FILE}
         done
     done
+
+    # Should actually pipe to bc instead...
     OUT2=$((${OUT2}/${ITER}))
 #    OUT4=$((${OUT4}/${ITER}))
     echo ${P},${OUT4},$((${OPS}/${OUT2})) >> ${FILE}
