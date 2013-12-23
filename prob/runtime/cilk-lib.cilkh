@@ -118,5 +118,10 @@ extern void Cilk_batchify_raw(CilkWorkerState *const ws,
 															CilkBatchSeqOperation op, void *dataStruct,
 															void *data, size_t dataSize,
 															void *indvResult);
+extern void Cilk_batchify_sequential(CilkWorkerState *const ws,
+                                     CilkBatchSeqOperation op, void *dataStruct,
+                                     void *data, size_t dataSize,
+                                     void *indvResult);
+
 
 #endif				/* _CILK_LIB_H */

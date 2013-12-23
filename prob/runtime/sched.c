@@ -1898,6 +1898,25 @@ inline void* Batcher_allocate_work_array(CilkWorkerState *const ws, int dataSize
 	return work_array;
 }
 
+static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
+                                   helper* work_array, BatchRecord *record)
+{
+  unsigned int num_ops = 0;
+  unsigned int register i;
+
+  for (i = 0; i < USE_PARAMETER(active_size); i++) {
+    if (pending->array[i].status == DS_WAITING) {
+      pending->array[i].status = DS_IN_PROGRESS;
+      //			pending->array[i].packedIndex = num_ops;
+
+      work_array[num_ops] = *(helper*)pending->array[i].args;
+      num_ops++;
+    }
+  }
+
+  return num_ops;
+}
+
 
 int Batcher_collect(CilkWorkerState *const ws,
 										Batch *pending, BatchRecord *record)
@@ -1990,79 +2009,35 @@ void Cilk_batchify(CilkWorkerState *const ws,
 	return;
 }
 
+static const struct timespec sleep_time = {0, 1000};
+
 // Do the collect, but just call the operation - don't use invoke_batch_slow
 void Cilk_batchify_sequential(CilkWorkerState * const ws,
 															CilkBatchSeqOperation op, void *dataStruct,
 															void *data, size_t dataSize, void *indvResult)
 {
-	int i, num_ops = 0;
-	Batch *pending = &USE_SHARED(pending_batch);
-	BatchRecord *record  = Batcher_insert(ws, (InternalBatchOperation)op,
-																				dataStruct, data,
-																				dataSize, indvResult);
-
-	while (pending->array[ws->self].status != DS_DONE) {
-
-		//		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
-		if (__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 0xFF)) {
-			USE_SHARED(batch_owner) = ws->self;
-
-			num_ops = Batcher_collect(ws, pending, record);
-
-			/* op(dataStruct, (void*)pending->array, */
-			/* 	 USE_PARAMETER(active_size), NULL); */
-			Cilk_terminate_batch(ws);
-
-			USE_SHARED(batch_owner) = -1;
-			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
-			//			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
-			USE_SHARED(batch_lock) = 0;
-		} else {
-			batch_scheduler(ws, NULL, 0);
-		}
-	}
-
-	return;
-
-}
-
-static const struct timespec sleep_time = {0, 1000};
-
-void Cilk_batchify_raw(CilkWorkerState *const ws,
-											 CilkBatchSeqOperation op, void *dataStruct,
-											 void *data, size_t dataSize, void *indvResult)
-{
-  int i;
+  unsigned int i;
+  Batch* pending = &USE_SHARED(pending_batch);
   helper* work_array = USE_SHARED(batch_work_array);
-  //  const struct timespec sleep_time = {0, 10000};
 
-  Batch pending = USE_SHARED(pending_batch);
+  BatchRecord* record = &pending->array[ws->self];
+  record->status = DS_WAITING;
+  record->args = (helper*)data;
 
-  pending.array[ws->self].status = DS_WAITING;
-
-	// Memcpy is slower than a simple array insertion. I'm not quite
-	//sure why this is so. Maybe the compiler can do some extra optimization?
-  ///  __builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
-  work_array[ws->self] = *(helper*)data;
-  int* status = &pending.array[ws->self].status;
+  int* status = &record->status;
 
   do {
 
-		if (//*status == DS_WAITING &&
+		if (*status == DS_WAITING &&
         0 == USE_SHARED(batch_lock) &&
         0 == USE_SHARED(batch_lock) &&
         0 == USE_SHARED(batch_lock) &&
 				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
 
-      // #2#
-      for (i = 0; i < USE_PARAMETER(active_size); i++) {
-        if (pending.array[i].status == DS_WAITING)
-          pending.array[i].status = DS_IN_PROGRESS;
-      }
+      i = compact(ws, pending, work_array, NULL);
 
-      op(&pending, dataStruct, (void*)work_array, USE_PARAMETER(active_size), NULL);
+      op(pending, dataStruct, (void*)work_array, i, NULL);
 
-      // #2#
       Cilk_terminate_batch(ws);
 
       USE_SHARED(batch_lock) = 0;
@@ -2074,6 +2049,52 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 
 	return;
 
+}
+
+
+
+void Cilk_batchify_raw(CilkWorkerState *const ws,
+											 CilkBatchSeqOperation op, void *dataStruct,
+											 void *data, size_t dataSize, void *indvResult)
+{
+  int i;
+  helper* work_array = USE_SHARED(batch_work_array);
+
+  BatchRecord* record = &USE_SHARED(pending_batch).array[ws->self];
+  record->status = DS_WAITING;
+
+	// Memcpy is slower than a simple array insertion. I'm not quite
+	//sure why this is so. Maybe the compiler can do some extra optimization?
+  ///  __builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
+  work_array[ws->self] = *(helper*)data;
+  int* status = &record->status;
+
+  do {
+
+		if (*status == DS_WAITING &&
+        0 == USE_SHARED(batch_lock) &&
+        0 == USE_SHARED(batch_lock) &&
+        0 == USE_SHARED(batch_lock) &&
+				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
+
+      Batch* pending = &USE_SHARED(pending_batch);
+
+      for (i = 0; i < USE_PARAMETER(active_size); i++) {
+        if (pending->array[i].status == DS_WAITING)
+          pending->array[i].status = DS_IN_PROGRESS;
+      }
+
+      op(pending, dataStruct, (void*)work_array, USE_PARAMETER(active_size), NULL);
+
+      Cilk_terminate_batch(ws);
+
+      USE_SHARED(batch_lock) = 0;
+    } else {
+      nanosleep(&sleep_time, NULL);
+		}
+  } while (*status != DS_DONE);
+
+	return;
 }
 
 /*

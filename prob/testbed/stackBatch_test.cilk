@@ -7,11 +7,12 @@
 #include "util/parfor.cilkh"
 
 int g_par_threshold = 1024;
+int g_raw = 0;
 Stack* g_stack;
 Operation g_add_op = {1, 0};
 Operation g_rem_op = {0, 0};
 
-cilk void parforpar_stack(const int begin, const int end, Operation op, int raw)
+cilk void parforpar_stack(const int begin, const int end, Operation op)
 {
   int i;
 
@@ -21,14 +22,14 @@ cilk void parforpar_stack(const int begin, const int end, Operation op, int raw)
 
 			op.data=i;
 
-      if (raw) mixedBatchify_raw(g_stack, op, _cilk_ws);
+      if (g_raw) mixedBatchify_raw(g_stack, op, _cilk_ws);
 			else mixedBatchify(g_stack, op, _cilk_ws);
 
 		}
   } else {
     i = begin+(end-begin)/2;
-    spawn parforpar_stack(begin, i, op, raw);
-    spawn parforpar_stack(i + 1, end, op, raw);
+    spawn parforpar_stack(begin, i, op);
+    spawn parforpar_stack(i + 1, end, op);
   }
 }
 
@@ -43,14 +44,15 @@ cilk int main(int argc, char* argv[])
 	if (options.special) add_percentage = options.special;
 	else add_percentage = 50;
 
+  if (options.raw) g_raw = 1;
   threshold = g_par_threshold ? g_par_threshold : PARFOR_THRESHOLD;
   add_size = (add_percentage * test_size) / 100;
 
 	g_stack = create_stack();
 
 	startTimer();
-  spawn parforpar_stack(0, add_size, g_add_op, options.raw);
-  spawn parforpar_stack(0, test_size-add_size, g_rem_op, options.raw);
+  spawn parforpar_stack(0, add_size, g_add_op);
+  spawn parforpar_stack(0, test_size-add_size, g_rem_op);
   sync;
 	stopTimer();
 

@@ -6,8 +6,7 @@
 #include "../util/parfor.cilkh"
 #include "stack.cilkh"
 
-//#define MAX_SIZE 1000000000
-#define MAX_SIZE 10000000
+#define MAX_SIZE 1000000000
 
 Stack* create_stack(){
        Stack* result = malloc(sizeof(Stack));
@@ -32,7 +31,7 @@ void pushBatchify(Stack* ds, int data, CilkWorkerState* const ws)
 /* Batchify for mixed*/
 void mixedBatchify(Stack* ds, Operation op, CilkWorkerState* const ws)
 {
-	Cilk_batchify(ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
+	Cilk_batchify_sequential(ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
 }
 /* Batchify for mixed_raw*/
 void mixedBatchify_raw(Stack* ds, Operation op, CilkWorkerState* const ws)
@@ -95,40 +94,22 @@ void pushInternal(Stack* ds, int data){
 }
 
 /* Uses the regular batchify*/
-cilk void doMixedOps(void* ds, void* oprec, size_t size, void* result){
+void doMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* result)
+{
   Stack* stack = ds;
   Operation* ops = oprec;
   int i;
-  for (i=0;i<size;i++){
-    if (ops[i].add){
-      pushInternal(stack,ops[i].data);
-    } else {
-      popInternal(stack);
+  for (i = 0; i < size; i++) {
+    if (pending->array[i].status == DS_IN_PROGRESS) {
+      if (ops[i].add){
+        pushInternal(stack,ops[i].data);
+      } else {
+        popInternal(stack);
+      }
     }
 	}
 }
 
-/* Uses the raw oprec array*/
-/* cilk void doRawMixedOps(void* ds, void* oprec, size_t size, void* result) { */
-/*   Stack* stack = ds; */
-/*   BatchRecord* ops = oprec; */
-/*   Operation* op; */
-/*   int i; */
-/*   for (i=0;i<size;i++){ */
-/*     if (ops[i].status!=DS_DONE){ */
-/*       if (ops[i].status==DS_WAITING){ */
-/* 				op=ops[i].args; */
-/* 				if ((*op).add){ */
-/* 					pushInternal(stack,(*op).data); */
-/* 				} */
-/* 				else { */
-/* 					popInternal(stack); */
-/* 				} */
-/* 				ops[i].status=DS_DONE; */
-/*       } */
-/*     } */
-/*   } */
-/* } */
 void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* result) {
   Stack* stack = ds;
   Operation* op = oprec;
@@ -136,9 +117,7 @@ void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* res
 
   for (i = 0; i < size; i++){
 
-    // #2#
-    if (pending->array[i].status == DS_IN_PROGRESS) {
-    //    if (pending->array[i].status == DS_WAITING) {
+    //    if (pending->array[i].status == DS_IN_PROGRESS) {
 
       if (op[i].add){
 
@@ -150,7 +129,7 @@ void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* res
 
       }
       //pending->array[i].status = DS_DONE;
-    }
+      //    }
 	}
 }
 

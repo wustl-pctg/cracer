@@ -10,7 +10,7 @@ PMIN=1
 PMAX=16
 PINTER=1
 
-cd ../prob/testbed && make cilk-clean && make clean && make cilk && make stack
+cd ../prob/testbed && make clean && make cilk && make stack
 if [ $? -ne 0 ]; then
     echo "Batcher compilation failed. Exiting."
     exit
@@ -28,37 +28,45 @@ FCPATH=flat_combining
 # Should use a better timestamp later.
 TIMESTAMP=`date +%j`
 FILE="logs/overhead.${TIMESTAMP}.log"
-echo "NPROC,FC,TERM" > ${FILE}
+echo "NPROC,RAW,COMPACT,FC" > ${FILE}
 
 for ((P = $PMIN; P <= $PMAX; P += $PINTER))
 do
     for ((OPS = $OPMIN; OPS <= $OPMAX; OPS += $OPINTER))
     do
-        OUT1=0
-        OUT2=0
-        OUT3=0
-        OUT4=0
+        RAWTIME=0
+        COMPTIME=0
+        FCTHROUGHPUT=0
         for ((I = 0; I < $ITER; I += 1))
         do
-				    # PROG=${FCPATH}/test_intel64
-				    # ARGS=" fcstack 1 non 0 non 0 non 0 1 {$P} 50 50 0.0 0 10 0 0 0"
-				    # echo "Running flat combining - 50/50"
-				    # TEMP=`$PROG fcstack 1 non 0 non 0 non 0 1 $P 50 50 0.0 0 10 0 0 0 2> /dev/null`
-				    # OUT4=$((${OUT4}+`echo $TEMP | cut -d" " -f1`))
-
+            echo "Raw test (sequential, $P cores, $OPS operations)"
             PROG=${BATCHPATH}/stackBatch_test
-            #        echo "Running full test."
-            #        OUT1=`$PROG --nproc $P --dsprob 0 --batchprob 0 -o $OPS`
+            TEMP=`$PROG --nproc $P --dsprob 0 --batchprob 0 --raw -o $OPS`
+            RAWTIME=$((${RAWTIME}+${TEMP}))
 
-            ARGS+=" --raw"
-            echo "Running raw test (no invoke_batch_slow, no collect, term)."
-            OUT2=$((${OUT2}+`$PROG --nproc $P --dsprob 0 --batchprob 0 --raw -o $OPS`))
+            echo "Compaction test (sequential, $P cores, $OPS operations)"
+            PROG=${BATCHPATH}/stackBatch_test
+            TEMP=`$PROG --nproc $P --dsprob 0 --batchprob 0 -o $OPS`
+            while [ $? -ne 0 ]; do
+                echo "Failed: ${TEMP}"
+                TEMP=`$PROG --nproc $P --dsprob 0 --batchprob 0 -o $OPS`
+            done
+            COMPTIME=$((${COMPTIME}+${TEMP}))
+
+				    echo "Running flat combining (50/50, $P cores, $OPS operations)"
+				    PROG=${FCPATH}/test_intel64
+				    TEMP=`$PROG fcstack 1 non 0 non 0 non 0 1 $P 50 50 0.0 0 10 0 0 0 2> /dev/null`
+				    FCTHROUGHPUT=$((${FCTHROUGHPUT}+`echo $TEMP | cut -d" " -f1`))
 
         done
     done
 
     # Should actually pipe to bc instead...
-    OUT2=$((${OUT2}/${ITER}))
-#    OUT4=$((${OUT4}/${ITER}))
-    echo ${P},${OUT4},$((${OPS}/${OUT2})) >> ${FILE}
+    RAWTIME=$((${RAWTIME}/${ITER}))
+    COMPTIME=$((${COMPTIME}/${ITER}))
+    FCTHROUGHPUT=$((${FCTHROUGHPUT}/${ITER}))
+
+    RAWTHROUGHPUT=$((${OPMAX}/${RAWTIME}))
+    COMPTHROUGHPUT=$((${OPMAX}/${COMPTIME}))
+    echo ${P},${RAWTHROUGHPUT},${COMPTHROUGHPUT},${FCTHROUGHPUT} >> ${FILE}
 done

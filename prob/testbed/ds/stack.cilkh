@@ -37,7 +37,7 @@ cilk void push_batch(void* ds, void* oprec, size_t size, void* result);
 cilk void parallel_set(int i, void* data);
 node* popInternal(Stack* ds);
 cilk void pop_batch(void* ds, void* oprec, size_t size, void* result);
-cilk void doMixedOps(void*,void*,size_t,void*);
+void doMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* result);
 cilk void doCleverMixedOps(void*,void*,size_t,void*);
 void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* result);
 void pushInternal(Stack*,int);
