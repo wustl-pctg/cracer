@@ -3,17 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <cilk-lib.cilkh>
-#include <cilk.h>
-
 /* define data-type and compare operators here */
 typedef int T;                  /* type of item to be stored */
 #define compLT(a,b) (a < b)
 #define compEQ(a,b) (a == b)
 
 /* levels range from (0 .. MAXLEVEL) */
-#define MAXLEVEL 20
-#define INSERT_CHUNK 16
+#define MAXLEVEL 15
 
 typedef struct Node_ {
     T data;                     /* user's data */
@@ -32,72 +28,6 @@ SkipList list;                  /* skip list information */
 Node* insertNode(T data);
 void deleteNode(T data);
 
-void insertionSortSeq (void* data, size_t numElements) {
-  T* elements = (T*)data;
-  int c, i;
-  T temp;
-  for (c=1; c < numElements; ++c) {
-    i=c;
-    while (i > 0 && compLT(elements[i], elements[i-1])) {
-      temp = elements[i];
-      elements[i] = elements[i-1];
-      elements[i-1] = temp;
-
-      i--;
-    } 
-  }
-  return; 
-}
-
-//NOTE: potentially unsafe if two closures try to modify adjacent edges at the
-//      same time
-cilk void recursiveInsertBatch
-  (void* data, int iLeaf, size_t numElements, size_t numElementsTot) 
-{
-  if (numElements > INSERT_CHUNK) {
-    spawn recursiveInsertBatch(data, 2*iLeaf, numElements/2, numElementsTot);
-    spawn recursiveInsertBatch(data, 2*iLeaf+1, numElements/2, numElementsTot);
-  } else {
-    int istart = (numElementsTot/INSERT_CHUNK)*iLeaf;
-    int i;
-    for (i=istart; i < istart + INSERT_CHUNK; ++i) {
-      insertNode(((T*)data)[i]);
-    }  
-  }
-  return; 
-}
-
-cilk void insertBatch
-  (void* dataStruct, void* data, size_t numElements, void* results)
-{
-
-  //int i;
-  insertionSortSeq(data, numElements);
-  //printf("sorted data array - ");
-  //for(i=0; i < numElements; ++i) {
-  //  printf("%d, ", ((T*)data)[i]);
-  //}
-  //printf("\n");
-  spawn recursiveInsertBatch(data, 0, numElements, numElements);
-}
-
-cilk void popBatch
-  (void* dataStruct, void* data, size_t numElements, void* results)
-{
-  int i;
-  for (i=0; i < numElements; ++i) {
-    if (list.hdr->forward[0] != NIL)
-      deleteNode(list.hdr->forward[0]->data);
-  }
-}
-
-cilk void batchInsertNode (int inValue) {
-  Cilk_batchify(_cilk_ws, &insertBatch, NULL, &inValue, sizeof(int), NULL);
-}
-
-cilk void batchPopNode (int inValue) {
-  Cilk_batchify(_cilk_ws, &popBatch, NULL, NULL, 0, NULL);
-}
 
 Node *insertNode(T data) {
     int i, newLevel;

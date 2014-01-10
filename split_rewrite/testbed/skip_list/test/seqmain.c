@@ -8,9 +8,8 @@
 #include <sys/types.h>
 #include <signal.h>
 
-#include "../data_structures/DYNSkipList.cilkh"
 #include "./timer.h"
-//#include "DYNConfiguration.h"
+#include "../data_structures/SEQSkipList.h"
 
 #define TOTAL_RAND_NUM 4*1024*1024*8 //TODO: bound this better
 #define CAPACITY 4*1024*1024*8 //TODO: bound this better
@@ -60,7 +59,7 @@ void init_arrays() {
   }
 }
 
-cilk void startDeadline() {
+void startDeadline() {
   sleep(MAX_BENCHMARK_RUNTIME);
   _gStopThreads = 1;
 }
@@ -91,107 +90,12 @@ void reset_counters() {
   for (iThread = 0; iThread < _gNumThreads; ++iThread) {_gOpCounts[iThread]=0;}
 }
 
-cilk void recursiveOp(cilk void (*op)(T), int iLeaf, int level) {
-  if (pow(2, level) < _gNumThreads) {
-    spawn recursiveOp(op, 2*iLeaf, level+1);
-    spawn recursiveOp(op, 2*iLeaf+1, level+1);
-  } else {
-    int max_ops = NUM_OPS/_gNumThreads;
-    int rand_index = iLeaf*max_ops;
-    int rand_index_max = rand_index + max_ops;
-    if (rand_index_max > _gTotalRandNum) {
-      fprintf(stderr, "Rand array too small\n");
-      exit(1);
-    }
-    if (iLeaf >= _gNumThreads)
-      return;
-    //printf("level:%d, index:%d\n, max_ops:%d, rand_index:%d, index_max:%d\n", 
-    //  level, iLeaf, max_ops, rand_index, rand_index_max);
-    while (!_gStopThreads && rand_index < rand_index_max) {
-      //printf("doing add, recursiveOp\n");
-      spawn op(_gRandNumAry[rand_index]);
-      sync;
-      //printf("finished add\n");
-      ++_gOpCounts[iLeaf];
-      ++rand_index; 
-    }
-  }
-  return;
-}
 
 void abort_benchmark(int num_signal) {
   _gStopThreads=1;
 }
 
-cilk void recursiveMixedOp(int iLeaf, int level) {
-  if (pow(2, level) < _gNumThreads) {
-    spawn recursiveMixedOp(2*iLeaf, level+1);
-    spawn recursiveMixedOp(2*iLeaf+1, level+1);
-  } else {
-    int max_ops = NUM_OPS/_gNumThreads;
-    int rand_index = iLeaf*max_ops;
-    int rand_index_add = rand_index;
-    int rand_index_pop = rand_index;
-    int rand_index_max = rand_index + max_ops;
-    if (rand_index_max > _gTotalRandNum) {
-      fprintf(stderr, "Rand array too small\n");
-      exit(1);
-    }
-    if (iLeaf >= _gNumThreads)
-      return;
-    while (!_gStopThreads && rand_index_add < rand_index_max 
-        && rand_index_pop < rand_index_max) 
-    {
-      if (_gRandOpAry[rand_index] == ADD_OP) {
-        spawn batchInsertNode(_gRandNumAry[rand_index_add]);
-        ++rand_index_add;
-        //printf("ADD_OP\n");
-      } else {
-        spawn batchPopNode(0);
-        ++rand_index_pop;
-        //printf("DEL_OP\n");
-      }
-      sync;
 
-      ++_gOpCounts[iLeaf];
-      ++rand_index; 
-    }
-  }
-  return;
-}
-
-cilk void runDYNSkipListBenchmark() {
-  int i;
-  initList();
-  reset_counters();
-  if (NUM_OPS + _gInitSize > TOTAL_RAND_NUM) {
-    fprintf(stderr, "Capacity too small\n");
-    exit(1);
-  }
-
-  for (i=0; i < _gInitSize; ++i)
-    insertNode(rand()%TOTAL_RAND_NUM+3);  
-
-  contaminate_memory();
-  printf("Contaminated memory\n");
-  _gStopThreads=0;
-
-  signal(SIGALRM, abort_benchmark);
-  alarm(MAX_BENCHMARK_RUNTIME);
-  //abort_benchmark(0);
-  //spawn startDeadline();
-  startTimer();
-  if (_gAddProb == 100) {
-    spawn recursiveOp(&batchInsertNode, 0, 0);
-  } else if (_gAddProb == 0) {
-    spawn recursiveOp(&batchPopNode, 0, 0);
-  } else {
-    spawn recursiveMixedOp(0, 0);
-  }
-  sync;
-  stopTimer();
-  print_results();
-}
 
 void runSeqSkipListBenchmark() {
   int i, rand_index, rand_index_max;
@@ -207,7 +111,6 @@ void runSeqSkipListBenchmark() {
 
   contaminate_memory();
 
-
   _gStopThreads=0;
   signal(SIGALRM, abort_benchmark);
   alarm(MAX_BENCHMARK_RUNTIME);
@@ -219,38 +122,20 @@ void runSeqSkipListBenchmark() {
     fprintf(stderr,"rand num array smaller than NUM_OPS\n");
     //printf("level:%d, index:%d\n, max_ops:%d, rand_index:%d, index_max:%d\n", 
     //  level, iLeaf, max_ops, rand_index, rand_index_max);
-  if (_gAddProb == 100) {
-    while (!_gStopThreads && rand_index < rand_index_max) {
-      insertNode(_gRandNumAry[rand_index]);
-      ++_gOpCounts[0];
-      ++rand_index; 
-    }
-  } else {
-    while (!_gStopThreads && rand_index < rand_index_max) {
-      if (_gRandOpAry[rand_index] == ADD_OP) {
-        insertNode(_gRandNumAry[rand_index]);
-      } else {
-        if (list.hdr->forward[0] != NIL)
-          deleteNode(list.hdr->forward[0]->data);
-      }
-      ++_gOpCounts[0];
-      ++rand_index; 
-    }
+  while (!_gStopThreads && rand_index < rand_index_max) {
+    //printf("doing add\n");
+    insertNode(_gRandNumAry[rand_index]);
+    ++_gOpCounts[0];
+    ++rand_index; 
   }
  
   stopTimer();
   print_results();
 }
 
-/*void runFCSkipListBenchmark() {
-  
-}*/
 
-cilk void runBenchmark(char* benchmark_name) {
+void runBenchmark(char* benchmark_name) {
   if (!strcmp(benchmark_name, "skiplist")) {
-    printf("\n\nDynamic Skip List\n------------------------------\n");
-    spawn runDYNSkipListBenchmark();
-    sync;
     printf("\n\nSequential Skip list\n-----------------------------\n");
     runSeqSkipListBenchmark();
   } else {
@@ -264,7 +149,7 @@ void usage() {
   fprintf(stderr, "test_dyn <benchmark> <num_threads> [<init size> <capacity>]\n");
 }
 
-cilk int main (int argc, char **argv) {
+int main (int argc, char **argv) {
   _gSeed = time(NULL);
   srand(_gSeed);
   _gTotalRandNum = TOTAL_RAND_NUM;
@@ -294,8 +179,7 @@ cilk int main (int argc, char **argv) {
 
   init_arrays(); 
 
-  spawn runBenchmark(argv[1]);
-  sync;
+  runBenchmark(argv[1]);
 
   return EXIT_SUCCESS;
 }
