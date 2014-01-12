@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# Run BATCHER stack and compare with FC stack.
 
 import subprocess
 import time
@@ -28,8 +27,8 @@ for p in nproc:
   for i in iterations:
     throughput=[str(p)]
     batchcmd = probdir + '/testbed/' + test
-    batch_args = ' --nproc ' + str(p) + ' -o ' + str(batchops) 
-    batch_no_steal_args = ' --nproc ' + str(p) +' --batchprob 0 --dsprob 0 ' + ' -o ' + str(batchops) 
+#   batch_args = ' --nproc ' + str(p) + ' -o ' + str(batchops) 
+#    batch_no_steal_args = ' --nproc ' + str(p) +' --batchprob 0 --dsprob 0 ' + ' -o ' + str(batchops) 
     
     # Arguments:
     # alg1_name alg1_num alg2_name alg2_num alg3_name alg3_num
@@ -40,7 +39,7 @@ for p in nproc:
     fc_args = 'fcskiplist 1 non 0 non 0 non 0 1 '+ str(p) + ' 50 50 0.0 '
     fc_args += str(fcinitialsize) + ' ' + str(fctime) + ' ' + str(dedicated) + ' 0 0'
 
-    
+    '''    
     #First run batch
     process = subprocess.Popen(batchcmd+batch_args, shell=True,
       stdout=subprocess.PIPE,
@@ -55,7 +54,9 @@ for p in nproc:
     output = process.communicate()[0]
     tp = string.split(output)
     throughput.append(math.floor(batchops/float(tp[0])))
-
+    '''
+    throughput.append("n/a")
+    throughput.append("n/a")
     #now run FC tests
     process = subprocess.Popen(fccmd + fc_args, shell=True,
                                stdout=subprocess.PIPE,
