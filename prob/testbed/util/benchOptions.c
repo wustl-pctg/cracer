@@ -46,7 +46,7 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 					if (longOptions[optIndex].flag != 0) break;
 					printf("Invalid options.\n");
 					usage();
-					exit(1);
+          return 1;
 					break;
 				case 'v':
 					opt->verbose = 1;
@@ -77,7 +77,8 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 				  break;
 				default:
 					usage();
-					exit(1);
+          return 1;
 				}
 		}
+  return 0;
 }

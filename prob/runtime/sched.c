@@ -30,8 +30,6 @@
 #include <string.h>
 #include <time.h>
 
-#include "invoke-batch.c"
-
 #define BATCH_ASSERT(args...) CILK_ASSERT(args)
 
 FILE_IDENTITY(ident,
@@ -59,6 +57,8 @@ FILE_IDENTITY(ident,
  *
  * See also PROTOCOLS for a more verbose description.
  */
+
+static const struct timespec sleep_time = {0, 1000};
 
 static inline void Cilk_switch2batch(CilkWorkerState *const ws)
 {
@@ -401,6 +401,7 @@ void Cilk_remove_and_free_closure_and_frame(CilkWorkerState *const ws,
 	Closure_destroy_malloc(ws, t);
 }
 
+
 /**************************************************
  * Management of CilkProcInfo's
  **************************************************/
@@ -419,7 +420,7 @@ static inline CilkProcInfo *get_CilkProcInfo(CilkWorkerState *const UNUSED(ws),
  * Returns a pointer to the slow version for a procedure
  * whose signature is p.
  */
-static void (*get_proc_slow(CilkProcInfo *p)) () {
+static inline void (*get_proc_slow(CilkProcInfo *p)) () {
 	return p[0].inlet;
 }
 
@@ -1589,7 +1590,6 @@ void Cilk_abort_standalone(CilkWorkerState *const ws)
  *********************************************************/
 static Closure *setup_for_execution(CilkWorkerState *const ws, Closure *t)
 {
-	if (USE_SHARED(batch_owner) == ws->self) Cilk_enter_state(ws, STATE_USER1);
 	Closure_assert_ownership(ws, t);
 
 	CILK_ASSERT(ws, t->frame->magic == CILK_STACKFRAME_MAGIC);
@@ -1602,7 +1602,6 @@ static Closure *setup_for_execution(CilkWorkerState *const ws, Closure *t)
 	reset_exception_pointer(ws, t);
 	reset_abort(t);
 
-	if (USE_SHARED(batch_owner) == ws->self) Cilk_exit_state(ws, STATE_USER1);
 	return t;
 }
 
@@ -1631,10 +1630,8 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 	CilkStackFrame *f;
 
 	/* t must not be locked */
-	if (USE_SHARED(batch_owner) == ws->self) Cilk_enter_state(ws, STATE_USER0);
 	Closure_assert_alienation(ws, t);
 	Closure_lock(ws, t);
-	if (USE_SHARED(batch_owner) == ws->self) Cilk_exit_state(ws, STATE_USER0);
 
 	switch (t->status) {
 	case CLOSURE_READY:
@@ -1700,11 +1697,6 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 /*********************************************************
  * The scheduler itself
  *********************************************************/
-
-
-void batch_scheduler(CilkWorkerState *const ws, Closure *t,
-										 int use_batch_deque);
-
 void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 {
 	int victim;
@@ -1792,24 +1784,28 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 /*********************************************************
  * Batch scheduler for data structure operations
  *********************************************************/
+#include "invoke-batch.c"
 
-inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
+static inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
 {
-	return USE_SHARED(current_batch_id) > batch_id
-		|| USE_SHARED(batch_owner) == -1;
-		//		|| USE_SHARED(pending_batch).array[ws->self].status == DS_DONE;
+	return USE_SHARED(pending_batch).array[ws->self].status == DS_DONE
+    ||   USE_SHARED(current_batch_id)                      > batch_id;
+    //    ||   USE_SHARED(batch_owner)                          == -1;
 }
 
-void batch_scheduler(CilkWorkerState *const ws, Closure *t, int use_batch_deque)
+void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 {
 	int victim;
 	int done = 0;
+  Closure* t = NULL;
+
 	CILK_ASSERT(ws, ws->self >= 0);
+	CILK_ASSERT(ws, batch_id >= 0);
 
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
 	Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 
-	if (use_batch_deque) Cilk_switch2batch(ws);
+  //	Cilk_switch2batch(ws);
 
 	//	while (!batch_done_yet(ws, ws->batch_id)) {
 	while (1) {
@@ -1820,12 +1816,12 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t, int use_batch_deque)
 			deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
 		}
 
-		/* if(!t && batch_done_yet(ws, ws->batch_id)) { */
-		/* 	break; */
-		/* } */
+		if(!t && batch_done_yet(ws, ws->batch_id)) {
+			break;
+		}
 
-		/* while (!t && !batch_done_yet(ws, ws->batch_id)) { */
-		while (!t) {
+		while (!t && !batch_done_yet(ws, ws->batch_id)) {
+		/* while (!t) { */
 			// Otherwise, steal
 			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(batchprob)) {
 				Cilk_enter_state(ws, STATE_BATCH_STEALING);
@@ -1836,33 +1832,45 @@ void batch_scheduler(CilkWorkerState *const ws, Closure *t, int use_batch_deque)
 						&& USE_SHARED(pending_batch).array[victim].status == DS_IN_PROGRESS) {
 					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
 
+          /* if (t) */
+          /*   printf("Worker %i batch stole from %i.\n", ws->self, victim); */
+
 					if (!t && USE_PARAMETER(options->yieldslice) &&
-							USE_SHARED(current_batch_id) == ws->batch_id) {
+							USE_SHARED(current_batch_id) == batch_id) {
 						Cilk_lower_priority(ws);
 					}
 				}
 				Cilk_exit_state(ws, STATE_BATCH_STEALING);
 			}
-			if (batch_done_yet(ws, ws->batch_id)) {
+			if (batch_done_yet(ws, batch_id)) {
 				done = 1;
 				break;
-			}
+			} else if (!t) {
+        nanosleep(&sleep_time, NULL);
+      }
 		}
-		if (!t && done) break;
+    if (!t && done) break;
+    //if (done) break;
 
 		if (USE_PARAMETER(options->yieldslice))
 			Cilk_raise_priority(ws);
 
-		/* if (t && !batch_done_yet(ws, ws->batch_id)) { */
+
 		Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
+		/* if (t && !batch_done_yet(ws, ws->batch_id)) { */
 		if (t) {
+      if (victim == USE_SHARED(batch_owner)) {
+        //        printf("Worker %i stole from owner %i.\n", ws->self, USE_SHARED(batch_owner));
+      }
 			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
 		}
+    if (done) break;
 		Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 
 	}
 
-	if (use_batch_deque) Cilk_switch2core(ws);
+  //	Cilk_switch2core(ws);
+
 	Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
 
@@ -1898,26 +1906,6 @@ inline void* Batcher_allocate_work_array(CilkWorkerState *const ws, int dataSize
 	return work_array;
 }
 
-static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
-                                   helper* work_array, BatchRecord *record)
-{
-  unsigned int num_ops = 0;
-  unsigned int register i;
-
-  for (i = 0; i < USE_PARAMETER(active_size); i++) {
-    if (pending->array[i].status == DS_WAITING) {
-      pending->array[i].status = DS_IN_PROGRESS;
-      //			pending->array[i].packedIndex = num_ops;
-
-      work_array[num_ops] = *(helper*)pending->array[i].args;
-      num_ops++;
-    }
-  }
-
-  return num_ops;
-}
-
-
 int Batcher_collect(CilkWorkerState *const ws,
 										Batch *pending, BatchRecord *record)
 {
@@ -1951,65 +1939,87 @@ void Cilk_batchify(CilkWorkerState *const ws,
 									 InternalBatchOperation op, void *dataStruct,
 									 void *data, size_t dataSize, void *indvResult)
 {
-	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
+  unsigned int i, batch_id;
+  Batch* pending = &USE_SHARED(pending_batch);
+  helper* work_array = USE_SHARED(batch_work_array);
 
-	int i, num_ops = 0;
-	Batch *pending = &USE_SHARED(pending_batch);
-	BatchRecord *record  = Batcher_insert(ws, op, dataStruct, data,
-																				dataSize, indvResult);
+  BatchRecord* record = &pending->array[ws->self];
+  record->status = DS_WAITING;
+  record->args = (helper*)data;
 
-	while (pending->array[ws->self].status != DS_DONE) {
-		//		ws->batch_id = USE_SHARED(current_batch_id);
+  int* status = (int*) &record->status;
+  Cilk_switch2batch(ws); // done in batch_scheduler
 
-		//		if (Cilk_mutex_try(ws->context, &USE_SHARED(batch_lock))) {
-		if (__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 0xFF)) {
-			BatchArgs args;
+  do {
+    ws->batch_id = USE_SHARED(current_batch_id); // *** can we get rid
+                                                 // *** of this?
+    batch_id = USE_SHARED(current_batch_id);
+		if (*status == DS_WAITING &&
+        0 == USE_SHARED(batch_lock) &&
+        0 == USE_SHARED(batch_lock) &&
+        0 == USE_SHARED(batch_lock) &&
+				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
 
-			Cilk_enter_state(ws, STATE_BATCH_START);
+      USE_SHARED(batch_owner) = ws->self;
 
-			USE_SHARED(batch_owner) = ws->self;
+      //      i = compact(ws, pending, work_array, NULL);
 
-			num_ops = Batcher_collect(ws, pending, record);
-			args.numElements = num_ops;
-			args.dataStruct = dataStruct;
-			args.data = USE_SHARED(batch_work_array);
-			args.result = NULL;
+      Closure* t = USE_PARAMETER(invoke_batch);
+      deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); // need only if dsprob > 0
+      Closure_lock(ws, t);
+      BatchFrame* f = USE_SHARED(batch_frame);
 
-#if CILK_STATS
-			USE_SHARED(batch_sizes)[num_ops-1]++;
-#endif
+      reset_batch_closure(ws->context);
 
-			/* TODO: If num_ops < SOME_THRESHOLD (e.g. batch of size 1)
-				 then don't bother invoking the full batch operation,
-				 just call the operation directly.
-			 */
-			USE_PARAMETER(invoke_batch) = Batcher_create_batch_closure(ws,
-																																 op, &args);
-			Cilk_exit_state(ws, STATE_BATCH_START);
-			Cilk_enter_state(ws, STATE_BATCH_WORKING);
+      /* f->args->dataStruct = dataStruct; */
+      /* f->args->data = pending->array; */
+      /* f->args->result = NULL; */
+      /* f->args->numElements = i; */
+      /* f->batch_op = op; */
 
-			batch_scheduler(ws, USE_PARAMETER(invoke_batch), 1);
+      //      batch_scheduler(ws, USE_PARAMETER(invoke_batch));
+      //      t = do_what_it_says(ws, USE_PARAMETER(invoke_batch), USE_PARAMETER(ds_deques));
 
-			Cilk_exit_state(ws, STATE_BATCH_WORKING);
+      setup_for_execution(ws, t);
 
-			if (pending->array[ws->self].status != DS_DONE) {
-				batch_scheduler(ws, NULL, 1);
-			}
+      deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques));
 
-			USE_SHARED(batch_owner) = -1;
-			CILK_ASSERT(ws, pending->array[ws->self].status == DS_DONE);
-			//			Cilk_mutex_signal(ws->context, &USE_SHARED(batch_lock));
-			USE_SHARED(batch_lock) = 0;
-		} else {
-      //			batch_scheduler(ws, NULL, 1);
+      deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
+      Closure_unlock(ws, t);
+      //      printf("Batch %i started by %i, size: %i\n", batch_id, ws->self, i);
+      //      (get_proc_slow(f->header.sig)) (ws, f);
+
+      /* if (*status != DS_DONE || USE_SHARED(current_batch_id) == batch_id) */
+      /*   printf("invoke_batch_slow stolen for batch %i!\n", batch_id); */
+      //      invoke_batch(ws, op, dataStruct, (void*)work_array, i,
+      //      NULL);
+      invoke_batch(ws, op, pending);
+
+      /* deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); */
+      /* t = deque_xtract_bottom(ws, ws->self, USE_PARAMETER(ds_deques)); */
+      /* CILK_ASSERT(ws, t->frame == (CilkStackFrame*)f); */
+      /* deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques)); */
+
+      //      op(ws, dataStruct, (void*)work_array, i, NULL);
+
+    } else {
+
+      batch_scheduler(ws, batch_id);
+      //nanosleep(&sleep_time, NULL);
 		}
-	}
-	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
+  } while (*status != DS_DONE);
 
-	return;
+  if (USE_SHARED(batch_owner) == ws->self) {
+    USE_SHARED(current_batch_id)++;
+    USE_SHARED(batch_owner) = -1;
+    USE_SHARED(batch_lock) = 0;
+  }
+
+  Cilk_switch2core(ws); // done in batch_scheduler
+  ws->batch_id = 0;
+  return;
+
 }
-
-static const struct timespec sleep_time = {0, 1000};
 
 // Do the collect, but just call the operation - don't use invoke_batch_slow
 void Cilk_batchify_sequential(CilkWorkerState * const ws,
@@ -2024,7 +2034,8 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
   record->status = DS_WAITING;
   record->args = (helper*)data;
 
-  int* status = &record->status;
+  int* status = (int*)&record->status;
+  //  Cilk_switch2batch(ws);
 
   do {
 
@@ -2039,35 +2050,36 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
       op(pending, dataStruct, (void*)work_array, i, NULL);
 
       Cilk_terminate_batch(ws);
-
       USE_SHARED(batch_lock) = 0;
+      break;
     } else {
       nanosleep(&sleep_time, NULL);
 		}
   } while (*status != DS_DONE);
 
-
+  //  Cilk_switch2core(ws);
 	return;
 
 }
-
-
 
 void Cilk_batchify_raw(CilkWorkerState *const ws,
 											 CilkBatchSeqOperation op, void *dataStruct,
 											 void *data, size_t dataSize, void *indvResult)
 {
-  int i;
+  unsigned int i;
+  Batch* pending = &USE_SHARED(pending_batch);
   helper* work_array = USE_SHARED(batch_work_array);
 
-  BatchRecord* record = &USE_SHARED(pending_batch).array[ws->self];
+  BatchRecord* record = &pending->array[ws->self];
   record->status = DS_WAITING;
 
 	// Memcpy is slower than a simple array insertion. I'm not quite
 	//sure why this is so. Maybe the compiler can do some extra optimization?
   ///  __builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
   work_array[ws->self] = *(helper*)data;
-  int* status = &record->status;
+  int* status = (int*)&record->status;
+
+  Cilk_switch2batch(ws);
 
   do {
 
@@ -2089,10 +2101,13 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
       Cilk_terminate_batch(ws);
 
       USE_SHARED(batch_lock) = 0;
+      break;
     } else {
       nanosleep(&sleep_time, NULL);
 		}
   } while (*status != DS_DONE);
+
+  Cilk_switch2core(ws);
 
 	return;
 }
@@ -2130,7 +2145,7 @@ void Cilk_scheduler_terminate_2(CilkContext *const UNUSED(context))
 
 void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws)
 {
-	WHEN_CILK_TIMING(ws->cp_hack = 0);
+  WHEN_CILK_TIMING(ws->cp_hack = 0);
 	WHEN_CILK_TIMING(ws->work_hack = 0);
 
 	ws->cache.stack =

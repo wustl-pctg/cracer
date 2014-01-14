@@ -31,7 +31,12 @@ void pushBatchify(Stack* ds, int data, CilkWorkerState* const ws)
 /* Batchify for mixed*/
 void mixedBatchify(Stack* ds, Operation op, CilkWorkerState* const ws)
 {
-	Cilk_batchify_sequential(ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
+	Cilk_batchify(ws,&doMixedOps,ds,&op,sizeof(Operation),NULL);
+}
+void mixedBatchify_sequential(Stack* ds, Operation op, CilkWorkerState* const ws)
+{
+  Cilk_batchify_sequential(ws,&doMixedOpsSeq,ds,&op,sizeof(Operation),NULL);
+
 }
 /* Batchify for mixed_raw*/
 void mixedBatchify_raw(Stack* ds, Operation op, CilkWorkerState* const ws)
@@ -83,7 +88,23 @@ void pushInternal(Stack* ds, int data){
 }
 
 /* Uses the regular batchify*/
-void doMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* result)
+cilk void doMixedOps(void* ds, void* oprec,
+                     size_t size, void* result)
+{
+  Stack* stack = ds;
+  Operation* ops = oprec;
+  int i;
+  for (i = 0; i < size; i++) {
+    if (ops[i].add){
+      pushInternal(stack,ops[i].data);
+    } else {
+      popInternal(stack);
+    }
+	}
+}
+
+void doMixedOpsSeq(Batch* pending, void* ds, void* oprec,
+                   size_t size, void* result)
 {
   Stack* stack = ds;
   Operation* ops = oprec;

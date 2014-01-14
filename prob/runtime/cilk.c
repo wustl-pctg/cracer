@@ -419,12 +419,20 @@ void Cilk_start(CilkContext *const context,
   /* initialize the scheduler */
   Cilk_scheduler_init_2(context);
 
+  Batcher_init(context);
+
+  //  USE_PARAMETER1(invoke_batch) = Batcher_prepare_batch_structures(context);
+  //  USE_SHARED1(batch_frame) = Cilk_malloc(sizeof(BatchFrame));
+  //  USE_SHARED1(batch_frame)->args = Cilk_malloc(sizeof(BatchArgs));
+  //  USE_PARAMETER1(invoke_batch)->frame = &USE_SHARED1(batch_frame)->header;
+
   USE_PARAMETER1(invoke_main) =
     Cilk_create_initial_thread(context, main, args, return_size);
-  //	Closure_init(context, NULL, &USE_SHARED1(invoke_batch_closure));
 
   /*When this returns we are done */
   Cilk_wakeup_workers(context);
+
+  Batcher_cleanup(context);
 
   Cilk_internal_malloc_global_cleanup(context);
 

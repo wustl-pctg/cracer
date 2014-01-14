@@ -264,7 +264,8 @@ typedef struct {
 
   Cilk_time start_time;
 
-  Closure *invoke_main;
+  Closure *invoke_main; // Does this need to be a pointer? Actual mem
+                        // would be faster. ***
   Closure *invoke_batch;
 
   /* declaration of the various hooks */
@@ -531,13 +532,6 @@ void *Cilk_malloc_fixed(size_t);
  ******************************************************************************/
 enum DS_STATUS { DS_WAITING, DS_IN_PROGRESS, DS_DONE };
 
-typedef struct {
-  void *dataStruct;
-  void *data;
-  void *result;
-  size_t numElements;
-} BatchArgs; // **** move this later
-
 typedef void (*InternalBatchOperation)(CilkWorkerState *const _cilk_ws,
                                        void *dataStruct, void *data,
                                        size_t numElements, void *result);
@@ -566,6 +560,13 @@ typedef void (*CilkBatchSeqOperation)(Batch* pending,
                                       void *dataStruct, void *data,
 																			size_t numElements, void *result);
 
+typedef struct {
+  void *dataStruct;
+  void *data;
+  void *result;
+  size_t numElements;
+} BatchArgs; // **** move this later
+
 /* This is a hand-compiled procedure that calls a batch operation */
 typedef struct {
   CilkStackFrame header;
@@ -573,8 +574,7 @@ typedef struct {
   int arg_size;
   InternalBatchOperation batch_op;
   int retval;
-} invoke_batch_frame;
-
+} BatchFrame;
 
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */

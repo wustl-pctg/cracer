@@ -197,11 +197,18 @@ extern void *Cilk_calloc(size_t nelem, size_t elsize);
 extern void *Cilk_realloc(void *s, size_t size);
 extern void *Cilk_valloc(size_t size);
 
+/******************************************************
+ *  Batcher operations
+ ******************************************************/
+/** Batcher **/
 typedef struct helper
 {
 	int x;
 	int y;
 } helper;
+
+
+/** End Batcher **/
 
 /* global scheduler state */
 struct CilkGlobalState_s{
@@ -211,9 +218,10 @@ struct CilkGlobalState_s{
   Batch pending_batch;
   helper* batch_work_array;
 
-	Closure invoke_batch_closure;
-	/* BatchArgs batch_args; */
-	/* invoke_batch_frame batch_frame; */
+  //	Closure invoke_batch_closure;
+	CilkProcInfo invoke_batch_sig[3]; // Should really be a RO param. ***
+  //	BatchArgs batch_args;
+	BatchFrame* batch_frame;
 
 #if CILK_STATS
 	int *batch_sizes;
@@ -245,7 +253,7 @@ struct CilkGlobalState_s{
   Cilk_mutex dprintf_lock;
   Cilk_mutex die_lock;
   CilkProcInfo invoke_main_sig[3];
-	CilkProcInfo invoke_batch_sig[3];
+
   /*Children (threads) handling */
   pthread_t *tid;
   CilkChildParams *thrd_params_array;
@@ -460,9 +468,9 @@ extern int Cilk_parse_command_line(
 #define CILK_DEFAULT_OPTIONS										\
   {																							\
     1,																					\
-      50,																				\
-      100,																				\
-			0,																				\
+    50,																				\
+    100,                                      \
+		0,																				\
       CILK_DEFAULT_STACK_DEPTH,									\
       0,																				\
       0,																				\
@@ -473,3 +481,4 @@ extern int Cilk_parse_command_line(
       0,																				\
       1024																			\
       }
+
