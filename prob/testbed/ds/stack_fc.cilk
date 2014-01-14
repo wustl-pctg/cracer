@@ -8,7 +8,9 @@
 
 //#define MAX_SIZE 1000000000
 #define MAX_SIZE 10000000
-#define PROCS 1
+#define PROCS 2
+
+//CilkWorkerstate->cntext->Cilk_RO_params->active-state;
 
 Stack* create_stack(){
 	int i;
@@ -36,20 +38,21 @@ void do_FC(Stack* ds){
     //Repeat 3 times for some reason.
     for (i=0; i<PROCS;i++){
       if (ds->fc_arry[i]!=0 && ds->fc_arry[i]!=-1){
-				ds->end=&(ds->nodes[ds->size]);
-				ds->end->data=ds->fc_arry[i];
-				(ds->size)++;
+	ds->end=&(ds->nodes[ds->size]);
+	ds->end->data=ds->fc_arry[i];
+	(ds->size)++;
       }
       else if (ds->fc_arry[i]==0){
         if (ds->size>0){
-					(ds->size)--;
-					ds->end=&(ds->nodes[ds->size]);
-				}
+	 (ds->size)--;
+	 ds->end=&(ds->nodes[ds->size]);
+	}
       }
       else {
 
       }
       ds->fc_arry[i]=-1;
+      printf("s %p\n",&ds->fc_arry[i]);
     }
   }
 }
@@ -70,8 +73,11 @@ void mixedFC(Stack* ds, Operation op, CilkWorkerState* const ws){
       return;
     }
     else {
-      while(-1 != *my_val){
+      //needs to yield
+      while(-1!=*my_val){
+	  printf("%d\n",*my_val);
       }
+      printf("done waiting\n");
       return;
     }
   }

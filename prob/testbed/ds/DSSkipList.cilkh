@@ -1,8 +1,8 @@
 #ifndef __DS_SKIP_LIST__
 #define __DS_SKIP_LIST__
 
-#include <cilk-lib.cilkh>
-#include <cilk.h>
+#include "../../runtime/cilk-lib.cilkh" 
+#include "../../runtime/cilk.h"
 #include "skip_list/c_framework.h"
 //#include "ITest.h"
  
@@ -17,6 +17,7 @@
 //globals
 extern int _gNumThreads;
 static int _num_post_read_write;
+static int num_adds;
 
 //types
 typedef struct Node Node;
@@ -49,7 +50,7 @@ typedef struct DSSkipList {
 
 static Node* getNewNode(final int inKey) {
 	Node* new_node;
-	new_node = (Node*) malloc(sizeof(Node));
+  new_node = (Node*) malloc(sizeof(Node));
 	new_node->_key			= inKey;
 	new_node->_top_level	= _MAX_LEVEL;
 	new_node->_counter		= 1;
@@ -86,6 +87,34 @@ inline_ int DSSkipList_randomLevel(DSSkipList* list) {
 	else
 		return level;
 }
+
+/*inline_ Node* DSSkipList_find(DSSkipList* list, final int key) {
+	Node* pPred;
+	Node* pCurr;
+	Node* found_node;
+  int iLevel;
+	pPred = list->_head;
+  found_node = null;
+
+	for (iLevel = _MAX_LEVEL-1; iLevel >= 0; --iLevel) {
+
+		pCurr = pPred->_next[iLevel];
+
+		while (key > pCurr->_key) {
+			pPred = pCurr; 
+			pCurr = pPred->_next[iLevel];
+		}
+
+		if (null == found_node && key == pCurr->_key) {
+			found_node = pCurr;
+		}
+
+		list->preds[iLevel] = pPred;
+		list->succs[iLevel] = pCurr;
+	}
+
+	return found_node;
+}*/
 	
 Node* DSSkipList_find 
     (DSSkipList* list, final int key, Node** preds, Node** succs) 
@@ -272,13 +301,15 @@ DSSkipList* new_DSSkipList() {
   list = (DSSkipList*)malloc(sizeof(DSSkipList));
   list->_random_seed = new_Volatile_u64(Random_getSeed());
   list->_head = getNewNode(INT_MIN);
-  //printf("list %p set _head to %p\n", list, list->_head); 
+  printf("list %p set _head to %p\n", list, list->_head); 
   list->_tail = getNewNode(INT_MAX);
   //list->_NUM_REP = Min(2, _NUM_THREADS);
   //list->_REP_THRESHOLD((int)(ceil(_NUM_THREADS/(1.7))));
   for(iLevel=0; iLevel < list->_head->_top_level; ++iLevel)
     list->_head->_next[iLevel] = list->_tail;
   //list->_tail_slot.set(new_SlotInfo());
+  sleep(1);
+  num_adds = 0;
   return list;
 } 
 
@@ -365,41 +396,50 @@ void DSSkipList_unsafe_add (DSSkipList* list, final int inValue) {
 	int topLevel = 0;
   int iLevel;
 
-	Node* final found_node = DSSkipList_find(list, inValue, preds, succs);
-	if(null != found_node) {
-		return;
-	}
-	// try to splice in new node in 0 going up
-	pPred = preds[0];
-	pSucc = succs[0];
-	if (null == new_node) {
-	  topLevel = DSSkipList_randomLevel(list);
-	  new_node = getNewNode_at_height(inValue, topLevel);
-	}
+	while (true) {
+		Node* final found_node = DSSkipList_find(list, inValue, preds, succs);
+		if(null != found_node) {
+			return;
+		}
 
-	// prepare new node
-	for (iLevel = 1; iLevel < topLevel; ++iLevel) {
-	  new_node->_next[iLevel] = succs[iLevel];
-	}
-	new_node->_next[0] = pSucc;
-	/*if (false == (pPred->_next[0].compareAndSet(pSucc, new_node, false, false))) {// lin point
-		continue; // retry from start
-	}*/
-	pPred->_next[0] = pSucc;
-	// splice in remaining levels going up
-	for (iLevel = 1; iLevel < topLevel; ++iLevel) {
-	  //		        while (true) {
-	  pPred = preds[iLevel];
-	  pSucc = succs[iLevel];
-	  /*if (pSucc == new_node) {
-	    pPred->_next[iLevel] = pSucc;
-	    break;
-					}*/
-				//DSSkipList_find(list, inValue, preds, succs);// find new preds and succs
-				//	}
-	}
-	return;
+		// try to splice in new node in 0 going up
+		pPred = preds[0];
+		pSucc = succs[0];
+
+		if (null == new_node) {
+			topLevel = DSSkipList_randomLevel(list);
+			new_node = getNewNode_at_height(inValue, topLevel);
+		}
+
+		// prepare new node
+		for (iLevel = 1; iLevel < topLevel; ++iLevel) {
+			new_node->_next[iLevel] = succs[iLevel];
+		}
+		new_node->_next[0] = pSucc;
+
+		/*if (false == (pPred->_next[0].compareAndSet(pSucc, new_node, false, false))) {// lin point
+			continue; // retry from start
+		}*/
+    pPred->_next[0] = pSucc;
+
+		// splice in remaining levels going up
+		for (iLevel = 1; iLevel < topLevel; ++iLevel) {
+			while (true) {
+				pPred = preds[iLevel];
+				pSucc = succs[iLevel];
+				if (pSucc == new_node) {
+					pPred->_next[iLevel] = pSucc;
+          break;
+				}
+				DSSkipList_find(list, inValue, preds, succs);// find new preds and succs
+			}
+		}
+    ++num_adds;
+    printf("Successful add\n");
+    return;
 		//return true;
+	}
+  //return false;
 }
 
 cilk void DSSkipList_batch_add
@@ -419,47 +459,13 @@ cilk void DSSkipList_batch_add
   }
 }
 
-cilk void DSSkipList_par_batch__add
-//    (DSSkipList* list, final int* input_pair, final int inValue) 
-  (void *dataStruct, void *data, size_t numElements, void *results)
-{
-  int i, inValue, iThread;
-  DSSkipList* list = (DSSkipList*) dataStruct;
-  int** add_data;
-  int* add_pair;
-  //Node* newNodes = calloc(numElements,sizeof(Node));
-  Node* newPreds = calloc(numElements,sizeof(Node[_MAX_LEVEL+1]));
-  Node* newSuccs = calloc(numElements,sizeof(Node[_MAX_LEVEL+1]));
-  Node* preds[_MAX_LEVEL + 1];
-  Node* succs[_MAX_LEVEL + 1];
-  Node* pPred;
-  Node* pSucc;
-  Node* new_node = null;
-  int topLevel = 0;
-  int iLevel;
-  Node* found_node;
-  add_data = (int**)data;
-  found_node = DSSkipList_find(list, inValue, preds, succs);
-  if(null != found_node) {
-    return;
-  }
-
-  //in parallel, find a place for each element
-  for(i=0; i < numElements; ++i) {
-    add_pair = add_data[i];
-    iThread = add_pair[0];
-    inValue = add_pair[1];
-    
-  }
-}
-
 cilk boolean DSSkipList_add
     (DSSkipList* list, final int iThread, final int inValue)
 {
   int* input_pair = (int*)malloc(sizeof(int)*2);
   input_pair[0] = iThread;
   input_pair[1] = inValue;
-  Cilk_batchify(_cilk_ws, DSSkipList_batch_add, list,
+  Cilk_batchify(_cilk_ws, &DSSkipList_batch_add, list,
     &input_pair,sizeof(int)*2, NULL);
   return true;
 }

@@ -67,7 +67,7 @@ stack: DS = ds/stack.cilk
 stack: stackBatch_test
 fcstack: DS = ds/stack_fc.cilk
 fcstack: stackFC_test
-skip: DSSkipList_test
+skip: DYNSkipList_test
 noSpawn: stackNoSpawn_test
 
 .PHONY: clean cilk-clean check-syntax doc information all

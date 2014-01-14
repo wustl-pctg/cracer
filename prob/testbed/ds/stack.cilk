@@ -72,24 +72,13 @@ void push(Stack* ds, int data){
 
 /* Sequential push method with no lock */
 void pushInternal(Stack* ds, int data){
- node* ins;
  if (ds->size>=MAX_SIZE){
-    ins = malloc(sizeof(node));
+    ds->end = malloc(sizeof(node));
  }
  else {
-     ins = &(ds->nodes[ds->size]);
+     ds->end = &(ds->nodes[ds->size]);
   }
-  ins->data=data;
-  ins->next=NULL;
-  /* if (ds->size==0){ */
-  /*   ds->start=ins; */
-  /*   ds->end=ins; */
-  /*   ins->prev=NULL; */
-  /* } else { */
-  /*   ins->prev=ds->end; */
-  /*   ds->end->next=ins; */
-  /*   ds->end=ins; */
-  /* } */
+  ds->end->data=data;
   ds->size++;
 }
 
@@ -130,7 +119,7 @@ void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* res
       }
       //pending->array[i].status = DS_DONE;
       //    }
-	}
+  }
 }
 
 
@@ -223,20 +212,10 @@ cilk void pop_batch(void* ds, void* oprec, size_t size, void* result){
 
 /* Pop method without locks*/
 node* popInternal(Stack* ds){
-  node* result = ds->end;
   if (ds->size>0){
-     if (result==NULL){
-     	return NULL;
-     }
-		 //    ds->end = result->prev;
     ds->size--;
-    /* if (ds->end!=NULL){ */
-    /*    ds->end->next=NULL; */
-    /* } */
-    /* if (ds->size==0){ */
-    /*    ds->start=NULL; */
-    /* } */
-    return result;
+    ds->end = &(ds->nodes[ds->size]);
+    return &(ds->nodes[ds->size+1]);
   } else {
     return NULL;
   }

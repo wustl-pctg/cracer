@@ -1,0 +1,63 @@
+#include "util/timer.h"
+#include "util/benchOptions.h"
+#include "util/parfor.cilkh"
+#include "ds/DYNSkipList.cilkh"
+
+#define TSIZE 20
+#define bInsertSize 5
+int parThreshold;
+SkipList* setUp(){
+  SkipList* ds = &list;
+  initList();
+     return ds;
+}
+
+cilk void makeInsert(int i, void* data){
+    SkipList* ds = data;
+    spawn batchInsertNode(i);
+    sync;
+}
+
+cilk void makeRemove(int i, void* data){
+    SkipList* ds = data;
+    spawn batchPopNode(i);
+    sync;
+}
+
+cilk void bInsert(int i, void* data) {
+  SkipList* ds = data;
+  int inputs[bInsertSize];
+  for (i=0;i<bInsertSize;i++){
+    inputs[i]=i;
+  }
+  spawn insertBatch(ds,&inputs,bInsertSize,NULL);
+  sync;
+}
+
+cilk void runMixedTest(SkipList* ds, int size, int add_part){
+  int threshold = parThreshold?parThreshold:PARFOR_THRESHOLD;
+  int add_size = (add_part * size)/100;
+  // spawn parforpar_thresh(0,size,bInsertSize,threshold,&bInsert,ds);
+  // spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove,ds);
+  spawn parforpar_thresh(0,add_size,1,threshold,&makeInsert,ds);
+  spawn parforpar_thresh(0,size-add_size,1,threshold,&makeRemove,ds);
+  sync;
+}
+
+cilk int main(int argc, char* argv[]){
+    SkipList* test_ds = setUp();
+    BenchOptions options;
+    int testSize;
+ 
+    getOptions(argc, argv, &options);
+    testSize=options.operations;
+    startTimer();
+    spawn runMixedTest(test_ds,testSize,0);
+    sync;
+    stopTimer();
+    if (options.verbose){
+      printf("Batch Add. Size %d. \n", testSize);
+    }
+    printf("%lf\n",getWallTime());
+    return 0;
+}
