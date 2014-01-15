@@ -8,7 +8,7 @@ DS =
 LD =
 
 ifeq ($(shell uname -s),Linux)
-	CFLAGS += -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L
+	CFLAGS += #-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L
 endif
 ifeq ($(shell uname -s),Darwin)
 	CFLAGS +=

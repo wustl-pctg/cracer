@@ -464,11 +464,11 @@ struct Cilk_options_s
 extern int Cilk_parse_command_line(
 																	 Cilk_options *options, int *argc, char *argv[]);
 
-#define CILK_DEFAULT_OPTIONS										\
+#define CILK_DEFAULT_OPTIONS                    \
   {																							\
     1,																					\
-    50,																				\
-    100,                                      \
+    50,                                         \
+    100,                                        \
       CILK_DEFAULT_STACK_DEPTH,									\
       0,																				\
       0,																				\
@@ -478,5 +478,4 @@ extern int Cilk_parse_command_line(
       0,																				\
       0,																				\
       1024																			\
-      }
-
+ }

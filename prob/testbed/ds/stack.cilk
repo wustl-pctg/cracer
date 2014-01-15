@@ -6,7 +6,7 @@
 #include "../util/parfor.cilkh"
 #include "stack.cilkh"
 
-#define MAX_SIZE 1000000000
+#define MAX_SIZE 100000
 
 Stack* create_stack(){
        Stack* result = malloc(sizeof(Stack));
@@ -120,7 +120,9 @@ void doMixedOpsSeq(Batch* pending, void* ds, void* oprec,
 	}
 }
 
-void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* result) {
+void doRawMixedOps(Batch* pending, void* ds, void* oprec,
+                   size_t size, void* result)
+{
   Stack* stack = ds;
   Operation* op = oprec;
   int i;
@@ -145,7 +147,9 @@ void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* res
 
 
 /* Batch "clever" mixed function*/
-cilk void doCleverMixedOps(void* ds, void* oprec, size_t size, void*result){
+cilk void doCleverMixedOps(void* ds, void* oprec,
+                           size_t size, void* result)
+{
   Stack* stack = ds;
   Operation* ops = oprec;
   int i;
@@ -176,7 +180,8 @@ cilk void doCleverMixedOps(void* ds, void* oprec, size_t size, void*result){
 }
 
 /* Batch push method.*/
-cilk void push_batch(void* ds, void* oprec, size_t size, void* result){
+cilk void push_batch(void* ds, void* oprec,
+                     size_t size, void* result){
   Stack* stack = ds;
   int* data=oprec;
   //^ all the needed variables cast as proper types.
@@ -222,13 +227,15 @@ node* pop(Stack* ds){
 }
 
 /*Batch method to pop items*/
-cilk void pop_batch(void* ds, void* oprec, size_t size, void* result){
+cilk void pop_batch(void* ds, void* oprec,
+                    size_t size, void* result)
+{
   Stack* stack = ds;
   int i;
   node* res;
   for (i=0;i<size;i++){
     res=popInternal(stack);
-  } 
+  }
 }
 
 /* Pop method without locks*/

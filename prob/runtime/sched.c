@@ -1965,6 +1965,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
       USE_SHARED(batch_owner) = ws->self;
       ws->batch_id = USE_SHARED(current_batch_id);
 
+      ws->batch_id = USE_SHARED(current_batch_id);
       i = compact(ws, pending, work_array, NULL);
 
       Closure* t = USE_PARAMETER(invoke_batch);
@@ -1982,6 +1983,11 @@ void Cilk_batchify(CilkWorkerState *const ws,
 
       reset_batch_closure(ws->context);
 
+      f->args->ds = dataStruct;
+      f->args->work_array = (void*)work_array;
+      f->args->num_ops = i;
+      f->args->op = op;
+
       //      batch_scheduler(ws, USE_PARAMETER(invoke_batch));
       //      t = do_what_it_says(ws, USE_PARAMETER(invoke_batch), USE_PARAMETER(ds_deques));
 
@@ -1991,8 +1997,8 @@ void Cilk_batchify(CilkWorkerState *const ws,
 
       deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
       Closure_unlock(ws, t);
-      //      printf("Batch %i started by %i, size: %i\n", batch_id,
-      //      ws->self, i);
+      //      printf("Batch %i started by %i, size: %i\n", batch_id, ws->self, i);
+      (get_proc_slow(f->header.sig)) (ws, f);
 
 
       //      invoke_batch(ws, dataStruct, op, i);
@@ -2001,6 +2007,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
       /*   printf("invoke_batch_slow stolen for batch %i!\n", batch_id); */
       //      invoke_batch(ws, op, dataStruct, (void*)work_array, i,
       //      NULL);
+      //      invoke_batch(ws, op, pending);
 
       /* deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); */
       /* t = deque_xtract_bottom(ws, ws->self, USE_PARAMETER(ds_deques)); */

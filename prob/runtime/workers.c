@@ -189,7 +189,9 @@ void Cilk_create_children(CilkContext *const context,
       CPU_SET(i, &mask);
 
 
+      //			if ((USE_PARAMETER1(options->btest) & 2) == 0) {
       ret_val = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &mask);
+      //			}
 #endif
 
       res = pthread_create(USE_SHARED1(tid) + i,

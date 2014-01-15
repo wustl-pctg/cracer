@@ -563,9 +563,8 @@ typedef void (*CilkBatchSeqOperation)(Batch* pending,
 typedef struct {
   InternalBatchOperation op;
   void* ds;
-  Batch* pending;
+  void* work_array;
   size_t num_ops;
-  unsigned int batch_id;
 } BatchArgs; // **** move this later
 
 /* This is a hand-compiled procedure that calls a batch operation */
@@ -573,7 +572,7 @@ typedef struct {
   CilkStackFrame header;
   BatchArgs *args;
   int arg_size;
-  InternalBatchOperation batch_op;
+  unsigned int batch_id;
   int retval;
 } BatchFrame;
 

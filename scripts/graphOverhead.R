@@ -2,16 +2,15 @@
 require(gplots)
 
 args <- commandArgs(trailingOnly = TRUE)
-if (is.na(args[1])) {
-	 logFile <- "../logs/overhead.7.log"
-} else {
-	logFile <- args[1]
-}
-if (is.na(args[2])) {
-	 outFile <- "../graphs/overhead.7.austen.pdf"
-} else {
-	outFile <- args[2]
-}
+specifier <- paste(system("date +%j", intern=TRUE), ".",
+                   system("hostname", intern=TRUE))
+specifier <- gsub(" ", "", specifier, fixed=TRUE)
+
+logFile <- paste("../logs/overhead.", specifier, ".log")
+if (!is.na(args[1])) logFile <- args[1]
+
+outFile <- paste("../graphs/overhead.", specifier, ".pdf")
+if (!is.na(args[2])) outFile <- args[2]
 
 data <- read.csv(file=logFile, header=TRUE, sep=",")
 pdf(file=outFile, width=8, height=6)
