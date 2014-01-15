@@ -182,7 +182,7 @@ static void create_deques(CilkContext *const context)
 
 	// This may not actually be sizeof(int)! It could actually change!***
 	USE_SHARED1(batch_work_array) = Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
-                                                    sizeof(int));
+                                                    sizeof(helper));
 }
 
 static void init_deques(CilkContext *const context)
@@ -1640,7 +1640,6 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 			Closure_unlock(ws, t);
 		} else {
 			/* just execute it */
-			if (USE_SHARED(batch_owner) == ws->self) Cilk_enter_state(ws, STATE_USER0);
 			setup_for_execution(ws, t);
 			f = t->frame;
 			CILK_ASSERT(ws, f);
@@ -1656,7 +1655,6 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 			deque_add_bottom(ws, t, ws->self, deque_pool);
 			deque_unlock(ws, ws->self, deque_pool);
 
-			if (USE_SHARED(batch_owner) == ws->self) Cilk_exit_state(ws, STATE_USER0);
 			/* now execute it */
 			if (ws->batch_id) {
 				Cilk_enter_state(ws, STATE_BATCH_WORKING);
@@ -1831,19 +1829,11 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 
 					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
 
-          // We've stolen a closure, but the victim may not actually
-          // have seen this. If the victim is executing invoke_batch,
-          // it may call terminate_batch an extra time. So we need to
-          // atomically try to set the batch_owner to
-          // ws->self. batch_owner is acting like an impromptu lock
-          // here.
-          /* if (t && t->frame->sig->inlet == invoke_batch_slow) { */
-          /*   if (!__sync_bool_compare_and_swap(&USE_SHARED(batch_owner), */
-          /*                                     victim, ws->self)) { */
-          /*     printf("cas after steal failed.\n"); */
-          /*     t = NULL; */
-          /*   } */
-          /* } */
+          if (t) {
+            ws->batch_id = USE_SHARED(current_batch_id);
+            /* printf("Worker %i steals batch %i from worker %i.\n", */
+            /*        ws->self, ws->batch_id, victim); */
+          }
 
 					if (!t && USE_PARAMETER(options->yieldslice) &&
 							USE_SHARED(current_batch_id) == batch_id) {
@@ -1876,9 +1866,6 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 		Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 		/* if (t && !batch_done_yet(ws, ws->batch_id)) { */
 		if (t) {
-      if (victim == USE_SHARED(batch_owner)) {
-        //        printf("Worker %i stole from owner %i.\n", ws->self, USE_SHARED(batch_owner));
-      }
 			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
 		}
     if (done) break;
@@ -1956,7 +1943,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
 {
   unsigned int i, batch_id;
   Batch* pending = &USE_SHARED(pending_batch);
-  int* work_array = USE_SHARED(batch_work_array);
+  helper* work_array = USE_SHARED(batch_work_array);
 
   BatchRecord* record = &pending->array[ws->self];
   record->status = DS_WAITING;
@@ -1975,14 +1962,17 @@ void Cilk_batchify(CilkWorkerState *const ws,
         0 == USE_SHARED(batch_lock) &&
 				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
 
-      USE_SHARED(batch_owner) = ws->self;
+      //      printf("Worker %i got the lock to start batch %i.\n",
+      //             ws->self, USE_SHARED(current_batch_id));
+      //      USE_SHARED(batch_owner) = ws->self;
+      USE_SHARED(batch_owner) = 1;
       ws->batch_id = USE_SHARED(current_batch_id);
 
       i = compact(ws, pending, work_array, NULL);
 
       Closure* t = USE_PARAMETER(invoke_batch);
-      deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); // need only if dsprob > 0
-      Closure_lock(ws, t);
+      /* deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); // need only if dsprob > 0 */
+      /* Closure_lock(ws, t); */
       BatchFrame* f = USE_SHARED(batch_frame);
 
       reset_batch_closure(ws->context);
@@ -1996,12 +1986,12 @@ void Cilk_batchify(CilkWorkerState *const ws,
       //      batch_scheduler(ws, USE_PARAMETER(invoke_batch));
       //      t = do_what_it_says(ws, USE_PARAMETER(invoke_batch), USE_PARAMETER(ds_deques));
 
-      setup_for_execution(ws, t);
+      /* setup_for_execution(ws, t); */
 
-      deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques));
+      /* deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques)); */
 
-      Closure_unlock(ws, t);
-      deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
+      /* Closure_unlock(ws, t); */
+      /* deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques)); */
 
       //      printf("Batch %i started by %i, size: %i\n", batch_id, ws->self, i);
       (get_proc_slow(f->header.sig)) (ws, f);
@@ -2033,7 +2023,7 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
 {
   unsigned int i;
   Batch* pending = &USE_SHARED(pending_batch);
-  int* work_array = USE_SHARED(batch_work_array);
+  helper* work_array = USE_SHARED(batch_work_array);
 
   BatchRecord* record = &pending->array[ws->self];
   record->status = DS_WAITING;
@@ -2073,7 +2063,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 {
   unsigned int i;
   Batch* pending = &USE_SHARED(pending_batch);
-  int* work_array = USE_SHARED(batch_work_array);
+  helper* work_array = USE_SHARED(batch_work_array);
 
   BatchRecord* record = &pending->array[ws->self];
   record->status = DS_WAITING;
@@ -2081,7 +2071,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 	// Memcpy is slower than a simple array insertion. I'm not quite
 	//sure why this is so. Maybe the compiler can do some extra optimization?
   ///  __builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
-  work_array[ws->self] = *(int*)data;
+  work_array[ws->self] = *(helper*)data;
   int* status = (int*)&record->status;
 
   Cilk_switch2batch(ws);

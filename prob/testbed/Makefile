@@ -32,7 +32,7 @@ all: tests
 # Rule for all actual source files
 # May need to add -DUSE_LOCKS for ...Lock_test files
 %_test: %_test.cilk $(DEPS)
-	$(CILKC) $(CFLAGS) $(@:=.cilk) $(INC) $(DS) -o $@ $(LD)
+	$(CILKC) $(CFLAGS) $(@:=.cilk) $(INC) $(DS) -o $* $(LD)
 
 # Rule for rebuilding CILK (BATCHER)
 cilk:

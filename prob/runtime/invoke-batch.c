@@ -27,7 +27,7 @@ void Cilk_remove_and_keep_closure_and_frame(CilkWorkerState *const ws,
 }
 
 static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
-                                   int* work_array, BatchRecord *record)
+                                   helper* work_array, BatchRecord *record)
                                    //        InternalBatchOperation op)
 {
   unsigned int num_ops = 0;
@@ -40,7 +40,7 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
       pending->array[i].status = DS_IN_PROGRESS;
       //			pending->array[i].packedIndex = num_ops;
 
-      work_array[num_ops] = *(int*)pending->array[i].args;
+      work_array[num_ops] = *(helper*)pending->array[i].args;
       num_ops++;
     }
   }
@@ -50,12 +50,14 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
 
 static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 {
-  /* printf("Worker %i terminating global: %i, local: %i.\n", ws->self, */
-  /*        USE_SHARED(current_batch_id), ws->batch_id); */
-  /* if (USE_SHARED(current_batch_id) > ws->batch_id) { */
-  /*   //    printf("Cilk_terminate_batch executed too many times!\n"); */
-  /*   return; */
-  /* } */
+  if (USE_SHARED(current_batch_id) != ws->batch_id) {
+    printf("current global: %i, local: %i.\n",
+           USE_SHARED(current_batch_id), ws->batch_id);
+  }
+
+  CILK_ASSERT(ws, USE_SHARED(current_batch_id) == ws->batch_id);
+  //  printf("Batch %i termination by %i.\n", ws->batch_id, ws->self);
+
   int i, index;
 	//	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
 	Batch current = USE_SHARED(pending_batch);
@@ -99,7 +101,7 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
 {
   CilkWorkerState* const ws = _cilk_ws;
   unsigned int num_ops = num;
-  int* work_array;
+  helper* work_array;
   void* ds = dataStruct;
 
   /* BatchFrame* _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(BatchFrame), */
@@ -147,7 +149,7 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
 static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
                        BatchFrame *_cilk_frame)
 {
-  //printf("Invoking batch %i, worker %i.\n", _cilk_ws->batch_id, _cilk_ws->self);
+  //  printf("Invoking batch %i, worker %i.\n", _cilk_ws->batch_id, _cilk_ws->self);
   //	Cilk_enter_state(_cilk_ws, STATE_BATCH_INVOKE);
   InternalBatchOperation op;
 	void* ds;
@@ -164,17 +166,36 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
     goto _sync2;
   }
 
+  Closure* t = USE_PARAMETER(invoke_batch);
+  deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
+  Closure_lock(ws, t);
+  BatchFrame* f = USE_SHARED(batch_frame);
+
+  // Don't execute the op twice, so signal here to never do this
+  // again.
+  f->header.entry = 1;
+
+  setup_for_execution(ws, t);
+  Closure_unlock(ws, t);
+  deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques));
+  deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
+
+
   op = _cilk_frame->args->op;
   ds = _cilk_frame->args->ds;
   work_array = _cilk_frame->args->work_array;
   num_ops = _cilk_frame->args->num_ops;
 
   //  _cilk_frame->header.receiver = (void *) &_cilk_frame->retval;
-  _cilk_frame->header.entry=1;
+  //  _cilk_frame->header.entry=1;
   CILK2C_BEFORE_SPAWN_SLOW();
   CILK2C_PUSH_FRAME(_cilk_frame);
 
   //	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
+  if (!__sync_bool_compare_and_swap(&USE_SHARED(batch_lock),1, 2)) {
+    printf("batch %i op executed more than once!\n",
+           USE_SHARED(current_batch_id));
+  }
 	op(_cilk_ws, ds, work_array, num_ops, NULL);
 
   CILK2C_XPOP_FRAME_NORESULT(_cilk_frame,/* return nothing */);
@@ -205,14 +226,10 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
 																				 _cilk_ws->self,
 																				 USE_PARAMETER(ds_deques));
 
-  // Don't terminate the batch if not necessary.
-  /* if (__sync_bool_compare_and_swap(&USE_SHARED(batch_owner), */
-  /*                                  ws->self, -1)) { */
-  /*   printf("cas in batch succeeded.\n"); */
-  /*   Cilk_terminate_batch(_cilk_ws); */
-  /* } else { */
-  /*   printf("cas in batch failed.\n"); */
-  /* } */
+  if (!__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 2, 3)) {
+    printf("batch %i term executed more than once!\n",
+           USE_SHARED(current_batch_id));
+  }
   Cilk_terminate_batch(_cilk_ws);
 
   //	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
@@ -249,12 +266,12 @@ void Batcher_init(CilkContext *const context)
 
   /* Initialize the signature of a batch operation */
   memset( USE_SHARED1(invoke_batch_sig), 0 , 3*sizeof(CilkProcInfo) );
-  USE_SHARED1(invoke_batch_sig)[0].size = sizeof(int);
+  USE_SHARED1(invoke_batch_sig)[0].size = 0;//sizeof(int);
   USE_SHARED1(invoke_batch_sig)[0].index = sizeof(BatchFrame);
   USE_SHARED1(invoke_batch_sig)[0].inlet = invoke_batch_slow;
-  USE_SHARED1(invoke_batch_sig)[1].size = sizeof(int);
+  USE_SHARED1(invoke_batch_sig)[1].size = 0;//sizeof(int);
   USE_SHARED1(invoke_batch_sig)[1].inlet = NULL;//invoke_batch_catch_inlet;
-  USE_SHARED1(invoke_batch_sig)[1].argsize = sizeof(BatchArgs);//arg_size;
+  USE_SHARED1(invoke_batch_sig)[1].argsize = 0;//sizeof(BatchArgs);
 
   USE_PARAMETER1(invoke_batch) = t;
   USE_SHARED1(batch_frame) = f;
@@ -268,58 +285,4 @@ void Batcher_cleanup(CilkContext *const context)
   Cilk_free(USE_PARAMETER1(invoke_batch));
 }
 
-/* Closure * Batcher_create_batch_closure(CilkWorkerState *const ws, */
-/* 																			 InternalBatchOperation op, */
-/* 																			 BatchArgs *args) */
-/* { */
-/* 	Closure *t; */
-/*   BatchFrame *f; */
-/* 	int arg_size; */
-/* 	//	BatchArgs args; */
-/* 	//	Batch *pending = &USE_SHARED(pending_batch); */
-
-/* 	//	Cilk_enter_state(ws, STATE_BATCH_START); */
-/* 	arg_size = sizeof(BatchArgs); */
-/* 	//	Batch_create(ws, op, dataSize); */
-
-/*   /\* create a frame for invoke_batch *\/ */
-/* 	t = Cilk_Closure_create_malloc(ws->context, NULL); */
-/*   // *** Calls Closure_init, which calls mutex_init and sets up inlets */
-
-/* 	/\* t = &USE_SHARED(invoke_batch_closure); *\/ */
-/*   t->parent = (Closure *) NULL; */
-/*   t->join_counter = 0; */
-/* 	t->status = CLOSURE_READY; */
-
-
-/*   f = Cilk_malloc(sizeof(invoke_batch_frame)); */
-/* 	//	f = &USE_SHARED(batch_frame); */
-/*   f->header.entry = 0; */
-/*   f->header.sig = USE_SHARED(invoke_batch_sig); */
-/*   WHEN_CILK_DEBUG(f->header.magic = CILK_STACKFRAME_MAGIC); */
-
-/* 	f->args = args; */
-/* 	/\* f->args = &USE_SHARED(batch_args); *\/ */
-/* 	/\* f->args->dataStruct = ds; *\/ */
-/* 	/\* f->args->data = pending->data; *\/ */
-/* 	/\* f->args->result = result; *\/ */
-/* 	/\* f->args->numElements = pending->size; *\/ */
-/*   f->arg_size = arg_size; */
-/*   f->batch_op = op; */
-
-/*   t->frame = &f->header; */
-
-/*   /\* Initialize the signature of a batch operation *\/ */
-/*   memset( USE_SHARED(invoke_batch_sig), 0 , 3*sizeof(CilkProcInfo) ); */
-/*   USE_SHARED(invoke_batch_sig)[0].size = sizeof(int); */
-/*   USE_SHARED(invoke_batch_sig)[0].index = sizeof(invoke_batch_frame); */
-/*   USE_SHARED(invoke_batch_sig)[0].inlet = invoke_batch_slow; */
-/*   USE_SHARED(invoke_batch_sig)[1].size = sizeof(int); */
-/*   USE_SHARED(invoke_batch_sig)[1].inlet = invoke_batch_catch_inlet; */
-/*   USE_SHARED(invoke_batch_sig)[1].argsize = arg_size; */
-
-/* 	/\* Cilk_exit_state(ws, STATE_BATCH_START); *\/ */
-
-/* 	return t; */
-/* } */
 #endif
