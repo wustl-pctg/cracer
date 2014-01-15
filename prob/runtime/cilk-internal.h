@@ -449,7 +449,6 @@ struct Cilk_options_s
   int nproc;
 	int dsprob;
 	int batchprob;
-	int btest;
   int stackdepth;
   int statlevel;
   int yieldslice;
@@ -470,7 +469,6 @@ extern int Cilk_parse_command_line(
     1,																					\
     50,																				\
     100,                                      \
-		0,																				\
       CILK_DEFAULT_STACK_DEPTH,									\
       0,																				\
       0,																				\

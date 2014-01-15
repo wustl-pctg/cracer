@@ -35,7 +35,7 @@ FILE_IDENTITY(ident,
 							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cmdline.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
 enum {
-  NONE, NPROC, DSPROB, BATCHPROB, BTEST, STATS, NO_STATS, HELP, STACK, YIELD, NO_YIELD,
+  NONE, NPROC, DSPROB, BATCHPROB, STATS, NO_STATS, HELP, STACK, YIELD, NO_YIELD,
   PTHREAD_STACKSIZE,
   POSIX_LOCKS, MEMORY_LOCKS,
   INFOFILE, DUMP_CORE, NO_DUMP_CORE, PINNED_PROC,  ALLOC_BATCH,
@@ -68,9 +68,6 @@ static struct options {
   },
   {
     "batchprob", BATCHPROB, "--batchprob <n>: the probability that a batch worker will steal in the batch"
-  },
-  {
-    "btest", BTEST, "--btest <n>: enable extra batch features to test"
   },
   {
     "pthread-stacksize", PTHREAD_STACKSIZE, "--pthread-stacksize <n> : set the size of the stack used by each worker thread"
@@ -237,11 +234,6 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
       options->batchprob = atoi(argv[i]);
       CHECK(options->batchprob <= 100, "invalid ds-stealing probability");
       CHECK(options->batchprob >= 0, "invalid ds-stealing probability");
-      break;
-    case BTEST:
-      ++i;
-      CHECK(i < *argc, "argument missing");
-      options->btest = atoi(argv[i]);
       break;
     case STACK:
       ++i;

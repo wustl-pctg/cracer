@@ -1790,7 +1790,6 @@ static inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
 {
 	return USE_SHARED(pending_batch).array[ws->self].status == DS_DONE
     ||   USE_SHARED(current_batch_id)                      > batch_id;
-    //    ||   USE_SHARED(batch_owner)                          == -1;
 }
 
 void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
@@ -1804,8 +1803,6 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 
 	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
 	Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
-
-  //	Cilk_switch2batch(ws);
 
 	//	while (!batch_done_yet(ws, ws->batch_id)) {
 	while (1) {
@@ -1845,12 +1842,19 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 			if (batch_done_yet(ws, batch_id)) {
 				done = 1;
 				break;
-			} else if (!t) {
-        nanosleep(&sleep_time, NULL);
-      }
+			}
+      /*  else if (!t) { */
+      /*   nanosleep(&sleep_time, NULL); */
+      /* } */
 		}
     if (!t && done) break;
-    //if (done) break;
+
+    // If we found an invoke_batch closure, don't execute it if it's old.
+    /* if (t && */
+    /*     t->frame->sig->inlet == invoke_batch_slow && */
+    /*     ((BatchFrame*)t->frame)->args->batch_id < USE_SHARED(current_batch_id)) { */
+    /*   break; */
+    /* } */
 
 		if (USE_PARAMETER(options->yieldslice))
 			Cilk_raise_priority(ws);
@@ -1868,8 +1872,6 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 		Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 
 	}
-
-  //	Cilk_switch2core(ws);
 
 	Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
@@ -1961,21 +1963,24 @@ void Cilk_batchify(CilkWorkerState *const ws,
 				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
 
       USE_SHARED(batch_owner) = ws->self;
+      ws->batch_id = USE_SHARED(current_batch_id);
 
-      //      i = compact(ws, pending, work_array, NULL);
+      i = compact(ws, pending, work_array, NULL);
 
       Closure* t = USE_PARAMETER(invoke_batch);
       deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); // need only if dsprob > 0
       Closure_lock(ws, t);
       BatchFrame* f = USE_SHARED(batch_frame);
+      // Only need these for the slow version.
+      f->args->op = op;
+      f->args->ds = dataStruct;
+      f->args->pending = pending;
+      f->args->num_ops = i;
+      f->args->batch_id = ws->batch_id;
+      (get_proc_slow(f->header.sig)) (ws, f);
+
 
       reset_batch_closure(ws->context);
-
-      /* f->args->dataStruct = dataStruct; */
-      /* f->args->data = pending->array; */
-      /* f->args->result = NULL; */
-      /* f->args->numElements = i; */
-      /* f->batch_op = op; */
 
       //      batch_scheduler(ws, USE_PARAMETER(invoke_batch));
       //      t = do_what_it_says(ws, USE_PARAMETER(invoke_batch), USE_PARAMETER(ds_deques));
@@ -1986,14 +1991,16 @@ void Cilk_batchify(CilkWorkerState *const ws,
 
       deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
       Closure_unlock(ws, t);
-      //      printf("Batch %i started by %i, size: %i\n", batch_id, ws->self, i);
-      //      (get_proc_slow(f->header.sig)) (ws, f);
+      //      printf("Batch %i started by %i, size: %i\n", batch_id,
+      //      ws->self, i);
+
+
+      //      invoke_batch(ws, dataStruct, op, i);
 
       /* if (*status != DS_DONE || USE_SHARED(current_batch_id) == batch_id) */
       /*   printf("invoke_batch_slow stolen for batch %i!\n", batch_id); */
       //      invoke_batch(ws, op, dataStruct, (void*)work_array, i,
       //      NULL);
-      invoke_batch(ws, op, pending);
 
       /* deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); */
       /* t = deque_xtract_bottom(ws, ws->self, USE_PARAMETER(ds_deques)); */
@@ -2003,20 +2010,19 @@ void Cilk_batchify(CilkWorkerState *const ws,
       //      op(ws, dataStruct, (void*)work_array, i, NULL);
 
     } else {
-
+      ws->batch_id = USE_SHARED(current_batch_id);
       batch_scheduler(ws, batch_id);
-      //nanosleep(&sleep_time, NULL);
+      //      nanosleep(&sleep_time, NULL);
 		}
   } while (*status != DS_DONE);
 
   if (USE_SHARED(batch_owner) == ws->self) {
-    USE_SHARED(current_batch_id)++;
+    //    USE_SHARED(current_batch_id)++;
     USE_SHARED(batch_owner) = -1;
     USE_SHARED(batch_lock) = 0;
   }
 
   Cilk_switch2core(ws); // done in batch_scheduler
-  ws->batch_id = 0;
   return;
 
 }
@@ -2100,7 +2106,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 
       Cilk_terminate_batch(ws);
 
-      USE_SHARED(batch_lock) = 0;
+      //      USE_SHARED(batch_lock) = 0;
       break;
     } else {
       nanosleep(&sleep_time, NULL);

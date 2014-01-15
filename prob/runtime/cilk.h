@@ -561,10 +561,11 @@ typedef void (*CilkBatchSeqOperation)(Batch* pending,
 																			size_t numElements, void *result);
 
 typedef struct {
-  void *dataStruct;
-  void *data;
-  void *result;
-  size_t numElements;
+  InternalBatchOperation op;
+  void* ds;
+  Batch* pending;
+  size_t num_ops;
+  unsigned int batch_id;
 } BatchArgs; // **** move this later
 
 /* This is a hand-compiled procedure that calls a batch operation */
