@@ -214,7 +214,7 @@ typedef struct helper
 struct CilkGlobalState_s{
   /* BATCHER */
   int current_batch_id;
-  int batch_owner;
+  volatile int batch_owner;
   Batch pending_batch;
   helper* batch_work_array;
 

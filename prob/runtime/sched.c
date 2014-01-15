@@ -1826,11 +1826,24 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 				victim = rts_rand(ws) % USE_PARAMETER(active_size);
 
 				if (victim != ws->self
-						&& USE_SHARED(pending_batch).array[victim].status == DS_IN_PROGRESS) {
+						&& USE_SHARED(pending_batch).array[victim].status
+            == DS_IN_PROGRESS) {
+
 					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
 
-          /* if (t) */
-          /*   printf("Worker %i batch stole from %i.\n", ws->self, victim); */
+          // We've stolen a closure, but the victim may not actually
+          // have seen this. If the victim is executing invoke_batch,
+          // it may call terminate_batch an extra time. So we need to
+          // atomically try to set the batch_owner to
+          // ws->self. batch_owner is acting like an impromptu lock
+          // here.
+          /* if (t && t->frame->sig->inlet == invoke_batch_slow) { */
+          /*   if (!__sync_bool_compare_and_swap(&USE_SHARED(batch_owner), */
+          /*                                     victim, ws->self)) { */
+          /*     printf("cas after steal failed.\n"); */
+          /*     t = NULL; */
+          /*   } */
+          /* } */
 
 					if (!t && USE_PARAMETER(options->yieldslice) &&
 							USE_SHARED(current_batch_id) == batch_id) {
@@ -1965,24 +1978,16 @@ void Cilk_batchify(CilkWorkerState *const ws,
       USE_SHARED(batch_owner) = ws->self;
       ws->batch_id = USE_SHARED(current_batch_id);
 
-      ws->batch_id = USE_SHARED(current_batch_id);
       i = compact(ws, pending, work_array, NULL);
 
       Closure* t = USE_PARAMETER(invoke_batch);
       deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); // need only if dsprob > 0
       Closure_lock(ws, t);
       BatchFrame* f = USE_SHARED(batch_frame);
-      // Only need these for the slow version.
-      f->args->op = op;
-      f->args->ds = dataStruct;
-      f->args->pending = pending;
-      f->args->num_ops = i;
-      f->args->batch_id = ws->batch_id;
-      (get_proc_slow(f->header.sig)) (ws, f);
-
 
       reset_batch_closure(ws->context);
 
+      // Only need these for the slow version.
       f->args->ds = dataStruct;
       f->args->work_array = (void*)work_array;
       f->args->num_ops = i;
@@ -1995,26 +2000,13 @@ void Cilk_batchify(CilkWorkerState *const ws,
 
       deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques));
 
-      deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
       Closure_unlock(ws, t);
-      //      printf("Batch %i started by %i, size: %i\n", batch_id, ws->self, i);
+      deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
+
+//      printf("Batch %i started by %i, size: %i\n", batch_id, ws->self, i);
       (get_proc_slow(f->header.sig)) (ws, f);
 
-
       //      invoke_batch(ws, dataStruct, op, i);
-
-      /* if (*status != DS_DONE || USE_SHARED(current_batch_id) == batch_id) */
-      /*   printf("invoke_batch_slow stolen for batch %i!\n", batch_id); */
-      //      invoke_batch(ws, op, dataStruct, (void*)work_array, i,
-      //      NULL);
-      //      invoke_batch(ws, op, pending);
-
-      /* deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); */
-      /* t = deque_xtract_bottom(ws, ws->self, USE_PARAMETER(ds_deques)); */
-      /* CILK_ASSERT(ws, t->frame == (CilkStackFrame*)f); */
-      /* deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques)); */
-
-      //      op(ws, dataStruct, (void*)work_array, i, NULL);
 
     } else {
       ws->batch_id = USE_SHARED(current_batch_id);
@@ -2023,11 +2015,11 @@ void Cilk_batchify(CilkWorkerState *const ws,
 		}
   } while (*status != DS_DONE);
 
-  if (USE_SHARED(batch_owner) == ws->self) {
-    //    USE_SHARED(current_batch_id)++;
-    USE_SHARED(batch_owner) = -1;
-    USE_SHARED(batch_lock) = 0;
-  }
+  /* if (USE_SHARED(batch_owner) == ws->self) { */
+  /*   //    USE_SHARED(current_batch_id)++; */
+  /*   USE_SHARED(batch_owner) = -1; */
+  /*   USE_SHARED(batch_lock) = 0; */
+  /* } */
 
   Cilk_switch2core(ws); // done in batch_scheduler
   return;

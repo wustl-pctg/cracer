@@ -294,7 +294,7 @@ typedef struct {
 	struct ReadyDeque *current_deque_pool;
   CilkClosureCache cache;
   CilkClosureCache ds_cache;
-  int batch_id;
+  int batch_id; // ***
   int self;
   struct Cilk_im_descriptor im_descriptor [CILK_INTERNAL_MALLOC_BUCKETS];
   size_t stackdepth;

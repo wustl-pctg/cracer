@@ -72,9 +72,9 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 		}
 	}
 
-  /* USE_SHARED(current_batch_id)++; // signal end of this batch */
-  /* USE_SHARED(batch_owner) = -1; */
-  /* USE_SHARED(batch_lock) = 0; */
+  USE_SHARED(current_batch_id)++; // signal end of this batch
+  USE_SHARED(batch_owner) = -1;
+  USE_SHARED(batch_lock) = 0;
 	//	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
 
@@ -211,7 +211,17 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   Cilk_remove_and_keep_closure_and_frame(_cilk_ws, &_cilk_frame->header,
 																				 _cilk_ws->self,
 																				 USE_PARAMETER(ds_deques));
+
+  // Don't terminate the batch if not necessary.
+  /* if (__sync_bool_compare_and_swap(&USE_SHARED(batch_owner), */
+  /*                                  ws->self, -1)) { */
+  /*   printf("cas in batch succeeded.\n"); */
+  /*   Cilk_terminate_batch(_cilk_ws); */
+  /* } else { */
+  /*   printf("cas in batch failed.\n"); */
+  /* } */
   Cilk_terminate_batch(_cilk_ws);
+
   //	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
   return;
 }
