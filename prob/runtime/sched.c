@@ -182,7 +182,7 @@ static void create_deques(CilkContext *const context)
 
 	// This may not actually be sizeof(int)! It could actually change!***
 	USE_SHARED1(batch_work_array) = Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
-                                                    sizeof(helper));
+                                                    sizeof(int));
 }
 
 static void init_deques(CilkContext *const context)
@@ -1956,11 +1956,11 @@ void Cilk_batchify(CilkWorkerState *const ws,
 {
   unsigned int i, batch_id;
   Batch* pending = &USE_SHARED(pending_batch);
-  helper* work_array = USE_SHARED(batch_work_array);
+  int* work_array = USE_SHARED(batch_work_array);
 
   BatchRecord* record = &pending->array[ws->self];
   record->status = DS_WAITING;
-  record->args = (helper*)data;
+  record->args = (int*)data;
 
   int* status = (int*) &record->status;
   Cilk_switch2batch(ws); // done in batch_scheduler
@@ -2003,7 +2003,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
       Closure_unlock(ws, t);
       deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
 
-//      printf("Batch %i started by %i, size: %i\n", batch_id, ws->self, i);
+      //      printf("Batch %i started by %i, size: %i\n", batch_id, ws->self, i);
       (get_proc_slow(f->header.sig)) (ws, f);
 
       //      invoke_batch(ws, dataStruct, op, i);
@@ -2033,11 +2033,11 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
 {
   unsigned int i;
   Batch* pending = &USE_SHARED(pending_batch);
-  helper* work_array = USE_SHARED(batch_work_array);
+  int* work_array = USE_SHARED(batch_work_array);
 
   BatchRecord* record = &pending->array[ws->self];
   record->status = DS_WAITING;
-  record->args = (helper*)data;
+  record->args = (int*)data;
 
   int* status = (int*)&record->status;
   //  Cilk_switch2batch(ws);
@@ -2073,7 +2073,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 {
   unsigned int i;
   Batch* pending = &USE_SHARED(pending_batch);
-  helper* work_array = USE_SHARED(batch_work_array);
+  int* work_array = USE_SHARED(batch_work_array);
 
   BatchRecord* record = &pending->array[ws->self];
   record->status = DS_WAITING;
@@ -2081,7 +2081,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 	// Memcpy is slower than a simple array insertion. I'm not quite
 	//sure why this is so. Maybe the compiler can do some extra optimization?
   ///  __builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
-  work_array[ws->self] = *(helper*)data;
+  work_array[ws->self] = *(int*)data;
   int* status = (int*)&record->status;
 
   Cilk_switch2batch(ws);
@@ -2093,6 +2093,8 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
         0 == USE_SHARED(batch_lock) &&
         0 == USE_SHARED(batch_lock) &&
 				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
+
+      ws->batch_id = USE_SHARED(current_batch_id);
 
       Batch* pending = &USE_SHARED(pending_batch);
 

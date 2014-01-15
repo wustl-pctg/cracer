@@ -27,7 +27,7 @@ void Cilk_remove_and_keep_closure_and_frame(CilkWorkerState *const ws,
 }
 
 static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
-                                   helper* work_array, BatchRecord *record)
+                                   int* work_array, BatchRecord *record)
                                    //        InternalBatchOperation op)
 {
   unsigned int num_ops = 0;
@@ -40,7 +40,7 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
       pending->array[i].status = DS_IN_PROGRESS;
       //			pending->array[i].packedIndex = num_ops;
 
-      work_array[num_ops] = *(helper*)pending->array[i].args;
+      work_array[num_ops] = *(int*)pending->array[i].args;
       num_ops++;
     }
   }
@@ -52,9 +52,10 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 {
   /* printf("Worker %i terminating global: %i, local: %i.\n", ws->self, */
   /*        USE_SHARED(current_batch_id), ws->batch_id); */
-  if (USE_SHARED(current_batch_id) > ws->batch_id) {
-    printf("Cilk_terminate_batch executed too many times!\n");
-  }
+  /* if (USE_SHARED(current_batch_id) > ws->batch_id) { */
+  /*   //    printf("Cilk_terminate_batch executed too many times!\n"); */
+  /*   return; */
+  /* } */
   int i, index;
 	//	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
 	Batch current = USE_SHARED(pending_batch);
@@ -92,64 +93,56 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 /* static void invoke_batch(CilkWorkerState* const _cilk_ws, InternalBatchOperation op, */
 /*                   void* ds, void* work_array, int num_ops, void* result_array) */
 
-/* static void invoke_batch(CilkWorkerState* const _cilk_ws, */
-/*                          InternalBatchOperation op, */
-/*                          Batch* pending) */
-/* { */
-/*   CilkWorkerState* const ws = _cilk_ws; */
-/*   unsigned int num_ops = 0; */
-/*   helper* work_array = USE_SHARED(batch_work_array); */
+static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
+                         InternalBatchOperation op,
+                         unsigned int num)
+{
+  CilkWorkerState* const ws = _cilk_ws;
+  unsigned int num_ops = num;
+  int* work_array;
+  void* ds = dataStruct;
 
-/*   /\* BatchFrame* _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(BatchFrame), *\/ */
-/*   /\*                                                  USE_SHARED(invoke_batch_sig)); *\/ */
-/*   BatchFrame* _cilk_frame = USE_SHARED(batch_frame); */
-/*   volatile CilkStackFrame **t = ws->current_cache->tail; */
-/*   CILK_COMPLAIN((CilkStackFrame **) t < ws->current_cache->stack + ws->stackdepth, */
-/* 								(ws->context, ws, USE_PARAMETER(stack_overflow_msg))); */
+  /* BatchFrame* _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(BatchFrame), */
+  /*                                                  USE_SHARED(invoke_batch_sig)); */
+  BatchFrame* _cilk_frame = USE_SHARED(batch_frame);
+  volatile CilkStackFrame **t = ws->current_cache->tail;
+  CILK_COMPLAIN((CilkStackFrame **) t < ws->current_cache->stack + ws->stackdepth,
+								(ws->context, ws, USE_PARAMETER(stack_overflow_msg)));
 
-/*   *t = (CilkStackFrame *) _cilk_frame; */
-/*   Cilk_membar_StoreStore(); */
-/*   ws->current_cache->tail = t + 1; */
+  *t = (CilkStackFrame *) _cilk_frame;
+  Cilk_membar_StoreStore();
+  ws->current_cache->tail = t + 1;
 
+  CILK2C_START_THREAD_FAST();
 
-/*   CILK2C_START_THREAD_FAST(); */
+  _cilk_frame->header.entry = 1;
+  work_array = _cilk_frame->args->work_array;
 
-/*   // We should do the compaction here. This will allow us to spawn and */
-/*   // do the compaction in parallel, although this will likely only */
-/*   // help on a massively parallel machine, e.g. 128+ threads. */
-/*   _cilk_frame->header.entry = 1; */
-/*   //  _cilk_frame->header.receiver = (void *) &_cilk_frame->retval; */
-/*   // Set args here */
-/*   //  _cilk_frame->scope0.n = n; */
+  CILK2C_BEFORE_SPAWN_FAST();
+  CILK2C_PUSH_FRAME(_cilk_frame);
 
-/*   CILK2C_BEFORE_SPAWN_FAST(); */
-/*   CILK2C_PUSH_FRAME(_cilk_frame); */
+  op(ws, ds, (void*)work_array, num_ops, NULL);
 
-/*   num_ops = compact(ws, pending, work_array, NULL); */
+  CILK2C_XPOP_FRAME_NORESULT(_cilk_frame, /* return nothing*/);
+  CILK2C_AFTER_SPAWN_FAST();
 
-/*   //	_cilk_frame->batch_op(_cilk_ws, dataStruct, data, numElements, result); */
-/*   op(ws, ds, (void*)work_array, num_ops, NULL); */
+  _cilk_frame->header.entry=2;
+  CILK2C_AT_SYNC_FAST();
 
-/*   CILK2C_XPOP_FRAME_NORESULT(_cilk_frame, /\* return nothing*\/); */
-/*   CILK2C_AFTER_SPAWN_FAST(); */
+  // We can also spawn here, to do in parallel, optionally.
 
-/*   _cilk_frame->header.entry=2; */
-/*   CILK2C_AT_SYNC_FAST(); */
-
-/*   // We can also spawn here, to do in parallel, optionally. */
-
-/*   // Don't want this, because it frees the frame. */
-/*   //  CILK2C_BEFORE_RETURN_FAST(); */
-/*   --ws->current_cache->tail; */
+  // Don't want this, because it frees the frame.
+  //  CILK2C_BEFORE_RETURN_FAST();
+  --ws->current_cache->tail;
 
 
-/*   CILK_WMB(); */
+  CILK_WMB();
 
-/*   Cilk_remove_and_keep_closure_and_frame(_cilk_ws, &_cilk_frame->header, */
-/*                                          _cilk_ws->self, */
-/* 																				 USE_PARAMETER(ds_deques)); */
-/*   Cilk_terminate_batch(_cilk_ws); */
-/* } */
+  Cilk_remove_and_keep_closure_and_frame(_cilk_ws, &_cilk_frame->header,
+                                         _cilk_ws->self,
+																				 USE_PARAMETER(ds_deques));
+  Cilk_terminate_batch(_cilk_ws);
+}
 
 static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
                        BatchFrame *_cilk_frame)
