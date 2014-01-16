@@ -1962,17 +1962,12 @@ void Cilk_batchify(CilkWorkerState *const ws,
         0 == USE_SHARED(batch_lock) &&
 				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
 
-      //      printf("Worker %i got the lock to start batch %i.\n",
-      //             ws->self, USE_SHARED(current_batch_id));
-      //      USE_SHARED(batch_owner) = ws->self;
-      USE_SHARED(batch_owner) = 1;
+      USE_SHARED(batch_owner) = ws->self;
       ws->batch_id = USE_SHARED(current_batch_id);
 
       i = compact(ws, pending, work_array, NULL);
 
       Closure* t = USE_PARAMETER(invoke_batch);
-      /* deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); // need only if dsprob > 0 */
-      /* Closure_lock(ws, t); */
       BatchFrame* f = USE_SHARED(batch_frame);
 
       reset_batch_closure(ws->context);
@@ -1983,20 +1978,9 @@ void Cilk_batchify(CilkWorkerState *const ws,
       f->args->num_ops = i;
       f->args->op = op;
 
-      //      batch_scheduler(ws, USE_PARAMETER(invoke_batch));
-      //      t = do_what_it_says(ws, USE_PARAMETER(invoke_batch), USE_PARAMETER(ds_deques));
-
-      /* setup_for_execution(ws, t); */
-
-      /* deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques)); */
-
-      /* Closure_unlock(ws, t); */
-      /* deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques)); */
-
       //      printf("Batch %i started by %i, size: %i\n", batch_id, ws->self, i);
       (get_proc_slow(f->header.sig)) (ws, f);
-
-      //      invoke_batch(ws, dataStruct, op, i);
+      //invoke_batch(ws, dataStruct, op, i);
 
     } else {
       ws->batch_id = USE_SHARED(current_batch_id);
@@ -2004,12 +1988,6 @@ void Cilk_batchify(CilkWorkerState *const ws,
       //      nanosleep(&sleep_time, NULL);
 		}
   } while (*status != DS_DONE);
-
-  /* if (USE_SHARED(batch_owner) == ws->self) { */
-  /*   //    USE_SHARED(current_batch_id)++; */
-  /*   USE_SHARED(batch_owner) = -1; */
-  /*   USE_SHARED(batch_lock) = 0; */
-  /* } */
 
   Cilk_switch2core(ws); // done in batch_scheduler
   return;

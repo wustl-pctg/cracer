@@ -81,20 +81,6 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 	//	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
 
-/* struct invoke_batch_catch_inlet_args {int res;}; */
-
-/* void invoke_batch_catch_inlet(CilkWorkerState *const _cilk_ws, */
-/* 															BatchFrame *_cilk_frame, */
-/* 															BatchArgs *inletargs, */
-/* 															void* UNUSED(inletresult)) */
-/* { */
-/*   memcpy(_cilk_frame->args, inletargs, _cilk_frame->arg_size); */
-/*   CILK2C_ABORT_STANDALONE(); */
-/* } */
-
-/* static void invoke_batch(CilkWorkerState* const _cilk_ws, InternalBatchOperation op, */
-/*                   void* ds, void* work_array, int num_ops, void* result_array) */
-
 static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
                          InternalBatchOperation op,
                          unsigned int num)
@@ -104,20 +90,34 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
   helper* work_array;
   void* ds = dataStruct;
 
+  Closure* cl = USE_PARAMETER(invoke_batch);
+  deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
+  Closure_lock(ws, cl);
+  BatchFrame* f = USE_SHARED(batch_frame);
+
+  // Don't execute the op twice, so signal here to never do this
+  // again.
+  f->header.entry = 1;
+
+  setup_for_execution(ws, cl);
+  Closure_unlock(ws, cl);
+  deque_add_bottom(ws, cl, ws->self, USE_PARAMETER(ds_deques));
+  deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
+
   /* BatchFrame* _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(BatchFrame), */
   /*                                                  USE_SHARED(invoke_batch_sig)); */
   BatchFrame* _cilk_frame = USE_SHARED(batch_frame);
-  volatile CilkStackFrame **t = ws->current_cache->tail;
-  CILK_COMPLAIN((CilkStackFrame **) t < ws->current_cache->stack + ws->stackdepth,
-								(ws->context, ws, USE_PARAMETER(stack_overflow_msg)));
+  /* volatile CilkStackFrame **t = ws->current_cache->tail; */
+  /* CILK_COMPLAIN((CilkStackFrame **) t < ws->current_cache->stack + ws->stackdepth, */
+	/* 							(ws->context, ws, USE_PARAMETER(stack_overflow_msg))); */
 
-  *t = (CilkStackFrame *) _cilk_frame;
-  Cilk_membar_StoreStore();
-  ws->current_cache->tail = t + 1;
+  /* *t = (CilkStackFrame *) _cilk_frame; */
+  /* Cilk_membar_StoreStore(); */
+  /* ws->current_cache->tail = t + 1; */
 
   CILK2C_START_THREAD_FAST();
 
-  _cilk_frame->header.entry = 1;
+  //  _cilk_frame->header.entry = 1;
   work_array = _cilk_frame->args->work_array;
 
   CILK2C_BEFORE_SPAWN_FAST();
@@ -147,7 +147,7 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
 }
 
 static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
-                       BatchFrame *_cilk_frame)
+                              BatchFrame *_cilk_frame)
 {
   //  printf("Invoking batch %i, worker %i.\n", _cilk_ws->batch_id, _cilk_ws->self);
   //	Cilk_enter_state(_cilk_ws, STATE_BATCH_INVOKE);
@@ -180,22 +180,16 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques));
   deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
 
-
   op = _cilk_frame->args->op;
   ds = _cilk_frame->args->ds;
   work_array = _cilk_frame->args->work_array;
   num_ops = _cilk_frame->args->num_ops;
 
-  //  _cilk_frame->header.receiver = (void *) &_cilk_frame->retval;
-  //  _cilk_frame->header.entry=1;
+  _cilk_frame->header.entry=1;
   CILK2C_BEFORE_SPAWN_SLOW();
   CILK2C_PUSH_FRAME(_cilk_frame);
 
   //	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
-  if (!__sync_bool_compare_and_swap(&USE_SHARED(batch_lock),1, 2)) {
-    printf("batch %i op executed more than once!\n",
-           USE_SHARED(current_batch_id));
-  }
 	op(_cilk_ws, ds, work_array, num_ops, NULL);
 
   CILK2C_XPOP_FRAME_NORESULT(_cilk_frame,/* return nothing */);
@@ -226,10 +220,6 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
 																				 _cilk_ws->self,
 																				 USE_PARAMETER(ds_deques));
 
-  if (!__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 2, 3)) {
-    printf("batch %i term executed more than once!\n",
-           USE_SHARED(current_batch_id));
-  }
   Cilk_terminate_batch(_cilk_ws);
 
   //	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
