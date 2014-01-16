@@ -207,21 +207,18 @@ typedef struct helper
 	int y;
 } helper;
 
-
 /** End Batcher **/
 
 /* global scheduler state */
 struct CilkGlobalState_s{
   /* BATCHER */
   int current_batch_id;
-  volatile int batch_owner;
+  int batch_owner;
   Batch pending_batch;
   helper* batch_work_array;
   //int* batch_work_array;
 
-  //	Closure invoke_batch_closure;
 	CilkProcInfo invoke_batch_sig[3]; // Should really be a RO param. ***
-  //	BatchArgs batch_args;
 	BatchFrame* batch_frame;
 
 #if CILK_STATS

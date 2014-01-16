@@ -1829,11 +1829,7 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 
 					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
 
-          if (t) {
-            ws->batch_id = USE_SHARED(current_batch_id);
-            /* printf("Worker %i steals batch %i from worker %i.\n", */
-            /*        ws->self, ws->batch_id, victim); */
-          }
+          if (t) ws->batch_id = USE_SHARED(current_batch_id);
 
 					if (!t && USE_PARAMETER(options->yieldslice) &&
 							USE_SHARED(current_batch_id) == batch_id) {
@@ -1852,23 +1848,15 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 		}
     if (!t && done) break;
 
-    // If we found an invoke_batch closure, don't execute it if it's old.
-    /* if (t && */
-    /*     t->frame->sig->inlet == invoke_batch_slow && */
-    /*     ((BatchFrame*)t->frame)->args->batch_id < USE_SHARED(current_batch_id)) { */
-    /*   break; */
-    /* } */
-
 		if (USE_PARAMETER(options->yieldslice))
 			Cilk_raise_priority(ws);
 
 
 		Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
-		/* if (t && !batch_done_yet(ws, ws->batch_id)) { */
 		if (t) {
 			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
 		}
-    if (done) break;
+    //    if (done) break;
 		Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 
 	}
@@ -1978,14 +1966,11 @@ void Cilk_batchify(CilkWorkerState *const ws,
       f->args->num_ops = i;
       f->args->op = op;
 
-      //      printf("Batch %i started by %i, size: %i\n", batch_id, ws->self, i);
-      (get_proc_slow(f->header.sig)) (ws, f);
-      //invoke_batch(ws, dataStruct, op, i);
+      invoke_batch(ws, dataStruct, op, i);
 
     } else {
       ws->batch_id = USE_SHARED(current_batch_id);
       batch_scheduler(ws, batch_id);
-      //      nanosleep(&sleep_time, NULL);
 		}
   } while (*status != DS_DONE);
 

@@ -50,13 +50,9 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
 
 static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 {
-  if (USE_SHARED(current_batch_id) != ws->batch_id) {
-    printf("current global: %i, local: %i.\n",
-           USE_SHARED(current_batch_id), ws->batch_id);
-  }
-
+  // Still need to check and make sure termination is happening
+  // EXACTLY once.
   CILK_ASSERT(ws, USE_SHARED(current_batch_id) == ws->batch_id);
-  //  printf("Batch %i termination by %i.\n", ws->batch_id, ws->self);
 
   int i, index;
 	//	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
@@ -104,20 +100,10 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
   deque_add_bottom(ws, cl, ws->self, USE_PARAMETER(ds_deques));
   deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
 
-  /* BatchFrame* _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(BatchFrame), */
-  /*                                                  USE_SHARED(invoke_batch_sig)); */
   BatchFrame* _cilk_frame = USE_SHARED(batch_frame);
-  /* volatile CilkStackFrame **t = ws->current_cache->tail; */
-  /* CILK_COMPLAIN((CilkStackFrame **) t < ws->current_cache->stack + ws->stackdepth, */
-	/* 							(ws->context, ws, USE_PARAMETER(stack_overflow_msg))); */
-
-  /* *t = (CilkStackFrame *) _cilk_frame; */
-  /* Cilk_membar_StoreStore(); */
-  /* ws->current_cache->tail = t + 1; */
 
   CILK2C_START_THREAD_FAST();
 
-  //  _cilk_frame->header.entry = 1;
   work_array = _cilk_frame->args->work_array;
 
   CILK2C_BEFORE_SPAWN_FAST();
@@ -134,7 +120,6 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
   // We can also spawn here, to do in parallel, optionally.
 
   // Don't want this, because it frees the frame.
-  //  CILK2C_BEFORE_RETURN_FAST();
   --ws->current_cache->tail;
 
 
@@ -149,7 +134,6 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
 static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
                               BatchFrame *_cilk_frame)
 {
-  //  printf("Invoking batch %i, worker %i.\n", _cilk_ws->batch_id, _cilk_ws->self);
   //	Cilk_enter_state(_cilk_ws, STATE_BATCH_INVOKE);
   InternalBatchOperation op;
 	void* ds;
@@ -165,20 +149,6 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   case 2:
     goto _sync2;
   }
-
-  Closure* t = USE_PARAMETER(invoke_batch);
-  deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
-  Closure_lock(ws, t);
-  BatchFrame* f = USE_SHARED(batch_frame);
-
-  // Don't execute the op twice, so signal here to never do this
-  // again.
-  f->header.entry = 1;
-
-  setup_for_execution(ws, t);
-  Closure_unlock(ws, t);
-  deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques));
-  deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
 
   op = _cilk_frame->args->op;
   ds = _cilk_frame->args->ds;
