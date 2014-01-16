@@ -6,6 +6,11 @@
 #include <cilk-lib.cilkh>
 #include <cilk.h>
 
+typedef struct {
+	int add;
+	int data;
+} Operation;
+
 /* define data-type and compare operators here */
 typedef int T;                  /* type of item to be stored */
 #define compLT(a,b) (a < b)
@@ -33,26 +38,27 @@ Node* insertNode(T data);
 void deleteNode(T data);
 
 void insertionSortSeq (void* data, size_t numElements) {
-  T* elements = (T*)data;
+  //T* elements = (T*)data;
+  Operation* elements = (Operation*)data;
   int c, i;
   T temp;
   for (c=1; c < numElements; ++c) {
     i=c;
-    while (i > 0 && compLT(elements[i], elements[i-1])) {
-      temp = elements[i];
-      elements[i] = elements[i-1];
-      elements[i-1] = temp;
+    while (i > 0 && compLT(elements[i].data, elements[i-1].data)) {
+      temp = elements[i].data;
+      elements[i].data = elements[i-1].data;
+      elements[i-1].data = temp;
 
       i--;
-    } 
+    }
   }
-  return; 
+  return;
 }
 
 //NOTE: potentially unsafe if two closures try to modify adjacent edges at the
 //      same time
-cilk void recursiveInsertBatch
-  (void* data, int iLeaf, size_t numElements, size_t numElementsTot) 
+cilk void recursiveInsertBatch(void* data, int iLeaf,
+                          size_t numElements, size_t numElementsTot)
 {
   if (numElements > INSERT_CHUNK) {
     spawn recursiveInsertBatch(data, 2*iLeaf, numElements/2, numElementsTot);
@@ -61,28 +67,54 @@ cilk void recursiveInsertBatch
     int istart = (numElementsTot/INSERT_CHUNK)*iLeaf;
     int i;
     for (i=istart; i < istart + INSERT_CHUNK; ++i) {
-      insertNode(((T*)data)[i]);
-    }  
+      T d = ((Operation*)data)[i].data;
+      insertNode(d);
+    }
   }
-  return; 
+  return;
 }
 
-cilk void insertBatch
-  (void* dataStruct, void* data, size_t numElements, void* results)
+void mixed_batchify_seq(Batch* pending, void* ds, void* data,
+                        size_t num_ops, void* results)
+{
+  int i;
+  //  SkipList* list = ds;
+  Operation* ops = (Operation*) data;
+
+  for (i = 0; i < num_ops; i++) {
+    if (ops[i].add)
+      insertNode(ops[i].data);
+    else
+      deleteNode(ops[i].data);
+  }
+}
+
+cilk void mixed_batchify(void *ds, void* data,
+                    size_t num_ops, void* results)
 {
 
-  //int i;
+}
+
+cilk void batch_insert_par(void* dataStruct, void* data,
+                           size_t numElements, void* results)
+{
   insertionSortSeq(data, numElements);
-  //printf("sorted data array - ");
-  //for(i=0; i < numElements; ++i) {
-  //  printf("%d, ", ((T*)data)[i]);
-  //}
-  //printf("\n");
   spawn recursiveInsertBatch(data, 0, numElements, numElements);
 }
 
-cilk void popBatch
-  (void* dataStruct, void* data, size_t numElements, void* results)
+void batch_insert_seq(Batch* pending, void* ds, void* data,
+                      size_t num_ops, void* results)
+{
+  int i;
+  Operation* ops = (Operation*) data;
+  for (i = 0; i < num_ops; i++) {
+    // Assume ops are add operations.
+    insertNode(ops[i].data);
+  }
+}
+
+void popBatch(Batch* pending, void* dataStruct, void* data,
+              size_t numElements, void* results)
 {
   int i;
   for (i=0; i < numElements; ++i) {
@@ -91,12 +123,23 @@ cilk void popBatch
   }
 }
 
-cilk void batchInsertNode (int inValue) {
-  Cilk_batchify(_cilk_ws, &insertBatch, NULL, &inValue, sizeof(int), NULL);
+void insert_seq(CilkWorkerState *const ws, Operation add_op)
+{
+  Cilk_batchify_sequential(ws, &batch_insert_seq, (void*)&list,
+                           (void*)&add_op, sizeof(int), NULL);
 }
 
-cilk void batchPopNode (int inValue) {
-  Cilk_batchify(_cilk_ws, &popBatch, NULL, NULL, 0, NULL);
+void insert_par(CilkWorkerState *const ws, Operation add_op)
+{
+  Cilk_batchify(ws, &batch_insert_par, (void*)&list,
+                (void*)&add_op, sizeof(int), NULL);
+}
+
+
+void batchPopNode (CilkWorkerState *const ws, int inValue)
+{
+  Cilk_batchify_sequential(ws, &popBatch, (void*)&list,
+                           (void*)&inValue, sizeof(int), NULL);
 }
 
 Node *insertNode(T data) {
@@ -211,7 +254,7 @@ void initList() {
     list.listLevel = 0;
 }
 
-int size() {
+int get_size() {
   int size = 0;
   Node* pCur = list.hdr;
 

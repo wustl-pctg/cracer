@@ -5,59 +5,64 @@
 
 #define TSIZE 20
 #define bInsertSize 5
-int parThreshold;
-SkipList* setUp(){
+
+int g_par_threshold = 1024;
+Operation g_add_op = {1, 0};
+Operation g_rem_op = {0, 0};
+
+cilk void parfor_skip(const int begin, const int end, Operation op)
+{
+  int i;
+
+  if (end - begin <= g_par_threshold) {
+
+		for (i = begin; i <= end; ++i) {
+      op.data = i;
+      insert_seq(_cilk_ws, op);
+		}
+  } else {
+    i = begin+(end-begin)/2;
+    spawn parfor_skip(begin, i, op);
+    spawn parfor_skip(i + 1, end, op);
+  }
+}
+
+SkipList* setUp()
+{
   SkipList* ds = &list;
   initList();
-     return ds;
+  return ds;
 }
 
-cilk void makeInsert(int i, void* data){
-    SkipList* ds = data;
-    spawn batchInsertNode(i);
-    sync;
-}
+cilk void runMixedTest(SkipList* ds, int size, int add_part)
+{
 
-cilk void makeRemove(int i, void* data){
-    SkipList* ds = data;
-    spawn batchPopNode(i);
-    sync;
-}
-
-cilk void bInsert(int i, void* data) {
-  SkipList* ds = data;
-  int inputs[bInsertSize];
-  for (i=0;i<bInsertSize;i++){
-    inputs[i]=i;
-  }
-  spawn insertBatch(ds,&inputs,bInsertSize,NULL);
-  sync;
-}
-
-cilk void runMixedTest(SkipList* ds, int size, int add_part){
-  int threshold = parThreshold?parThreshold:PARFOR_THRESHOLD;
   int add_size = (add_part * size)/100;
-  // spawn parforpar_thresh(0,size,bInsertSize,threshold,&bInsert,ds);
-  // spawn parforpar_thresh(0,size-add_size,1,threshold,&mixedRemove,ds);
-  spawn parforpar_thresh(0,add_size,1,threshold,&makeInsert,ds);
-  spawn parforpar_thresh(0,size-add_size,1,threshold,&makeRemove,ds);
+
+  spawn parfor_skip(0, add_size, g_add_op);
+  //  spawn parfor_skip(add_size, size, g_rem_op);
   sync;
 }
 
-cilk int main(int argc, char* argv[]){
-    SkipList* test_ds = setUp();
-    BenchOptions options;
-    int testSize;
+cilk int main(int argc, char* argv[])
+{
+  SkipList* ds = setUp();
+  BenchOptions options;
+  int num_ops;
 
-    getOptions(argc, argv, &options);
-    testSize=options.operations;
-    startTimer();
-    spawn runMixedTest(test_ds,testSize,0);
-    sync;
-    stopTimer();
-    if (options.verbose){
-      printf("Batch Add. Size %d. \n", testSize);
-    }
-    printf("%lf\n",getWallTime());
-    return 0;
+  getOptions(argc, argv, &options);
+  num_ops = options.operations;
+
+  startTimer();
+  spawn runMixedTest(ds, num_ops, 100);
+  sync;
+  stopTimer();
+
+  if (options.verbose){
+    printf("Batch Add. Size %d. \n", num_ops);
+  }
+
+  printf("%lf\n",getWallTime());
+
+  return 0;
 }

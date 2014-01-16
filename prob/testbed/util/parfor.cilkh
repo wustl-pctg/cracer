@@ -4,11 +4,14 @@
 typedef void (*loopBodyFunc)(int, void*);
 typedef cilk void (*parallelBody)(int, void*);
 
-extern cilk void parforpar(const int begin, const int end, const int incr,
-													 const parallelBody body, void *data);
-extern cilk void parfor(const int begin, const int end, const int incr,
+cilk void parforpar(const int begin, const int end, const int incr,
+                    const parallelBody body, void *data);
+cilk void parfor(const int begin, const int end, const int incr,
 												const loopBodyFunc body, void* data);
-extern cilk void parforpar_thresh(const int begin, const int end,
+cilk void parforpar_thresh(const int begin, const int end,
 																	const int incr, const int thresh,
 																	const parallelBody body, void *data);
+cilk void parfor_thresh(const int begin, const int end, const int incr,
+                        const int thresh, const loopBodyFunc body,
+                        void *data);
 #endif

@@ -2003,12 +2003,13 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
         0 == USE_SHARED(batch_lock) &&
 				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
 
+      ws->batch_id = USE_SHARED(current_batch_id);
       i = compact(ws, pending, work_array, NULL);
 
       op(pending, dataStruct, (void*)work_array, i, NULL);
 
       Cilk_terminate_batch(ws);
-      USE_SHARED(batch_lock) = 0;
+      //      USE_SHARED(batch_lock) = 0;
       break;
     } else {
       nanosleep(&sleep_time, NULL);
