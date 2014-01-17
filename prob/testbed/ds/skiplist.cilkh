@@ -102,6 +102,82 @@ cilk void batch_insert_par(void* dataStruct, void* data,
   spawn recursiveInsertBatch(data, 0, numElements, numElements);
 }
 
+void batch_insert_par2(Batch* pending, void* dataStruct, void* data,
+                           size_t numElements, void* results)
+{
+  int* level = calloc(numElements,sizeof(int));
+  int i,j,k,check;
+  int newLevel;
+  int maxInsertLevel=0;
+  int currMaxLevel;
+  Node* x, *y;
+  Node** new_nodes = calloc(numElements,sizeof(Node*));
+  insertionSortSeq(data, numElements);
+  currMaxLevel=((SkipList*)dataStruct)->listLevel;
+  //Par_for to create nodes
+  for (i=0;i<numElements;i++){
+    //Find the level
+    for (newLevel = 0; rand() < RAND_MAX/2 && newLevel < MAXLEVEL; newLevel++);
+    level[i]=newLevel;
+    if (newLevel>maxInsertLevel){
+       maxInsertLevel=newLevel;
+    }
+    if ((y = malloc(sizeof(Node) +(level[i]*sizeof(Node*)))) == 0) {
+        printf ("insufficient memory (insertNode)\n");
+        exit(1);
+    }
+    y->data=((int*)data)[2*i];
+    new_nodes[i]=y;
+  }
+  //Par_for to relations
+  if (maxInsertLevel>currMaxLevel) {
+    ((SkipList*)dataStruct)->listLevel=maxInsertLevel;
+  }
+  for (i=0;i<numElements;i++){ //can par
+    y=new_nodes[i];
+    check=i;
+    for (k=0;k<level[i];k++){ //can par
+      y->forward[k]=NIL;
+      for (j=check;j<numElements;j++){ //cannot par
+	if (level[j]>=k){
+	  y->forward[k]=new_nodes[j]; //sets the forward of the ith node at the kth level to node j.
+	  if (level[j]>k){
+	    check=j;
+	  }
+	  break;
+     	}
+      }
+    }
+  }
+  
+  //Par_for to merge list
+   for (i=0;i<numElements;i++){
+      for (j=level[i]-1;j>=0;j--){
+      	      x = list.hdr;
+    	      while (x->forward[j] != NIL && compLT(x->forward[j]->data, ((int*)data)[2*i])) {
+               	    x = x->forward[j];
+	      }
+	      
+	      //Do a quick loop forward to check for the last element in this level.
+	      if (new_nodes[i]->forward[j]!=NIL && compLT(x->forward[j]->data,new_nodes[i]->forward[j]->data)) {
+		new_nodes[i]->forward[j]=x->forward[j];
+	      }
+	      
+	      for (k=i;k>=-1;k--){
+		if (k==-1){
+	  	      x->forward[j]=new_nodes[i];
+		      break;
+		}
+		if (level[k]>=level[i] && compLT(x->data,new_nodes[k]->data)){
+		    x->forward[j]=new_nodes[i];
+		    break;
+		}
+	      }
+      }
+  }
+    
+}
+
 void batch_insert_seq(Batch* pending, void* ds, void* data,
                       size_t num_ops, void* results)
 {
@@ -131,7 +207,7 @@ void insert_seq(CilkWorkerState *const ws, Operation add_op)
 
 void insert_par(CilkWorkerState *const ws, Operation add_op)
 {
-  Cilk_batchify(ws, &batch_insert_par, (void*)&list,
+  Cilk_batchify_sequential(ws, &batch_insert_par2, (void*)&list,
                 (void*)&add_op, sizeof(int), NULL);
 }
 
