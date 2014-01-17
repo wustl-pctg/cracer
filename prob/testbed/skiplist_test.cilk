@@ -18,8 +18,8 @@ cilk void parfor_skip(const int begin, const int end, Operation op)
 
 		for (i = begin; i <= end; ++i) {
 		  op.data = i;
-//		  insert_seq(_cilk_ws, op);
-		  insert_par(_cilk_ws,op);
+		  insert_seq(_cilk_ws, op);
+//		  insert_par(_cilk_ws,op);
 		}
   } else {
     i = begin+(end-begin)/2;
