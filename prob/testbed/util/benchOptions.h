@@ -10,7 +10,8 @@ typedef struct
 	int iterations;
 	int dedicated;
 	int special;
-        int raw;
+  int raw;
+  int seq;
   int contaminate;
 } BenchOptions;
 

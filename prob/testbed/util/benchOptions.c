@@ -15,7 +15,8 @@ void usage()
 	printf("\t-o, --operations\t\tHow many operations to perform.\n");
 	printf("\t-i, --iterations\t\tHow many iterations of the benchmark to perform.\n");
 	printf("\t-x, --special paramemter\t\tAny special integer paramter for the benchmark. I.e. Operation ratio for Stack.\n");
-	printf("\t-r, --raw\t\t Specify to run using a batchify_raw functin.\n");
+	printf("\t-r, --raw\t\t Specify to run using a batchify_raw function.\n");
+  printf("\t-s, --seq\t\t Specify to run using the batchify_seq function.\n");
 	printf("\t-c, --contaminate\t\t To use the memory manager contamination.\n");
 }
 
@@ -31,6 +32,7 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 			{"iterations", required_argument, 0, 'i'},
 			{"special", required_argument, 0, 'x'},
 			{"raw", no_argument, 0, 'r'},
+			{"seq", no_argument, 0, 's'},
 			{"contaminate", no_argument, 0, 'c'},
 		};
 
@@ -70,8 +72,10 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 					opt->special = atoi(optarg);
 					break;
 				case 'r':
-				  opt->raw=1;
+				  opt->raw = 1;
 				  break;
+        case 's':
+          opt->seq = 1;
 				case 'c':
 				  opt->contaminate=1;
 				  break;
