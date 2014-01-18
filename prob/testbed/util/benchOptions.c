@@ -39,7 +39,7 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 	int optIndex = 0;
 	int option;
 
-	while((option = getopt_long(argc, argv, "o:i:vbldx:cr", longOptions, &optIndex))
+	while((option = getopt_long(argc, argv, "o:i:vbldx:crs", longOptions, &optIndex))
 				!= -1)
 		{
 			switch(option)
@@ -74,8 +74,9 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 				case 'r':
 				  opt->raw = 1;
 				  break;
-        case 's':
-          opt->seq = 1;
+				case 's':
+				  opt->seq = 1;
+	                          break;
 				case 'c':
 				  opt->contaminate=1;
 				  break;
