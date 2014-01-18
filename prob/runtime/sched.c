@@ -178,11 +178,6 @@ static void create_deques(CilkContext *const context)
 		Cilk_mutex_init(context, &USE_PARAMETER1(ds_deques)[i].mutex);
 	}
 
-	USE_SHARED1(batch_lock) = 0;
-
-	// This may not actually be sizeof(int)! It could actually change!***
-	USE_SHARED1(batch_work_array) = Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
-                                                    sizeof(helper));
 }
 
 static void init_deques(CilkContext *const context)
@@ -1930,12 +1925,18 @@ void Cilk_batchify(CilkWorkerState *const ws,
 									 void *data, size_t dataSize, void *indvResult)
 {
   unsigned int i, batch_id;
+  int num_spots = USE_PARAMETER(batchvals);
   Batch* pending = &USE_SHARED(pending_batch);
   helper* work_array = USE_SHARED(batch_work_array);
 
-  BatchRecord* record = &pending->array[ws->self];
-  record->status = DS_WAITING;
-  record->args = (int*)data;
+  BatchRecord* record;
+  int start_spot = ws->self * num_spots;
+
+  for (i = start_spot; i < start_spot + num_spots; i++) {
+    record = &pending->array[i];
+    record->status = DS_WAITING;
+    record->args = &((helper*)data)[i];
+  }
 
   int* status = (int*) &record->status;
   Cilk_switch2batch(ws); // done in batch_scheduler

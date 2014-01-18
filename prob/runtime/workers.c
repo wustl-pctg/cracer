@@ -137,10 +137,6 @@ void Cilk_create_children(CilkContext *const context,
   /* Create thread-id array */
   USE_SHARED1(tid) =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(pthread_t));
-  USE_SHARED1(pending_batch).array =
-    Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(BatchRecord));
-
-  USE_SHARED1(pending_batch).size = USE_PARAMETER1(active_size);
 
   CILK_CHECK(USE_SHARED1(tid), (context, NULL, "could not malloc tid\n"));
 
@@ -149,13 +145,10 @@ void Cilk_create_children(CilkContext *const context,
     Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(CilkChildParams));
   CILK_CHECK(USE_SHARED1(thrd_params_array), (context, NULL, "could not malloc params_array\n"));
 
-  for (i = 0; i < USE_PARAMETER1(active_size); i++)
-    {
+  for (i = 0; i < USE_PARAMETER1(active_size); i++) {
       USE_SHARED1(thrd_params_array)[i].context = context;
       USE_SHARED1(thrd_params_array)[i].id = i;
-
-			USE_SHARED1(pending_batch).array[i].status = DS_DONE;
-    }
+  }
 
   pthread_attr_init(&attr);
   /* initialize attr with default attributes */
@@ -192,6 +185,10 @@ void Cilk_create_children(CilkContext *const context,
       //			if ((USE_PARAMETER1(options->btest) & 2) == 0) {
       ret_val = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &mask);
       //			}
+
+/*       if (ret_val != 0) { */
+/* 				printf("Warning: Could not set CPU affinity for %i with error %i\n", i, ret_val); */
+/*       } */
 #endif
 
       res = pthread_create(USE_SHARED1(tid) + i,
@@ -200,17 +197,6 @@ void Cilk_create_children(CilkContext *const context,
 													 (void *) &(USE_SHARED1(thrd_params_array)[i]) );
       if (res)
 				Cilk_die_internal(context, NULL, "Can't create threads\n");
-
-/* #ifdef HAVE_SCHED_SETAFFINITY */
-/* 			if ((USE_PARAMETER1(options->btest) & 2) == 2) { */
-/* 				ret_val = pthread_setaffinity_np((USE_SHARED1(tid) + i), sizeof(cpu_set_t), &mask); */
-/* 			} */
-
-/*       if (ret_val != 0) { */
-/* 				printf("Warning: Could not set CPU affinity for %i with error %i\n", i, ret_val); */
-/*       } */
-/* #endif */
-
     }
 }
 

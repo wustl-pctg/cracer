@@ -17,9 +17,10 @@ fc_dir = base_dir + "flat_combining/"
 
 # General parameters.
 silent = False
-verbose = 1
-iterations = range(2)
-nproc = range(1, 49, 1)
+verbose = 2
+iterations = range(5)
+nproc = range(2, 49, 2)
+spots = 16 # Later, iterate over this: range(16,17)
 
 # Note: initial size of batch is assumed to be 20000.
 # Should later set this as a parameter (--special?)
@@ -99,6 +100,7 @@ def run_batch_par(p, i):
   batch_args = ['--nproc', str(p)]
   batch_args = batch_args + ['--dsprob', str(ds_prob)]
   batch_args = batch_args + ['--batchprob', '100']
+  batch_args = batch_args + ['--batchvals', str(spots)]
   batch_args = batch_args + ['-o', str(batch_ops)]
 
   batch_cmd = [batch_dir + batch_test] + batch_args
@@ -139,8 +141,8 @@ def main():
 
       throughputs = 3 * [0]
 
-      throughputs[0] += run_flat_combining(p, i)
-      throughputs[1] += float(batch_ops) / run_batch_seq(p, i)
+      #throughputs[0] += run_flat_combining(p, i)
+      #throughputs[1] += float(batch_ops) / run_batch_seq(p, i)
       throughputs[2] += float(batch_ops) / run_batch_par(p, i)
 
     throughputs = [ float(total) / len(iterations) for total in throughputs ]

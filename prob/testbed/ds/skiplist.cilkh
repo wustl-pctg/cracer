@@ -2,10 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
 #include <cilk-lib.cilkh>
-#include <cilk.h>
-
 
 /* define data-type and compare operators here */
 typedef int T;                  /* type of item to be stored */
@@ -90,15 +87,10 @@ void mixed_batchify_seq(Batch* pending, void* ds, void* data,
   }
 }
 
-cilk void mixed_batchify(void *ds, void* data,
-                         size_t num_ops, void* results)
-{
-
-}
-
 cilk void batch_insert_par(void* dataStruct, void* data,
                            size_t numElements, void* results)
 {
+  //  printf("Batch of size %d.\n", numElements);
   insertionSortSeq(data, numElements);
   spawn recursiveInsertBatch(data, 0, numElements, numElements);
 }
@@ -113,7 +105,9 @@ void batch_insert_par2(Batch* pending, void* dataStruct, void* data,
   int currMaxLevel;
   Node* x, *y;
   Node** new_nodes = calloc(numElements,sizeof(Node*));
+
   insertionSortSeq(data, numElements);
+
   currMaxLevel=((SkipList*)dataStruct)->listLevel;
   //Par_for to create nodes
   for (i=0;i<numElements;i++){
@@ -150,7 +144,7 @@ void batch_insert_par2(Batch* pending, void* dataStruct, void* data,
       }
     }
   }
-  
+
   //Par_for to merge list
    for (i=0;i<numElements;i++){
       for (j=level[i]-1;j>=0;j--){
@@ -158,12 +152,12 @@ void batch_insert_par2(Batch* pending, void* dataStruct, void* data,
     	      while (x->forward[j] != NIL && compLT(x->forward[j]->data, ((int*)data)[2*i])) {
                	    x = x->forward[j];
 	      }
-	      
+
 	      //Do a quick loop forward to check for the last element in this level.
 	      if (new_nodes[i]->forward[j]!=NIL && compLT(x->forward[j]->data,new_nodes[i]->forward[j]->data)) {
 		new_nodes[i]->forward[j]=x->forward[j];
 	      }
-	      
+
 	      for (k=i;k>=-1;k--){
 		if (k==-1){
 	  	      x->forward[j]=new_nodes[i];
@@ -176,7 +170,7 @@ void batch_insert_par2(Batch* pending, void* dataStruct, void* data,
 	      }
       }
   }
-    
+
 }
 
 void batch_insert_seq(Batch* pending, void* ds, void* data,
@@ -200,26 +194,27 @@ void popBatch(Batch* pending, void* dataStruct, void* data,
   }
 }
 
-void insert_seq(CilkWorkerState *const ws, Operation add_op)
+void insert_seq(CilkWorkerState *const ws, Operation* add_op)
 {
   Cilk_batchify_sequential(ws, &batch_insert_seq, (void*)&list,
-                           (void*)&add_op, sizeof(int), NULL);
+                           (void*)add_op, sizeof(int), NULL);
 }
 
-void insert_par(CilkWorkerState *const ws, Operation add_op)
+void insert_par(CilkWorkerState *const ws, Operation* add_op)
 {
-  Cilk_batchify_sequential(ws, &batch_insert_par2, (void*)&list,
-                (void*)&add_op, sizeof(int), NULL);
+  Cilk_batchify(ws, &batch_insert_par, (void*)&list,
+                (void*)add_op, sizeof(int), NULL);
 }
 
 
-void batchPopNode (CilkWorkerState *const ws, int inValue)
+void pop_seq(CilkWorkerState *const ws, int inValue)
 {
   Cilk_batchify_sequential(ws, &popBatch, (void*)&list,
                            (void*)&inValue, sizeof(int), NULL);
 }
 
-Node *insertNode(T data) {
+Node* insertNode(T data)
+{
   int i, newLevel;
   Node *update[MAXLEVEL+1];
   Node *x;

@@ -437,7 +437,8 @@ extern int Cilk_partition_size(void);
  * functions used by the scheduler and by other protocols
  * operating on the Closures tree
  */
-extern Closure *Cilk_Closure_create_malloc(CilkContext *const context, CilkWorkerState *const ws);
+extern Closure*
+Cilk_Closure_create_malloc(CilkContext *const context, CilkWorkerState *const ws);
 
 /******************************************************
  *  Options processing
@@ -447,6 +448,7 @@ struct Cilk_options_s
   int nproc;
 	int dsprob;
 	int batchprob;
+	int batchvals;
   int stackdepth;
   int statlevel;
   int yieldslice;
@@ -459,14 +461,15 @@ struct Cilk_options_s
 };
 
 /* command-line parser */
-extern int Cilk_parse_command_line(
-																	 Cilk_options *options, int *argc, char *argv[]);
+extern int
+Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[]);
 
 #define CILK_DEFAULT_OPTIONS                    \
   {																							\
     1,																					\
-    50,                                         \
-    100,                                        \
+      50,                                       \
+      100,                                      \
+      1,                                        \
       CILK_DEFAULT_STACK_DEPTH,									\
       0,																				\
       0,																				\
@@ -476,4 +479,4 @@ extern int Cilk_parse_command_line(
       0,																				\
       0,																				\
       1024																			\
- }
+      }

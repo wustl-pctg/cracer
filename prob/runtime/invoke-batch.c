@@ -33,7 +33,9 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
   unsigned int num_ops = 0;
   unsigned int register i;
 
-  for (i = 0; i < USE_PARAMETER(active_size); i++) {
+  //  for (i = 0; i < USE_PARAMETER(active_size); i++) {
+  for (i = 0; i < pending->size; i++) { // rename pending->size to
+                                        // total_size or num_spots
 
     // Should also check that the op matches, for multiple batch operations***
     if (pending->array[i].status == DS_WAITING) {
@@ -50,30 +52,29 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
 
 static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 {
-  // Still need to check and make sure termination is happening
-  // EXACTLY once.
   CILK_ASSERT(ws, USE_SHARED(current_batch_id) == ws->batch_id);
 
   int i, index;
 	//	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
-	Batch current = USE_SHARED(pending_batch);
+	Batch* current = &USE_SHARED(pending_batch);
   //	void* results = USE_SHARED(batch_work_array);
   //	size_t dataSize = current->dataSize;
 
-	for (i = 0; i < USE_PARAMETER(active_size); i++) {
-    if (current.array[i].status == DS_IN_PROGRESS) {
+  //	for (i = 0; i < USE_PARAMETER(active_size); i++) {
+  for (i = 0; i < current->size; i++) {
+    if (current->array[i].status == DS_IN_PROGRESS) {
 			//			index = current->array[i].packedIndex;
 			/* if (current->array[i].result) { */
 			/* 	memcpy(current->array[i].result, &results[index], dataSize); */
 			/* } */
       //      printf("Spot %i is done for batch %i.\n", i, ws->batch_id);
-			current.array[i].status = DS_DONE;
+			current->array[i].status = DS_DONE;
 		}
 	}
 
   USE_SHARED(current_batch_id)++; // signal end of this batch
   USE_SHARED(batch_owner) = -1;
-  USE_SHARED(batch_lock) = 0;
+  __sync_lock_release(&USE_SHARED(batch_lock));
 	//	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
 
@@ -212,7 +213,28 @@ void Batcher_init(CilkContext *const context)
 {
   Closure *t;
 	BatchFrame *f;
-	int arg_size;
+  int i;
+
+  USE_SHARED1(pending_batch).array =
+    Cilk_malloc_fixed(USE_PARAMETER1(active_size)
+                      * sizeof(BatchRecord)
+                      * USE_PARAMETER1(batchvals));
+
+  USE_SHARED1(pending_batch).size =
+    USE_PARAMETER1(active_size) * USE_PARAMETER1(batchvals);
+
+  for (i = 0; i < USE_PARAMETER1(active_size) * USE_PARAMETER1(batchvals); i++) {
+    USE_SHARED1(pending_batch).array[i].status = DS_DONE;
+  }
+
+	USE_SHARED1(batch_lock) = 0;
+
+	// This may not actually be sizeof(int)! It could actually change!***
+	USE_SHARED1(batch_work_array) =
+    Cilk_malloc_fixed(USE_PARAMETER1(active_size)
+                      * sizeof(helper)
+                      * USE_PARAMETER1(batchvals));
+
 
   /* create a frame for invoke_batch */
 	t = Cilk_Closure_create_malloc(context, NULL);

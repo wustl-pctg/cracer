@@ -10,27 +10,30 @@
 
 int g_par_threshold = 1024;
 BenchOptions g_options;
-T* vals;
+Operation* vals;
 Operation g_add_op = {1, 0};
 Operation g_rem_op = {0, 0};
+int g_num_spots;
 
-cilk void parfor_skip(const int begin, const int end, Operation op)
+cilk void parfor_skip(const int begin, const int end)
 {
   int i;
 
   if (end - begin <= g_par_threshold) {
 
 		for (i = begin; i <= end; ++i) {
-      op.data = vals[i];
+
+      //      op.data = vals[i];
+
       if (g_options.seq)
-        insert_seq(_cilk_ws, op);
+        insert_seq(_cilk_ws, &vals[i]);
       else
-        insert_par(_cilk_ws, op);
+        insert_par(_cilk_ws, &vals[i]);
 		}
   } else {
     i = begin+(end-begin)/2;
-    spawn parfor_skip(begin, i, op);
-    spawn parfor_skip(i + 1, end, op);
+    spawn parfor_skip(begin, i);
+    spawn parfor_skip(i + 1, end);
   }
 }
 
@@ -38,6 +41,7 @@ SkipList* set_up(size_t initial_size, size_t num_ops)
 {
   int i;
   SkipList* ds = &list;
+  Operation op = {1, 0};
 
   // Initialize the skip list.
   initList();
@@ -48,12 +52,14 @@ SkipList* set_up(size_t initial_size, size_t num_ops)
   }
 
   // Prepare our array of random numbers.
-  vals = malloc(sizeof(*vals) * num_ops);
+  vals = malloc(sizeof(Operation) * num_ops * g_num_spots);
   if (!vals)
     fprintf(stderr, "insufficient memory (vals)\n");
 
-  for (i = 0; i < num_ops; i++) {
-    vals[i] = rand();
+  for (i = 0; i < num_ops * g_num_spots; i++) {
+    op.data = rand();
+    vals[i] = op;
+    //    vals[i] = {1, rand()};
     //vals[i] = i;
   }
 
@@ -65,7 +71,7 @@ cilk void runMixedTest(SkipList* ds, int size, int add_part)
 
   int add_size = (add_part * size)/100;
 
-  spawn parfor_skip(0, add_size, g_add_op);
+  spawn parfor_skip(0, add_size);
   //  spawn parfor_skip(add_size, size, g_rem_op);
   sync;
 }
@@ -77,6 +83,8 @@ cilk int main(int argc, char* argv[])
 
   getOptions(argc, argv, &g_options);
   num_ops = g_options.operations;
+
+  g_num_spots = _cilk_ws->context->Cilk_RO_params->batchvals;
 
   ds = set_up(INIT_SIZE, num_ops);
 
