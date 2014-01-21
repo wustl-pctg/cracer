@@ -99,6 +99,8 @@ cilk void mixed_batchify(void *ds, void* data,
 cilk void batch_insert_par(void* dataStruct, void* data,
                            size_t numElements, void* results)
 {
+  /* printf("Inserting %d elements into a skip list of size %d.\n", */
+  /*        numElements, get_size()); */
   insertionSortSeq(data, numElements);
   spawn recursiveInsertBatch(data, 0, numElements, numElements);
 }
@@ -161,7 +163,7 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   currMaxLevel=((SkipList*)dataStruct)->listLevel;
   spawn parforpar(0,numElements,1,&batch_createNodes, createNodeArgs);
   sync;
-  
+
   prev_nodes=calloc(maxInsertLevel*numElements,sizeof(int)); //Makes a prev array.
   //Fill in rest of info.
   relatedNodeArgs[3]=prev_nodes;
@@ -175,7 +177,7 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   //Par_for to relations
   spawn parforpar(0,numElements,1,&batch_relateNodes, relatedNodeArgs);
   sync;
-    
+
   //Par_for to merge list
    for (i=0;i<numElements;i++){
       for (j=level[i]-1;j>=0;j--){
@@ -183,12 +185,12 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
     	      while (x->forward[j] != NIL && compLT(x->forward[j]->data, ((int*)data)[2*i])) {
                	    x = x->forward[j];
 	      }
-	      
+
 	      //Do a quick loop forward to check for the last element in this level.
 	      if (new_nodes[i]->forward[j]!=NIL && compLT(x->forward[j]->data,new_nodes[i]->forward[j]->data)) {
 		new_nodes[i]->forward[j]=x->forward[j];
 	      }
-	      
+
 	      for (k=i;k>=-1;k--){
 		if (k==-1){
 	  	      x->forward[j]=new_nodes[i];
@@ -227,16 +229,16 @@ void popBatch(Batch* pending, void* dataStruct, void* data,
   }
 }
 
-void insert_seq(CilkWorkerState *const ws, Operation add_op)
+void insert_seq(CilkWorkerState *const ws, Operation* add_op)
 {
   Cilk_batchify_sequential(ws, &batch_insert_seq, (void*)&list,
-                           (void*)&add_op, sizeof(int), NULL);
+                           (void*)add_op, sizeof(int), NULL);
 }
 
-void insert_par(CilkWorkerState *const ws, Operation add_op)
+void insert_par(CilkWorkerState *const ws, Operation* add_op)
 {
-  Cilk_batchify(ws, &batch_insert_par2, (void*)&list,
-                (void*)&add_op, sizeof(int), NULL);
+  Cilk_batchify(ws, &batch_insert_par, (void*)&list,
+                (void*)add_op, sizeof(int), NULL);
 }
 
 

@@ -4,12 +4,12 @@ require(gplots)
 
 args <- commandArgs(trailingOnly = TRUE)
 if (is.na(args[1])) {
-	 logFile <- "../logs/skiplist1-16-19-24.log"
+	 logFile <- "../logs/multi.out"
 } else {
 	logFile <- args[1]
 }
 if (is.na(args[2])) {
-	 outFile <- "../graphs/skip.pdf"
+	 outFile <- "../graphs/multi.pdf"
 } else {
 	outFile <- args[2]
 }
@@ -18,14 +18,25 @@ data <- read.csv(file=logFile, header=TRUE, sep=",")
 subset <- data[data$P > 0,]
 pdf(file=outFile, width=8, height=6)
 
-y_range <- range(0, subset$FC, subset$BatchSeq, subset$BatchPar)
+y_range <- range(0, subset$a, subset$b, subset$c, subset$d,
+                 subset$e, subset$f, subset$g, subset$h,
+                 subset$i, subset$j, subset$k)
 
 par(mar=c(5.1,6.1,4.1,2.1), mgp=c(4,1,0)) # Set Margins
 
-plot(subset$P,subset$BatchSeq, type="o", col="blue", ylim=y_range,
+plot(subset$P,subset$a, type="o", col="blue", ylim=y_range,
      axes = FALSE, ann = FALSE)
-lines(subset$P, subset$BatchPar, type="o", pch=22, lty=2, col="red")
-lines(subset$P, subset$FC, type="o", pch=23, lty=3, col="green")
+lines(subset$P, subset$b, type="o", pch=15, lty=1, col="red")
+lines(subset$P, subset$c, type="o", pch=16, lty=1, col="green")
+lines(subset$P, subset$d, type="o", pch=17, lty=1, col="purple")
+lines(subset$P, subset$e, type="o", pch=18, lty=1, col="black")
+lines(subset$P, subset$f, type="o", pch=19, lty=1, col="cyan")
+lines(subset$P, subset$g, type="o", pch=20, lty=2, col="blue")
+lines(subset$P, subset$h, type="o", pch=21, lty=2, col="red")
+lines(subset$P, subset$i, type="o", pch=22, lty=2, col="green")
+lines(subset$P, subset$j, type="o", pch=23, lty=2, col="purple")
+lines(subset$P, subset$k, type="o", pch=24, lty=2, col="black")
+
 axis(1, at=subset$P, lab=subset$P)
 axis(2, las=1)
 
@@ -35,8 +46,10 @@ title(xlab="Cores", col.lab=rgb(0,0.5,0), cex.lab=2.0)
 title(ylab="Throughput (ops/ms)", col.lab=rgb(0,0.5,0), cex.lab=2.0)
 
 legend("topright",
-       c("Batch (Sequential)", "Batch (Parallel)", "Flat Combining"),
-       cex=1.0, col=c("blue","red", "green"), pch=21:23, lty=1:3,
+       c("0", "10", "25", "50", "100", "150", "200", "300", "500", "750", "1000"),
+       cex=1.0, col=c("blue","red", "green", "purple","black","cyan","blue",
+                    "red","green","purple","black"),
+       pch=c(21,14:24), lty=c(1,1,1,1,1,1,2,2,2,2,2),
        inset=.05)
 
 

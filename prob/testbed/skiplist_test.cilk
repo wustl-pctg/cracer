@@ -24,6 +24,7 @@ cilk void parfor_skip(const int begin, const int end)
 		for (i = begin; i <= end; ++i) {
 
       //      op.data = vals[i];
+      //      printf("Inserting %d,%d\n", vals[i].add, vals[i].data);
 
       if (g_options.seq)
         insert_seq(_cilk_ws, &vals[i]);
@@ -62,6 +63,9 @@ SkipList* set_up(size_t initial_size, size_t num_ops)
     //    vals[i] = {1, rand()};
     //vals[i] = i;
   }
+  /* for ( i = 0; i < 1000; i++) { */
+  /*   printf("rand val: %d,%d\n", vals[i].add, vals[i].data); */
+  /* } */
 
   return ds;
 }

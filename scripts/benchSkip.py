@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
-import subprocess
-import time
-import string
+import subprocess, sys
+import time, datetime
+import string, shlex
 import math
-import datetime
-import sys
-import shlex
+import signal
 
 # Directory setup.
 base_dir = "../"
@@ -18,9 +16,10 @@ fc_dir = base_dir + "flat_combining/"
 # General parameters.
 silent = False
 verbose = 2
-iterations = range(5)
-nproc = range(2, 49, 2)
-spots = 16 # Later, iterate over this: range(16,17)
+iterations = range(3)
+nproc = range(44, 49, 2)
+spots = 10 # Later, iterate over this: range(16,17)
+timeout = 10*60 # 10 minutes max. per run.
 
 # Note: initial size of batch is assumed to be 20000.
 # Should later set this as a parameter (--special?)
@@ -28,7 +27,7 @@ initial_size = 20000
 
 # Batch parameters.
 batch_test = "skiplist"
-batch_ops = 100000000
+batch_ops = 1000000
 ds_prob = 0
 
 # Flat combining parameters.
@@ -38,26 +37,38 @@ fc_time = 20 # seconds to run the flat combining benchmark
 dedicated = 0 # Run all adds first, then removes.
 percent_adds = 100 # What percentage of total operations should be adds.
 
+class Alarm(Exception):
+  pass
+
+def alarm_handler(signum, frame):
+  raise Alarm
+
 def run_experiment(cmd, error_msg):
 
   if verbose >= 2:
-    print ' '.join(cmd)
+    print(' '.join(cmd))
 
-  process = subprocess.Popen(cmd, shell = False,
-                             stdout = subprocess.PIPE,
-                             stderr = subprocess.PIPE)
-  output = process.communicate()
+  signal.signal(signal.SIGALRM, alarm_handler)
+  signal.alarm(timeout)
 
+  try:
+    process = subprocess.Popen(cmd, shell = False,
+                               stdout = subprocess.PIPE,
+                               stderr = subprocess.PIPE)
+    output = process.communicate()
+  except Alarm:
+    print(' '.join(cmd) + " took too long.")
+    sys.exit(1)
 
   # Flat combining outputs statistics on stderr, so we can't use
   # this. Dumb.
   # if output[1]:
-  #   print error_msg
-  #   print output[1]
+  #   print(error_msg)
+  #   print(output[1])
   #   sys.exit(1)
 
   if verbose >= 2:
-    print output[0]
+    print(output[0])
 
   return output[0]
 
@@ -96,12 +107,12 @@ def run_batch_seq(p, i):
   return float(result)
 
 
-def run_batch_par(p, i):
+def run_batch_par(p, i, num_batch_ops, num_spots=1, batchprob=100):
   batch_args = ['--nproc', str(p)]
   batch_args = batch_args + ['--dsprob', str(ds_prob)]
-  batch_args = batch_args + ['--batchprob', '100']
-  batch_args = batch_args + ['--batchvals', str(spots)]
-  batch_args = batch_args + ['-o', str(batch_ops)]
+  batch_args = batch_args + ['--batchprob', str(batchprob)]
+  batch_args = batch_args + ['--batchvals', str(num_spots)]
+  batch_args = batch_args + ['-o', str(num_batch_ops)]
 
   batch_cmd = [batch_dir + batch_test] + batch_args
   error_msg = "Error running parallel batch "
@@ -130,20 +141,34 @@ def main():
   filename = "skiplist{0}-{1}-{2}-{3}.log".format(current.month,current.day,
                                                   current.hour,current.minute)
   out_file = open(log_dir + filename, "w");
-  out_file.write("P,FC,BatchSeq,BatchPar\n");
+  out_file.write("P,FC,BatchSeq,BatchPar, BatchMulti\n");
 
   for p in nproc:
 
     if verbose >= 1:
       print "--- Running tests on {0} cores. ---".format(p)
 
+    throughputs = 4 * [0.0]
+
     for i in iterations:
 
-      throughputs = 3 * [0]
+      # throughputs[0] = throughputs[0] + run_flat_combining(p, i)
 
-      #throughputs[0] += run_flat_combining(p, i)
-      #throughputs[1] += float(batch_ops) / run_batch_seq(p, i)
-      throughputs[2] += float(batch_ops) / run_batch_par(p, i)
+      # Sequential Single Batches
+      throughputs[1] = throughputs[1] \
+                       + float(batch_ops) * spots \
+                       / run_batch_par(p, i, batch_ops * spots, 1, 0)
+#                       / run_batch_seq(p,i)
+
+      # Parallel Single Batches
+      throughputs[2] = throughputs[2] \
+                       + float(batch_ops) * spots \
+                       / run_batch_par(p, i, batch_ops * spots, 1, 100)
+
+      # Parallel Multi-Batches
+      throughputs[3] = throughputs[3] \
+                       + float(batch_ops) * spots \
+                       / run_batch_par(p, i, batch_ops, spots, 100)
 
     throughputs = [ float(total) / len(iterations) for total in throughputs ]
     write_throughput_log(p, throughputs, out_file)

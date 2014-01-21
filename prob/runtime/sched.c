@@ -58,7 +58,7 @@ FILE_IDENTITY(ident,
  * See also PROTOCOLS for a more verbose description.
  */
 
-static const struct timespec sleep_time = {0, 1000};
+static const struct timespec sleep_time = {0, 50};
 
 static inline void Cilk_switch2batch(CilkWorkerState *const ws)
 {
@@ -1794,11 +1794,11 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 	CILK_ASSERT(ws, ws->self >= 0);
 	CILK_ASSERT(ws, batch_id >= 0);
 
-	Cilk_enter_state(ws, STATE_BATCH_TOTAL);
-	Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
+	/* Cilk_enter_state(ws, STATE_BATCH_TOTAL); */
+	/* Cilk_enter_state(ws, STATE_BATCH_SCHEDULING); */
 
-	//	while (!batch_done_yet(ws, ws->batch_id)) {
-	while (1) {
+  /* while (!batch_done_yet(ws, ws->batch_id)) { */
+  while (1) {
 		if (!t) {
 			/* try to get work from the local ds queue */
 			deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
@@ -1810,15 +1810,19 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 			break;
 		}
 
-		while (!t && !batch_done_yet(ws, ws->batch_id)) {
-		/* while (!t) { */
+		/* while (!t && !batch_done_yet(ws, ws->batch_id)) { */
+		while (!t) {
 			// Otherwise, steal
 			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(batchprob)) {
-				Cilk_enter_state(ws, STATE_BATCH_STEALING);
+        //				Cilk_enter_state(ws, STATE_BATCH_STEALING);
 
-				victim = rts_rand(ws) % USE_PARAMETER(active_size);
+        if ((rts_rand(ws) % 99)+1 <= 75) {
+          victim = USE_SHARED(batch_owner);
+        } else {
+          victim = rts_rand(ws) % USE_PARAMETER(active_size);
+        }
 
-				if (victim != ws->self
+				if (victim != ws->self && victim != -1
 						&& USE_SHARED(pending_batch).array[victim].status
             == DS_IN_PROGRESS) {
 
@@ -1831,15 +1835,15 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 						Cilk_lower_priority(ws);
 					}
 				}
-				Cilk_exit_state(ws, STATE_BATCH_STEALING);
+        //				Cilk_exit_state(ws, STATE_BATCH_STEALING);
 			}
 			if (batch_done_yet(ws, batch_id)) {
 				done = 1;
 				break;
 			}
-      /*  else if (!t) { */
-      /*   nanosleep(&sleep_time, NULL); */
-      /* } */
+      else if (!t) {
+        nanosleep(&sleep_time, NULL);
+      }
 		}
     if (!t && done) break;
 
@@ -1847,17 +1851,17 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 			Cilk_raise_priority(ws);
 
 
-		Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
+    //		Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 		if (t) {
 			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
 		}
     //    if (done) break;
-		Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
+    //		Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 
 	}
 
-	Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
-	Cilk_exit_state(ws, STATE_BATCH_TOTAL);
+	/* Cilk_exit_state(ws, STATE_BATCH_SCHEDULING); */
+	/* Cilk_exit_state(ws, STATE_BATCH_TOTAL); */
 
 	return;
 
@@ -1933,6 +1937,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
   int start_spot = ws->self * num_spots;
 
   for (i = start_spot; i < start_spot + num_spots; i++) {
+    //printf("Inserting %d,%d\n", ((helper*)data)[i].x, ((helper*)data)[i].y);
     record = &pending->array[i];
     record->status = DS_WAITING;
     record->args = &((helper*)data)[i];

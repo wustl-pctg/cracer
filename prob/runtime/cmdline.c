@@ -237,15 +237,15 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
       ++i;
       CHECK(i < *argc, "argument missing");
       options->batchprob = atoi(argv[i]);
-      CHECK(options->batchprob <= 100, "invalid ds-stealing probability");
-      CHECK(options->batchprob >= 0, "invalid ds-stealing probability");
+      CHECK(options->batchprob <= 100, "invalid batch-stealing probability");
+      CHECK(options->batchprob >= 0, "invalid batch-stealing probability");
       break;
     case BATCHVALS:
       ++i;
       CHECK(i < *argc, "argument missing");
       options->batchvals = atoi(argv[i]);
-      CHECK(options->batchvals <= 100, "invalid ds-stealing probability");
-      CHECK(options->batchvals >= 0, "invalid ds-stealing probability");
+      CHECK(options->batchvals <= 1000, "invalid num batch spots");
+      CHECK(options->batchvals >= 0, "invalid num batch spots");
       break;
     case STACK:
       ++i;
