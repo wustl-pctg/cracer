@@ -19,7 +19,7 @@ typedef struct {
 
 /* levels range from (0 .. MAXLEVEL) */
 #define MAXLEVEL 20
-#define INSERT_CHUNK 16
+#define INSERT_CHUNK 512
 
 typedef struct Node_ {
   T data;                     /* user's data */

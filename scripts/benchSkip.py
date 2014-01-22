@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-
+from __future__ import print_function
 import subprocess, sys
-import time, datetime
+import time, datetime, socket
 import string, shlex
 import math
 import signal
@@ -15,10 +15,10 @@ fc_dir = base_dir + "flat_combining/"
 
 # General parameters.
 silent = False
-verbose = 2
+verbose = 0
 iterations = range(3)
-nproc = range(44, 49, 2)
-spots = 10 # Later, iterate over this: range(16,17)
+nproc = range(2, 16, 2)
+nproc.insert(0, 1)
 timeout = 10*60 # 10 minutes max. per run.
 
 # Note: initial size of batch is assumed to be 20000.
@@ -26,9 +26,12 @@ timeout = 10*60 # 10 minutes max. per run.
 initial_size = 20000
 
 # Batch parameters.
-batch_test = "skiplist"
-batch_ops = 1000000
+#batch_test = "skiplist"
+total_batch_ops = 10000000
 ds_prob = 0
+batch_prob = 100
+batch_vals = [10, 100, 1000, 5000]
+sleep_times = [0, 50000, 100000]#, 200000, 500000]
 
 # Flat combining parameters.
 fc_test = "test_intel64"
@@ -60,17 +63,13 @@ def run_experiment(cmd, error_msg):
     print(' '.join(cmd) + " took too long.")
     sys.exit(1)
 
-  # Flat combining outputs statistics on stderr, so we can't use
-  # this. Dumb.
-  # if output[1]:
-  #   print(error_msg)
-  #   print(output[1])
-  #   sys.exit(1)
+  if process.returncode != 0 or output[0] == None:
+    print(error_msg)
+    print(output)
+    sys.exit(1)
 
-  if verbose >= 2:
-    print(output[0])
+  return output
 
-  return output[0]
 
 def run_flat_combining(p, i):
 
@@ -107,12 +106,15 @@ def run_batch_seq(p, i):
   return float(result)
 
 
-def run_batch_par(p, i, num_batch_ops, num_spots=1, batchprob=100):
+def run_batch_par(p, i, total_batch_ops, num_spots=1, sleep_time=0,bias=0):
   batch_args = ['--nproc', str(p)]
   batch_args = batch_args + ['--dsprob', str(ds_prob)]
-  batch_args = batch_args + ['--batchprob', str(batchprob)]
+  batch_args = batch_args + ['--batchprob', str(batch_prob)]
   batch_args = batch_args + ['--batchvals', str(num_spots)]
-  batch_args = batch_args + ['-o', str(num_batch_ops)]
+  batch_args = batch_args + ['--sleep', str(sleep_time)]
+  batch_args = batch_args + ['--bias', str(bias)]
+  batch_args = batch_args + ['--stats', str(-1)]
+  batch_args = batch_args + ['-o', str(total_batch_ops / num_spots)]
 
   batch_cmd = [batch_dir + batch_test] + batch_args
   error_msg = "Error running parallel batch "
@@ -120,7 +122,18 @@ def run_batch_par(p, i, num_batch_ops, num_spots=1, batchprob=100):
 
   result = run_experiment(batch_cmd, error_msg)
 
-  return float(result)
+  runtime = float(result[0])
+  sizes = result[1].split("\n")[0][13:-1]
+  batch_steals = int(result[1].split("\n")[1][14:-1])
+
+  throughput = float(total_batch_ops) / runtime
+  avg_batch_size = sum(int(s) for s in sizes.split(','))/float(p)
+
+  if verbose >= 1:
+    print([throughput, avg_batch_size, batch_steals])
+    print(sizes)
+
+  return [throughput, avg_batch_size, batch_steals]
 
 
 def write_throughput_log(p, throughputs, out_file):
@@ -128,50 +141,69 @@ def write_throughput_log(p, throughputs, out_file):
   output += ",".join(str(item) for item in throughputs)
 
   if verbose >= 1:
-    print output
+    print(output)
 
-  out_file.write(output + '\n')
+  print("Run: " + output)
+#  out_file.write(output + '\n')
+
+def write_header(files):
+  for filename in files.keys():
+    files[filename].write("P,")
+    for n in batch_vals:
+      for s in sleep_times:
+        files[filename].write("n{0}s{1},".format(n,s))
+    files[filename].write('\n')
 
 def main():
   global verbose
   if silent: verbose = 0
 
   # Log output setup.
+  files = {}
+  hostname = socket.gethostname()
   current = datetime.datetime.now();
-  filename = "skiplist{0}-{1}-{2}-{3}.log".format(current.month,current.day,
-                                                  current.hour,current.minute)
-  out_file = open(log_dir + filename, "w");
-  out_file.write("P,FC,BatchSeq,BatchPar, BatchMulti\n");
+  ext = ".{0}.{1}.{2}.{3}.{4}".format(hostname,current.month,current.day,
+                                     current.hour,current.minute)
+
+  files['throughput'] = open(log_dir + "skiplist" + ".throughput" + ext + ".log", "w")
+  files['sizes'] = open(log_dir + "skiplist" + ".sizes" + ext + ".log", "w")
+  files['steals'] = open(log_dir + "skiplist" + ".steals" + ext + ".log", "w")
+
+  write_header(files)
 
   for p in nproc:
 
     if verbose >= 1:
-      print "--- Running tests on {0} cores. ---".format(p)
+      print("--- Running tests on {0} cores. ---".format(p))
 
-    throughputs = 4 * [0.0]
+    files['throughput'].write(str(p) + ',')
+    files['sizes'].write(str(p) + ',')
+    files['steals'].write(str(p) + ',')
 
-    for i in iterations:
+    for n in range(len(batch_vals)):
+      for s in range(len(sleep_times)):
 
-      # throughputs[0] = throughputs[0] + run_flat_combining(p, i)
+        throughput,sizes,steals = 0,0,0
+        for i in iterations:
 
-      # Sequential Single Batches
-      throughputs[1] = throughputs[1] \
-                       + float(batch_ops) * spots \
-                       / run_batch_par(p, i, batch_ops * spots, 1, 0)
-#                       / run_batch_seq(p,i)
+          [t,si,st] = run_batch_par(p, i, total_batch_ops,
+                                    batch_vals[n], sleep_times[s], 50)
+          throughput = throughput + t
+          sizes = sizes + si
+          steals = steals + st
 
-      # Parallel Single Batches
-      throughputs[2] = throughputs[2] \
-                       + float(batch_ops) * spots \
-                       / run_batch_par(p, i, batch_ops * spots, 1, 100)
+        throughput = float(throughput) / len(iterations)
+        sizes = float(sizes) / len(iterations)
+        steals = float(steals) / len(iterations)
 
-      # Parallel Multi-Batches
-      throughputs[3] = throughputs[3] \
-                       + float(batch_ops) * spots \
-                       / run_batch_par(p, i, batch_ops, spots, 100)
+        files['throughput'].write("{0:.2f},".format(throughput))
+        files['sizes'].write("{0:.2f},".format(sizes))
+        files['steals'].write("{0:.2f},".format(steals))
 
-    throughputs = [ float(total) / len(iterations) for total in throughputs ]
-    write_throughput_log(p, throughputs, out_file)
+    files['throughput'].write('\n')
+    files['sizes'].write('\n')
+    files['steals'].write('\n')
+
 
     #graph the output
     '''

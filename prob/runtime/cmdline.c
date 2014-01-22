@@ -250,7 +250,7 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
       ++i;
       CHECK(i < *argc, "argument missing");
       options->batchvals = atoi(argv[i]);
-      CHECK(options->batchvals <= 1000, "invalid num batch spots");
+      CHECK(options->batchvals <= 10000, "invalid num batch spots");
       CHECK(options->batchvals >= 0, "invalid num batch spots");
       break;
     case SLEEP:

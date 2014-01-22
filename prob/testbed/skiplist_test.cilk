@@ -7,7 +7,7 @@
 
 #define INIT_SIZE 20000
 
-int g_par_threshold = 1024;
+int g_par_threshold = 512;
 BenchOptions g_options;
 Operation* vals;
 int g_num_spots;
@@ -91,7 +91,7 @@ cilk int main(int argc, char* argv[])
   }
 
   printf("%lf\n",getWallTime());
-  printf("Size: %d\n", get_size());
+  //  printf("Size: %d\n", get_size());
 
   return 0;
 }

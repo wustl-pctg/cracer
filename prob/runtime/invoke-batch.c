@@ -53,7 +53,7 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
   //asm volatile ("" : : : "memory");
   Cilk_exit_state(ws, STATE_BATCH_COMPACTION);
 #if CILK_STATS
-  USE_SHARED(batch_sizes)[num_ops / USE_PARAMETER(batchvals)]++;
+  USE_SHARED(batch_sizes)[(num_ops / USE_PARAMETER(batchvals)) - 1]++;
 #endif
   return num_ops;
 }
