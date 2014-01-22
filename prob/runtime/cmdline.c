@@ -36,7 +36,7 @@ FILE_IDENTITY(ident,
 
 enum {
   NONE, NPROC,
-  DSPROB, BATCHPROB, BATCHVALS, SLEEP,
+  DSPROB, BATCHPROB, BATCHVALS, SLEEP, BIAS,
   STATS, NO_STATS, HELP, STACK, YIELD, NO_YIELD,
   PTHREAD_STACKSIZE,
   POSIX_LOCKS, MEMORY_LOCKS,
@@ -76,6 +76,9 @@ static struct options {
   },
   {
     "sleep", SLEEP, "--sleep <n>: the number of nanoseconds to sleep between unsuccessful batch steals."
+  },
+  {
+    "bias", BIAS, "--bias <n>: how much (0-100) to prefer stealing from the batch owner."
   },
   {
     "pthread-stacksize", PTHREAD_STACKSIZE, "--pthread-stacksize <n> : set the size of the stack used by each worker thread"
@@ -254,8 +257,15 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
       ++i;
       CHECK(i < *argc, "argument missing");
       options->sleeptime = atoi(argv[i]);
-      CHECK(options->batchvals <= 10000000, "invalid sleep time");
-      CHECK(options->batchvals >= 0, "invalid sleep time");
+      CHECK(options->sleeptime <= 10000000, "invalid sleep time");
+      CHECK(options->sleeptime >= 0, "invalid sleep time");
+      break;
+    case BIAS:
+      ++i;
+      CHECK(i < *argc, "argument missing");
+      options->bias = atoi(argv[i]);
+      CHECK(options->bias <= 100, "invalid bias");
+      CHECK(options->bias >= 0, "invalid bias");
       break;
     case STACK:
       ++i;

@@ -216,6 +216,7 @@ static void init_variables(CilkContext *context)
   INIT_PARAMETER1(dsprob, USE_PARAMETER1(options->dsprob));
   INIT_PARAMETER1(batchprob, USE_PARAMETER1(options->batchprob));
   INIT_PARAMETER1(batchvals, USE_PARAMETER1(options->batchvals));
+  INIT_PARAMETER1(bias, USE_PARAMETER1(options->bias));
   USE_PARAMETER1(sleeptime).tv_sec = 0;
   USE_PARAMETER1(sleeptime).tv_nsec = USE_PARAMETER1(options->sleeptime);
   INIT_PARAMETER1(infofile, (FILE *)0); /*pointer to the stats. output file)*/

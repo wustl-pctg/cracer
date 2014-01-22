@@ -451,6 +451,7 @@ struct Cilk_options_s
 	int batchprob;
 	int batchvals;
   int sleeptime;
+  int bias;
   int stackdepth;
   int statlevel;
   int yieldslice;
@@ -473,6 +474,7 @@ Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[]);
       100,                                      \
       1,                                        \
       0,                                        \
+      50,                                        \
       CILK_DEFAULT_STACK_DEPTH,									\
       0,																				\
       0,																				\

@@ -1781,14 +1781,15 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 
 static inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
 {
-  //	return //USE_SHARED(pending_batch).array[ws->self].status == DS_DONE
-    //||   
-    return USE_SHARED(current_batch_id) > batch_id;
+  // Don't need to check the status, but it might reduce contention.
+  //  return USE_SHARED(pending_batch).array[ws->self].status == DS_DONE
+  //    &&
+  return USE_SHARED(current_batch_id) > batch_id;
 }
 
 void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 {
-	int victim;
+	int victim, should_steal;
 	int done = 0;
   Closure* t = NULL;
 
@@ -1797,8 +1798,7 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 	CILK_ASSERT(ws, ws->self >= 0);
 	CILK_ASSERT(ws, batch_id >= 0);
 
-  /* while (!batch_done_yet(ws, ws->batch_id)) { */
-  while (1) {
+  while (!batch_done_yet(ws, ws->batch_id)) {
 		if (!t) {
 			/* try to get work from the local ds queue */
 			deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
@@ -1810,13 +1810,14 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 			break;
 		}
 
-		/* while (!t && !batch_done_yet(ws, ws->batch_id)) { */
-		while (!t) {
+		while (!t && !batch_done_yet(ws, ws->batch_id)) {
 			// Otherwise, steal
-			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(batchprob)) {
+
+      should_steal = (rts_rand(ws) % 99) + 1;
+			if (should_steal <= USE_PARAMETER(batchprob)) {
         Cilk_enter_state(ws, STATE_BATCH_STEALING);
 
-        if ((rts_rand(ws) % 99)+1 <= 50) {
+        if (should_steal <= USE_PARAMETER(bias)) {
           victim = USE_SHARED(batch_owner);
         } else {
           victim = rts_rand(ws) % USE_PARAMETER(active_size);
@@ -1827,8 +1828,6 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
             == DS_IN_PROGRESS) {
 
 					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
-
-          /* if (t) ws->batch_id = USE_SHARED(current_batch_id); */
 
 					if (!t && USE_PARAMETER(options->yieldslice) &&
 							USE_SHARED(current_batch_id) == batch_id) {
