@@ -5,7 +5,7 @@
 
 #include <cilk-lib.cilkh>
 #include <cilk.h>
-
+//#include "../util/parfor.cilkh"
 
 /* define data-type and compare operators here */
 typedef int T;                  /* type of item to be stored */
@@ -58,21 +58,38 @@ void insertionSortSeq (void* data, size_t numElements) {
 
 //NOTE: potentially unsafe if two closures try to modify adjacent edges at the
 //      same time
-cilk void recursiveInsertBatch(void* data, int iLeaf,
-                               size_t numElements, size_t numElementsTot)
+/* cilk void recursiveInsertBatch(void* data, int iLeaf, */
+/*                                size_t numElements, size_t numElementsTot) */
+/* { */
+/*   if (numElements > INSERT_CHUNK) { */
+/*     spawn recursiveInsertBatch(data, 2*iLeaf, */
+/*                                numElements - (numElements/2), numElementsTot); */
+/*     spawn recursiveInsertBatch(data, 2*iLeaf+1, */
+/*                                numElements/2, numElementsTot); */
+/*   } else { */
+/*     int istart = (numElementsTot/INSERT_CHUNK)*iLeaf; */
+/*     int i; */
+/*     for (i=istart; i < istart + INSERT_CHUNK; ++i) { */
+/*       T d = ((Operation*)data)[i].data; */
+/*       insertNode(d); */
+/*     } */
+/*   } */
+/*   return; */
+/* } */
+
+cilk void recursiveInsertBatch(void* data, int start, int end)
 {
-  if (numElements > INSERT_CHUNK) {
-    spawn recursiveInsertBatch(data, 2*iLeaf, numElements/2, numElementsTot);
-    spawn recursiveInsertBatch(data, 2*iLeaf+1, numElements/2, numElementsTot);
+  int i;
+  if (end - start > INSERT_CHUNK) {
+    i = start + (end - start) / 2;
+    spawn recursiveInsertBatch(data, start, i);
+    spawn recursiveInsertBatch(data, i, end);
   } else {
-    int istart = (numElementsTot/INSERT_CHUNK)*iLeaf;
-    int i;
-    for (i=istart; i < istart + INSERT_CHUNK; ++i) {
+    for (i = start; i < end; i++) {
       T d = ((Operation*)data)[i].data;
       insertNode(d);
     }
   }
-  return;
 }
 
 void mixed_batchify_seq(Batch* pending, void* ds, void* data,
@@ -99,10 +116,9 @@ cilk void mixed_batchify(void *ds, void* data,
 cilk void batch_insert_par(void* dataStruct, void* data,
                            size_t numElements, void* results)
 {
-  /* printf("Inserting %d elements into a skip list of size %d.\n", */
-  /*        numElements, get_size()); */
   insertionSortSeq(data, numElements);
-  spawn recursiveInsertBatch(data, 0, numElements, numElements);
+  //spawn recursiveInsertBatch(data, 0, numElements, numElements);
+  spawn recursiveInsertBatch(data, 0, numElements);
 }
 
 cilk void batch_createNodes(int index, void* info) {
@@ -114,7 +130,7 @@ cilk void batch_createNodes(int index, void* info) {
   for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++);
   ((int*)(data[1]))[index]=i; //Sets the level in the level array.
   if (*((int*)(data[0]))<i) {
-     *((int*)(data[0]))=i;  //Changes max level currently.
+    *((int*)(data[0]))=i;  //Changes max level currently.
   }
   if ((y=malloc(sizeof(Node) + i*sizeof(Node*)))==0){
     printf ("memory allocation error createNodes\n");
@@ -133,21 +149,21 @@ cilk void batch_relateNodes(int index, void* infos){
   int i,j,k;
   int maxlevel = *((int*)(info[4]));
 
-  for (i=0;i<((int*)(info[1]))[index];i++){
+  for (i = 0;i < ((int*)(info[1]))[index]; i++){
     y->forward[i]=NIL;
-    for (j=check;j<*((int*)(info[2]));j++){
-      if (((int*)(info[1]))[j]>=i){
-	y->forward[i]=((Node**)(info[0]))[j]; //sets the forward of the (index)th node at the ith level to node j.
-	((int*)(info[3]))[maxlevel*j+i]=index; //sets the previous pointer
-	check=j;
-	break;
+    for (j = check;j < *((int*)(info[2])); j++){
+      if (((int*)(info[1]))[j] >= i){
+        y->forward[i] = ((Node**)(info[0]))[j]; //sets the forward of the (index)th node at the ith level to node j.
+        ((int*)(info[3]))[maxlevel*j+i] = index; //sets the previous pointer
+        check = j;
+        break;
       }
     }
-    }
+  }
 }
 
 cilk void batch_insert_par2(void* dataStruct, void* data,
-                           size_t numElements, void* results)
+                            size_t numElements, void* results)
 {
   int* level = calloc(numElements,sizeof(int));
   int i,j,k,check;
@@ -156,9 +172,9 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   Node* x, *y;
   Node** new_nodes = calloc(numElements,sizeof(Node*));
   int* prev_nodes;
-   //Par_for to create nodes
+  //Par_for to create nodes
   void* createNodeArgs[5] = {&maxInsertLevel, level, data, new_nodes};
-   void* relatedNodeArgs[5] = {new_nodes,level,&numElements,level,level};
+  void* relatedNodeArgs[5] = {new_nodes,level,&numElements,level,level};
   insertionSortSeq(data, numElements);
   currMaxLevel=((SkipList*)dataStruct)->listLevel;
   spawn parforpar(0,numElements,1,&batch_createNodes, createNodeArgs);
@@ -179,33 +195,33 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   sync;
 
   //Par_for to merge list
-   for (i=0;i<numElements;i++){
-      for (j=level[i]-1;j>=0;j--){
-      	      x = list.hdr;
-    	      while (x->forward[j] != NIL && compLT(x->forward[j]->data, ((int*)data)[2*i])) {
-               	    x = x->forward[j];
-	      }
-
-	      //Do a quick loop forward to check for the last element in this level.
-	      if (new_nodes[i]->forward[j]!=NIL && compLT(x->forward[j]->data,new_nodes[i]->forward[j]->data)) {
-		new_nodes[i]->forward[j]=x->forward[j];
-	      }
-
-	      for (k=i;k>=-1;k--){
-		if (k==-1){
-	  	      x->forward[j]=new_nodes[i];
-		      break;
-		}
-		if (level[k]>=level[i] && compLT(x->data,new_nodes[k]->data)){
-		    x->forward[j]=new_nodes[i];
-		    break;
-		}
-	      }
+  for (i=0;i<numElements;i++){
+    for (j=level[i]-1;j>=0;j--){
+      x = list.hdr;
+      while (x->forward[j] != NIL && compLT(x->forward[j]->data, ((int*)data)[2*i])) {
+        x = x->forward[j];
       }
+
+      //Do a quick loop forward to check for the last element in this level.
+      if (new_nodes[i]->forward[j]!=NIL && compLT(x->forward[j]->data,new_nodes[i]->forward[j]->data)) {
+        new_nodes[i]->forward[j]=x->forward[j];
+      }
+
+      for (k=i;k>=-1;k--){
+        if (k==-1){
+          x->forward[j]=new_nodes[i];
+		      break;
+        }
+        if (level[k]>=level[i] && compLT(x->data,new_nodes[k]->data)){
+          x->forward[j]=new_nodes[i];
+          break;
+        }
+      }
+    }
   }
-   free(new_nodes);
-   free(level);
-   free(prev_nodes);
+  free(new_nodes);
+  free(level);
+  free(prev_nodes);
 }
 
 void batch_insert_seq(Batch* pending, void* ds, void* data,
@@ -266,7 +282,10 @@ Node *insertNode(T data) {
     update[i] = x;
   }
   x = x->forward[0];
-  if (x != NIL && compEQ(x->data, data)) return(x);
+  if (x != NIL && compEQ(x->data, data)) {
+    //    printf("%d already in skiplist\n", x->data);
+    return(x);
+  }
 
   /* determine level */
   for (newLevel = 0; rand() < RAND_MAX/2 && newLevel < MAXLEVEL; newLevel++);
