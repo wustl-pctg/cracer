@@ -137,7 +137,8 @@ cilk void batch_createNodes(int index, void* info) {
     exit(1);
   }
   ((Node**)(data[3]))[index]=y;
-  y->data=((int*)(data[2]))[2*index];
+  y->data=((int*)(data[2]))[2*index+1];
+//  printf("data %d\n",y->data);
 }
 
 
@@ -179,7 +180,7 @@ cilk void batch_mergeLists(int index, void* infos){
 	x=x->forward[i];
     }
     //No duplicates!
-    if (x!=list.hdr && x->forward[i]!=NIL && compEQ(x->forward[i]->data, y->data)) {
+    if (x!=NIL && x->forward[i]!=NIL && compEQ(x->forward[i]->data, y->data)) {
       //printf("duplicate %d\n",dup_count++);
       return;
     }

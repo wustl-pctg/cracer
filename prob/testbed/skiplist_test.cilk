@@ -52,8 +52,8 @@ SkipList* set_up(size_t initial_size, size_t num_ops)
     fprintf(stderr, "insufficient memory (vals)\n");
 
   for (i = 0; i < num_ops * g_num_spots; i++) {
-    //op.data = rand();
-    op.data = i;
+    op.data = rand();
+    //op.data = i;
     vals[i] = op;
   }
 
@@ -91,7 +91,7 @@ cilk int main(int argc, char* argv[])
   }
 
   printf("%lf\n",getWallTime());
-  //  printf("Size: %d\n", get_size());
+//  printf("Size: %d\n", get_size());
 
   return 0;
 }
