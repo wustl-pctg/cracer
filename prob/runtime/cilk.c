@@ -49,21 +49,42 @@ static void print_all_statistics(CilkContext *const context)
 	// Batch stats
 	int i;
 #if CILK_STATS
-	int batch_steals = 0;
+	int batch_steals_success = 0;
+	int batch_steals_fail = 0;
 	int total_steals = 0;
+  int total_steals_fail = 0;
 	if (USE_PARAMETER1(options->statlevel) == -1) {
     //		Cilk_summarize_time_statistics(context);
 
+    fprintf(USE_PARAMETER1(infofile),
+            "Num batches: %d\n", USE_SHARED1(num_batches));
+
 		fprintf(USE_PARAMETER1(infofile), "Batch sizes:");
+    for (i = 1; i <= USE_PARAMETER1(active_size); i++) {
+      fprintf(USE_PARAMETER1(infofile), " %d,",
+              USE_PARAMETER1(batchvals) * i);
+    }
+
+    fprintf(USE_PARAMETER1(infofile), "\nSize counts:");
+
 		for (i = 0; i < USE_PARAMETER1(active_size); i++) {
 			fprintf(USE_PARAMETER1(infofile), " %i,",
-              USE_SHARED1(batch_sizes)[i] * USE_PARAMETER1(batchvals));
-			batch_steals += USE_SHARED1(batch_steals)[i];
+              USE_SHARED1(batch_sizes)[i]);
+			batch_steals_success += USE_SHARED1(batch_steals_success)[i];
+			batch_steals_fail += USE_SHARED1(batch_steals_fail)[i];
 			total_steals += USE_SHARED1(num_steals)[i];
+			total_steals_fail += USE_SHARED1(num_steals_fail)[i];
 		}
+
 		fprintf(USE_PARAMETER1(infofile), "\n");
-		fprintf(USE_PARAMETER1(infofile), "Batch steals: %i \n", batch_steals);
-		fprintf(USE_PARAMETER1(infofile), "Total steals: %i \n", total_steals);
+		fprintf(USE_PARAMETER1(infofile),
+            "Successful batch steals: %i \n", batch_steals_success);
+		fprintf(USE_PARAMETER1(infofile),
+            "Failed batch steals: %i \n", batch_steals_fail);
+		fprintf(USE_PARAMETER1(infofile),
+            "Total successful steals: %i \n", total_steals);
+		fprintf(USE_PARAMETER1(infofile),
+            "Total failed steals: %i \n", total_steals_fail);
 	}
 #endif
 

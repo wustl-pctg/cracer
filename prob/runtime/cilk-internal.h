@@ -223,8 +223,11 @@ struct CilkGlobalState_s{
 
 #if CILK_STATS
 	int *batch_sizes;
-	int *batch_steals;
+	int *batch_steals_success;
+	int *batch_steals_fail;
 	int *num_steals;
+	int *num_steals_fail;
+  int num_batches;
 #endif
 	volatile unsigned int batch_lock;
 	//	CILK_CACHE_LINE_PAD;

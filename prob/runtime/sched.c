@@ -32,6 +32,12 @@
 
 #define BATCH_ASSERT(args...) CILK_ASSERT(args)
 
+// Declare early for use in Closure_steal. invoke-batch.c can't be
+// included yet because it depends on some deque manipulation
+// functions. The includes are kind of a mess.
+static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
+                       BatchFrame *_cilk_frame);
+
 FILE_IDENTITY(ident,
 							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/sched.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
@@ -42,7 +48,6 @@ FILE_IDENTITY(ident,
 #define CLOSURE_ABORT(cl) (cl->abort_status)
 
 #define NOBODY (-1)   /* invalid processor number */
-//#define MAX_BATCH_SIZE USE_PARAMETER(active_size) / 2 // ***
 
 /*
  * SCHEDULER LOCK DIAGRAM
@@ -938,6 +943,10 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim,
 			goto give_up;
 		}
 
+    if (ws->batch_id && cl->frame->sig->inlet == invoke_batch_slow) {
+      goto give_up;
+    }
+
 		switch (cl->status) {
 		case CLOSURE_READY:
 			Cilk_event(ws, EVENT_STEAL);
@@ -1004,9 +1013,16 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim,
 	}
 #if CILK_STATS
 	if (res) {
-    if (ws->batch_id)
-			USE_SHARED(batch_steals)[ws->self]++;
+    if (ws->batch_id) {
+			USE_SHARED(batch_steals_success)[ws->self]++;
+      CILK_ASSERT(ws, res->frame->sig->inlet != invoke_batch_slow);
+    }
     USE_SHARED(num_steals)[ws->self]++;
+  } else {
+    if (ws->batch_id) {
+      USE_SHARED(batch_steals_fail)[ws->self]++;
+    }
+    USE_SHARED(num_steals_fail)[ws->self]++;
   }
 #endif
 
@@ -1864,63 +1880,6 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 
 }
 
-BatchRecord* Batcher_insert(CilkWorkerState *const ws,
-														InternalBatchOperation op, void *dataStruct,
-														void *data, size_t dataSize, void *indvResult)
-{
-	// add operation to pending array
-	Batch *pending = &USE_SHARED(pending_batch);
-	pending->array[ws->self].operation = op;
-	pending->array[ws->self].args = data;
-	pending->array[ws->self].size = dataSize;
-	pending->array[ws->self].result = indvResult;
-	pending->array[ws->self].status = DS_WAITING;
-
-	memcpy(&USE_SHARED(batch_work_array)[ws->self], data, dataSize);
-
-	return &pending->array[ws->self];
-}
-
-inline void* Batcher_allocate_work_array(CilkWorkerState *const ws, int dataSize)
-{
-	void *work_array = USE_SHARED(batch_work_array);
-
-	if (work_array == NULL) {
-		work_array = Cilk_malloc(dataSize * USE_PARAMETER(active_size));
-		USE_SHARED(batch_work_array) = work_array;
-	}
-	return work_array;
-}
-
-int Batcher_collect(CilkWorkerState *const ws,
-										Batch *pending, BatchRecord *record)
-{
-	int i, num_ops = 0;
-	int dataSize = record->size;
-	InternalBatchOperation op = record->operation;
-	void *work_array = Batcher_allocate_work_array(ws, dataSize);
-
-	for (i = 0; i < USE_PARAMETER(active_size); i++) {
-
-		if (pending->array[i].status == DS_WAITING &&
-				pending->array[i].operation == op) {
-
-			memcpy(work_array + (dataSize * num_ops),
-						 pending->array[i].args, dataSize);
-
-			pending->array[i].packedIndex = num_ops;
-			pending->array[i].status = DS_IN_PROGRESS;
-
-			num_ops++;
-		}
-	}
-	pending->dataSize = dataSize;
-	pending->operation = op;
-	pending->size = num_ops;
-
-	return num_ops;
-}
-
 void Cilk_batchify(CilkWorkerState *const ws,
 									 InternalBatchOperation op, void *dataStruct,
 									 void *data, size_t dataSize, void *indvResult)
@@ -1939,9 +1898,11 @@ void Cilk_batchify(CilkWorkerState *const ws,
   Cilk_switch2batch(ws); // done in batch_scheduler
 
   do {
-    ws->batch_id = USE_SHARED(current_batch_id); // *** can we get rid
-                                                 // *** of this?
+
+    // We can get rid of one of these.
+    ws->batch_id = USE_SHARED(current_batch_id);
     batch_id = USE_SHARED(current_batch_id);
+
 		if (*status == DS_WAITING &&
         0 == USE_SHARED(batch_lock) &&
         0 == USE_SHARED(batch_lock) &&

@@ -26,12 +26,12 @@ timeout = 10*60 # 10 minutes max. per run.
 initial_size = 20000
 
 # Batch parameters.
-#batch_test = "skiplist"
+batch_test = "skiplist"
 total_batch_ops = 10000000
 ds_prob = 0
 batch_prob = 100
 batch_vals = [10, 100, 1000, 5000]
-sleep_times = [0, 50000, 100000]#, 200000, 500000]
+sleep_times = [0, 200000, 500000]
 
 # Flat combining parameters.
 fc_test = "test_intel64"

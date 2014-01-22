@@ -53,6 +53,7 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
   //asm volatile ("" : : : "memory");
   Cilk_exit_state(ws, STATE_BATCH_COMPACTION);
 #if CILK_STATS
+  USE_SHARED(num_batches)++;
   USE_SHARED(batch_sizes)[(num_ops / USE_PARAMETER(batchvals)) - 1]++;
 #endif
   return num_ops;
@@ -129,10 +130,7 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
 
   // We can also spawn here, to do in parallel, optionally.
 
-  // Don't want this, because it frees the frame.
   --ws->current_cache->tail;
-
-
   CILK_WMB();
 
   Cilk_remove_and_keep_closure_and_frame(_cilk_ws, &_cilk_frame->header,
@@ -202,7 +200,7 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
 
   Cilk_terminate_batch(_cilk_ws);
 
-  //	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
+  //Cilk_exit_state(ws, STATE_BATCH_INVOKE);
   return;
 }
 
@@ -227,19 +225,18 @@ void Batcher_init(CilkContext *const context)
   USE_SHARED1(pending_batch).array =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size)
                       * sizeof(BatchRecord));
-                      //                      * USE_PARAMETER1(batchvals));
 
   USE_SHARED1(pending_batch).size =
     USE_PARAMETER1(active_size) * USE_PARAMETER1(batchvals);
 
-  //  for (i = 0; i < USE_PARAMETER1(active_size) * USE_PARAMETER1(batchvals); i++) {
   for (i = 0; i < USE_PARAMETER1(active_size); i++) {
     USE_SHARED1(pending_batch).array[i].status = DS_DONE;
   }
 
 	USE_SHARED1(batch_lock) = 0;
 
-	// This may not actually be sizeof(int)! It could actually change!***
+	// This may not actually be sizeof(int)! It could actually change,
+	// but for now it's okay to specialize. ***
 	USE_SHARED1(batch_work_array) =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size)
                       * sizeof(helper)

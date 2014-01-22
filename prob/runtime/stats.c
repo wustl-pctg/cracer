@@ -40,17 +40,24 @@ void Cilk_stats_init(CilkContext *const context)
                   (StatsT *) Cilk_malloc_fixed(sizeof(StatsT) *
                                                USE_PARAMETER1(active_size)));
   int i;
+  USE_SHARED1(num_batches) = 0;
   USE_SHARED1(batch_sizes) =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(int));
-  USE_SHARED1(batch_steals) =
+  USE_SHARED1(batch_steals_success) =
+    Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(int));
+  USE_SHARED1(batch_steals_fail) =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(int));
   USE_SHARED1(num_steals) =
+    Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(int));
+  USE_SHARED1(num_steals_fail) =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(int));
 
   for (i = 0; i < USE_PARAMETER1(active_size); i++) {
     USE_SHARED1(batch_sizes)[i] = 0;
-    USE_SHARED1(batch_steals)[i] = 0;
+    USE_SHARED1(batch_steals_success)[i] = 0;
+    USE_SHARED1(batch_steals_fail)[i] = 0;
     USE_SHARED1(num_steals)[i] = 0;
+    USE_SHARED1(num_steals_fail)[i] = 0;
   }
 #endif
 
