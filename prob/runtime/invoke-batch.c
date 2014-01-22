@@ -30,29 +30,39 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
                                    helper* work_array, BatchRecord *record)
                                    //        InternalBatchOperation op)
 {
-  unsigned int num_ops = 0;
-  unsigned int register i;
+  CILK_ASSERT(ws, ws->batch_id == USE_SHARED(current_batch_id));
 
-  //  for (i = 0; i < USE_PARAMETER(active_size); i++) {
-  for (i = 0; i < pending->size; i++) { // rename pending->size to
-                                        // total_size or num_spots
+  Cilk_enter_state(ws, STATE_BATCH_COMPACTION);
+  unsigned int num_ops = 0;
+  unsigned int register i,j;
+
+  for (i = 0; i < USE_PARAMETER(active_size); i++) {
 
     // Should also check that the op matches, for multiple batch operations***
     if (pending->array[i].status == DS_WAITING) {
       pending->array[i].status = DS_IN_PROGRESS;
       //			pending->array[i].packedIndex = num_ops;
-
-      work_array[num_ops] = *(helper*)pending->array[i].args;
-      num_ops++;
+      for (j = 0; j < USE_PARAMETER(batchvals); j++) {
+        work_array[num_ops+j] = ((helper*)pending->array[i].args)[j];
+      }
+      // num_ops++;
+      num_ops += USE_PARAMETER(batchvals);
     }
   }
 
+  //asm volatile ("" : : : "memory");
+  Cilk_exit_state(ws, STATE_BATCH_COMPACTION);
+#if CILK_STATS
+  USE_SHARED(batch_sizes)[num_ops / USE_PARAMETER(batchvals)]++;
+#endif
   return num_ops;
 }
 
 static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 {
-  CILK_ASSERT(ws, USE_SHARED(current_batch_id) == ws->batch_id);
+  //  CILK_ASSERT(ws, USE_SHARED(current_batch_id) == ws->batch_id);
+  CILK_ASSERT(ws, USE_SHARED(current_batch_id) ==
+              USE_SHARED(pending_batch).batch_no);
 
   int i, index;
 	//	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
@@ -60,8 +70,7 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
   //	void* results = USE_SHARED(batch_work_array);
   //	size_t dataSize = current->dataSize;
 
-  //	for (i = 0; i < USE_PARAMETER(active_size); i++) {
-  for (i = 0; i < current->size; i++) {
+  for (i = 0; i < USE_PARAMETER(active_size); i++) {
     if (current->array[i].status == DS_IN_PROGRESS) {
 			//			index = current->array[i].packedIndex;
 			/* if (current->array[i].result) { */
@@ -217,13 +226,14 @@ void Batcher_init(CilkContext *const context)
 
   USE_SHARED1(pending_batch).array =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size)
-                      * sizeof(BatchRecord)
-                      * USE_PARAMETER1(batchvals));
+                      * sizeof(BatchRecord));
+                      //                      * USE_PARAMETER1(batchvals));
 
   USE_SHARED1(pending_batch).size =
     USE_PARAMETER1(active_size) * USE_PARAMETER1(batchvals);
 
-  for (i = 0; i < USE_PARAMETER1(active_size) * USE_PARAMETER1(batchvals); i++) {
+  //  for (i = 0; i < USE_PARAMETER1(active_size) * USE_PARAMETER1(batchvals); i++) {
+  for (i = 0; i < USE_PARAMETER1(active_size); i++) {
     USE_SHARED1(pending_batch).array[i].status = DS_DONE;
   }
 

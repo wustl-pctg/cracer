@@ -1,40 +1,34 @@
 #include <stdio.h>
-#include <stdlib.h>
-
+#include <string.h>
 #include "util/timer.h"
 #include "util/benchOptions.h"
 #include "util/parfor.cilkh"
-#include "ds/skiplist.cilkh"
+#include "ds/skiplist.cilk"
 
 #define INIT_SIZE 20000
 
 int g_par_threshold = 1024;
 BenchOptions g_options;
 Operation* vals;
-Operation g_add_op = {1, 0};
-Operation g_rem_op = {0, 0};
 int g_num_spots;
 
 cilk void parfor_skip(const int begin, const int end)
 {
-  int i;
+  int i,j;
 
   if (end - begin <= g_par_threshold) {
 
-		for (i = begin; i <= end; ++i) {
-
-      //      op.data = vals[i];
-      //      printf("Inserting %d,%d\n", vals[i].add, vals[i].data);
+		for (i = begin; i < end; ++i) {
 
       if (g_options.seq)
-        insert_seq(_cilk_ws, &vals[i]);
+        insert_seq(_cilk_ws, &vals[i * g_num_spots]);
       else
-        insert_par(_cilk_ws, &vals[i]);
-		}
+        insert_par(_cilk_ws, &vals[i * g_num_spots]);
+    }
   } else {
-    i = begin+(end-begin)/2;
+    i = begin + (end-begin) / 2;
     spawn parfor_skip(begin, i);
-    spawn parfor_skip(i + 1, end);
+    spawn parfor_skip(i, end);
   }
 }
 
@@ -48,8 +42,8 @@ SkipList* set_up(size_t initial_size, size_t num_ops)
   initList();
 
   for (i = -1*initial_size; i < 0; i++) {
-    insertNode(rand());
-    //insertNode(i);
+    //insertNode(rand());
+    insertNode(i);
   }
 
   // Prepare our array of random numbers.
@@ -58,14 +52,10 @@ SkipList* set_up(size_t initial_size, size_t num_ops)
     fprintf(stderr, "insufficient memory (vals)\n");
 
   for (i = 0; i < num_ops * g_num_spots; i++) {
-    op.data = rand();
+    //op.data = rand();
+    op.data = i;
     vals[i] = op;
-    //    vals[i] = {1, rand()};
-    //vals[i] = i;
   }
-  /* for ( i = 0; i < 1000; i++) { */
-  /*   printf("rand val: %d,%d\n", vals[i].add, vals[i].data); */
-  /* } */
 
   return ds;
 }
@@ -74,7 +64,6 @@ cilk void runMixedTest(SkipList* ds, int size, int add_part)
 {
 
   int add_size = (add_part * size)/100;
-
   spawn parfor_skip(0, add_size);
   //  spawn parfor_skip(add_size, size, g_rem_op);
   sync;
@@ -102,6 +91,7 @@ cilk int main(int argc, char* argv[])
   }
 
   printf("%lf\n",getWallTime());
+  printf("Size: %d\n", get_size());
 
   return 0;
 }

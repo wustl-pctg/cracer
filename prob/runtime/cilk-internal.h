@@ -375,6 +375,7 @@ enum {
   STATE_BATCH_TOTAL,
 	STATE_BATCH_SCHEDULING,
   STATE_BATCH_START,
+  STATE_BATCH_COMPACTION,
 	STATE_BATCH_TERMINATE,
   STATE_STEALING,
   STATE_RETURNING,
@@ -449,6 +450,7 @@ struct Cilk_options_s
 	int dsprob;
 	int batchprob;
 	int batchvals;
+  int sleeptime;
   int stackdepth;
   int statlevel;
   int yieldslice;
@@ -470,6 +472,7 @@ Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[]);
       50,                                       \
       100,                                      \
       1,                                        \
+      0,                                        \
       CILK_DEFAULT_STACK_DEPTH,									\
       0,																				\
       0,																				\

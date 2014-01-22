@@ -52,11 +52,12 @@ static void print_all_statistics(CilkContext *const context)
 	int batch_steals = 0;
 	int total_steals = 0;
 	if (USE_PARAMETER1(options->statlevel) == -1) {
-		Cilk_summarize_time_statistics(context);
+    //		Cilk_summarize_time_statistics(context);
 
 		fprintf(USE_PARAMETER1(infofile), "Batch sizes:");
 		for (i = 0; i < USE_PARAMETER1(active_size); i++) {
-			fprintf(USE_PARAMETER1(infofile), " %i,", USE_SHARED1(batch_sizes)[i]);
+			fprintf(USE_PARAMETER1(infofile), " %i,",
+              USE_SHARED1(batch_sizes)[i] * USE_PARAMETER1(batchvals));
 			batch_steals += USE_SHARED1(batch_steals)[i];
 			total_steals += USE_SHARED1(num_steals)[i];
 		}
@@ -215,6 +216,8 @@ static void init_variables(CilkContext *context)
   INIT_PARAMETER1(dsprob, USE_PARAMETER1(options->dsprob));
   INIT_PARAMETER1(batchprob, USE_PARAMETER1(options->batchprob));
   INIT_PARAMETER1(batchvals, USE_PARAMETER1(options->batchvals));
+  USE_PARAMETER1(sleeptime).tv_sec = 0;
+  USE_PARAMETER1(sleeptime).tv_nsec = USE_PARAMETER1(options->sleeptime);
   INIT_PARAMETER1(infofile, (FILE *)0); /*pointer to the stats. output file)*/
   INIT_PARAMETER1(pthread_stacksize, USE_PARAMETER1(options->pthread_stacksize));
 

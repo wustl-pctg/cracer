@@ -36,7 +36,7 @@ FILE_IDENTITY(ident,
 
 enum {
   NONE, NPROC,
-  DSPROB, BATCHPROB, BATCHVALS,
+  DSPROB, BATCHPROB, BATCHVALS, SLEEP,
   STATS, NO_STATS, HELP, STACK, YIELD, NO_YIELD,
   PTHREAD_STACKSIZE,
   POSIX_LOCKS, MEMORY_LOCKS,
@@ -73,6 +73,9 @@ static struct options {
   },
   {
     "batchvals", BATCHVALS, "--batchvals <n>: the number of batch spots for each worker"
+  },
+  {
+    "sleep", SLEEP, "--sleep <n>: the number of nanoseconds to sleep between unsuccessful batch steals."
   },
   {
     "pthread-stacksize", PTHREAD_STACKSIZE, "--pthread-stacksize <n> : set the size of the stack used by each worker thread"
@@ -246,6 +249,13 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
       options->batchvals = atoi(argv[i]);
       CHECK(options->batchvals <= 1000, "invalid num batch spots");
       CHECK(options->batchvals >= 0, "invalid num batch spots");
+      break;
+    case SLEEP:
+      ++i;
+      CHECK(i < *argc, "argument missing");
+      options->sleeptime = atoi(argv[i]);
+      CHECK(options->batchvals <= 10000000, "invalid sleep time");
+      CHECK(options->batchvals >= 0, "invalid sleep time");
       break;
     case STACK:
       ++i;

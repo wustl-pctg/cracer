@@ -58,8 +58,6 @@ FILE_IDENTITY(ident,
  * See also PROTOCOLS for a more verbose description.
  */
 
-static const struct timespec sleep_time = {0, 50};
-
 static inline void Cilk_switch2batch(CilkWorkerState *const ws)
 {
 	ws->batch_id = USE_SHARED(current_batch_id);
@@ -1005,9 +1003,11 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim,
 		Cilk_event(ws, EVENT_STEAL_EMPTY_DEQUE);
 	}
 #if CILK_STATS
-	if (res && ws->batch_id)
+	if (res) {
+    if (ws->batch_id)
 			USE_SHARED(batch_steals)[ws->self]++;
-	USE_SHARED(num_steals)[ws->self]++;
+    USE_SHARED(num_steals)[ws->self]++;
+  }
 #endif
 
 	return res;
@@ -1781,8 +1781,9 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 
 static inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
 {
-	return USE_SHARED(pending_batch).array[ws->self].status == DS_DONE
-    ||   USE_SHARED(current_batch_id)                      > batch_id;
+  //	return //USE_SHARED(pending_batch).array[ws->self].status == DS_DONE
+    //||   
+    return USE_SHARED(current_batch_id) > batch_id;
 }
 
 void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
@@ -1791,11 +1792,10 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 	int done = 0;
   Closure* t = NULL;
 
+	Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
+
 	CILK_ASSERT(ws, ws->self >= 0);
 	CILK_ASSERT(ws, batch_id >= 0);
-
-	/* Cilk_enter_state(ws, STATE_BATCH_TOTAL); */
-	/* Cilk_enter_state(ws, STATE_BATCH_SCHEDULING); */
 
   /* while (!batch_done_yet(ws, ws->batch_id)) { */
   while (1) {
@@ -1814,9 +1814,9 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 		while (!t) {
 			// Otherwise, steal
 			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(batchprob)) {
-        //				Cilk_enter_state(ws, STATE_BATCH_STEALING);
+        Cilk_enter_state(ws, STATE_BATCH_STEALING);
 
-        if ((rts_rand(ws) % 99)+1 <= 75) {
+        if ((rts_rand(ws) % 99)+1 <= 50) {
           victim = USE_SHARED(batch_owner);
         } else {
           victim = rts_rand(ws) % USE_PARAMETER(active_size);
@@ -1828,21 +1828,21 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 
 					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
 
-          if (t) ws->batch_id = USE_SHARED(current_batch_id);
+          /* if (t) ws->batch_id = USE_SHARED(current_batch_id); */
 
 					if (!t && USE_PARAMETER(options->yieldslice) &&
 							USE_SHARED(current_batch_id) == batch_id) {
 						Cilk_lower_priority(ws);
 					}
 				}
-        //				Cilk_exit_state(ws, STATE_BATCH_STEALING);
+        Cilk_exit_state(ws, STATE_BATCH_STEALING);
 			}
 			if (batch_done_yet(ws, batch_id)) {
 				done = 1;
 				break;
 			}
       else if (!t) {
-        nanosleep(&sleep_time, NULL);
+        nanosleep(&USE_PARAMETER(sleeptime), NULL);
       }
 		}
     if (!t && done) break;
@@ -1850,18 +1850,16 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 		if (USE_PARAMETER(options->yieldslice))
 			Cilk_raise_priority(ws);
 
-
-    //		Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 		if (t) {
+      Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
+      Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 		}
     //    if (done) break;
-    //		Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 
 	}
 
-	/* Cilk_exit_state(ws, STATE_BATCH_SCHEDULING); */
-	/* Cilk_exit_state(ws, STATE_BATCH_TOTAL); */
+	Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 
 	return;
 
@@ -1933,15 +1931,10 @@ void Cilk_batchify(CilkWorkerState *const ws,
   Batch* pending = &USE_SHARED(pending_batch);
   helper* work_array = USE_SHARED(batch_work_array);
 
-  BatchRecord* record;
-  int start_spot = ws->self * num_spots;
-
-  for (i = start_spot; i < start_spot + num_spots; i++) {
-    //printf("Inserting %d,%d\n", ((helper*)data)[i].x, ((helper*)data)[i].y);
-    record = &pending->array[i];
-    record->status = DS_WAITING;
-    record->args = &((helper*)data)[i];
-  }
+  BatchRecord *record = &pending->array[ws->self];
+  record->status = DS_WAITING;
+  //asm volatile ("" : : : "memory");
+  record->args = data;
 
   int* status = (int*) &record->status;
   Cilk_switch2batch(ws); // done in batch_scheduler
@@ -1958,6 +1951,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
 
       USE_SHARED(batch_owner) = ws->self;
       ws->batch_id = USE_SHARED(current_batch_id);
+      pending->batch_no = ws->batch_id;
 
       i = compact(ws, pending, work_array, NULL);
 
@@ -1979,6 +1973,8 @@ void Cilk_batchify(CilkWorkerState *const ws,
       batch_scheduler(ws, batch_id);
 		}
   } while (*status != DS_DONE);
+
+  ws->batch_id = 0;
 
   Cilk_switch2core(ws); // done in batch_scheduler
   return;
@@ -2018,7 +2014,7 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
       //      USE_SHARED(batch_lock) = 0;
       break;
     } else {
-      nanosleep(&sleep_time, NULL);
+      nanosleep(&USE_PARAMETER(sleeptime), NULL);
 		}
   } while (*status != DS_DONE);
 
@@ -2070,7 +2066,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
       //      USE_SHARED(batch_lock) = 0;
       break;
     } else {
-      nanosleep(&sleep_time, NULL);
+      nanosleep(&USE_PARAMETER(sleeptime), NULL);
 		}
   } while (*status != DS_DONE);
 

@@ -86,6 +86,9 @@ static const struct state_desc {
     "Starting batches", STATE_BATCH_START
   },
   {
+    "Compacting batches", STATE_BATCH_COMPACTION
+  },
+  {
     "Terminating batches", STATE_BATCH_TERMINATE
   },
   {

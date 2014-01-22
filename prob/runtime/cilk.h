@@ -230,6 +230,7 @@ typedef struct {
   __CILKSAFE__ int dsprob;
   __CILKSAFE__ int batchprob;
   __CILKSAFE__ int batchvals;
+  __CILKSAFE__ struct timespec sleeptime;
 
   /*
    * HACK: this should be FILE *; but using a void * simplifies the
@@ -552,6 +553,7 @@ typedef struct {
   size_t size;
   size_t dataSize;
   InternalBatchOperation operation;
+  size_t batch_no;
   BatchRecord  *array;
 	//  CILK_CACHE_LINE_PAD;
 } Batch;
