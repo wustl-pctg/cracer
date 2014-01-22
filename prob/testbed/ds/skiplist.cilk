@@ -130,7 +130,7 @@ cilk void batch_createNodes(int index, void* info) {
   for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++);
   ((int*)(data[1]))[index]=i; //Sets the level in the level array.
   if (*((int*)(data[0]))<i) {
-    *((int*)(data[0]))=i;  //Changes max level currently.
+     *((int*)(data[0]))=i;  //Changes max level currently.
   }
   if ((y=malloc(sizeof(Node) + i*sizeof(Node*)))==0){
     printf ("memory allocation error createNodes\n");
@@ -146,44 +146,89 @@ cilk void batch_relateNodes(int index, void* infos){
   void** info = infos;
   Node* y = ((Node**)(info[0]))[index];
   int check = index;
-  int i,j,k;
+  int i,j;
   int maxlevel = *((int*)(info[4]));
 
-  for (i = 0;i < ((int*)(info[1]))[index]; i++){
+  for (i=0;i<=((int*)(info[1]))[index];i++){
     y->forward[i]=NIL;
-    for (j = check;j < *((int*)(info[2])); j++){
-      if (((int*)(info[1]))[j] >= i){
-        y->forward[i] = ((Node**)(info[0]))[j]; //sets the forward of the (index)th node at the ith level to node j.
-        ((int*)(info[3]))[maxlevel*j+i] = index; //sets the previous pointer
-        check = j;
-        break;
+    for (j=check+1;j<*((int*)(info[2]));j++){
+      if (((int*)(info[1]))[j]>=i){
+	y->forward[i]=((Node**)(info[0]))[j]; //sets the forward of the (index)th node at the ith level to node j.
+	((int*)(info[3]))[maxlevel*j+i]=index; //sets the previous pointer
+	check=j;
+	break;
+      }
+    }
+    }
+}
+
+cilk void batch_mergeLists(int index, void* infos){
+  int i;
+  void** info = infos;
+  int* level = ((int*)info[1]);
+  int maxlevel = *((int*)(info[2]));
+  int* prev_nodes=((int*)info[4]);
+  int prev_node;
+  Node** new_nodes=((Node**)info[0]);
+  Node* x;
+  Node* y;
+  for (i=level[index];i>=0;i--){
+    y=new_nodes[index];
+    x = list.hdr;
+    while (x->forward[i]!=NIL && compLT(x->forward[i]->data, y->data)) {
+	x=x->forward[i];
+    }
+    //No duplicates!
+    if (x!=list.hdr && x->forward[i]!=NIL && compEQ(x->forward[i]->data, y->data)) {
+      //printf("duplicate %d\n",dup_count++);
+      return;
+    }
+    prev_node = prev_nodes[maxlevel*index+i];
+    if (level[prev_node]>=i){ //Currently processing level i.
+      //If the previous element is still greater than the original list element, then the previous element should do the work.
+      if (prev_node!=0 && compLT(x->data,new_nodes[prev_node]->data)){
+	//do nothing
+	return;
+      }
+      else {
+	//Find the last element of the segment.
+	while (y->forward[i]!=NIL && compLT(y->forward[i]->data,x->forward[i]->data)){
+	    y=y->forward[i];
+	}
+	y->forward[i]=x->forward[i];
+	x->forward[i]=new_nodes[index];
       }
     }
   }
 }
 
 cilk void batch_insert_par2(void* dataStruct, void* data,
-                            size_t numElements, void* results)
+                           size_t numElements, void* results)
 {
   int* level = calloc(numElements,sizeof(int));
-  int i,j,k,check;
+  //int i,j,k,check;
   int maxInsertLevel=0;
   int currMaxLevel;
-  Node* x, *y;
+  //Node* x, *y;
   Node** new_nodes = calloc(numElements,sizeof(Node*));
   int* prev_nodes;
-  //Par_for to create nodes
+   //Par_for to create nodes
   void* createNodeArgs[5] = {&maxInsertLevel, level, data, new_nodes};
   void* relatedNodeArgs[5] = {new_nodes,level,&numElements,level,level};
+  void* mergeListArgs[5] = {new_nodes,level, &numElements, data, level};
+  // printf("inserting batch of %d elements into %d size\n",numElements, get_size());
   insertionSortSeq(data, numElements);
   currMaxLevel=((SkipList*)dataStruct)->listLevel;
-  spawn parforpar(0,numElements,1,&batch_createNodes, createNodeArgs);
-  sync;
 
-  prev_nodes=calloc(maxInsertLevel*numElements,sizeof(int)); //Makes a prev array.
+  spawn parforpar(0,numElements-1,1,&batch_createNodes, createNodeArgs);
+  sync;
+  
+  prev_nodes=calloc((maxInsertLevel+1)*numElements,sizeof(int)); //Makes a prev array.
   //Fill in rest of info.
   relatedNodeArgs[3]=prev_nodes;
   relatedNodeArgs[4]=&maxInsertLevel;
+  mergeListArgs[4]=prev_nodes;
+  mergeListArgs[2]=&maxInsertLevel;
 
   //Switch max level!
   if (maxInsertLevel>currMaxLevel) {
@@ -191,37 +236,18 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   }
 
   //Par_for to relations
-  spawn parforpar(0,numElements,1,&batch_relateNodes, relatedNodeArgs);
+  spawn parforpar(0,numElements-1,1,&batch_relateNodes, relatedNodeArgs);
   sync;
 
   //Par_for to merge list
-  for (i=0;i<numElements;i++){
-    for (j=level[i]-1;j>=0;j--){
-      x = list.hdr;
-      while (x->forward[j] != NIL && compLT(x->forward[j]->data, ((int*)data)[2*i])) {
-        x = x->forward[j];
-      }
+  spawn parforpar(0,numElements-1,1,&batch_mergeLists,mergeListArgs);
+  sync; 
 
-      //Do a quick loop forward to check for the last element in this level.
-      if (new_nodes[i]->forward[j]!=NIL && compLT(x->forward[j]->data,new_nodes[i]->forward[j]->data)) {
-        new_nodes[i]->forward[j]=x->forward[j];
-      }
-
-      for (k=i;k>=-1;k--){
-        if (k==-1){
-          x->forward[j]=new_nodes[i];
-		      break;
-        }
-        if (level[k]>=level[i] && compLT(x->data,new_nodes[k]->data)){
-          x->forward[j]=new_nodes[i];
-          break;
-        }
-      }
-    }
-  }
+  
   free(new_nodes);
   free(level);
   free(prev_nodes);
+  // printf("finished batch\n");
 }
 
 void batch_insert_seq(Batch* pending, void* ds, void* data,
