@@ -230,7 +230,7 @@ typedef struct {
   __CILKSAFE__ int dsprob;
   __CILKSAFE__ int batchprob;
   __CILKSAFE__ int batchvals;
-  __CILKSAFE__ struct timespec sleeptime;
+  __CILKSAFE__ int sleeptime;
   __CILKSAFE__ int bias;
 
   /*

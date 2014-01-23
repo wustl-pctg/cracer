@@ -50,6 +50,7 @@ static void print_all_statistics(CilkContext *const context)
 	int i;
 #if CILK_STATS
 	int batch_steals_success = 0;
+	int batch_steals_real = 0;
 	int batch_steals_fail = 0;
 	int total_steals = 0;
   int total_steals_fail = 0;
@@ -71,6 +72,7 @@ static void print_all_statistics(CilkContext *const context)
 			fprintf(USE_PARAMETER1(infofile), " %i,",
               USE_SHARED1(batch_sizes)[i]);
 			batch_steals_success += USE_SHARED1(batch_steals_success)[i];
+			batch_steals_real += USE_SHARED1(batch_steals_real)[i];
 			batch_steals_fail += USE_SHARED1(batch_steals_fail)[i];
 			total_steals += USE_SHARED1(num_steals)[i];
 			total_steals_fail += USE_SHARED1(num_steals_fail)[i];
@@ -79,6 +81,8 @@ static void print_all_statistics(CilkContext *const context)
 		fprintf(USE_PARAMETER1(infofile), "\n");
 		fprintf(USE_PARAMETER1(infofile),
             "Successful batch steals: %i \n", batch_steals_success);
+		fprintf(USE_PARAMETER1(infofile),
+            "Real batch steals: %i \n", batch_steals_real);
 		fprintf(USE_PARAMETER1(infofile),
             "Failed batch steals: %i \n", batch_steals_fail);
 		fprintf(USE_PARAMETER1(infofile),
@@ -238,8 +242,7 @@ static void init_variables(CilkContext *context)
   INIT_PARAMETER1(batchprob, USE_PARAMETER1(options->batchprob));
   INIT_PARAMETER1(batchvals, USE_PARAMETER1(options->batchvals));
   INIT_PARAMETER1(bias, USE_PARAMETER1(options->bias));
-  USE_PARAMETER1(sleeptime).tv_sec = 0;
-  USE_PARAMETER1(sleeptime).tv_nsec = USE_PARAMETER1(options->sleeptime);
+  INIT_PARAMETER1(sleeptime, USE_PARAMETER1(options->sleeptime));
   INIT_PARAMETER1(infofile, (FILE *)0); /*pointer to the stats. output file)*/
   INIT_PARAMETER1(pthread_stacksize, USE_PARAMETER1(options->pthread_stacksize));
 

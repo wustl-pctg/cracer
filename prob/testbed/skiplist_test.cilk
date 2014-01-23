@@ -7,6 +7,8 @@
 
 #define INIT_SIZE 20000
 
+
+
 int g_par_threshold = 512;
 BenchOptions g_options;
 Operation* vals;

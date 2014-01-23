@@ -943,9 +943,6 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim,
 			goto give_up;
 		}
 
-    if (ws->batch_id && cl->frame->sig->inlet == invoke_batch_slow) {
-      goto give_up;
-    }
 
 		switch (cl->status) {
 		case CLOSURE_READY:
@@ -1015,7 +1012,9 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim,
 	if (res) {
     if (ws->batch_id) {
 			USE_SHARED(batch_steals_success)[ws->self]++;
-      CILK_ASSERT(ws, res->frame->sig->inlet != invoke_batch_slow);
+      if (res->frame->sig->inlet != invoke_batch_slow) {
+        USE_SHARED(batch_steals_real)[ws->self]++;
+      }
     }
     USE_SHARED(num_steals)[ws->self]++;
   } else {
@@ -1803,6 +1802,28 @@ static inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
   return USE_SHARED(current_batch_id) > batch_id;
 }
 
+#define MUSEC_IN_SEC 1000000
+#define ELAPSED(begin, diff) \
+  (double)(diff.tv_sec * MUSEC_IN_SEC + diff.tv_usec -\
+           (begin.tv_sec * MUSEC_IN_SEC + begin.tv_usec))
+
+// Return 1 if the batch is actually done.
+static inline int batch_sleep(CilkWorkerState *const ws,
+                              unsigned int num_microseconds, int batch_id)
+{
+  struct timeval begin, diff;
+  gettimeofday(&begin, NULL);
+  gettimeofday(&diff, NULL);
+  while(ELAPSED(begin,diff) < num_microseconds) {
+
+    if (batch_done_yet(ws, batch_id)) return 1;
+
+    gettimeofday(&diff, NULL);
+
+  }
+  return 0;
+}
+
 void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 {
 	int victim, should_steal;
@@ -1855,9 +1876,9 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 			if (batch_done_yet(ws, batch_id)) {
 				done = 1;
 				break;
-			}
-      else if (!t) {
-        nanosleep(&USE_PARAMETER(sleeptime), NULL);
+			} else if (!t) {
+        //        nanosleep(&USE_PARAMETER(sleeptime), NULL);
+        if (batch_sleep(ws, USE_PARAMETER(sleeptime), batch_id)) break;
       }
 		}
     if (!t && done) break;
@@ -1870,8 +1891,6 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
       Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 		}
-    //    if (done) break;
-
 	}
 
 	Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
@@ -1958,7 +1977,7 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
   //  Cilk_switch2batch(ws);
 
   do {
-
+    ws->batch_id = USE_SHARED(current_batch_id);
 		if (*status == DS_WAITING &&
         0 == USE_SHARED(batch_lock) &&
         0 == USE_SHARED(batch_lock) &&
@@ -1974,7 +1993,8 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
       //      USE_SHARED(batch_lock) = 0;
       break;
     } else {
-      nanosleep(&USE_PARAMETER(sleeptime), NULL);
+      //      nanosleep(&USE_PARAMETER(sleeptime), NULL);
+      if (batch_sleep(ws, USE_PARAMETER(sleeptime), ws->batch_id)) break;
 		}
   } while (*status != DS_DONE);
 
@@ -2003,7 +2023,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
   Cilk_switch2batch(ws);
 
   do {
-
+    ws->batch_id = USE_SHARED(current_batch_id);
 		if (*status == DS_WAITING &&
         0 == USE_SHARED(batch_lock) &&
         0 == USE_SHARED(batch_lock) &&
@@ -2026,7 +2046,8 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
       //      USE_SHARED(batch_lock) = 0;
       break;
     } else {
-      nanosleep(&USE_PARAMETER(sleeptime), NULL);
+      //      nanosleep(&USE_PARAMETER(sleeptime), NULL);
+      if (batch_sleep(ws, USE_PARAMETER(sleeptime), ws->batch_id)) break;
 		}
   } while (*status != DS_DONE);
 

@@ -217,7 +217,9 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   void* createNodeArgs[5] = {&maxInsertLevel, level, data, new_nodes};
   void* relatedNodeArgs[5] = {new_nodes,level,&numElements,level,level};
   void* mergeListArgs[5] = {new_nodes,level, &numElements, data, level};
-  // printf("inserting batch of %d elements into %d size\n",numElements, get_size());
+  // printf("inserting batch of %d elements into %d
+  // size\n",numElements, get_size());
+
   insertionSortSeq(data, numElements);
   currMaxLevel=((SkipList*)dataStruct)->listLevel;
 
@@ -280,7 +282,7 @@ void insert_seq(CilkWorkerState *const ws, Operation* add_op)
 
 void insert_par(CilkWorkerState *const ws, Operation* add_op)
 {
-  Cilk_batchify(ws, &batch_insert_par, (void*)&list,
+  Cilk_batchify(ws, &batch_insert_par2, (void*)&list,
                 (void*)add_op, sizeof(int), NULL);
 }
 

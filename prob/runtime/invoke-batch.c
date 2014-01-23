@@ -5,8 +5,6 @@
 #include <cilk-cilk2c-pre.h>
 #include <cilk-cilk2c.h>
 
-#include <stdio.h> // ***
-
 /************************************************************
  * Batcher-related routines
  ************************************************************/
@@ -52,6 +50,9 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
 
   //asm volatile ("" : : : "memory");
   Cilk_exit_state(ws, STATE_BATCH_COMPACTION);
+  /* printf("Batch %d of size %d with %d workers.\n", */
+  /*        USE_SHARED(current_batch_id), num_ops, */
+  /*        num_ops / USE_PARAMETER(batchvals)); */
 #if CILK_STATS
   USE_SHARED(num_batches)++;
   USE_SHARED(batch_sizes)[(num_ops / USE_PARAMETER(batchvals)) - 1]++;

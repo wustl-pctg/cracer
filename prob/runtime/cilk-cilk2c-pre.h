@@ -23,6 +23,8 @@ FILE_IDENTITY(ident_cilk_cilk2c_pre,
  *
  */
 
+#include <stdio.h>
+
 /*************************************************************
  * internal malloc
  *************************************************************/
@@ -100,7 +102,9 @@ static inline void Cilk_destroy_frame_fast(CilkWorkerState *const ws,
 static inline void *Cilk_create_frame(CilkWorkerState *const ws,
 																			size_t size, CilkProcInfo *sig)
 {
-  CilkStackFrame *f = Cilk_internal_malloc_fast(ws, size);
+  CilkStackFrame *f;
+
+  f = Cilk_internal_malloc_fast(ws, size);
   f->sig = sig;
   WHEN_CILK_ALLOCA(f->alloca_h = (struct cilk_alloca_header *) 0);
   WHEN_CILK_DEBUG(f->magic = CILK_STACKFRAME_MAGIC);
@@ -127,7 +131,6 @@ static inline void *Cilk_cilk2c_init_frame(CilkWorkerState *const ws,
 
   CILK_COMPLAIN((CilkStackFrame **) t < ws->current_cache->stack + ws->stackdepth,
 								(ws->context, ws, USE_PARAMETER(stack_overflow_msg)));
-
 
   *t = (CilkStackFrame *) f;
   Cilk_membar_StoreStore();
