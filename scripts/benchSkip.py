@@ -28,7 +28,7 @@ initial_size = 20000
 
 # Batch parameters.
 batch_test = "skiplist"
-total_batch_ops = 100000
+total_batch_ops = 10000#100000
 ds_prob = 0
 batch_prob = 100
 biases = [0, 50]
@@ -64,6 +64,7 @@ def run_experiment(cmd, error_msg):
   except Alarm:
     print(' '.join(cmd) + " took too long.")
     sys.exit(1)
+  print(output)
 
   if process.returncode != 0 or output[0] == None:
     print(error_msg)
@@ -240,15 +241,19 @@ def main():
 
           for i in iterations:
 
+            print("{0},{1},{2},{3},{4},{5}".format(p, i, total_batch_ops,n,s,b))
+            print(batch_vals)
+            print(sleep_times)
+            print(biases)
             [t,si,st] = run_batch_par(p, i, total_batch_ops,
-                                      batch_vals[n], sleep_times[s], 50)
+                                      batch_vals[n], sleep_times[s], biases[b])
             throughput = throughput + t
             sizes = sizes + si
             steals = map(add, steals, st)
 
           throughput = float(throughput) / len(iterations)
           sizes = float(sizes) / len(iterations)
-          steals = [float(s) / len(iterations) for s in steals]
+          steals = [float(x) / len(iterations) for x in steals]
 
           files['throughput'].write("{0:.2f},".format(throughput))
           files['sizes'].write("{0:.2f},".format(sizes))
