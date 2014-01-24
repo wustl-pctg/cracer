@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> // memcpy
 
 #include <cilk-lib.cilkh>
 #include <cilk.h>
@@ -11,6 +12,7 @@
 typedef int T;                  /* type of item to be stored */
 #define compLT(a,b) (a < b)
 #define compEQ(a,b) (a == b)
+#define swap(a, b, t) t = a; a = b; b = t
 
 typedef struct {
 	int add;
@@ -37,6 +39,69 @@ SkipList list;                  /* skip list information */
 
 Node* insertNode(T data);
 void deleteNode(T data);
+
+static inline int choose_pivot(Operation *array, int left, int right)
+{
+  int med = (left + right) / 2;
+  if (array[left].data < array[right].data) {
+	  if (array[right].data < array[med].data) {
+      return right;
+	  } else {
+      if (array[left].data < array[med].data)
+		    return med;
+      else
+		    return left;
+	  }
+  } else {
+	  if (array[right].data > array[med].data) {
+      return right;
+	  } else {
+      if (array[left].data > array[med].data)
+		    return med;
+      else
+		    return left;
+	  }
+  }
+}
+
+static inline int partition(Operation *array, int left, int right,
+                            int pivot_index)
+{
+  register int i;
+  register int store_index;
+  register T temp;
+  register T pivot = array[pivot_index].data;
+
+  // move pivot to the end
+  swap(array[pivot_index].data, array[right].data, temp);
+
+  store_index = left;
+
+  for (i = left; i < right; i++) {
+    if (array[i].data <= pivot) {
+      swap(array[i].data, array[store_index].data, temp);
+      store_index++;
+    }
+  }
+
+  // Move pivot to final position
+  swap(array[store_index].data, array[right].data, temp);
+
+  return store_index;
+}
+
+void quicksort(Operation* array, int left, int right)
+{
+  int new_pivot_index, pivot_index;
+  if (left >= right) return;
+
+  pivot_index = choose_pivot(array, left, right);
+
+  new_pivot_index = partition(array, left, right, pivot_index);
+
+  quicksort(array, left, new_pivot_index - 1);
+  quicksort(array, new_pivot_index + 1, right);
+}
 
 void insertionSortSeq (void* data, size_t numElements) {
   //T* elements = (T*)data;
@@ -130,7 +195,7 @@ cilk void batch_createNodes(int index, void* info) {
   for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++);
   ((int*)(data[1]))[index]=i; //Sets the level in the level array.
   if (*((int*)(data[0]))<i) {
-     *((int*)(data[0]))=i;  //Changes max level currently.
+    *((int*)(data[0]))=i;  //Changes max level currently.
   }
   if ((y=malloc(sizeof(Node) + i*sizeof(Node*)))==0){
     printf ("memory allocation error createNodes\n");
@@ -138,7 +203,7 @@ cilk void batch_createNodes(int index, void* info) {
   }
   ((Node**)(data[3]))[index]=y;
   y->data=((int*)(data[2]))[2*index+1];
-//  printf("data %d\n",y->data);
+  //  printf("data %d\n",y->data);
 }
 
 
@@ -154,13 +219,13 @@ cilk void batch_relateNodes(int index, void* infos){
     y->forward[i]=NIL;
     for (j=check+1;j<*((int*)(info[2]));j++){
       if (((int*)(info[1]))[j]>=i){
-	y->forward[i]=((Node**)(info[0]))[j]; //sets the forward of the (index)th node at the ith level to node j.
-	((int*)(info[3]))[maxlevel*j+i]=index; //sets the previous pointer
-	check=j;
-	break;
+        y->forward[i]=((Node**)(info[0]))[j]; //sets the forward of the (index)th node at the ith level to node j.
+        ((int*)(info[3]))[maxlevel*j+i]=index; //sets the previous pointer
+        check=j;
+        break;
       }
     }
-    }
+  }
 }
 
 cilk void batch_mergeLists(int index, void* infos){
@@ -177,7 +242,7 @@ cilk void batch_mergeLists(int index, void* infos){
     y=new_nodes[index];
     x = list.hdr;
     while (x->forward[i]!=NIL && compLT(x->forward[i]->data, y->data)) {
-	x=x->forward[i];
+      x=x->forward[i];
     }
     //No duplicates!
     if (x!=NIL && x->forward[i]!=NIL && compEQ(x->forward[i]->data, y->data)) {
@@ -188,23 +253,23 @@ cilk void batch_mergeLists(int index, void* infos){
     if (level[prev_node]>=i){ //Currently processing level i.
       //If the previous element is still greater than the original list element, then the previous element should do the work.
       if (prev_node!=0 && compLT(x->data,new_nodes[prev_node]->data)){
-	//do nothing
-	return;
+        //do nothing
+        return;
       }
       else {
-	//Find the last element of the segment.
-	while (y->forward[i]!=NIL && compLT(y->forward[i]->data,x->forward[i]->data)){
-	    y=y->forward[i];
-	}
-	y->forward[i]=x->forward[i];
-	x->forward[i]=new_nodes[index];
+        //Find the last element of the segment.
+        while (y->forward[i]!=NIL && compLT(y->forward[i]->data,x->forward[i]->data)){
+          y=y->forward[i];
+        }
+        y->forward[i]=x->forward[i];
+        x->forward[i]=new_nodes[index];
       }
     }
   }
 }
 
 cilk void batch_insert_par2(void* dataStruct, void* data,
-                           size_t numElements, void* results)
+                            size_t numElements, void* results)
 {
   int* level = calloc(numElements,sizeof(int));
   //int i,j,k,check;
@@ -213,19 +278,28 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   //Node* x, *y;
   Node** new_nodes = calloc(numElements,sizeof(Node*));
   int* prev_nodes;
-   //Par_for to create nodes
+  //Par_for to create nodes
   void* createNodeArgs[5] = {&maxInsertLevel, level, data, new_nodes};
   void* relatedNodeArgs[5] = {new_nodes,level,&numElements,level,level};
   void* mergeListArgs[5] = {new_nodes,level, &numElements, data, level};
   // printf("inserting batch of %d elements into %d
   // size\n",numElements, get_size());
 
-  insertionSortSeq(data, numElements);
+
+  /* int i; */
+  /* int size = numElements * sizeof(Operation); */
+  /* Operation* n = malloc(size); */
+  /* memcpy(n, (Operation*)data, size); */
+
+  //insertionSortSeq(data, numElements);
+
+  quicksort((Operation*)data, 0, numElements - 1);
+
   currMaxLevel=((SkipList*)dataStruct)->listLevel;
 
   spawn parforpar(0,numElements-1,1,&batch_createNodes, createNodeArgs);
   sync;
-  
+
   prev_nodes=calloc((maxInsertLevel+1)*numElements,sizeof(int)); //Makes a prev array.
   //Fill in rest of info.
   relatedNodeArgs[3]=prev_nodes;
@@ -244,9 +318,9 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
 
   //Par_for to merge list
   spawn parforpar(0,numElements-1,1,&batch_mergeLists,mergeListArgs);
-  sync; 
+  sync;
 
-  
+
   free(new_nodes);
   free(level);
   free(prev_nodes);

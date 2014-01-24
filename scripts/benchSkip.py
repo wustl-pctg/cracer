@@ -28,12 +28,12 @@ initial_size = 20000
 
 # Batch parameters.
 batch_test = "skiplist"
-total_batch_ops = 10000#100000
+total_batch_ops = 50000
 ds_prob = 0
 batch_prob = 100
 biases = [0, 50]
 batch_vals = [10, 1000]
-sleep_times = [0, 100]
+sleep_times = [100]
 
 # Flat combining parameters.
 fc_test = "test_intel64"
@@ -241,10 +241,6 @@ def main():
 
           for i in iterations:
 
-            print("{0},{1},{2},{3},{4},{5}".format(p, i, total_batch_ops,n,s,b))
-            print(batch_vals)
-            print(sleep_times)
-            print(biases)
             [t,si,st] = run_batch_par(p, i, total_batch_ops,
                                       batch_vals[n], sleep_times[s], biases[b])
             throughput = throughput + t
