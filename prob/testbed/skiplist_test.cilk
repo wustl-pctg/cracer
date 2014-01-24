@@ -5,9 +5,7 @@
 #include "util/parfor.cilkh"
 #include "ds/skiplist.cilk"
 
-#define INIT_SIZE 20000
-
-
+#define INIT_SIZE 200000
 
 int g_par_threshold = 512;
 BenchOptions g_options;
@@ -44,8 +42,8 @@ SkipList* set_up(size_t initial_size, size_t num_ops)
   initList();
 
   for (i = -1*initial_size; i < 0; i++) {
-    //insertNode(rand());
-    insertNode(i);
+    insertNode(rand());
+    //insertNode(i);
   }
 
   // Prepare our array of random numbers.
@@ -54,7 +52,7 @@ SkipList* set_up(size_t initial_size, size_t num_ops)
     fprintf(stderr, "insufficient memory (vals)\n");
 
   for (i = 0; i < num_ops * g_num_spots; i++) {
-    op.data = rand() % 20;
+    op.data = rand();
     //op.data = i;
     vals[i] = op;
   }
@@ -93,7 +91,7 @@ cilk int main(int argc, char* argv[])
   }
 
   printf("%lf\n",getWallTime());
-//  printf("Size: %d\n", get_size());
+  //  printf("Size: %d\n", get_size());
 
   return 0;
 }

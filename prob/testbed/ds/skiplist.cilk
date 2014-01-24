@@ -356,7 +356,7 @@ void insert_seq(CilkWorkerState *const ws, Operation* add_op)
 
 void insert_par(CilkWorkerState *const ws, Operation* add_op)
 {
-  Cilk_batchify(ws, &batch_insert_par, (void*)&list,
+  Cilk_batchify(ws, &batch_insert_par2, (void*)&list,
                 (void*)add_op, sizeof(int), NULL);
 }
 

@@ -18,8 +18,7 @@ fc_dir = base_dir + "flat_combining/"
 silent = False
 verbose = 2
 iterations = range(3)
-nproc = range(2, 16, 2)
-nproc.insert(0, 1)
+nproc = range(1, 9, 1)
 timeout = 10*60 # 10 minutes max. per run.
 
 # Note: initial size of batch is assumed to be 20000.
@@ -28,16 +27,16 @@ initial_size = 20000
 
 # Batch parameters.
 batch_test = "skiplist"
-total_batch_ops = 50000
+total_batch_ops = 50
 ds_prob = 0
 batch_prob = 100
-biases = [0, 50]
-batch_vals = [10, 1000]
-sleep_times = [100]
+biases = [0]
+batch_vals = [10, 50]
+sleep_times = [50, 100]
 
 # Flat combining parameters.
 fc_test = "test_intel64"
-fc_time = 20 # seconds to run the flat combining benchmark
+fc_time = 1 # seconds to run the flat combining benchmark
 
 dedicated = 0 # Run all adds first, then removes.
 percent_adds = 100 # What percentage of total operations should be adds.
@@ -73,7 +72,7 @@ def run_experiment(cmd, error_msg):
 
   return output
 
-def run_flat_combining(p, i):
+def run_flat_combining(p, i, multiplier = 1):
 
   # Arguments:
   # alg1_name alg1_num alg2_name alg2_num alg3_name alg3_num
@@ -81,31 +80,18 @@ def run_flat_combining(p, i):
   # load_factor capacity runtime is_dedicated_flag tm_status(?)
   # read_write_delay
   fc_args = 'fcskiplist 1 non 0 non 0 non 0'.split()
-  fc_args = fc_args + ['1', str(p), str(percent_adds), str(100 - percent_adds)]
+  fc_args = fc_args + ['1', str(p * multiplier),
+                       str(percent_adds), str(100 - percent_adds)]
   fc_args = fc_args + ['0.0', str(initial_size), str(fc_time)]
   fc_args = fc_args + [str(dedicated), '0', '0']
 
   fc_cmd =  [fc_dir + fc_test] + fc_args
   error_msg = "Error running flat combining "
-  error_msg += " with {0} processors, iteration {1}:".format(p, i)
+  error_msg += " with {0} threads, iteration {1}:".format(p*multiplier, i)
 
   result = run_experiment(fc_cmd, error_msg)
 
-  return float(string.split(result)[0])
-
-def run_batch_seq(p, i):
-  batch_args = ['--nproc', str(p), '--dsprob', str(ds_prob)]
-  batch_args = batch_args + ['--batchprob', '0']
-  batch_args = batch_args + ['-o', str(batch_ops)]
-  batch_args = batch_args + ['--seq']
-
-  batch_cmd = [batch_dir + batch_test] + batch_args
-  error_msg = "Error running sequential batch "
-  error_msg += " with {0} processors, iteration {1}:".format(p, i)
-
-  result = run_experiment(batch_cmd, error_msg)
-
-  return float(result)
+  return float(string.split(result[0])[0])
 
 def parse_batch_stats(stats_str):
   stats = dict()
@@ -140,7 +126,6 @@ def parse_batch_stats(stats_str):
 
   return stats
 
-
 def run_batch_par(p, i, total_batch_ops, num_spots=1, sleep_time=0, bias = 0):
   batch_args = ['--nproc', str(p)]
   batch_args = batch_args + ['--dsprob', str(ds_prob)]
@@ -163,14 +148,16 @@ def run_batch_par(p, i, total_batch_ops, num_spots=1, sleep_time=0, bias = 0):
       print(result[1])
 
   runtime = float(result[0])
-  stats = parse_batch_stats(result[1])
-
   throughput = float(total_batch_ops) / runtime
-  steals = [stats['successful_batch_steals'],
-            stats['real_batch_steals'],
-            stats['failed_batch_steals']]
 
-  wanted = [throughput, stats['avg_batch_size'], steals]
+  wanted = [throughput, -1, [-1,-1,-1]]
+  if result[1] != None and len(result[1]) > 0:
+    stats = parse_batch_stats(result[1])
+    steals = [stats['successful_batch_steals'],
+              stats['real_batch_steals'],
+              stats['failed_batch_steals']]
+
+    wanted = [throughput, stats['avg_batch_size'], steals]
 
   if verbose >= 1:
     print(wanted)
@@ -192,6 +179,7 @@ def write_header(files):
   for filename in files.keys():
     files[filename].write("P,")
     for n in batch_vals:
+      files[filename].write("fc{0},".format(n))
       for s in sleep_times:
         for b in biases:
           files[filename].write("n{0}s{1}b{2},".format(n,s,b))
@@ -233,6 +221,14 @@ def main():
     files['fail_steals'].write(str(p) + ',')
 
     for n in range(len(batch_vals)):
+
+      throughput = 0
+      for i in iterations:
+            fc = run_flat_combining(p, i, batch_vals[n])
+            throughput = throughput + fc
+      throughput = float(throughput) / len(iterations)
+      files['throughput'].write("{0:.2f},".format(throughput))
+
       for s in range(len(sleep_times)):
         for b in range(len(biases)):
 
@@ -240,7 +236,6 @@ def main():
           steals = 3 * [0]
 
           for i in iterations:
-
             [t,si,st] = run_batch_par(p, i, total_batch_ops,
                                       batch_vals[n], sleep_times[s], biases[b])
             throughput = throughput + t
