@@ -3,13 +3,13 @@
 #include "util/timer.h"
 #include "util/benchOptions.h"
 #include "util/parfor.cilkh"
-#include "ds/skiplist.cilk"
+#include "ds/skiplist.cilkh"
 
-#define INIT_SIZE 200000
+#define INIT_SIZE 20000
 
-int g_par_threshold = 512;
+int g_par_threshold = 32;
 BenchOptions g_options;
-Operation* vals;
+int* vals;
 int g_num_spots;
 
 cilk void parfor_skip(const int begin, const int end)
@@ -32,11 +32,10 @@ cilk void parfor_skip(const int begin, const int end)
   }
 }
 
-SkipList* set_up(size_t initial_size, size_t num_ops)
+cilk SkipList* set_up(size_t initial_size, size_t num_ops)
 {
   int i;
   SkipList* ds = &list;
-  Operation op = {1, 0};
 
   // Initialize the skip list.
   initList();
@@ -47,14 +46,13 @@ SkipList* set_up(size_t initial_size, size_t num_ops)
   }
 
   // Prepare our array of random numbers.
-  vals = malloc(sizeof(Operation) * num_ops * g_num_spots);
+  vals = malloc(sizeof(int) * num_ops * g_num_spots);
   if (!vals)
     fprintf(stderr, "insufficient memory (vals)\n");
 
   for (i = 0; i < num_ops * g_num_spots; i++) {
-    op.data = rand();
-    //op.data = i;
-    vals[i] = op;
+    //vals[i] = i;
+    vals[i] = rand();
   }
 
   return ds;
@@ -73,22 +71,29 @@ cilk int main(int argc, char* argv[])
 {
   SkipList* ds;
   int num_ops;
+  int i;
+  int initial_size;
 
   getOptions(argc, argv, &g_options);
   num_ops = g_options.operations;
+  initial_size = g_options.initial_size > 0 ? g_options.initial_size : INIT_SIZE;
 
   g_num_spots = _cilk_ws->context->Cilk_RO_params->batchvals;
 
-  ds = set_up(INIT_SIZE, num_ops);
+  ds = spawn set_up(initial_size, num_ops);
+  sync;
 
   startTimer();
   spawn runMixedTest(ds, num_ops, 100);
   sync;
   stopTimer();
 
-  if (g_options.verbose){
-    printf("Batch Add. Size %d. \n", num_ops);
-  }
+  /* startTimer(); */
+  /* for (i = 0; i < num_ops; i++) { */
+  /*   insertNode(vals[i]); */
+  /* } */
+  /* stopTimer(); */
+
 
   printf("%lf\n",getWallTime());
 //  printf("Size: %d\n", get_size());

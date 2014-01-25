@@ -6,6 +6,7 @@ import string, shlex
 import math
 from operator import add
 import signal
+from itertools import product # use later to simplify ***
 
 # Directory setup.
 base_dir = "../"
@@ -17,27 +18,28 @@ fc_dir = base_dir + "flat_combining/"
 # General parameters.
 silent = False
 verbose = 2
-iterations = range(3)
-nproc = range(1, 9, 1)
-timeout = 10*60 # 10 minutes max. per run.
+iterations = range(1)
+nproc = range(2, 9, 2)
+nproc.insert(0, 1)
+timeout = 60*60 # 60 minutes max. per run.
 
 # Note: initial size of batch is assumed to be 20000.
 # Should later set this as a parameter (--special?)
-initial_size = 20000
+
 
 # Batch parameters.
 batch_test = "skiplist"
-total_batch_ops = 50
+total_batch_ops = 100000
 ds_prob = 0
 batch_prob = 100
 biases = [0]
-batch_vals = [10, 50]
-sleep_times = [50, 100]
+initial_sizes = [20000, 100000, 100000000, 1000000000]
+batch_vals = [1, 10, 50, 100]
+sleep_times = [0]
 
 # Flat combining parameters.
 fc_test = "test_intel64"
-fc_time = 1 # seconds to run the flat combining benchmark
-
+fc_time = 1#60 # seconds to run the flat combining benchmark
 dedicated = 0 # Run all adds first, then removes.
 percent_adds = 100 # What percentage of total operations should be adds.
 
@@ -72,7 +74,7 @@ def run_experiment(cmd, error_msg):
 
   return output
 
-def run_flat_combining(p, i, multiplier = 1):
+def run_flat_combining(p, i, multiplier = 1, initial_size = initial_sizes[0]):
 
   # Arguments:
   # alg1_name alg1_num alg2_name alg2_num alg3_name alg3_num
@@ -126,15 +128,17 @@ def parse_batch_stats(stats_str):
 
   return stats
 
-def run_batch_par(p, i, total_batch_ops, num_spots=1, sleep_time=0, bias = 0):
+def run_batch_par(p, i, total_batch_ops, num_spots=1, sleep_time=0, bias = 0,
+                  initial_size = initial_sizes[0]):
   batch_args = ['--nproc', str(p)]
   batch_args = batch_args + ['--dsprob', str(ds_prob)]
   batch_args = batch_args + ['--batchprob', str(batch_prob)]
   batch_args = batch_args + ['--batchvals', str(num_spots)]
   batch_args = batch_args + ['--sleep', str(sleep_time)]
   batch_args = batch_args + ['--bias', str(bias)]
-  batch_args = batch_args + ['--stats', str(-1)]
+#  batch_args = batch_args + ['--stats', str(-1)]
   batch_args = batch_args + ['-o', str(total_batch_ops / num_spots)]
+  batch_args = batch_args + ['-i', str(initial_size)]
 
   batch_cmd = [batch_dir + batch_test] + batch_args
   error_msg = "Error running parallel batch "
@@ -164,7 +168,6 @@ def run_batch_par(p, i, total_batch_ops, num_spots=1, sleep_time=0, bias = 0):
 
   return wanted
 
-
 def write_throughput_log(p, throughputs, out_file):
   output = str(p) + ','
   output += ",".join(str(item) for item in throughputs)
@@ -178,11 +181,12 @@ def write_throughput_log(p, throughputs, out_file):
 def write_header(files):
   for filename in files.keys():
     files[filename].write("P,")
-    for n in batch_vals:
-      files[filename].write("fc{0},".format(n))
-      for s in sleep_times:
-        for b in biases:
-          files[filename].write("n{0}s{1}b{2},".format(n,s,b))
+    for i in initial_sizes:
+      #files[filename].write("fc{0},".format(i))
+      for n in batch_vals:
+        for s in sleep_times:
+          for b in biases:
+            files[filename].write("n{0}s{1}b{2}i{3},".format(n,s,b,i))
     files[filename].write('\n')
 
 def main():
@@ -193,19 +197,19 @@ def main():
   files = {}
   hostname = socket.gethostname()
   current = datetime.datetime.now();
-  ext = ".{0}.{1}.{2}.{3}.{4}".format(hostname,current.month,current.day,
-                                     current.hour,current.minute)
+  ext = ".{0}.{1:02d}.{2:02d}.{3:02d}.{4:02d}".format(hostname,current.month,current.day,
+                                                      current.hour,current.minute)
 
   files['throughput'] = open(log_dir + "skiplist" +".throughput" +
                              ext + ".log", "w")
-  files['sizes'] = open(log_dir + "skiplist" + ".sizes" +
-                        ext + ".log", "w")
-  files['succ_steals'] = open(log_dir + "skiplist" + ".succsteals" +
-                             ext + ".log", "w")
-  files['real_steals'] = open(log_dir + "skiplist" + ".realsteals" +
-                             ext + ".log", "w")
-  files['fail_steals'] = open(log_dir + "skiplist" + ".failsteals" +
-                             ext + ".log", "w")
+  # files['sizes'] = open(log_dir + "skiplist" + ".sizes" +
+  #                       ext + ".log", "w")
+  # files['succ_steals'] = open(log_dir + "skiplist" + ".succsteals" +
+  #                            ext + ".log", "w")
+  # files['real_steals'] = open(log_dir + "skiplist" + ".realsteals" +
+  #                            ext + ".log", "w")
+  # files['fail_steals'] = open(log_dir + "skiplist" + ".failsteals" +
+  #                            ext + ".log", "w")
 
   write_header(files)
 
@@ -215,48 +219,47 @@ def main():
       print("--- Running tests on {0} cores. ---".format(p))
 
     files['throughput'].write(str(p) + ',')
-    files['sizes'].write(str(p) + ',')
-    files['succ_steals'].write(str(p) + ',')
-    files['real_steals'].write(str(p) + ',')
-    files['fail_steals'].write(str(p) + ',')
+    # files['sizes'].write(str(p) + ',')
+    # files['succ_steals'].write(str(p) + ',')
+    # files['real_steals'].write(str(p) + ',')
+    # files['fail_steals'].write(str(p) + ',')
 
-    for n in range(len(batch_vals)):
 
-      throughput = 0
-      for i in iterations:
-            fc = run_flat_combining(p, i, batch_vals[n])
-            throughput = throughput + fc
-      throughput = float(throughput) / len(iterations)
-      files['throughput'].write("{0:.2f},".format(throughput))
+    for init in range(len(initial_sizes)):
 
-      for s in range(len(sleep_times)):
-        for b in range(len(biases)):
+      # throughput = run_flat_combining(p, 1, 1, init)
+      # files['throughput'].write("{0},".format(throughput))
 
-          throughput, sizes = 0, 0
-          steals = 3 * [0]
+      for n in range(len(batch_vals)):
+        for s in range(len(sleep_times)):
+          for b in range(len(biases)):
 
-          for i in iterations:
-            [t,si,st] = run_batch_par(p, i, total_batch_ops,
-                                      batch_vals[n], sleep_times[s], biases[b])
-            throughput = throughput + t
-            sizes = sizes + si
-            steals = map(add, steals, st)
+            throughput, sizes = 0, 0
+            steals = 3 * [0]
 
-          throughput = float(throughput) / len(iterations)
-          sizes = float(sizes) / len(iterations)
-          steals = [float(x) / len(iterations) for x in steals]
+            for i in iterations:
+              [t,si,st] = run_batch_par(p, i, total_batch_ops, batch_vals[n],
+                                        sleep_times[s], biases[b],
+                                        initial_sizes[init])
+              throughput = throughput + t
+              # sizes = sizes + si
+              # steals = map(add, steals, st)
 
-          files['throughput'].write("{0:.2f},".format(throughput))
-          files['sizes'].write("{0:.2f},".format(sizes))
-          files['succ_steals'].write("{0:.2f},".format(steals[0]))
-          files['real_steals'].write("{0:.2f},".format(steals[1]))
-          files['fail_steals'].write("{0:.2f},".format(steals[2]))
+            throughput = float(throughput) / len(iterations)
+            # sizes = float(sizes) / len(iterations)
+            # steals = [float(x) / len(iterations) for x in steals]
+
+            files['throughput'].write("{0},".format(throughput))
+            # files['sizes'].write("{0:.2f},".format(sizes))
+            # files['succ_steals'].write("{0:.2f},".format(steals[0]))
+            # files['real_steals'].write("{0:.2f},".format(steals[1]))
+            # files['fail_steals'].write("{0:.2f},".format(steals[2]))
 
     files['throughput'].write('\n')
-    files['sizes'].write('\n')
-    files['succ_steals'].write('\n')
-    files['real_steals'].write('\n')
-    files['fail_steals'].write('\n')
+    # files['sizes'].write('\n')
+    # files['succ_steals'].write('\n')
+    # files['real_steals'].write('\n')
+    # files['fail_steals'].write('\n')
 
     #graph the output
     '''

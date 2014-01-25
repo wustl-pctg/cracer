@@ -25,7 +25,7 @@ void Cilk_remove_and_keep_closure_and_frame(CilkWorkerState *const ws,
 }
 
 static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
-                                   helper* work_array, BatchRecord *record)
+                                   int* work_array, BatchRecord *record)
                                    //        InternalBatchOperation op)
 {
   CILK_ASSERT(ws, ws->batch_id == USE_SHARED(current_batch_id));
@@ -41,7 +41,7 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
       pending->array[i].status = DS_IN_PROGRESS;
       //			pending->array[i].packedIndex = num_ops;
       for (j = 0; j < USE_PARAMETER(batchvals); j++) {
-        work_array[num_ops+j] = ((helper*)pending->array[i].args)[j];
+        work_array[num_ops+j] = ((int*)pending->array[i].args)[j];
       }
       // num_ops++;
       num_ops += USE_PARAMETER(batchvals);
@@ -95,7 +95,7 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
 {
   CilkWorkerState* const ws = _cilk_ws;
   unsigned int num_ops = num;
-  helper* work_array;
+  int* work_array;
   void* ds = dataStruct;
 
   Closure* cl = USE_PARAMETER(invoke_batch);
@@ -240,7 +240,7 @@ void Batcher_init(CilkContext *const context)
 	// but for now it's okay to specialize. ***
 	USE_SHARED1(batch_work_array) =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size)
-                      * sizeof(helper)
+                      * sizeof(int)
                       * USE_PARAMETER1(batchvals));
 
 

@@ -13,11 +13,11 @@ void usage()
 	printf("\t-b, --noBatch\t\t\tDon't run the batch version of the benchmark.\n");
 	printf("\t-l, --noLock\t\t\tDon't run the lock version of the benchmark.\n");
 	printf("\t-o, --operations\t\tHow many operations to perform.\n");
-	printf("\t-i, --iterations\t\tHow many iterations of the benchmark to perform.\n");
+	printf("\t-z, --iterations\t\tHow many iterations of the benchmark to perform.\n");
 	printf("\t-x, --special paramemter\t\tAny special integer paramter for the benchmark. I.e. Operation ratio for Stack.\n");
 	printf("\t-r, --raw\t\t Specify to run using a batchify_raw function.\n");
   printf("\t-s, --seq\t\t Specify to run using the batchify_seq function.\n");
-	printf("\t-c, --contaminate\t\t To use the memory manager contamination.\n");
+	printf("\t-i, --initial\t\t Set the initial size of the ds.\n");
 }
 
 int getOptions(int argc, char **argv, BenchOptions *opt)
@@ -29,17 +29,17 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 			{"noLock", no_argument, 0, 'l'},
 			{"dedicated", no_argument, 0, 'd'},
 			{"operations", required_argument, 0, 'o'},
-			{"iterations", required_argument, 0, 'i'},
+			{"iterations", required_argument, 0, 'z'},
 			{"special", required_argument, 0, 'x'},
 			{"raw", no_argument, 0, 'r'},
 			{"seq", no_argument, 0, 's'},
-			{"contaminate", no_argument, 0, 'c'},
+			{"initial", required_argument, 0, 'i'},
 		};
 
 	int optIndex = 0;
 	int option;
 
-	while((option = getopt_long(argc, argv, "o:i:vbldx:crs", longOptions, &optIndex))
+	while((option = getopt_long(argc, argv, "o:z:vbldx:i:rs", longOptions, &optIndex))
 				!= -1)
 		{
 			switch(option)
@@ -62,8 +62,11 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 				case 'o':
 					opt->operations = atoi(optarg);
 					break;
-				case 'i':
+				case 'z':
 					opt->iterations = atoi(optarg);
+					break;
+				case 'i':
+					opt->initial_size = atoi(optarg);
 					break;
 				case 'd':
 					opt->dedicated = 1;
@@ -76,10 +79,7 @@ int getOptions(int argc, char **argv, BenchOptions *opt)
 				  break;
 				case 's':
 				  opt->seq = 1;
-	                          break;
-				case 'c':
-				  opt->contaminate=1;
-				  break;
+          break;
 				default:
 					usage();
           return 1;

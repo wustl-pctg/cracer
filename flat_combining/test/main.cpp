@@ -81,7 +81,7 @@ static VolatileType<tick_t>		_gStartTime(0UL);
 static VolatileType<tick_t>		_gEndTime(0UL);
 static VolatileType<int>		_gIsStopThreads(0UL);
 
-static tick_t					_gResult = 0L;
+static double					_gResult = 0.0;
 static tick_t					_gResultAdd = 0L;
 static tick_t					_gResultRemove = 0L;
 static tick_t					_gResultPeek = 0L;
@@ -229,7 +229,8 @@ int main(int argc, char **argv) {
 	RunBenchmark();
 	//print results ............................................................
 	if(0 == _gConfiguration._is_dedicated_mode) {
-		System_out_format("%d", (unsigned int)_gResult);
+    //		System_out_format("%d", (unsigned int)_gResult);
+    System_out_format("%f", _gResult);
 	} else {
 		System_out_format("%d %d %d", (unsigned int)_gResultAdd, (unsigned int)_gResultRemove, (unsigned int)_gResultPeek);
 	}
@@ -370,13 +371,13 @@ void RunBenchmark() {
 	System_err_println("");
 
 	//calculate threads results ................................................
-	_gResult = 0;
+	_gResult = 0.0;
 	_gResultAdd = 0;
 	_gResultRemove = 0;
 	_gResultPeek = 0;
 	if(0 == _gConfiguration._is_dedicated_mode) {
 		for(int iThread = 0; iThread < _gNumThreads; ++iThread) {
-			_gResult += _gThreadResultAry[iThread];
+			_gResult += (double)_gThreadResultAry[iThread];
 		}
 	} else {
 		int curr_thread=0;
@@ -410,7 +411,7 @@ void RunBenchmark() {
 
 	//return benchmark results
 	//................................................
-	_gResult         /= (long)(_gEndTime - _gStartTime);
+	_gResult         /= (double)(_gEndTime - _gStartTime);
 	_gResultAdd      /= (long)(_gEndTime - _gStartTime);
 	_gResultRemove   /= (long)(_gEndTime - _gStartTime);
 	_gResultPeek     /= (long)(_gEndTime - _gStartTime);

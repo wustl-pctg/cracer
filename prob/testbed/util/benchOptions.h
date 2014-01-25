@@ -12,7 +12,7 @@ typedef struct
 	int special;
   int raw;
   int seq;
-  int contaminate;
+  int initial_size;
 } BenchOptions;
 
 int getOptions(int argc, char **argv, BenchOptions *opt);

@@ -67,7 +67,7 @@ stack: DS = ds/stack.cilk
 stack: stackBatch_test
 fcstack: DS = ds/stack_fc.cilk
 fcstack: stackFC_test
-#skip: DS = ds/skiplist.cilkh
+skip: DS = ds/skiplist.cilk
 skip: skiplist_test
 noSpawn: stackNoSpawn_test
 

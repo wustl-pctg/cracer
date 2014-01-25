@@ -215,7 +215,7 @@ struct CilkGlobalState_s{
   int current_batch_id;
   int batch_owner;
   Batch pending_batch;
-  helper* batch_work_array;
+  int* batch_work_array;
   //int* batch_work_array;
 
 	CilkProcInfo invoke_batch_sig[3]; // Should really be a RO param. ***

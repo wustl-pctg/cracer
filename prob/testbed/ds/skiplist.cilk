@@ -112,14 +112,16 @@ void batch_createNodes(int idx, void* info)
   // {int*,int*,int*,Node**}
   int i;
   Node* y;
+
   //Old way of using rand.
   for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++); // Use the RNG;
   /*   for (i=0; rands[temp++] && i < MAXLEVEL; i++) { */
   /*   	if (temp>=randsize-1){ */
 	/*   temp=0; */
 	/* } */
-    /* } */
-  ((int*)(data[1]))[idx]=i; //Sets the level in the level array.
+  /* } */
+
+  ((int*)(data[1]))[idx] = i; //Sets the level in the level array.
   if (*((int*)(data[0]))<i) {
     *((int*)(data[0]))=i;  //Changes max level currently.
   }
@@ -190,13 +192,11 @@ cilk void batch_mergeLists(int idx, void* infos){
       x=x->forward[i];
     }
 
-    //  for (i = level[idx]; i >= 0; i--) {
-
     //No duplicates!
     if (x != NIL
         && x->forward[i]!=NIL && compEQ(x->forward[i]->data, y->data)) {
       //printf("duplicate %d\n",dup_count++);
-      //return;
+      return;
     }
 
     if (level[idx] >= i) { // If element should be at this level.
@@ -246,10 +246,6 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   /* sync; */
   for (i = 0; i < numElements; i++) {
     batch_createNodes(i, createNodeArgs);
-  }
-
-  for (i=0;i<numElements;i++){
-      batch_createNodes(i,createNodeArgs);
   }
 
   prev_nodes = calloc((maxInsertLevel+1)*numElements,sizeof(int)); //Makes a prev array.

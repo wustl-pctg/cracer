@@ -1906,7 +1906,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
   unsigned int i, batch_id;
   int num_spots = USE_PARAMETER(batchvals);
   Batch* pending = &USE_SHARED(pending_batch);
-  helper* work_array = USE_SHARED(batch_work_array);
+  int* work_array = USE_SHARED(batch_work_array);
 
   BatchRecord *record = &pending->array[ws->self];
   record->status = DS_WAITING;
@@ -1967,7 +1967,7 @@ void Cilk_batchify_sequential(CilkWorkerState * const ws,
 {
   unsigned int i;
   Batch* pending = &USE_SHARED(pending_batch);
-  helper* work_array = USE_SHARED(batch_work_array);
+  int* work_array = USE_SHARED(batch_work_array);
 
   BatchRecord* record = &pending->array[ws->self];
   record->status = DS_WAITING;
@@ -2009,7 +2009,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 {
   unsigned int i;
   Batch* pending = &USE_SHARED(pending_batch);
-  helper* work_array = USE_SHARED(batch_work_array);
+  int* work_array = USE_SHARED(batch_work_array);
 
   BatchRecord* record = &pending->array[ws->self];
   record->status = DS_WAITING;
@@ -2017,7 +2017,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 	// Memcpy is slower than a simple array insertion. I'm not quite
 	//sure why this is so. Maybe the compiler can do some extra optimization?
   ///  __builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
-  work_array[ws->self] = *(helper*)data;
+  work_array[ws->self] = *(int*)data;
   int* status = (int*)&record->status;
 
   Cilk_switch2batch(ws);

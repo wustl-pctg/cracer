@@ -8,7 +8,7 @@
 
 // Below this, parforpar's should execute sequentially
 #ifndef PARFORPAR_THRESHOLD
-#define PARFORPAR_THRESHOLD 1024
+#define PARFORPAR_THRESHOLD 1
 #endif
 
 #ifndef BATCH_THRESHOLD
