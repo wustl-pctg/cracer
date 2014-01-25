@@ -1,66 +1,23 @@
 /* skip list */
+#include "skiplist.cilkh"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h> // memcpy
-
-#include <cilk-lib.cilkh>
-#include <cilk.h>
-//#include "../util/parfor.cilkh"
-
-/* define data-type and compare operators here */
-typedef int T;                  /* type of item to be stored */
-#define compLT(a,b) (a < b)
-#define compEQ(a,b) (a == b)
-#define swap(a, b, t) t = a; a = b; b = t
-
-typedef struct {
-	int add;
-	T data;
-} Operation;
-
-/* levels range from (0 .. MAXLEVEL) */
-#define MAXLEVEL 20
-#define INSERT_CHUNK 512
-
-typedef struct Node_ {
-  T data;                     /* user's data */
-  struct Node_ *forward[1];   /* skip list forward pointer */
-} Node;
-
-typedef struct {
-  Node *hdr;                  /* list Header */
-  int listLevel;              /* current level of list */
-} SkipList;
-
-SkipList list;                  /* skip list information */
-
-int* rands; /*Easiy changed parameters for randomized flipping*/
-int temp=0;
-int randsize=1000000;
-
-#define NIL list.hdr
-
-Node* insertNode(T data);
-void deleteNode(T data);
-
-static inline int choose_pivot(Operation *array, int left, int right)
+inline int choose_pivot(int *array, int left, int right)
 {
   int med = (left + right) / 2;
-  if (array[left].data < array[right].data) {
-	  if (array[right].data < array[med].data) {
+  if (array[left] < array[right]) {
+	  if (array[right] < array[med]) {
       return right;
 	  } else {
-      if (array[left].data < array[med].data)
+      if (array[left] < array[med])
 		    return med;
       else
 		    return left;
 	  }
   } else {
-	  if (array[right].data > array[med].data) {
+	  if (array[right] > array[med]) {
       return right;
 	  } else {
-      if (array[left].data > array[med].data)
+      if (array[left] > array[med])
 		    return med;
       else
 		    return left;
@@ -68,83 +25,62 @@ static inline int choose_pivot(Operation *array, int left, int right)
   }
 }
 
-static inline int partition(Operation *array, int left, int right,
-                            int pivot_index)
+inline int partition(int *array, int left, int right,
+                            int pivot_idx)
 {
   register int i;
-  register int store_index;
+  register int store_idx;
   register T temp;
-  register T pivot = array[pivot_index].data;
+  register T pivot = array[pivot_idx];
 
   // move pivot to the end
-  swap(array[pivot_index].data, array[right].data, temp);
+  swap(array[pivot_idx], array[right], temp);
 
-  store_index = left;
+  store_idx = left;
 
   for (i = left; i < right; i++) {
-    if (array[i].data <= pivot) {
-      swap(array[i].data, array[store_index].data, temp);
-      store_index++;
+    if (array[i] <= pivot) {
+      swap(array[i], array[store_idx], temp);
+      store_idx++;
     }
   }
 
   // Move pivot to final position
-  swap(array[store_index].data, array[right].data, temp);
+  swap(array[store_idx], array[right], temp);
 
-  return store_index;
+  return store_idx;
 }
 
-void quicksort(Operation* array, int left, int right)
+void quicksort(int* array, int left, int right)
 {
-  int new_pivot_index, pivot_index;
+  int new_pivot_idx, pivot_idx;
   if (left >= right) return;
 
-  pivot_index = choose_pivot(array, left, right);
+  pivot_idx = choose_pivot(array, left, right);
 
-  new_pivot_index = partition(array, left, right, pivot_index);
+  new_pivot_idx = partition(array, left, right, pivot_idx);
 
-  quicksort(array, left, new_pivot_index - 1);
-  quicksort(array, new_pivot_index + 1, right);
+  quicksort(array, left, new_pivot_idx - 1);
+  quicksort(array, new_pivot_idx + 1, right);
 }
 
 void insertionSortSeq (void* data, size_t numElements) {
   //T* elements = (T*)data;
-  Operation* elements = (Operation*)data;
+  int* elements = (int*)data;
   int c, i;
   T temp;
   for (c=1; c < numElements; ++c) {
     i=c;
-    while (i > 0 && compLT(elements[i].data, elements[i-1].data)) {
-      temp = elements[i].data;
-      elements[i].data = elements[i-1].data;
-      elements[i-1].data = temp;
+    while (i > 0 && compLT(elements[i], elements[i-1])) {
+      temp = elements[i];
+      elements[i] = elements[i-1];
+      elements[i-1] = temp;
 
       i--;
     }
   }
   return;
 }
-
-//NOTE: potentially unsafe if two closures try to modify adjacent edges at the
-//      same time
-/* cilk void recursiveInsertBatch(void* data, int iLeaf, */
-/*                                size_t numElements, size_t numElementsTot) */
-/* { */
-/*   if (numElements > INSERT_CHUNK) { */
-/*     spawn recursiveInsertBatch(data, 2*iLeaf, */
-/*                                numElements - (numElements/2), numElementsTot); */
-/*     spawn recursiveInsertBatch(data, 2*iLeaf+1, */
-/*                                numElements/2, numElementsTot); */
-/*   } else { */
-/*     int istart = (numElementsTot/INSERT_CHUNK)*iLeaf; */
-/*     int i; */
-/*     for (i=istart; i < istart + INSERT_CHUNK; ++i) { */
-/*       T d = ((Operation*)data)[i].data; */
-/*       insertNode(d); */
-/*     } */
-/*   } */
-/*   return; */
-/* } */
 
 cilk void recursiveInsertBatch(void* data, int start, int end)
 {
@@ -155,31 +91,10 @@ cilk void recursiveInsertBatch(void* data, int start, int end)
     spawn recursiveInsertBatch(data, i, end);
   } else {
     for (i = start; i < end; i++) {
-      T d = ((Operation*)data)[i].data;
+      T d = ((int*)data)[i];
       insertNode(d);
     }
   }
-}
-
-void mixed_batchify_seq(Batch* pending, void* ds, void* data,
-                        size_t num_ops, void* results)
-{
-  int i;
-  //  SkipList* list = ds;
-  Operation* ops = (Operation*) data;
-
-  for (i = 0; i < num_ops; i++) {
-    if (ops[i].add)
-      insertNode(ops[i].data);
-    else
-      deleteNode(ops[i].data);
-  }
-}
-
-cilk void mixed_batchify(void *ds, void* data,
-                         size_t num_ops, void* results)
-{
-
 }
 
 cilk void batch_insert_par(void* dataStruct, void* data,
@@ -190,20 +105,21 @@ cilk void batch_insert_par(void* dataStruct, void* data,
   spawn recursiveInsertBatch(data, 0, numElements);
 }
 
-void batch_createNodes(int index, void* info) {
+void batch_createNodes(int idx, void* info)
+{
   void** data  = info;
   //data is {&maxInsertLevel, level, data, new_nodes}
   // {int*,int*,int*,Node**}
   int i;
   Node* y;
   //Old way of using rand.
-//  for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++); Use the RNG;
-    for (i=0; rands[temp++] && i < MAXLEVEL; i++) {
-    	if (temp>=randsize-1){
-	  temp=0;
-	}
-    }
-  ((int*)(data[1]))[index]=i; //Sets the level in the level array.
+  for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++); // Use the RNG;
+  /*   for (i=0; rands[temp++] && i < MAXLEVEL; i++) { */
+  /*   	if (temp>=randsize-1){ */
+	/*   temp=0; */
+	/* } */
+    /* } */
+  ((int*)(data[1]))[idx]=i; //Sets the level in the level array.
   if (*((int*)(data[0]))<i) {
     *((int*)(data[0]))=i;  //Changes max level currently.
   }
@@ -211,68 +127,90 @@ void batch_createNodes(int index, void* info) {
     printf ("memory allocation error createNodes\n");
     exit(1);
   }
-  ((Node**)(data[3]))[index]=y;
-  y->data=((int*)(data[2]))[2*index+1];
+  ((Node**)(data[3]))[idx]=y;
+
+  // For using Operations
+  //  y->data = ((int*)(data[2]))[2*idx+1];
+
+  // For using regular ints
+  y->data=((int*)(data[2]))[idx];
   //  printf("data %d\n",y->data);
 }
 
 
-cilk void batch_relateNodes(int index, void* infos){
+//cilk
+void batch_relateNodes(int idx, void* infos)
+{
   //Here info is {new_nodes,level,size,prev_nodes, maxInsertLevel
   void** info = infos;
-  Node* y = ((Node**)(info[0]))[index];
-  int check = index;
-  int i,j;
+  Node** new_nodes = (Node**)info[0];
+  int* level = ((int*)info[1]);
+  int size = *((int*)(info[2]));
+  int* prev_node_indices = ((int*)info[3]);
   int maxlevel = *((int*)(info[4]));
+  Node* y = new_nodes[idx];
 
-  for (i=0;i<=((int*)(info[1]))[index];i++){
-    y->forward[i]=NIL;
-    for (j=check+1;j<*((int*)(info[2]));j++){
-      if (((int*)(info[1]))[j]>=i){
-        y->forward[i]=((Node**)(info[0]))[j]; //sets the forward of the (index)th node at the ith level to node j.
-        ((int*)(info[3]))[maxlevel*j+i]=index; //sets the previous pointer
-        check=j;
+  int check = idx;
+  int i,j;
+
+
+  for (i=0; i <= level[idx]; i++){
+
+    y->forward[i] = NIL;
+
+    for (j = check+1; j < size; j++){
+
+      if (level[j] >= i) {
+
+        y->forward[i] = new_nodes[j]; //sets the forward of the (idx)th node at the ith level to node j.
+        prev_node_indices[maxlevel*j+i] = idx; //sets the previous pointer
+        check = j;
         break;
       }
     }
   }
 }
 
-cilk void batch_mergeLists(int index, void* infos){
+cilk void batch_mergeLists(int idx, void* infos){
   int i;
   void** info = infos;
   int* level = ((int*)info[1]);
   int maxlevel = *((int*)(info[2]));
-  int* prev_nodes=((int*)info[4]);
+  int* prev_nodes = ((int*)info[4]);
   int prev_node;
-  Node** new_nodes=((Node**)info[0]);
-  Node* x;
-  Node* y;
-  x = list.hdr;
-  for (i=level[index];i>=0;i--){
-    y=  new_nodes[index];
-    while (x->forward[i]!=NIL && compLT(x->forward[i]->data, y->data)) {
+  Node** new_nodes = ((Node**)info[0]);
+  Node* x = list.hdr;
+  Node* y = new_nodes[idx];
+
+  for (i = list.listLevel; i >= 0; i--) {
+
+    while (x->forward[i] != NIL
+           && compLT(x->forward[i]->data, y->data)) {
 //   	    printf("x->data %d and i %d\n",x->data,i);
       x=x->forward[i];
     }
+
+    //  for (i = level[idx]; i >= 0; i--) {
+
     //No duplicates!
-    if (x!=NIL && x->forward[i]!=NIL && compEQ(x->forward[i]->data, y->data)) {
+    if (x != NIL
+        && x->forward[i]!=NIL && compEQ(x->forward[i]->data, y->data)) {
       //printf("duplicate %d\n",dup_count++);
       //return;
     }
-    prev_node = prev_nodes[maxlevel*index+i];
-    if (level[prev_node]>=i){ //Currently processing level i.
-      //If the previous element is still greater than the original list element, then the previous element should do the work.
-      if (prev_node!=0 && compLT(x->data,new_nodes[prev_node]->data)){
-	return;
+
+    if (level[idx] >= i) { // If element should be at this level.
+      if (y->forward[i] == NIL
+          || compLT(x->forward[i]->data, y->forward[i]->data)) {
+        y->forward[i] = x->forward[i];
       }
-      else {
-        //Find the last element of the segment.
-        while (y->forward[i]!=NIL && compLT(y->forward[i]->data,x->forward[i]->data)){
-          y=y->forward[i];
+      prev_node = prev_nodes[maxlevel*idx+i];
+
+      if (level[prev_node] >= i) {
+
+        if (prev_node == 0 || compLT(new_nodes[prev_node]->data, x->data)) {
+          x->forward[i] = new_nodes[idx];
         }
-        y->forward[i]=x->forward[i];
-        x->forward[i]=new_nodes[index];
       }
     }
   }
@@ -282,41 +220,39 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
                             size_t numElements, void* results)
 {
   int* level = calloc(numElements,sizeof(int));
-  //int i,j,k,check;
-  int maxInsertLevel=0;
+  int i,j,k,check;
+  int maxInsertLevel = 0;
   int currMaxLevel;
   //Node* x, *y;
-  Node** new_nodes = calloc(numElements,sizeof(Node*));
+  Node** new_nodes = calloc(numElements,sizeof(Node*)); // ***
   int* prev_nodes;
   //Par_for to create nodes
   void* createNodeArgs[5] = {&maxInsertLevel, level, data, new_nodes};
   void* relatedNodeArgs[5] = {new_nodes,level,&numElements,level,level};
   void* mergeListArgs[5] = {new_nodes,level, &numElements, data, level};
-  // printf("inserting batch of %d elements into %d
-  // size\n",numElements, get_size());
-
 
   /* int i; */
   /* int size = numElements * sizeof(Operation); */
   /* Operation* n = malloc(size); */
   /* memcpy(n, (Operation*)data, size); */
-  int i;
   //printf("size %d\n",numElements);
-  //insertionSortSeq(data, numElements);
 
- quicksort((Operation*)data, 0, numElements - 1);
+  //insertionSortSeq(data, numElements);
+  quicksort((int*)data, 0, numElements - 1);
 
   currMaxLevel=((SkipList*)dataStruct)->listLevel;
 
-  /* do this part sequentially - KL
-  spawn parforpar(0,numElements-1,1,&batch_createNodes, createNodeArgs);
-  sync;
-  */
+  /* spawn parforpar(0,numElements-1,1,&batch_createNodes, createNodeArgs); */
+  /* sync; */
+  for (i = 0; i < numElements; i++) {
+    batch_createNodes(i, createNodeArgs);
+  }
+
   for (i=0;i<numElements;i++){
       batch_createNodes(i,createNodeArgs);
   }
 
-  prev_nodes=calloc((maxInsertLevel+1)*numElements,sizeof(int)); //Makes a prev array.
+  prev_nodes = calloc((maxInsertLevel+1)*numElements,sizeof(int)); //Makes a prev array.
   //Fill in rest of info.
   relatedNodeArgs[3]=prev_nodes;
   relatedNodeArgs[4]=&maxInsertLevel;
@@ -329,8 +265,34 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   }
 
   //Par_for to relations
-  spawn parforpar(0,numElements-1,1,&batch_relateNodes, relatedNodeArgs);
-  sync;
+  /* spawn parforpar(0,numElements-1,1,&batch_relateNodes, relatedNodeArgs); */
+  /* sync; */
+  for (i = 0; i < numElements; i++) {
+    batch_relateNodes(i, relatedNodeArgs);
+  }
+  /* for (i = maxInsertLevel; i >= 0; i--) { */
+  /*   j = 0; */
+  /*   while (j < numElements) { */
+  /*     if (level[j] < i) { */
+  /*       new_nodes[j]->forward[i] = NIL; */
+  /*       j++; */
+  /*     } else { */
+  /*       k = j + 1; */
+  /*       while(level[k] < i && k < numElements) { */
+  /*         new_nodes[k]->forward[i] = NIL; */
+  /*         k++; */
+  /*       } */
+
+  /*       if (k == numElements) { */
+  /*         new_nodes[j]->forward[i] = NIL; */
+  /*       } else { */
+  /*         new_nodes[j]->forward[i] = new_nodes[k]; */
+  /*         prev_nodes[maxInsertLevel * k + 1] = j; */
+  /*       } */
+  /*       j = k; */
+  /*     } */
+  /*   } */
+  /* } */
 
   //Par_for to merge list
   spawn parforpar(0,numElements-1,1,&batch_mergeLists,mergeListArgs);
@@ -347,10 +309,10 @@ void batch_insert_seq(Batch* pending, void* ds, void* data,
                       size_t num_ops, void* results)
 {
   int i;
-  Operation* ops = (Operation*) data;
+  int* ops = (int*) data;
   for (i = 0; i < num_ops; i++) {
     // Assume ops are add operations.
-    insertNode(ops[i].data);
+    insertNode(ops[i]);
   }
 }
 
@@ -364,13 +326,13 @@ void popBatch(Batch* pending, void* dataStruct, void* data,
   }
 }
 
-void insert_seq(CilkWorkerState *const ws, Operation* add_op)
+void insert_seq(CilkWorkerState *const ws, int* add_op)
 {
   Cilk_batchify_sequential(ws, &batch_insert_seq, (void*)&list,
                            (void*)add_op, sizeof(int), NULL);
 }
 
-void insert_par(CilkWorkerState *const ws, Operation* add_op)
+void insert_par(CilkWorkerState *const ws, int* add_op)
 {
   Cilk_batchify(ws, &batch_insert_par2, (void*)&list,
                 (void*)add_op, sizeof(int), NULL);
@@ -383,7 +345,8 @@ void batchPopNode (CilkWorkerState *const ws, int inValue)
                            (void*)&inValue, sizeof(int), NULL);
 }
 
-Node *insertNode(T data) {
+Node *insertNode(T data)
+{
   int i, newLevel;
   Node *update[MAXLEVEL+1];
   Node *x;
@@ -487,10 +450,10 @@ void initList() {
   /**************************
    *  initialize skip list  *
    **************************/
-   rands=calloc(randsize,sizeof(int));
-   for (i=0;i<randsize;i++){
-       rands[i]=rand()%2;
-   }
+   /* rands=calloc(randsize,sizeof(int)); */
+   /* for (i=0;i<randsize;i++){ */
+   /*     rands[i]=rand()%2; */
+   /* } */
 
   if ((list.hdr = malloc(sizeof(Node) + MAXLEVEL*sizeof(Node *))) == 0) {
     printf ("insufficient memory (initList)\n");
@@ -512,50 +475,3 @@ int get_size() {
 
   return size;
 }
-
-/*int main(int argc, char **argv) {
-  int i, *a, maxnum, random;
-
-  //command-line:
-  //
-  //  skl maxnum [random]
-  //
-  //  skl 2000
-  //      process 2000 sequential records
-  //  skl 4000 r
-  //      process 4000 random records
-
-
-
-  maxnum = atoi(argv[1]);
-  random = argc > 2;
-
-  initList();
-
-  if ((a = malloc(maxnum * sizeof(*a))) == 0) {
-  fprintf (stderr, "insufficient memory (a)\n");
-  exit(1);
-  }
-
-  if (random) {
-  // fill "a" with unique random numbers
-  for (i = 0; i < maxnum; i++) a[i] = rand();
-  printf ("ran, %d items\n", maxnum);
-  } else {
-  for (i = 0; i < maxnum; i++) a[i] = i;
-  printf ("seq, %d items\n", maxnum);
-  }
-
-  for (i = 0; i < maxnum; i++) {
-  insertNode(a[i]);
-  }
-
-  for (i = maxnum-1; i >= 0; i--) {
-  findNode(a[i]);
-  }
-
-  for (i = maxnum-1; i >= 0; i--) {
-  deleteNode(a[i]);
-  }
-  return 0;
-  }*/
