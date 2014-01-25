@@ -34,8 +34,11 @@ typedef struct {
 } SkipList;
 
 SkipList list;                  /* skip list information */
-int* rands;
+
+int* rands; /*Easiy changed parameters for randomized flipping*/
 int temp=0;
+int randsize=1000000;
+
 #define NIL list.hdr
 
 Node* insertNode(T data);
@@ -196,7 +199,7 @@ void batch_createNodes(int index, void* info) {
   //Old way of using rand.
 //  for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++); Use the RNG;
     for (i=0; rands[temp++] && i < MAXLEVEL; i++) {
-    	if (temp>=1000000-1){
+    	if (temp>=randsize-1){
 	  temp=0;
 	}
     }
@@ -481,7 +484,6 @@ Node *findNode(T data) {
 
 void initList() {
   int i;
-  int randsize=1000000;
   /**************************
    *  initialize skip list  *
    **************************/
