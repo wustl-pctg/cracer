@@ -34,7 +34,8 @@ typedef struct {
 } SkipList;
 
 SkipList list;                  /* skip list information */
-
+int* rands;
+int temp=0;
 #define NIL list.hdr
 
 Node* insertNode(T data);
@@ -186,13 +187,19 @@ cilk void batch_insert_par(void* dataStruct, void* data,
   spawn recursiveInsertBatch(data, 0, numElements);
 }
 
-cilk void batch_createNodes(int index, void* info) {
+void batch_createNodes(int index, void* info) {
   void** data  = info;
   //data is {&maxInsertLevel, level, data, new_nodes}
   // {int*,int*,int*,Node**}
   int i;
   Node* y;
-  for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++);
+  //Old way of using rand.
+//  for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++); Use the RNG;
+    for (i=0; rands[temp++] && i < MAXLEVEL; i++) {
+    	if (temp>=1000000-1){
+	  temp=0;
+	}
+    }
   ((int*)(data[1]))[index]=i; //Sets the level in the level array.
   if (*((int*)(data[0]))<i) {
     *((int*)(data[0]))=i;  //Changes max level currently.
@@ -238,23 +245,23 @@ cilk void batch_mergeLists(int index, void* infos){
   Node** new_nodes=((Node**)info[0]);
   Node* x;
   Node* y;
+  x = list.hdr;
   for (i=level[index];i>=0;i--){
-    y=new_nodes[index];
-    x = list.hdr;
+    y=  new_nodes[index];
     while (x->forward[i]!=NIL && compLT(x->forward[i]->data, y->data)) {
+//   	    printf("x->data %d and i %d\n",x->data,i);
       x=x->forward[i];
     }
     //No duplicates!
     if (x!=NIL && x->forward[i]!=NIL && compEQ(x->forward[i]->data, y->data)) {
       //printf("duplicate %d\n",dup_count++);
-      return;
+      //return;
     }
     prev_node = prev_nodes[maxlevel*index+i];
     if (level[prev_node]>=i){ //Currently processing level i.
       //If the previous element is still greater than the original list element, then the previous element should do the work.
       if (prev_node!=0 && compLT(x->data,new_nodes[prev_node]->data)){
-        //do nothing
-        return;
+	return;
       }
       else {
         //Find the last element of the segment.
@@ -290,15 +297,21 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   /* int size = numElements * sizeof(Operation); */
   /* Operation* n = malloc(size); */
   /* memcpy(n, (Operation*)data, size); */
-
+  int i;
+  //printf("size %d\n",numElements);
   //insertionSortSeq(data, numElements);
 
-  quicksort((Operation*)data, 0, numElements - 1);
+ quicksort((Operation*)data, 0, numElements - 1);
 
   currMaxLevel=((SkipList*)dataStruct)->listLevel;
 
+  /* do this part sequentially - KL
   spawn parforpar(0,numElements-1,1,&batch_createNodes, createNodeArgs);
   sync;
+  */
+  for (i=0;i<numElements;i++){
+      batch_createNodes(i,createNodeArgs);
+  }
 
   prev_nodes=calloc((maxInsertLevel+1)*numElements,sizeof(int)); //Makes a prev array.
   //Fill in rest of info.
@@ -468,10 +481,14 @@ Node *findNode(T data) {
 
 void initList() {
   int i;
-
+  int randsize=1000000;
   /**************************
    *  initialize skip list  *
    **************************/
+   rands=calloc(randsize,sizeof(int));
+   for (i=0;i<randsize;i++){
+       rands[i]=rand()%2;
+   }
 
   if ((list.hdr = malloc(sizeof(Node) + MAXLEVEL*sizeof(Node *))) == 0) {
     printf ("insufficient memory (initList)\n");
