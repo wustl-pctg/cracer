@@ -247,7 +247,7 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
 
   prev_nodes = calloc((maxInsertLevel+1)*numElements,sizeof(int)); //Makes a prev array.
   //Fill in rest of info.
-  for (i=0;i<(maxInsertLevel+1)*numElements; i++){
+  for (i=0; i<(maxInsertLevel+1)*numElements; i++){
     prev_nodes[i] = -1;
   }
 
