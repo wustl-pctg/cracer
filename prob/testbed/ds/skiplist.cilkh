@@ -9,6 +9,7 @@
 typedef int T;                  /* type of item to be stored */
 #define compLT(a,b) (a < b)
 #define compEQ(a,b) (a == b)
+#define compGT(a,b) (a > b)
 #define swap(a, b, t) t = a; a = b; b = t
 
 typedef struct {
