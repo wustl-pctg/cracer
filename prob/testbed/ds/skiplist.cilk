@@ -3,6 +3,38 @@
 #include <assert.h>
 #include <stdio.h>
 
+void print_info(int iteration,
+                size_t original_size, size_t numElements, int* level,
+                Node** new_nodes,
+                int* prev_nodes, int maxInsertLevel)
+{
+  int i,j;
+  Node* temp;
+  printf("New nodes:");
+  for (i = 0; i < numElements; i++) {
+    printf(" %d->(", new_nodes[i]->data);
+    for (j = 0; j <= level[i]; j++) {
+      temp = new_nodes[i]->forward[j];
+      if (temp == NULL || i > iteration) printf("NULL,");
+      else printf("%d,", new_nodes[i]->forward[j]->data);
+    }
+    printf("),");
+  }
+  printf("\n");
+  printf("levels:");
+  for (i = 0; i < numElements; i++) {
+    printf(" %d,", level[i]);
+  }
+  printf("\n");
+  printf("prevnodes:");
+  for (i = 0; i < (maxInsertLevel+1) * numElements; i++) {
+    printf(" %d,", prev_nodes[i]);
+  }
+  printf("\n");
+  printf("max Insert Level: %d\n", maxInsertLevel);
+  return;
+}
+
 inline int choose_pivot(int *array, int left, int right)
 {
   int med = (left + right) / 2;
@@ -234,9 +266,25 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   void* relatedNodeArgs[5] = {new_nodes,level,&numElements,level,level};
   void* mergeListArgs[5] = {new_nodes,level, &numElements, data, level};
 
+  Node* current = list.hdr;
   //insertionSortSeq(data, numElements);
   quicksort((int*)data, 0, numElements - 1);
-  printf("%u\n", (unsigned)numElements);
+
+  /* printf("Original Skip List: "); */
+  /* for (i = 0; i < get_size()+1; i++) { */
+  /*   printf("->%d", current->data); */
+  /*   current = current->forward[0]; */
+  /* } */
+  /* printf("\n"); */
+
+  /* printf("Elements to insert:"); */
+  /* for (i = 0; i < numElements; i++) { */
+  /*   printf(" %d,", ((int*)data)[i]); */
+  /* } */
+  /* printf("\n"); */
+
+  /* printf("Original size: %u\n", (unsigned)original_size); */
+  /* printf("Batch size: %u\n", (unsigned)numElements); */
 
   currMaxLevel=((SkipList*)dataStruct)->listLevel;
 
@@ -267,48 +315,38 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   /* sync; */
   for (i = 0; i < numElements; i++) {
     batch_relateNodes(i, relatedNodeArgs);
+    /* printf("--- After iteration %d of relateNodes ---\n", i); */
+    /* print_info(i, original_size, numElements, level, new_nodes, */
+    /*            prev_nodes, maxInsertLevel); */
   }
-  /* for (i = maxInsertLevel; i >= 0; i--) { */
-  /*   j = 0; */
-  /*   while (j < numElements) { */
-  /*     if (level[j] < i) { */
-  /*       new_nodes[j]->forward[i] = NIL; */
-  /*       j++; */
-  /*     } else { */
-  /*       k = j + 1; */
-  /*       while(level[k] < i && k < numElements) { */
-  /*         new_nodes[k]->forward[i] = NIL; */
-  /*         k++; */
-  /*       } */
-
-  /*       if (k == numElements) { */
-  /*         new_nodes[j]->forward[i] = NIL; */
-  /*       } else { */
-  /*         new_nodes[j]->forward[i] = new_nodes[k]; */
-  /*         prev_nodes[maxInsertLevel * k + 1] = j; */
-  /*       } */
-  /*       j = k; */
-  /*     } */
-  /*   } */
-  /* } */
 
   //Par_for to merge list
   spawn parforpar(0,numElements-1,1,&batch_mergeLists,mergeListArgs);
   sync;
 
 
+  size = get_size();
+  /* if (size < original_size + numElements) { */
+  /*   print_info(numElements, original_size, numElements, level, new_nodes, */
+  /*              prev_nodes, maxInsertLevel); */
+  /*   printf("New size: %u\n", size); */
+
+  /*   current = list.hdr; */
+  /*   printf("\nNew Skip List: "); */
+  /*   for (i = 0; i <= get_size(); i++) { */
+  /*     printf("->%d", current->data); */
+  /*     current = current->forward[0]; */
+  /*   } */
+  /*   printf("\n"); */
+
+  /*   assert(get_size() == original_size + numElements); */
+  /* } */
+
   free(new_nodes);
   free(level);
   free(prev_nodes);
-  // printf("finished batch\n");
-  size = get_size();
-  if (size < original_size + numElements) {
-    printf("Original size: %u\n", (unsigned)original_size);
-    printf("Batch size: %u\n", (unsigned)numElements);
-    printf("New size: %u\n", size);
-    assert(get_size() == original_size + numElements);
-  }
 }
+
 
 void batch_insert_seq(Batch* pending, void* ds, void* data,
                       size_t num_ops, void* results)
