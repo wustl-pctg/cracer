@@ -1,5 +1,7 @@
 /* skip list */
 #include "skiplist.cilkh"
+#include <assert.h>
+#include <stdio.h>
 
 inline int choose_pivot(int *array, int left, int right)
 {
@@ -199,14 +201,14 @@ cilk void batch_mergeLists(int idx, void* infos){
     }
     update[i]=x;
   }
-    
+
   for (i=0; i<=level[idx];i++){
     if (y->forward[i] == NIL
 	|| compLT(update[i]->forward[i]->data, y->forward[i]->data) || compEQ(update[i]->forward[i]->data, y->forward[i]->data)) {
       y->forward[i] = update[i]->forward[i];
     }
-    prev_node = prev_nodes[maxlevel*idx+i];    
-    //    if (level[prev_node] >= i) {      
+    prev_node = prev_nodes[maxlevel*idx+i];
+    //    if (level[prev_node] >= i) {
     if (prev_node == -1 || compLT(new_nodes[prev_node]->data, update[i]->data)|| compEQ(new_nodes[prev_node]->data, update[i]->data)) {
       update[i]->forward[i] = y;
     }
@@ -217,6 +219,8 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
                             size_t numElements, void* results)
 {
   int* level = calloc(numElements,sizeof(int));
+  int original_size = get_size();
+  int size;
   int i,j,k,check;
   int maxInsertLevel = 0;
   int currMaxLevel;
@@ -228,14 +232,9 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   void* relatedNodeArgs[5] = {new_nodes,level,&numElements,level,level};
   void* mergeListArgs[5] = {new_nodes,level, &numElements, data, level};
 
-  /* int i; */
-  /* int size = numElements * sizeof(Operation); */
-  /* Operation* n = malloc(size); */
-  /* memcpy(n, (Operation*)data, size); */
-  //printf("size %d\n",numElements);
-
   //insertionSortSeq(data, numElements);
   quicksort((int*)data, 0, numElements - 1);
+  printf("%u\n", (unsigned)numElements);
 
   currMaxLevel=((SkipList*)dataStruct)->listLevel;
 
@@ -260,8 +259,6 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   if (maxInsertLevel>currMaxLevel) {
     ((SkipList*)dataStruct)->listLevel=maxInsertLevel;
   }
-
-    
 
   //Par_for to relations
   /* spawn parforpar(0,numElements-1,1,&batch_relateNodes, relatedNodeArgs); */
@@ -302,6 +299,13 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   free(level);
   free(prev_nodes);
   // printf("finished batch\n");
+  size = get_size();
+  if (size < original_size + numElements) {
+    printf("Original size: %u\n", (unsigned)original_size);
+    printf("Batch size: %u\n", (unsigned)numElements);
+    printf("New size: %u\n", size);
+    assert(get_size() == original_size + numElements);
+  }
 }
 
 void batch_insert_seq(Batch* pending, void* ds, void* data,
