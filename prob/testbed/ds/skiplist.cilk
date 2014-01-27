@@ -167,8 +167,9 @@ void batch_relateNodes(int idx, void* infos)
       if (level[j] >= i) {
 
         y->forward[i] = new_nodes[j]; //sets the forward of the (idx)th node at the ith level to node j.
-        prev_node_indices[maxlevel*j+i] = idx; //sets the previous pointer
+	prev_node_indices[(maxlevel+1)*j+i] = idx; //sets the previous pointer
 	//        check = j;
+	
         break;
       }
     }
@@ -207,7 +208,7 @@ cilk void batch_mergeLists(int idx, void* infos){
 	|| compLT(update[i]->forward[i]->data, y->forward[i]->data) || compEQ(update[i]->forward[i]->data, y->forward[i]->data)) {
       y->forward[i] = update[i]->forward[i];
     }
-    prev_node = prev_nodes[maxlevel*idx+i];
+    prev_node = prev_nodes[(maxlevel+1)*idx+i];
     if (level[prev_node] >= i) {
       if (prev_node == -1 ||  compLT(new_nodes[prev_node]->data, update[i]->data)|| compEQ(new_nodes[prev_node]->data, update[i]->data)) {
 	update[i]->forward[i] = y;
