@@ -203,14 +203,15 @@ cilk void batch_mergeLists(int idx, void* infos){
   }
 
   for (i=0; i<=level[idx];i++){
-    if (y->forward[i] == NIL
+    if (y->forward[i] == NIL 
 	|| compLT(update[i]->forward[i]->data, y->forward[i]->data) || compEQ(update[i]->forward[i]->data, y->forward[i]->data)) {
       y->forward[i] = update[i]->forward[i];
     }
     prev_node = prev_nodes[maxlevel*idx+i];
-    //    if (level[prev_node] >= i) {
-    if (prev_node == -1 || compLT(new_nodes[prev_node]->data, update[i]->data)|| compEQ(new_nodes[prev_node]->data, update[i]->data)) {
-      update[i]->forward[i] = y;
+    if (level[prev_node] >= i) {
+      if (prev_node == -1 ||  compLT(new_nodes[prev_node]->data, update[i]->data)|| compEQ(new_nodes[prev_node]->data, update[i]->data)) {
+	update[i]->forward[i] = y;
+      }
     }
   }
 }
