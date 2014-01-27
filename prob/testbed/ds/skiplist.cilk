@@ -154,7 +154,7 @@ void batch_relateNodes(int idx, void* infos)
   int maxlevel = *((int*)(info[4]));
   Node* y = new_nodes[idx];
 
-  int check = idx;
+  int check = idx+1;
   int i,j;
 
 
@@ -162,7 +162,7 @@ void batch_relateNodes(int idx, void* infos)
 
     y->forward[i] = NIL;
 
-    for (j = check+1; j < size; j++){
+    for (j = check; j < size; j++){
 
       if (level[j] >= i) {
 
