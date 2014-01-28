@@ -232,6 +232,7 @@ cilk void batch_mergeLists(int idx, void* infos){
   Node* y = new_nodes[idx];
   Node* yback=new_nodes_back[idx];
   Node *update[MAXLEVEL+1];
+  assert(y->data == yback->data);
 
   for (i = list.listLevel; i >= 0; i--) {
     while (x->forward[i] != NIL
