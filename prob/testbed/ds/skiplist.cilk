@@ -270,21 +270,21 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   //insertionSortSeq(data, numElements);
   quicksort((int*)data, 0, numElements - 1);
 
-  /* printf("Original Skip List: "); */
-  /* for (i = 0; i < get_size()+1; i++) { */
-  /*   printf("->%d", current->data); */
-  /*   current = current->forward[0]; */
-  /* } */
-  /* printf("\n"); */
+  printf("Original Skip List: ");
+  for (i = 0; i < get_size()+1; i++) {
+    printf("->%d", current->data);
+    current = current->forward[0];
+  }
+  printf("\n");
 
-  /* printf("Elements to insert:"); */
-  /* for (i = 0; i < numElements; i++) { */
-  /*   printf(" %d,", ((int*)data)[i]); */
-  /* } */
-  /* printf("\n"); */
+  printf("Elements to insert:");
+  for (i = 0; i < numElements; i++) {
+    printf(" %d,", ((int*)data)[i]);
+  }
+  printf("\n");
 
-  /* printf("Original size: %u\n", (unsigned)original_size); */
-  /* printf("Batch size: %u\n", (unsigned)numElements); */
+  printf("Original size: %u\n", (unsigned)original_size);
+  printf("Batch size: %u\n", (unsigned)numElements);
 
   currMaxLevel=((SkipList*)dataStruct)->listLevel;
 
@@ -315,9 +315,9 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   /* sync; */
   for (i = 0; i < numElements; i++) {
     batch_relateNodes(i, relatedNodeArgs);
-    /* printf("--- After iteration %d of relateNodes ---\n", i); */
-    /* print_info(i, original_size, numElements, level, new_nodes, */
-    /*            prev_nodes, maxInsertLevel); */
+    printf("--- After iteration %d of relateNodes ---\n", i);
+    print_info(i, original_size, numElements, level, new_nodes,
+               prev_nodes, maxInsertLevel);
   }
 
   //Par_for to merge list
@@ -326,21 +326,21 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
 
 
   size = get_size();
-  /* if (size < original_size + numElements) { */
-  /*   print_info(numElements, original_size, numElements, level, new_nodes, */
-  /*              prev_nodes, maxInsertLevel); */
-  /*   printf("New size: %u\n", size); */
+  if (size < original_size + numElements) {
+    print_info(numElements, original_size, numElements, level, new_nodes,
+               prev_nodes, maxInsertLevel);
+    printf("New size: %u\n", size);
 
-  /*   current = list.hdr; */
-  /*   printf("\nNew Skip List: "); */
-  /*   for (i = 0; i <= get_size(); i++) { */
-  /*     printf("->%d", current->data); */
-  /*     current = current->forward[0]; */
-  /*   } */
-  /*   printf("\n"); */
+    current = list.hdr;
+    printf("\nNew Skip List: ");
+    for (i = 0; i <= get_size(); i++) {
+      printf("->%d", current->data);
+      current = current->forward[0];
+    }
+    printf("\n");
 
-  /*   assert(get_size() == original_size + numElements); */
-  /* } */
+    assert(get_size() == original_size + numElements);
+  }
 
   free(new_nodes);
   free(level);

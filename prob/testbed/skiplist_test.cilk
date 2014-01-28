@@ -19,8 +19,6 @@ cilk void parfor_skip(const int begin, const int end)
   if (end - begin <= g_par_threshold) {
 
 		for (i = begin; i < end; ++i) {
-      /* for(j = 0; j < g_num_spots; j++) printf("%d,", vals[i+j]); */
-      /* printf("\n"); */
       if (g_options.seq)
         insert_seq(_cilk_ws, &vals[i * g_num_spots]);
       else
