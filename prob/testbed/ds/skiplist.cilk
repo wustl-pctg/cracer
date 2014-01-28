@@ -364,7 +364,7 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
 
   //Do an actual merge
   for(i=0; i<numElements;i++){
-    for(j=0; j<level[i]; i++){
+    for(j=0; j<level[i]; j++){
       if (prev_nodes[(maxInsertLevel+1)*i+j] ==-2){
 	back_node = new_nodes_back[i]->forward[j];
 	back_node->forward[j] = new_nodes[i];
@@ -375,6 +375,7 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   printf("--- After Actual Merge\n");
   print_info(i, original_size, numElements, level, new_nodes, new_nodes_back,
 	     prev_nodes, maxInsertLevel);
+
 
 
   size = get_size();
