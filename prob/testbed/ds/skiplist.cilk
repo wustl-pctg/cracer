@@ -259,7 +259,7 @@ cilk void batch_mergeLists(int idx, void* infos){
     
     if (level[prev_node] >= i) {
       if (prev_node == -1 ||  compLT(new_nodes[prev_node]->data, update[i]->data)|| compEQ(new_nodes[prev_node]->data, update[i]->data)) {
-	yback->forward[i] = update[i]->forward[i];
+	yback->forward[i] = update[i];
 	prev_nodes[(maxlevel+1)*idx+i] = -2;
       }
     }
