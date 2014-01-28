@@ -346,7 +346,7 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   for(i=0; i<numElements;i++){
     for(j=0; j<level[i]; i++){
       if (prev_nodes[(maxlevel+1)*i+j] ==-2){
-	Node* correct_node = prev_nodes_back[i]->forward[j];
+	Node* correct_node = new_nodes_back[i]->forward[j];
 	correct_node->forward[j] = new_nodes[i];
       }
     }
