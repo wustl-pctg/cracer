@@ -142,10 +142,11 @@ cilk void batch_insert_par(void* dataStruct, void* data,
 void batch_createNodes(int idx, void* info)
 {
   void** data  = info;
-  //data is {&maxInsertLevel, level, data, new_nodes}
+  //data is {&maxInsertLevel, level, data, new_nodes,new_nodes_back}
   // {int*,int*,int*,Node**}
   int i;
   Node* y;
+  Node* yBack;
 
   //Old way of using rand.
   for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++); // Use the RNG;
@@ -165,11 +166,18 @@ void batch_createNodes(int idx, void* info)
   }
   ((Node**)(data[3]))[idx]=y;
 
+  if ((yback=malloc(sizeof(Node) + i*sizeof(Node*)))==0){
+    printf ("memory allocation error createNodes\n");
+    exit(1);
+  }
+  ((Node**)(data[4]))[idx]=yback;
+
   // For using Operations
   //  y->data = ((int*)(data[2]))[2*idx+1];
 
   // For using regular ints
   y->data=((int*)(data[2]))[idx];
+  yback->data=((int*)(data[2]))[idx];
   //  printf("data %d\n",y->data);
 }
 
@@ -177,7 +185,7 @@ void batch_createNodes(int idx, void* info)
 //cilk
 void batch_relateNodes(int idx, void* infos)
 {
-  //Here info is {new_nodes,level,size,prev_nodes, maxInsertLevel
+  //Here info is {new_nodes,level,size,prev_nodes, maxInsertLevel, new_nodes_back}
   void** info = infos;
   Node** new_nodes = (Node**)info[0];
   int* level = ((int*)info[1]);
@@ -200,6 +208,8 @@ void batch_relateNodes(int idx, void* infos)
 
         y->forward[i] = new_nodes[j]; //sets the forward of the (idx)th node at the ith level to node j.
 	prev_node_indices[(maxlevel+1)*j+i] = idx; //sets the previous pointer
+	Node* z = new_nodes_back[idx];
+	z->forward[i] = y;
 	//        check = j;
 	
         break;
@@ -211,13 +221,16 @@ void batch_relateNodes(int idx, void* infos)
 cilk void batch_mergeLists(int idx, void* infos){
   int i;
   void** info = infos;
+  Node** new_nodes = ((Node**)info[0]);
   int* level = ((int*)info[1]);
   int maxlevel = *((int*)(info[2]));
   int* prev_nodes = ((int*)info[4]);
+  Node** new_nodes_back = ((Node**)info[5]);
   int prev_node;
-  Node** new_nodes = ((Node**)info[0]);
+
   Node* x = list.hdr;
   Node* y = new_nodes[idx];
+  Node* yback=new_nodes_back[idx];
   Node *update[MAXLEVEL+1];
 
   for (i = list.listLevel; i >= 0; i--) {
@@ -240,11 +253,14 @@ cilk void batch_mergeLists(int idx, void* infos){
 	|| compLT(update[i]->forward[i]->data, y->forward[i]->data) || compEQ(update[i]->forward[i]->data, y->forward[i]->data)) {
       y->forward[i] = update[i]->forward[i];
     }
-    prev_node = prev_nodes[(maxlevel+1)*idx+i];
+    prev_node_index = prev_nodes[(maxlevel+1)*idx+i];
+    Node* z = new_nodes[idx];
+    assert(yback->forward[i]==z);
     
     if (level[prev_node] >= i) {
       if (prev_node == -1 ||  compLT(new_nodes[prev_node]->data, update[i]->data)|| compEQ(new_nodes[prev_node]->data, update[i]->data)) {
-	update[i]->forward[i] = y;
+	yback->forward[i] = update[i]->forward[i];
+	prev_nodes[(maxlevel+1)*idx+i] = -2;
       }
     }
   }
@@ -261,11 +277,12 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   int currMaxLevel;
   //Node* x, *y;
   Node** new_nodes = calloc(numElements,sizeof(Node*)); // ***
+  Node** new_nodes_back = calloc(numElements,sizeof(Node*)); // ***
   int* prev_nodes;
   //Par_for to create nodes
-  void* createNodeArgs[5] = {&maxInsertLevel, level, data, new_nodes};
-  void* relatedNodeArgs[5] = {new_nodes,level,&numElements,level,level};
-  void* mergeListArgs[5] = {new_nodes,level, &numElements, data, level};
+  void* createNodeArgs[5] = {&maxInsertLevel, level, data, new_nodes, new_nodes_back};
+  void* relatedNodeArgs[6] = {new_nodes,level,&numElements,level,level,new_nodes_back};
+  void* mergeListArgs[6] = {new_nodes,level, &numElements, data, level,new_nodes_back};
 
   Node* current = list.hdr;
   //insertionSortSeq(data, numElements);
@@ -321,9 +338,19 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
                prev_nodes, maxInsertLevel);
   }
 
-  //Par_for to merge list
+  //Find the place for all the elements to merge list
   spawn parforpar(0,numElements-1,1,&batch_mergeLists,mergeListArgs);
   sync;
+
+  //Do an actual merge
+  for(i=0; i<numElements;i++){
+    for(j=0; j<level[i]; i++){
+      if (prev_nodes[(maxlevel+1)*i+j] ==-2){
+	Node* correct_node = prev_nodes_back[i]->forward[j];
+	correct_node->forward[j] = new_nodes[i];
+      }
+    }
+  }
 
 
   size = get_size();
