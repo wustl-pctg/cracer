@@ -207,9 +207,8 @@ void batch_relateNodes(int idx, void* infos)
       if (level[j] >= i) {
 
         y->forward[i] = new_nodes[j]; //sets the forward of the (idx)th node at the ith level to node j.
+	new_nodes_back[j]->forward[i] = y;
 	prev_node_indices[(maxlevel+1)*j+i] = idx; //sets the previous pointer
-	z = new_nodes_back[j];
-	z->forward[i] = y;
 	//        check = j;
 	
         break;
