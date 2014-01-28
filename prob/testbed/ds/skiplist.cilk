@@ -5,7 +5,7 @@
 
 void print_info(int iteration,
                 size_t original_size, size_t numElements, int* level,
-                Node** new_nodes,
+                Node** new_nodes, Node** new_nodes_back,
                 int* prev_nodes, int maxInsertLevel)
 {
   int i,j;
@@ -20,6 +20,18 @@ void print_info(int iteration,
     }
     printf("),");
   }
+  printf("New nodes back:");
+  for (i = 0; i < numElements; i++) {
+    printf(" %d->(", new_nodes_back[i]->data);
+    for (j = 0; j <= level[i]; j++) {
+      temp = new_nodes_back[i]->forward[j];
+      if (temp == NULL || i > iteration) printf("NULL,");
+      else printf("%d,", new_nodes_back[i]->forward[j]->data);
+    }
+    printf("),");
+  }
+
+
   printf("\n");
   printf("levels:");
   for (i = 0; i < numElements; i++) {
@@ -340,13 +352,17 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   for (i = 0; i < numElements; i++) {
     batch_relateNodes(i, relatedNodeArgs);
     printf("--- After iteration %d of relateNodes ---\n", i);
-    print_info(i, original_size, numElements, level, new_nodes,
+    print_info(i, original_size, numElements, level, new_nodes, new_nodes_back,
                prev_nodes, maxInsertLevel);
   }
 
   //Find the place for all the elements to merge list
   spawn parforpar(0,numElements-1,1,&batch_mergeLists,mergeListArgs);
   sync;
+  printf("--- After Merge lists\n");
+  print_info(i, original_size, numElements, level, new_nodes, new_nodes_back,
+	     prev_nodes, maxInsertLevel);
+
 
   //Do an actual merge
   for(i=0; i<numElements;i++){
@@ -358,10 +374,14 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
     }
   }
 
+  printf("--- After Actual Merge\n");
+  print_info(i, original_size, numElements, level, new_nodes, new_nodes_back,
+	     prev_nodes, maxInsertLevel);
+
 
   size = get_size();
   if (size < original_size + numElements) {
-    print_info(numElements, original_size, numElements, level, new_nodes,
+    print_info(numElements, original_size, numElements, level, new_nodes, new_nodes_back,
                prev_nodes, maxInsertLevel);
     printf("New size: %u\n", size);
 
