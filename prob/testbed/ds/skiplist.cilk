@@ -254,7 +254,7 @@ cilk void batch_mergeLists(int idx, void* infos){
       y->forward[i] = update[i]->forward[i];
     }
     prev_node = prev_nodes[(maxlevel+1)*idx+i];
-    Node* z = new_nodes[prev_node_index];
+    Node* z = new_nodes[prev_node];
     assert(yback->forward[i]==z);
     
     if (level[prev_node] >= i) {
