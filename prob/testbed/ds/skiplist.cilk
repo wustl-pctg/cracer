@@ -192,6 +192,7 @@ void batch_relateNodes(int idx, void* infos)
   int size = *((int*)(info[2]));
   int* prev_node_indices = ((int*)info[3]);
   int maxlevel = *((int*)(info[4]));
+  Node** new_nodes_back = (Node**)info[5];
   Node* y = new_nodes[idx];
   Node* z;
   //  int check = idx+1;
@@ -231,6 +232,7 @@ cilk void batch_mergeLists(int idx, void* infos){
   Node* y = new_nodes[idx];
   Node* yback=new_nodes_back[idx];
   Node *update[MAXLEVEL+1];
+  Node* z;
   assert(y->data == yback->data);
 
   for (i = list.listLevel; i >= 0; i--) {
@@ -254,7 +256,7 @@ cilk void batch_mergeLists(int idx, void* infos){
       y->forward[i] = update[i]->forward[i];
     }
     prev_node = prev_nodes[(maxlevel+1)*idx+i];
-    Node* z = new_nodes[prev_node];
+    z = new_nodes[prev_node];
     assert(yback->forward[i]==z);
     
     if (level[prev_node] >= i) {
