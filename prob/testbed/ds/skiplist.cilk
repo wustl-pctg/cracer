@@ -31,7 +31,6 @@ void print_info(int iteration,
     printf("),");
   }
 
-
   printf("\n");
   printf("levels:");
   for (i = 0; i < numElements; i++) {
@@ -274,7 +273,6 @@ cilk void batch_mergeLists(int idx, void* infos){
       assert(yback->forward[i]==z);
       assert(level[prev_node] >= i);
     }
-    
     if (prev_node == -1 ||  compLT(new_nodes[prev_node]->data, update[i]->data)|| compEQ(new_nodes[prev_node]->data, update[i]->data)) {
       yback->forward[i] = update[i];
       prev_nodes[(maxlevel+1)*idx+i] = -2;
@@ -368,7 +366,7 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   for(i=0; i<numElements;i++){
     for(j=0; j<level[i]; i++){
       if (prev_nodes[(maxInsertLevel+1)*i+j] ==-2){
-	back_node = new_nodes_back[i];
+	back_node = new_nodes_back[i]->forward[j];
 	back_node->forward[j] = new_nodes[i];
       }
     }
