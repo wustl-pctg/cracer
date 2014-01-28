@@ -284,10 +284,22 @@ cilk void batch_mergeLists(int idx, void* infos){
 cilk void batch_insert_par2(void* dataStruct, void* data,
                             size_t numElements, void* results)
 {
+  int i,j,k,check;
+  quicksort((int*)data, 0, numElements - 1);
+  //remove duplicates
+  i=0;
+  if (numElements>1){
+    for (j=1;j<numElements;j++){
+      if (((int*)data)[j] != ((int*)data)[i]){ 
+	((int*)data)[++i]= ((int*)data)[j];
+      }
+    }
+    numElements = i+1;
+  } 
+
   int* level = calloc(numElements,sizeof(int));
   int original_size = get_size();
   int size;
-  int i,j,k,check;
   int maxInsertLevel = 0;
   int currMaxLevel;
   //Node* x, *y;
