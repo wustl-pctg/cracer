@@ -146,7 +146,7 @@ void batch_createNodes(int idx, void* info)
   // {int*,int*,int*,Node**}
   int i;
   Node* y;
-  Node* yBack;
+  Node* yback;
 
   //Old way of using rand.
   for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++); // Use the RNG;
