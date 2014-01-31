@@ -284,7 +284,7 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
 {
   int i,j,k,check;
   int* level = calloc(numElements,sizeof(int));
-  int original_size = get_size();
+  //  int original_size = get_size();
   int size;
   int maxInsertLevel = 0;
   int currMaxLevel;
@@ -401,7 +401,7 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   /*   assert(get_size() == original_size + numElements); */
   /* } */
 
-  free(new_nodes);
+  free(new_nodes_back);
   free(level);
   free(prev_nodes);
 }
