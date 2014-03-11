@@ -33,13 +33,13 @@ total_batch_ops = 100000
 ds_prob = 0
 batch_prob = 100
 biases = [0]
-initial_sizes = [20000, 100000, 100000000, 1000000000]
+initial_sizes = [100000000] #[20000, 100000, 100000000, 1000000000]
 batch_vals = [1, 10, 50, 100]
 sleep_times = [0]
 
 # Flat combining parameters.
 fc_test = "test_intel64"
-fc_time = 1#60 # seconds to run the flat combining benchmark
+fc_time = 60 # seconds to run the flat combining benchmark
 dedicated = 0 # Run all adds first, then removes.
 percent_adds = 100 # What percentage of total operations should be adds.
 
@@ -81,7 +81,7 @@ def run_flat_combining(p, i, multiplier = 1, initial_size = initial_sizes[0]):
   # alg4_name alg4_num test_no n_threads add_ops remove_ops
   # load_factor capacity runtime is_dedicated_flag tm_status(?)
   # read_write_delay
-  fc_args = 'fcskiplist 1 non 0 non 0 non 0'.split()
+  fc_args = 'lfskiplist 1 non 0 non 0 non 0'.split()
   fc_args = fc_args + ['1', str(p * multiplier),
                        str(percent_adds), str(100 - percent_adds)]
   fc_args = fc_args + ['0.0', str(initial_size), str(fc_time)]
@@ -227,8 +227,8 @@ def main():
 
     for init in range(len(initial_sizes)):
 
-      # throughput = run_flat_combining(p, 1, 1, init)
-      # files['throughput'].write("{0},".format(throughput))
+      throughput = run_flat_combining(p, 1, 1, init)
+      files['throughput'].write("{0},".format(throughput))
 
       for n in range(len(batch_vals)):
         for s in range(len(sleep_times)):
