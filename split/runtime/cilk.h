@@ -8,12 +8,12 @@
  *  under the terms of the GNU Lesser General Public License as published by
  *  the Free Software Foundation; either version 2.1 of the License, or (at
  *  your option) any later version.
- *  
+ *
  *  This library is distributed in the hope that it will be useful, but
  *  WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
@@ -42,13 +42,10 @@
 #include <cilk-sysdep.h>
 
 FILE_IDENTITY(cilk_h_ident,
-	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk.h $ $LastChangedBy: bradley $ $Rev: 2672 $ $Date: 2005-12-20 13:30:02 -0500 (Tue, 20 Dec 2005) $");
+              "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk.h $ $LastChangedBy: bradley $ $Rev: 2672 $ $Date: 2005-12-20 13:30:02 -0500 (Tue, 20 Dec 2005) $");
 
 /* worker types */
 enum WorkerType { NORMAL_WORKER, DS_WORKER };
-
-//BSS45
-enum DSSTatus { DS_WAITING, DS_DONE };
 
 /***********************************************************\
  * Cilk configuration options (profiling, etc)
@@ -74,7 +71,7 @@ enum DSSTatus { DS_WAITING, DS_DONE };
  *  argsize | 0                      | size of inlet's arguments in frame
  * argindex | ???                    | index of inlet's arguments in frame
  *
- * Hack: the field "inlet" for entry 0 contains the address of 
+ * Hack: the field "inlet" for entry 0 contains the address of
  * the slow function.  The field "size" for entry 0 contains the size
  * of the value returned by the function as a whole (as opposed to the
  * other entries, which contain the size of the value returned by that
@@ -125,17 +122,17 @@ extern __CILKSAFE__ HookList *Cilk_init_per_worker_hooks;
  * type of disjoint set data structure for the Nondeterminator
  */
 WHEN_CILK_ND(
-	     typedef unsigned int DisjointSetMemberT;
-	     )
+             typedef unsigned int DisjointSetMemberT;
+             )
 
-/* 
+/*
  * a stack frame consists of this header and of a procedure-specific
  * part
  */
 typedef struct {
   int entry;
   void *receiver;   /* pointer to the receiver of the outstanding spawn,
-		       unless otherwise specified in CilkProcInfo->index */
+                       unless otherwise specified in CilkProcInfo->index */
   CilkProcInfo *sig;
   WHEN_CILK_ALLOCA(struct cilk_alloca_header *alloca_h;)
   WHEN_CILK_TIMING(Cilk_time mycp;)
@@ -149,7 +146,7 @@ typedef struct {
 } CilkStackFrame;
 
 /*
- * a stack is an array of frame pointers 
+ * a stack is an array of frame pointers
  */
 typedef CilkStackFrame **CilkStack;
 
@@ -162,7 +159,7 @@ typedef CilkStackFrame **CilkStack;
  * it atomically, unless we agree to lock the victim processor
  * (and we don't want to).  Therefore, the closure contains
  * *pointers* to head and tail.  The actual head and tail are allocated
- * on a per-processor basis.  
+ * on a per-processor basis.
  *
  * We allocate this little structure to keep the values of head
  * and tail.  It also caches other important quantities used by
@@ -172,7 +169,7 @@ typedef CilkStackFrame **CilkStack;
 typedef struct {
   volatile CilkStackFrame **head, **tail;
   /* see sched.c for a description of the exception-handling machinery */
-  volatile CilkStackFrame **exception;  
+  volatile CilkStackFrame **exception;
   CilkStack stack;
   CILK_CACHE_LINE_PAD;
 } CilkClosureCache;
@@ -182,10 +179,10 @@ struct Cilk_im_descriptor {
   void *free_list;        /* pointer to free list */
   int length;             /* length of the free list */
   /*
-   * number of elements that can be freed before a global 
+   * number of elements that can be freed before a global
    * batch free is necessary.
    */
-  int count;            
+  int count;
 };
 
 /* statistics for Cilk_internal_malloc, used mainly for debugging */
@@ -323,29 +320,6 @@ typedef struct{
 
 } CilkChildParams;
 
-//BSS45 - 1/8
-typedef void (*CilkBatchOp)(CilkWorkerState*const, void**, size_t);
-
-typedef struct BatchOp{
-
-  CilkBatchOp   operation; 
-  void          *args;
-  size_t        size;
-  volatile int  status;
-  //char padding[1024];
-
-} BatchOp;   
-  
-//BSS45 - 1/8
-//BatchOp *ds_work_array;
-typedef struct {
-  int       nprocs;
-  BatchOp*  array;  
-} work_array;
-
-work_array ds_work_array;
-volatile int ds_main_status;
-
 
 /*
  * Functions defined in the architecture-specific file and used
@@ -354,7 +328,7 @@ volatile int ds_main_status;
 extern void Cilk_dprintf(CilkWorkerState *const ws, const char *fmt,...);
 extern void Cilk_die_internal(CilkContext *const context, CilkWorkerState *const ws, const char *fmt,...);
 extern void Cilk_unalloca_internal(CilkWorkerState *const ws,
-				   CilkStackFrame *f);
+                                   CilkStackFrame *f);
 
 /*
  * Functions defined by the scheduler and used in Cilk programs
@@ -394,7 +368,7 @@ static inline Cilk_time Cilk_get_elapsed_time(CilkWorkerState *const ws)
 
 /*
  * this is written so that it can be __inline__d and partially
- * evaluated when size is a constant 
+ * evaluated when size is a constant
  */
 #define CILK_INTERNAL_MALLOC_CANONICALIZE_MACRO(size, n)	\
   if (size <= n && n >= CILK_CACHE_LINE) return n;
@@ -483,15 +457,15 @@ static inline void Cilk_membar_StoreLoad(void)
  ************************************************************/
 extern int Cilk_sync(CilkWorkerState *const ws);
 extern int Cilk_exception_handler(CilkWorkerState *const ws, void *, int);
-extern void Cilk_set_result(CilkWorkerState *const ws, 
-			    void *resultp, int size);
+extern void Cilk_set_result(CilkWorkerState *const ws,
+                            void *resultp, int size);
 extern void Cilk_after_sync_slow_cp(CilkWorkerState *const ws,
-				    Cilk_time *work, Cilk_time *cp);
+                                    Cilk_time *work, Cilk_time *cp);
 extern void Cilk_abort_standalone(CilkWorkerState *const ws);
 extern void Cilk_abort_slow(CilkWorkerState *const ws);
 extern void Cilk_event_new_thread(CilkWorkerState *const ws);
 extern void Cilk_destroy_frame(CilkWorkerState *const ws,
-			       CilkStackFrame *f, size_t size);
+                               CilkStackFrame *f, size_t size);
 
 /***********************************************************
  *  cilk2c-only stuff
@@ -532,12 +506,12 @@ extern void Cilk_destroy_frame(CilkWorkerState *const ws,
 #define CILK_NAME_STATS NOSTATS
 #endif
 
-#define CILK_MAGIC_NAME_MAGIC(a,b,c)					\
+#define CILK_MAGIC_NAME_MAGIC(a,b,c)                                  \
   Cilk_flags_are_wrong_ ## a ## _ ## b ## _ ## c ## _please_recompile
 #define CILK_MAGIC_NAME_MORE_MAGIC(a,b,c) CILK_MAGIC_NAME_MAGIC(a,b,c)
-#define CILK_MAGIC_NAME						\
+#define CILK_MAGIC_NAME                                         \
   CILK_MAGIC_NAME_MORE_MAGIC(CILK_NAME_DEBUG, CILK_NAME_TIMING, \
-			     CILK_NAME_STATS)
+                             CILK_NAME_STATS)
 
 extern __CILKSAFE__ int CILK_MAGIC_NAME;
 static __CILKSAFE__ int *Cilk_check_flags_at_link_time =  &CILK_MAGIC_NAME;
@@ -549,14 +523,42 @@ static int Cilk_check_flags_at_link_time_hack(void) {
 
 //BSS45
 void Cilk_start(CilkContext *const context,
-		void (*main)(CilkWorkerState *const ws, void *args),
-		void *args,
-		int return_size );
+                void (*main)(CilkWorkerState *const ws, void *args),
+                void *args,
+                int return_size );
 
 void Cilk_free(void *);
 void *Cilk_malloc_fixed(size_t);
 
+/*******************************************************************************
+ * BATCHER
+ ******************************************************************************/
+enum DS_STATUS { DS_WAITING, DS_IN_PROGRESS, DS_DONE };
 
+typedef void (*InternalBatchOperation)(CilkWorkerState *const _cilk_ws,
+                                       void *ds, void *data,
+                                       size_t num_elem, void *result);
+
+typedef struct {
+  InternalBatchOperation   operation;
+  void          *args;
+  size_t        size;
+  void *data_structure;
+  volatile enum DS_STATUS  status;
+  int packed_index;
+  void *result;
+  // CILK_CACHE_LINE_PAD;
+} BatchRecord;
+
+// @todo @opt Maybe use a struct of arrays instead of array of structs?
+typedef struct {
+  size_t size;
+  size_t data_size;
+  InternalBatchOperation operation;
+  size_t batch_num;
+  void* data_structure;
+  BatchRecord  *array;
+} Batch;
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__

@@ -1,5 +1,5 @@
 FILE_IDENTITY(ident_cilk_internal_h,
-	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-internal.h $ $LastChangedBy: bradley $ $Rev: 1465 $ $Date: 2004-08-02 06:31:06 -0400 (Mon, 02 Aug 2004) $");
+              "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-internal.h $ $LastChangedBy: bradley $ $Rev: 1465 $ $Date: 2004-08-02 06:31:06 -0400 (Mon, 02 Aug 2004) $");
 
 /*
  * Copyright (c) 2000 Massachusetts Institute of Technology
@@ -9,12 +9,12 @@ FILE_IDENTITY(ident_cilk_internal_h,
  *  under the terms of the GNU Lesser General Public License as published by
  *  the Free Software Foundation; either version 2.1 of the License, or (at
  *  your option) any later version.
- *  
+ *
  *  This library is distributed in the hope that it will be useful, but
  *  WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
@@ -73,14 +73,14 @@ enum AbortStatus { ABORT_ALL = 30 , ALMOST_NO_ABORT, NO_ABORT};
 struct InletClosure {
   struct Closure_s *this;                /* child that structure is for */
   struct InletClosure *next;
-  
+
   void *receiver;
   void (*inlet) (CilkWorkerState *const, void *, void *, void *);
   int argsize;
   void *inlet_args;
 };
 
-/* 
+/*
  * the list of children is not distributed among
  * the children themselves, in order to avoid extra protocols
  * and locking.
@@ -123,7 +123,7 @@ struct Closure_s {
   WHEN_CILK_DEBUG(int malloced;)
 
   /* critical path and work */
-  Cilk_time cp;      
+  Cilk_time cp;
   Cilk_time work;
 
   CILK_CACHE_LINE_PAD;
@@ -151,21 +151,17 @@ extern void Cilk_scheduler_init(CilkContext *const context);
 extern void Cilk_scheduler_terminate(CilkContext *const);
 extern void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws);
 extern Closure *Cilk_create_initial_thread(
-					   CilkContext *const context,
-					   void (*import_main)(CilkWorkerState *const ws, void *args),
-					   void *args,
-					   int return_size);
+                                           CilkContext *const context,
+                                           void (*import_main)(CilkWorkerState *const ws, void *args),
+                                           void *args,
+                                           int return_size);
 //BSS45 - 4/22
-extern Closure *Cilk_create_initial_ds_thread(
-					   CilkContext *const context,
-					   void (*import_main)(CilkWorkerState *const ws, void *args),
-					   void *args,
-					   int return_size);
+extern Closure *Cilk_create_initial_ds_thread(CilkContext *const context);
 extern void Cilk_scheduler(CilkWorkerState *const ws, Closure *t);
 void Cilk_remove_and_free_closure_and_frame(
-					    CilkWorkerState *const ws, CilkStackFrame *f, int pn);
+                                            CilkWorkerState *const ws, CilkStackFrame *f, int pn);
 extern void Cilk_destroy_frame(
-			       CilkWorkerState *const ws, CilkStackFrame *f, size_t size);
+                               CilkWorkerState *const ws, CilkStackFrame *f, size_t size);
 extern void Cilk_worker_wait_for_invocation(CilkContext *const /*context*/, long /*self*/, int */*local_terminating*/);
 extern void Cilk_worker_is_done(CilkContext *const /*context*/, int */*local_terminating*/);
 extern void Cilk_scheduler_per_worker_terminate(CilkWorkerState *const /*ws*/);
@@ -175,7 +171,7 @@ extern void Cilk_wakeup_workers(CilkContext *const /*context*/);
 
 /* exit protocol */
 extern void Cilk_exit_from_user_main(
-				     CilkWorkerState *const ws, Closure *cl, int res);
+                                     CilkWorkerState *const ws, Closure *cl, int res);
 extern void Cilk_really_exit(CilkWorkerState *const ws, int res);
 extern void Cilk_really_exit_1(CilkWorkerState *const ws, int res);
 /* Ofra and Sivan: changed Cilk_die to Cilk_die_external, 19 June 2003 */
@@ -192,6 +188,12 @@ extern void *Cilk_valloc(size_t size);
 
 /* global scheduler state */
 struct CilkGlobalState_s{
+
+  int current_batch_id;
+  Batch pending_batch;
+  int *batch_work_array;
+  CilkProcInfo invoke_ds_main_sig[3];
+
   Cilk_time critical_path;
   Cilk_time total_work;
   int done; /* current calculation */
@@ -199,7 +201,7 @@ struct CilkGlobalState_s{
   Cilk_mutex barrier_lock;
   volatile int barrier_counter;
   volatile int barrier_release;
-  struct Cilk_im_descriptor 
+  struct Cilk_im_descriptor
   global_im_descriptor [CILK_INTERNAL_MALLOC_BUCKETS];
   struct Cilk_im_stats global_im_info;
   int im_allocated;
@@ -213,7 +215,6 @@ struct CilkGlobalState_s{
   Cilk_mutex dprintf_lock;
   Cilk_mutex die_lock;
   CilkProcInfo invoke_main_sig[3];
-  CilkProcInfo invoke_main_ds_sig[3];
   /*Children (threads) handling */
   pthread_t *tid;
   CilkChildParams *thrd_params_array;
@@ -295,7 +296,7 @@ enum {
   EVENT_USER7,
   EVENT_NTYPES  		/* this must be last */
 };
-     
+
 extern void Cilk_event(CilkWorkerState *const ws, int type);
 extern void Cilk_event_gathering_init(CilkContext *const context);
 extern void Cilk_stats_terminate(CilkContext *const context);
@@ -393,7 +394,7 @@ extern void Cilk_debug_init(CilkContext *const context);
 extern void Cilk_debug_terminate(CilkContext *const context);
 extern void Cilk_arch_specific_per_worker_init(void);
 extern void Cilk_create_children(CilkContext *const context,
-				 void (*child)(CilkChildParams*));
+                                 void (*child)(CilkChildParams*));
 extern void Cilk_terminate_children(CilkContext *const context);
 extern void Cilk_lower_priority(CilkWorkerState *const ws);
 extern void Cilk_raise_priority(CilkWorkerState *const ws);
@@ -426,19 +427,19 @@ struct Cilk_options_s
 
 /* command-line parser */
 extern int Cilk_parse_command_line(
-				   Cilk_options *options, int *argc, char *argv[]);
+                                   Cilk_options *options, int *argc, char *argv[]);
 
 #define CILK_DEFAULT_OPTIONS                    \
-  {						\
-    1,						\
-      0.5,					\
-      CILK_DEFAULT_STACK_DEPTH,			\
-      0,					\
-      0,					\
-      "-",					\
-      0,					\
-      64,					\
-      0,					\
-      0,					\
-      1024					\
+  {                                             \
+    1,                                          \
+      0.5,                                      \
+      CILK_DEFAULT_STACK_DEPTH,                 \
+      0,                                        \
+      0,                                        \
+      "-",                                      \
+      0,                                        \
+      64,                                       \
+      0,                                        \
+      0,                                        \
+      1024                                      \
       }

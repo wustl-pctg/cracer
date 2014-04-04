@@ -8,12 +8,12 @@
  *  under the terms of the GNU Lesser General Public License as published by
  *  the Free Software Foundation; either version 2.1 of the License, or (at
  *  your option) any later version.
- *  
+ *
  *  This library is distributed in the hope that it will be useful, but
  *  WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
@@ -40,9 +40,9 @@ FILE_IDENTITY(ident,
 
 #define NOBODY (-1)   /* invalid processor number */
 
-/* 
+/*
  * SCHEDULER LOCK DIAGRAM
- * 
+ *
  * locks must be grabbed in the following order:
  *
  * ReadyDeque lock
@@ -198,7 +198,7 @@ static inline void deque_unlock(CilkWorkerState *const ws, int pn)
 	Cilk_mutex_signal(ws->context, &USE_PARAMETER(deques)[pn].mutex);
 }
 
-/* 
+/*
  * functions that add/remove elements from the top/bottom
  * of deques
  */
@@ -223,7 +223,7 @@ static Closure *deque_xtract_top(CilkWorkerState *const ws, int pn)
 	} else {
 	  CILK_ASSERT(ws, USE_PARAMETER(deques)[pn].bottom == (Closure *) NULL);
 	}
-     
+
 	return cl;
 }
 
@@ -265,7 +265,7 @@ static Closure *deque_xtract_bottom(CilkWorkerState *const ws, int pn)
 	} else {
 	  CILK_ASSERT(ws, USE_PARAMETER(deques)[pn].top == (Closure *) NULL);
 	}
-     
+
 	return cl;
 }
 
@@ -281,11 +281,11 @@ static Closure *deque_peek_bottom(CilkWorkerState *const ws, int pn)
 	} else {
 	  CILK_ASSERT(ws, USE_PARAMETER(deques)[pn].top == (Closure *) NULL);
 	}
-     
+
 	return cl;
 }
 
-#if 0   
+#if 0
 /*
  * Unused code, which may be useful if you hack the scheduler.
  */
@@ -298,7 +298,7 @@ static void deque_add_top(CilkWorkerState *const ws, Closure *cl, int pn)
 	cl->prev_ready = (Closure *)NULL;
 	USE_PARAMETER(deques)[pn].top = cl;
 	WHEN_CILK_DEBUG(cl->owner_ready_deque = pn);
-     
+
 	if (USE_PARAMETER(deques)[pn].bottom) {
 	  CILK_ASSERT(ws, cl->next_ready);
 	  (cl->next_ready)->prev_ready = cl;
@@ -317,7 +317,7 @@ static void deque_add_bottom(CilkWorkerState *const ws, Closure *cl, int pn)
 	cl->next_ready = (Closure *)NULL;
 	USE_PARAMETER(deques)[pn].bottom = cl;
 	WHEN_CILK_DEBUG(cl->owner_ready_deque = pn);
-     
+
 	if (USE_PARAMETER(deques)[pn].top) {
 	  CILK_ASSERT(ws, cl->prev_ready);
 	  (cl->prev_ready)->next_ready = cl;
@@ -429,15 +429,15 @@ Closure *Cilk_Closure_create_malloc(CilkContext *const context, CilkWorkerState 
 	return new;
 }
 
-/* 
+/*
  * if (entry >= 0)
  *      get the inlet according to the entry
  * else
  *      get the inlet from the frame
  */
-static struct InletClosure 
+static struct InletClosure
 *make_incomplete_inlet_closure(CilkWorkerState *const ws,
-															 Closure *parent, 
+															 Closure *parent,
 															 int entry)
 {
 	struct InletClosure *p;
@@ -449,12 +449,12 @@ static struct InletClosure
 
 	f = parent->frame;
 
-	if (entry >= 0) 
+	if (entry >= 0)
 	  /* get the special exit closure */
 	  info = get_CilkProcInfo(ws, f->sig, entry);
 	else
 	  info = get_CilkProcInfo(ws, f->sig, f->entry);
-     
+
 	/* if no index is statically specified, get it from the frame */
 	if (info->index == -1)
 	  p->receiver = f->receiver;
@@ -479,11 +479,11 @@ static struct InletClosure
 	  p->argsize = info->size;
 	  p->inlet_args = Cilk_internal_malloc(ws, p->argsize);
 	}
-     
+
 	return p;
 }
 
-/* 
+/*
  * only the scheduler is allowed to alter the closure
  * tree.  Consequently, these operations are private
  */
@@ -579,7 +579,7 @@ static inline void increment_exception_pointer(CilkWorkerState *const ws,
 
 	if (CLOSURE_EXCEPTION(cl) != EXCEPTION_INFINITY) {
 	  ++CLOSURE_EXCEPTION(cl);
-	  
+
 	  /* make sure the exception is visible, before we continue */
 	  Cilk_fence();
 	}
@@ -618,18 +618,18 @@ static inline void signal_immediate_exception(CilkWorkerState *const ws,
 }
 
 /********************************************************
- * Abort-related stuff 
+ * Abort-related stuff
  ********************************************************/
 
-/* 
+/*
  * Abort is implemented by adding an abort_status in the closure
- * structure.  
+ * structure.
  *    NO_ABORT:         the closure is not aborted;
  *    ALMOST_NO_ABORT:  the closure is being aborted as parent;
  *    ABORT_ALL:        the closure is being aborted as child;
  *
  * When abort happens, we want to make sure that already spawned
- * but not returned subcomputations stop working, and "return" as 
+ * but not returned subcomputations stop working, and "return" as
  * quickly as possible.  This is handled in the exception handler.
  * Also,  the inlets of a closure that is being aborted, either as
  * parent or child, should not be executed.  We handle this in
@@ -637,38 +637,38 @@ static inline void signal_immediate_exception(CilkWorkerState *const ws,
  *
  * Abort is signaled either in running slow code, or in apply_inlets.
  * To signal an abort, the process that discovers the abort grabs
- * the parent lock and recursively goes down the tree to signal 
- * it's children by setting their abort_status to ABORT_ALL, and 
+ * the parent lock and recursively goes down the tree to signal
+ * it's children by setting their abort_status to ABORT_ALL, and
  * signal immediate exception to all running children.  The parent
  * is set to ALMOST_NO_ABORT, so that the complete inlets would not
- * be executed.  
+ * be executed.
  *
  * Before we signal an abort from the parent, we check to see that, if
  * the parent is running and the worker is not on the top of the stack,
  * then, we promote the frame second to the top to be a complete closure,
  * put the parent back to the ready deque, and signal abort from the parent.
  * In this way, the parent will start execution at the right entry point.
- * 
- * The stealing protocol does not steal a closure if it is being 
+ *
+ * The stealing protocol does not steal a closure if it is being
  * aborted.  Inlets are also not applied to closures that are aborting.
- *  
+ *
  * Once the abort is signaled, we let the normal protocol to handle
  * the abort:
  *
  *    We let the exception handler do the work to abort running closure.
  *    (see comments in exception_handler).
  *
- *    For a ready closure, we check whether it's being aborted before 
- *    set up to execute it.  If it is being aborted, we free the last 
+ *    For a ready closure, we check whether it's being aborted before
+ *    set up to execute it.  If it is being aborted, we free the last
  *    frame and let it return.
  *
- *    For a returning closure, if it is being aborted, we do not append 
+ *    For a returning closure, if it is being aborted, we do not append
  *    the corresponding inlet to the complete inlet list, but discard
  *    the return value.
  *
- *    For a suspended closure, we do the same provably_good_steal.  
- *    If it is being aborted, we will discover it we it's state is ready.  
- *    
+ *    For a suspended closure, we do the same provably_good_steal.
+ *    If it is being aborted, we will discover it we it's state is ready.
+ *
  *
  */
 
@@ -743,7 +743,7 @@ static Closure *abort_ready_closure(CilkWorkerState *const ws, Closure *cl)
 /***********************************************************
  *         Work-stealing and related functions
  ***********************************************************/
-/* 
+/*
  * For stealing we use a Dekker-like protocol, that achieves
  * mutual exclusion using shared memory.
  *
@@ -751,7 +751,7 @@ static Closure *abort_ready_closure(CilkWorkerState *const ws, Closure *cl)
  *   lock
  *   E++          ; signal intention to steal, sending an exception
  *   (implicit MEMBAR)
- *   If (H >= T)  ; if we can steal
+ *   If (H >= T)  ; if we can steal (can NOT? rsu)
  *     E--        ; retract the exception
  *     give up
  *   steal (that is, H++, etc)
@@ -762,7 +762,7 @@ static Closure *abort_ready_closure(CilkWorkerState *const ws, Closure *cl)
  *   T--
  *   --MEMBAR-- ensure T write occurs before E is read.
  *   if (E>=T)
- *     
+ *
  *
  */
 
@@ -776,7 +776,7 @@ static int do_dekker_on(CilkWorkerState *const ws, Closure *cl)
 	Closure_assert_ownership(ws, cl);
 
 	increment_exception_pointer(ws, cl);
-	Cilk_membar_StoreLoad(); 
+	Cilk_membar_StoreLoad();
 
 	if ((CLOSURE_HEAD(cl) + 1) >= CLOSURE_TAIL(cl)) {
 	  decrement_exception_pointer(ws, cl);
@@ -843,12 +843,12 @@ static Closure *promote_child(CilkWorkerState *const ws,
  * the child).  This function does some more work on the parent to make
  * the promotion complete.
  */
-void finish_promote(CilkWorkerState *const ws, 
+void finish_promote(CilkWorkerState *const ws,
 										Closure *parent, Closure *child)
 {
 	Closure_assert_ownership(ws, parent);
 	Closure_assert_alienation(ws, child);
-     
+
 	/* the parent is still locked; we still need to update it */
 	/* join counter update */
 	parent->join_counter++;
@@ -879,7 +879,7 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
 
 	if (cl) {
 	  Closure_lock(ws, cl);
-	  
+
 	  /* do not steal aborting closures */
 	  if (Closure_being_aborted(ws, cl)) {
 			Cilk_event(ws, EVENT_STEAL_ABORT);
@@ -900,7 +900,7 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
 		case CLOSURE_RUNNING:
 			/* send the exception to the worker */
 			if (do_dekker_on(ws, cl)) {
-				/* 
+				/*
 				 * if we could send the exception, promote
 				 * the child to a full closure, and steal
 				 * the parent
@@ -912,7 +912,7 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
 				CILK_ASSERT(ws, cl == res);
 				deque_unlock(ws, victim);
 
-				/* 
+				/*
 				 * at this point, more steals can happen
 				 * from the victim.
 				 */
@@ -924,7 +924,7 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
 				goto give_up;
 			}
 			break;
-			
+
 		case CLOSURE_SUSPENDED:
 			Cilk_die_internal(ws->context, ws, "Bug: suspended closure in ready deque\n");
 			break;
@@ -933,7 +933,7 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
 			/* ok, let it leave alone */
 			Cilk_event(ws, EVENT_STEAL_RETURNING);
 
-			/* 
+			/*
 			 * MUST unlock the closure before the queue;
 			 * see rule D in the file PROTOCOLS
 			 */
@@ -962,7 +962,7 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
  * signal_abort_from_inlet:
  *
  * Signal all closures that need to be aborted from the parent <cl>.
- * If the parent is running and not working on the top of the 
+ * If the parent is running and not working on the top of the
  * stackframe, then, the current work is a spawn and should be aborted
  * as well.  In this case, we promote the child frame to a closure,
  * detach the parent, put the parent on the ready deque, and abort from
@@ -975,22 +975,22 @@ static void signal_abort_from_inlet(CilkWorkerState *const ws, Closure *cl)
 
 	if (cl->status == CLOSURE_RUNNING &&
 			!Closure_at_top_of_stack(cl)) {
-	  /* 
+	  /*
 	   * if closure is running and the frame is not on the top,
 	   * then, poll_inlets is called in exception_handler.  So,
-	   * the worker "ws->self" should own ready deque.  
+	   * the worker "ws->self" should own ready deque.
 	   */
 	  deque_assert_ownership(ws, ws->self);
 
 	  /* promote the child frame, and detach the parent from deque */
 	  child = promote_child(ws, cl, ws->self);
 	  finish_promote(ws, cl, child);
-	  
+
 	  /*
 	   * Now, the stackframe the exception handler is working on
 	   * belongs to the child, not the parent.  Therefore, the
 	   * exception handler should get the child from the deque
-	   * after calling poll_inlets 
+	   * after calling poll_inlets
 	   */
 	}
 
@@ -1019,7 +1019,7 @@ static void apply_inlet(CilkWorkerState *const ws,
 
 	Closure_assert_ownership(ws, cl);
 
-	/* 
+	/*
 	 * do not apply inlets to aborting closures --- these inlets
 	 * are supposed to be killed
 	 */
@@ -1030,21 +1030,21 @@ static void apply_inlet(CilkWorkerState *const ws,
 			/* run the inlet */
 			inlet(ws, frame, inlet_args, receiver);
 	  } else {
-			/* 
-			 * default inlet: copy just-returned value into frame 
+			/*
+			 * default inlet: copy just-returned value into frame
 			 */
 			if (argsize) {
 		    memcpy(receiver, inlet_args, argsize);
 			}
 
-			/* 
+			/*
 			 * TODO: make a little stub that does the memcpy.
 			 * (Probably the resulting code will be messier than
 			 *  just doing the check here)
 			 */
 	  }
 
-	  if (ws->abort_flag) 
+	  if (ws->abort_flag)
 			signal_abort_from_inlet(ws, cl);
 	}
 
@@ -1061,9 +1061,9 @@ static void poll_inlets(CilkWorkerState *const ws, Closure *cl)
 	Closure_assert_ownership(ws, cl);
 	if (cl->status == CLOSURE_RUNNING &&
 			!Closure_at_top_of_stack(cl))
-	  /* 
+	  /*
 	   * If we get here, poll_inlets has been called by
-	   * the exception handler 
+	   * the exception handler
 	   */
 	  deque_assert_ownership(ws, ws->self);
 
@@ -1074,13 +1074,13 @@ static void poll_inlets(CilkWorkerState *const ws, Closure *cl)
 
 	  /*
 	   * apply_inlets may change the ready deque. See comments in
-	   * apply_inlet for details 
+	   * apply_inlet for details
 	   */
 
-	  apply_inlet(ws, cl, i); 
+	  apply_inlet(ws, cl, i);
 	}
-     
-	/* 
+
+	/*
 	 * Reset the abort status after all incoming inlets have been
 	 * executed/killed
 	 */
@@ -1089,7 +1089,7 @@ static void poll_inlets(CilkWorkerState *const ws, Closure *cl)
 }
 
 static void complete_and_enque_inlet(CilkWorkerState *const ws,
-																		 Closure *parent, Closure *child, 
+																		 Closure *parent, Closure *child,
 																		 struct InletClosure *i)
 {
 	Closure_assert_ownership(ws, parent);
@@ -1099,7 +1099,7 @@ static void complete_and_enque_inlet(CilkWorkerState *const ws,
 	 * Install value child is returning into inlet structure.
 	 */
 	CILK_COMPLAIN
-	  (child->return_size <= i->argsize, 
+	  (child->return_size <= i->argsize,
 	   (ws->context, ws,
 	    "Cilk runtime system: invalid size of a return-ed value.\n"
 	    "Either some internal Cilk data structure is corrupted,\n"
@@ -1169,7 +1169,7 @@ static Closure *Closure_return(CilkWorkerState *const ws, Closure *child)
 	parent = child->parent;
 	CILK_ASSERT(ws, parent);
 
-	/* 
+	/*
 	 * at this point the status is as follows: the child is in
 	 * no deque and unlocked.  However, the child is still
 	 * in the children list of the parent.  Since the child
@@ -1206,8 +1206,8 @@ static Closure *Closure_return(CilkWorkerState *const ws, Closure *child)
 				parent->cp = ws->cp_hack;
 			parent->work += ws->work_hack;
 		});
-	
-	/* 
+
+	/*
 	 * the two fences ensure dag consistency (Backer)
 	 */
 	CILK_ASSERT(ws, parent->join_counter > 0);
@@ -1227,7 +1227,7 @@ static Closure *Closure_return(CilkWorkerState *const ws, Closure *child)
 }
 
 /*
- * suspend protocol 
+ * suspend protocol
  */
 static void Closure_suspend(CilkWorkerState *const ws, Closure *cl)
 {
@@ -1254,7 +1254,7 @@ static void Closure_suspend(CilkWorkerState *const ws, Closure *cl)
 void Cilk_destroy_frame(CilkWorkerState *const ws,
 												CilkStackFrame *f, size_t size)
 {
-	WHEN_CILK_ALLOCA( 
+	WHEN_CILK_ALLOCA(
 									 {
 										 if (f->alloca_h)
 											 Cilk_unalloca_internal(ws, f);
@@ -1290,7 +1290,7 @@ int Cilk_sync(CilkWorkerState *const ws)
 	if (Closure_has_children(t)) {
 	  Closure_suspend(ws, t);
 	  res = 1;
-	} 
+	}
 
 	Closure_unlock(ws, t);
 
@@ -1345,19 +1345,19 @@ static void move_result_into_closure(CilkWorkerState *const ws,
 /*
  * This is the exception handler.
  *
- * The handler returns 1 if the worker must return to the runtime 
+ * The handler returns 1 if the worker must return to the runtime
  * system, 0 otherwise.  This is what it does:
- *  
- * We need to call poll_inlets first. 
- * But poll_inlets may change the closure that owns the stack that 
- * is currently running.  So, we need to get the closure from the 
+ *
+ * We need to call poll_inlets first.
+ * But poll_inlets may change the closure that owns the stack that
+ * is currently running.  So, we need to get the closure from the
  * ready deque.  Then, we follow the protocol below:
  *
  *   reset exception pointer
  *   if ( H>=T )
  *       it is a steal
  *       change state into CLOSRUE_RETURNING
- *       res = 1  
+ *       res = 1
  *
  *   else if (current frame is being aborted)
  *       res = 1
@@ -1468,7 +1468,7 @@ void Cilk_set_result(CilkWorkerState *const ws, void *resultp, int size)
 	CILK_ASSERT(ws, t->status == CLOSURE_RUNNING);
 	CILK_ASSERT(ws, t->frame->magic == CILK_STACKFRAME_MAGIC);
 
-	/* 
+	/*
 	 * this must happen after a sync; hence, either there is
 	 * no abort at all, or the parent is trying to kill us
 	 */
@@ -1485,7 +1485,7 @@ void Cilk_set_result(CilkWorkerState *const ws, void *resultp, int size)
 }
 
 
-void Cilk_abort_slow(CilkWorkerState *const ws) 
+void Cilk_abort_slow(CilkWorkerState *const ws)
 {
 	Closure *cl;
 	deque_lock(ws, ws->self);
@@ -1506,12 +1506,12 @@ void Cilk_abort_slow(CilkWorkerState *const ws)
 	deque_unlock(ws, ws->self);
 }
 
-void Cilk_abort_standalone(CilkWorkerState *const ws) 
+void Cilk_abort_standalone(CilkWorkerState *const ws)
 {
 	Cilk_event(ws, EVENT_ABORT_STANDALONE);
 	ws->abort_flag = 1;
 }
-  
+
 /*********************************************************
  * Execution
  *********************************************************/
@@ -1574,8 +1574,8 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t)
 			CILK_ASSERT(ws, f->magic == CILK_STACKFRAME_MAGIC);
 			poll_inlets(ws, t);
 			Closure_unlock(ws, t);
-			/* 
-			 * MUST unlock the closure before locking the queue 
+			/*
+			 * MUST unlock the closure before locking the queue
 			 * (rule A in file PROTOCOLS)
 			 */
 			deque_lock(ws, ws->self);
@@ -1602,7 +1602,7 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t)
 
 	default:
 		Cilk_die_internal(ws->context, ws,
-											"BUG in do_what_it_says(), t->status = %d\n", 
+											"BUG in do_what_it_says(), t->status = %d\n",
 											t->status);
 		break;
 	}
@@ -1615,7 +1615,7 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t)
  *********************************************************/
 void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 {
-	/* 
+	/*
 	 * t contains 'the next thing to do'.  Initially, the
 	 * scheduler on proc 0 executes the main closure.
 	 */
@@ -1636,10 +1636,10 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			deque_unlock(ws, ws->self);
 	  }
 
-      num_ds = USE_PARAMETER(num_ds_workers);
-      num_main = USE_PARAMETER(num_real_workers);
-      while (!t && !USE_SHARED(done)) {
-	        /* otherwise, steal */
+    num_ds = USE_PARAMETER(num_ds_workers);
+    num_main = USE_PARAMETER(num_real_workers);
+    while (!t && !USE_SHARED(done)) {
+      /* otherwise, steal */
 			Cilk_enter_state(ws, STATE_STEALING);
 			//BSS45 - 1/18
 			if (ws->self >= num_main) { // ds worker
@@ -1647,17 +1647,17 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			} else { // regular worker
 				victim = rts_rand(ws) % num_main;
 			}
-           
+
 			if (victim != ws->self) {
-		        t = Closure_steal(ws, victim);
-		        if (!t && USE_PARAMETER(options->yieldslice) &&
-			        !USE_SHARED(done)) {
-			    
-                    Cilk_lower_priority(ws);
-		        }
+        t = Closure_steal(ws, victim);
+        if (!t && USE_PARAMETER(options->yieldslice) &&
+            !USE_SHARED(done)) {
+
+          Cilk_lower_priority(ws);
+        }
 			}
 
-           
+
 			/* Cilk_fence(); */
 			Cilk_exit_state(ws, STATE_STEALING);
 	  }
@@ -1666,10 +1666,10 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			Cilk_raise_priority(ws);
 
 	  if (!USE_SHARED(done)) {
-           while (&USE_SHARED(wakeup_other_workers_cond) == NULL){printf("waiting"); continue;}
+      while (&USE_SHARED(wakeup_other_workers_cond) == NULL){printf("waiting"); continue;}
 			t = do_what_it_says(ws, t);
-      }
-	  /* 
+    }
+	  /*
 	   * if provably-good steals happened, t will contain
 	   * the next closure to execute
 	   */
@@ -1681,7 +1681,7 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 }
 
 /*
- * initialization of the scheduler. 
+ * initialization of the scheduler.
  */
 void Cilk_scheduler_init(CilkContext *const context)
 {
@@ -1716,14 +1716,14 @@ void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws)
 	WHEN_CILK_TIMING(ws->cp_hack = 0);
 	WHEN_CILK_TIMING(ws->work_hack = 0);
 
-	ws->cache.stack = 
+	ws->cache.stack =
 	  Cilk_malloc_fixed(USE_PARAMETER(options->stackdepth) *
 											sizeof(CilkStackFrame *));
 	ws->stackdepth = USE_PARAMETER(options->stackdepth);
 	Cilk_reset_stack_depth_stats(ws);
 
 	CILK_CHECK(ws->cache.stack, (ws->context, ws, "failed to allocate stack\n"));
-     
+
 }
 
 void Cilk_scheduler_per_worker_terminate(CilkWorkerState *const ws)
@@ -1731,35 +1731,35 @@ void Cilk_scheduler_per_worker_terminate(CilkWorkerState *const ws)
 	Cilk_free(ws->cache.stack);
 }
 
-/* 
+/*
  * From the frame of <cl>, which should be the invoke_main closure,
  * get the inlet that should be executed when cilk_main returns.
  * (All the inlet does, is to set the proper return value and call
  * abort).
- * Pass <res>, the exit value, to the inlet, and enque it as 
+ * Pass <res>, the exit value, to the inlet, and enque it as
  * a complete inlet.
  */
-static void make_exit_inlet_closure(CilkWorkerState *const ws, 
+static void make_exit_inlet_closure(CilkWorkerState *const ws,
 																		Closure *cl, int res)
 {
 	struct InletClosure *p;
 
 	p = make_incomplete_inlet_closure(ws, cl, 1);
 
-	memcpy(p->inlet_args, &res, sizeof(int));     
+	memcpy(p->inlet_args, &res, sizeof(int));
 	p->next = cl->complete_inlets;
 	cl->complete_inlets = p;
 }
 
-/* 
+/*
  * This procedure is called by Cilk_exit().
  * <cl> is the invoke_main closure, and <res> is the return
- * value passed in by Cilk_exit.  
- * 
+ * value passed in by Cilk_exit.
+ *
  * The real work is done by first enqueing an inlet that calls
  * abort, and then either signal exception or polls the inlet.
- * So, cilk_main, which is spawned by invoke_main will be 
- * aborted.  
+ * So, cilk_main, which is spawned by invoke_main will be
+ * aborted.
  * (Refer to "invoke_main.c" for details.)
  */
 void Cilk_exit_from_user_main(CilkWorkerState *const ws, Closure *cl, int res)
@@ -1768,26 +1768,46 @@ void Cilk_exit_from_user_main(CilkWorkerState *const ws, Closure *cl, int res)
 
 	Closure_lock(ws, cl);
 	make_exit_inlet_closure(ws, cl, res);
-     
+
 	if (cl->status == CLOSURE_RUNNING)
 	  signal_immediate_exception(ws, cl);
 	else
 	  poll_inlets(ws, cl);
-     
+
 	Closure_unlock(ws, cl);
 }
 
-//generalized macro to put operation and arguments into work_array then wait
-//#define BATCH(f,a) ds_work_array.array[_cilk_ws->self].operation=(f); \
-    ds_work_array.array[_cilk_ws->self].args=(a); \
-    ds_work_array.array[_cilk_ws->self].status=DS_WAITING; \
-    while(ds_work_array.array[_cilk_ws->self].status==DS_WAITING) {;}
-void Cilk_batchify(CilkWorkerState *const ws, CilkBatchOp operation,
-    void** args) {
- 
-    ds_work_array.array[ws->self].operation=operation;
-    ds_work_array.array[ws->self].args=args;
-    ds_work_array.array[ws->self].status=DS_WAITING;
-    while(ds_work_array.array[ws->self].status==DS_WAITING) {;}
+static inline void insert_batch_op(int worker_id, Batch* pending,
+                                   InternalBatchOperation operation,
+                                   void *data, size_t data_size,
+                                   void *ds, void *result)
+{
+  pending->array[worker_id].operation = operation;
+  pending->array[worker_id].args = data;
+  pending->array[worker_id].size = data_size;
+
+  // @todo @opt I think we can safely assume that there is only one
+  // shared batch data structure, so this is really unnecessary. We
+  // should find a better way to pass this to invoke_batch, since it
+  // will always be the same. To allow multiple shared data structures
+  // would greatly increase the complexity of starting batches.
+  pending->array[worker_id].data_structure = ds;
+
+  pending->array[worker_id].result = result;
+
+  pending->array[worker_id].status = DS_WAITING;
 }
 
+void Cilk_batchify(CilkWorkerState *const ws, InternalBatchOperation operation,
+                   void *ds, void *data, size_t data_size, void *result)
+{
+  Batch *pending = &USE_SHARED(pending_batch);
+  insert_batch_op(ws->self, pending, operation, data, data_size, ds, result);
+
+  // @todo @opt Should nanosleep here, not spin.
+  // @todo @refactor An inline function that waits for batch completion,
+  // which calls an inline function that checks once, would be better.
+  while (pending->array[ws->self].status != DS_DONE) {;}
+
+  return;
+}

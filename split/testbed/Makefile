@@ -1,14 +1,35 @@
-CILK=./cilkclocal
-CFLAGS=-g -O2 -save-temps -I./ -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L
+CILKC = ../support/cilkclocal
+#CFLAGS = -g -D_CILK_DEBUG -DDEBUG
+CFLAGS =
+DEPS = $(wildcard util/*.h util/*.cilkh)
+SRCS = $(wildcard *.cilk)
+INC = util/parfor.cilk util/benchOptions.c
+DS =
+LD =
 
-all: ds_incr incr
+all: bench
 
-ds_incr: ds_api.cilkh ds_incr.cilk cilkclocal
-	${CILK} ${CFLAGS} -o ds_incr ds_incr.cilk
+%_bench: %_bench.cilk $(DEPS)
+	$(CILKC) $(CFLAGS) $(@:=.cilk) $(INC) $(DS) -o $* $(LD)
 
-incr: ds_api.cilkh incr.cilk cilkclocal
-	${CILK} ${CFLAGS} -o incr incr.cilk
+cilk:
+	cd ..; make
+	make clean
+
+bench: skip seq
+
+skip: DS = ds/skiplist.cilk
+skip: skiplist_bench
+
+.PHONY: clean cilk-clean check-syntax
 
 clean:
-	rm -f ds_incr ds_incr.cilkc ds_incr.i ds_incr.cilki
-	rm -f incr incr.cilkc incr.i incr.cilki
+	rm -f *.i *.cilki *.cilkc *.d *.P *.o
+	rm -f $(SRCS:.cilk=)
+
+cilk-clean:
+	cd ..;make clean
+	make clean
+
+check-syntax:
+	$(CILKC) -o /dev/null -c ${CHK_SOURCES}
