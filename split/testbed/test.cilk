@@ -1,0 +1,88 @@
+#include <cilk-lib.cilkh>
+#include <cilk.h>
+#include <stdio.h>
+
+#include <time.h>
+
+#define NUM_ITERS 100
+#define INCR_PER_OP 1024
+#define NPROC 4
+struct timespec g_long_wait_time = {1L, 0L};
+struct timespec g_short_wait_time = {0L, 1000L};
+volatile int g_lock = 0;
+volatile int g_b_lock = 0;
+volatile unsigned int g_counter = 0;
+
+unsigned int helper_counts[NPROC];
+unsigned int batch_counts[NPROC];
+unsigned int incr_counts[NPROC];
+
+cilk void incr()
+{
+  while(!__sync_bool_compare_and_swap(&g_lock, 0, 1)) {
+    nanosleep(&g_short_wait_time, NULL);
+  }
+  incr_counts[_cilk_ws->self]++;
+  g_counter++;
+  g_lock = 0;
+}
+
+cilk void batch_func(void *ds, void *data, size_t num_elem, void *result)
+{
+  int i,j;
+
+  for (i = 1; i <= num_elem; ++i) {
+    for (j = 1; j <= INCR_PER_OP; ++j) {
+      spawn incr();
+    }
+  }
+  sync;
+
+  while(!__sync_bool_compare_and_swap(&g_b_lock, 0, 1)) {
+    nanosleep(&g_short_wait_time, NULL);
+  }
+  batch_counts[_cilk_ws->self] += num_elem;
+  g_b_lock = 0;
+  return;
+}
+
+cilk void helper(int data)
+{
+  helper_counts[_cilk_ws->self]++;
+  Cilk_batchify(_cilk_ws, batch_func, NULL, (void*) &data, sizeof(data), NULL);
+}
+
+cilk int main()
+{
+  int i;
+  for (i = 1; i <= NUM_ITERS; ++i) {
+    spawn helper(i);
+  }
+  sync;
+
+  printf("Full counter: %u vs. %i\n", g_counter, INCR_PER_OP*NUM_ITERS);
+
+  printf("Helper counts:");
+  for (i = 0; i < NPROC; ++i) {
+    printf(" %u", helper_counts[i]);
+  }
+
+  puts("");
+  printf("Batch counts:");
+  for (i = 0; i < NPROC; ++i) {
+    printf(" %u", batch_counts[i]);
+  }
+
+  puts("");
+  printf("Incr counts:");
+  for (i = 0; i < NPROC; ++i) {
+    printf(" %u", incr_counts[i]);
+  }
+  puts("");
+
+  nanosleep(&g_long_wait_time, NULL);
+  return 0;
+}
+// Local Variables:
+// compile-command: "../support/cilkclocal -g test.cilk"
+// End:
