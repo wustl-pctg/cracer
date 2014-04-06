@@ -19,6 +19,8 @@
  *
  */
 
+#define _GNU_SOURCE
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <cilk.h>
@@ -164,8 +166,34 @@ void Cilk_create_children(CilkContext *const context,
   }
   pthread_setconcurrency(USE_PARAMETER1(active_size));
 
+	// I would imagine it's helpful to set the main thread affinity the
+	// same as worker 0, disallowing cache validation for the initial
+	// closure.
+#ifdef HAVE_SCHED_SETAFFINITY
+	cpu_set_t mask;
+	CPU_ZERO(&mask);
+	CPU_SET(1, &mask);
+	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &mask);
+#endif
+
   for (i = 0; i < USE_PARAMETER1(active_size); i++)
     {
+
+			// Set thread affinity
+#ifdef HAVE_SCHED_SETAFFINITY
+			int ret_val;
+			CPU_ZERO(&mask);
+      CPU_SET(i, &mask);
+
+      ret_val = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &mask);
+
+      if (ret_val != 0) {
+				fprintf(stderr,
+                "Warning: Could not set CPU affinity for %i with error %i\n",
+                i, ret_val);
+      }
+#endif
+
       res = pthread_create(USE_SHARED1(tid) + i,
                            &attr,
                            (void * (*) (void *)) child,

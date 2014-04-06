@@ -395,7 +395,8 @@ CilkContext* Cilk_init( int* argc, char *argv[] )
   if( USE_PARAMETER1(options)->pinned_mask > 1023 ) {
     /*do nothing (use the mask that was inherited) */
   } else {
-    if( sched_setaffinity(0, sizeof( USE_PARAMETER1(options)->pinned_mask ), &( USE_PARAMETER1(options)->pinned_mask ) ) )
+    if( sched_setaffinity(0, sizeof( USE_PARAMETER1(options)->pinned_mask ),
+                          &( USE_PARAMETER1(options)->pinned_mask ) ) )
       {
         fprintf(stderr, "Failed pinning process, continuing on default mask...\n");
       }
