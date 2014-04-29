@@ -574,7 +574,11 @@ typedef struct {
 /* This is a hand-compiled procedure that calls a batch operation */
 typedef struct {
   CilkStackFrame header;
-  BatchArgs *args;
+  BatchArgs *args; // I don't think this is actually necessary. It's
+                   // a holdover from invoke_main_frame, where *args
+                   // was the command-line arguments passed in (I
+                   // think). So it's not really necessary in this
+                   // case. *** rsu
   int arg_size;
   unsigned int batch_id;
   int retval;

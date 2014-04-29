@@ -94,7 +94,7 @@ cilk int main(int argc, char* argv[])
 
 
   printf("%lf\n",getWallTime());
-  printf("Size: %d\n", get_size());
+  //  printf("Size: %d\n", get_size());
 
   return 0;
 }

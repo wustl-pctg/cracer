@@ -89,6 +89,15 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 	//	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
 
+// @todo @refactor I don't think this actually helps anything. We
+// still have to put an initial closure on the deque
+// (setup_for_execution).
+// Whether we put invoke_batch_slow on initially or the actual batch
+// function doesn't particularly matter -- someone stealing
+// invoke_batch will see that it is executing and just suspend and
+// steal again.
+// NB: I *think* this is what happens. I should check empirically just
+// to be safe.
 static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
                          InternalBatchOperation op,
                          unsigned int num)
