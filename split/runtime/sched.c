@@ -951,6 +951,9 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim)
 	  Cilk_event(ws, EVENT_STEAL_EMPTY_DEQUE);
 	}
 
+  /* if (res) */
+  /*   printf("%i stealing from %i.\n", ws->self, victim); */
+
 	return res;
 }
 
@@ -1666,7 +1669,7 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			Cilk_raise_priority(ws);
 
 	  if (!USE_SHARED(done)) {
-      while (&USE_SHARED(wakeup_other_workers_cond) == NULL){printf("waiting"); continue;}
+      /* while (&USE_SHARED(wakeup_other_workers_cond) == NULL){printf("waiting"); continue;} */
 			t = do_what_it_says(ws, t);
     }
 	  /*
@@ -1801,13 +1804,20 @@ static inline void insert_batch_op(int worker_id, Batch* pending,
 void Cilk_batchify(CilkWorkerState *const ws, InternalBatchOperation operation,
                    void *ds, void *data, size_t data_size, void *result)
 {
+  /* struct timespec temp; */
+  /* temp.tv_sec = 0; */
+  /* temp.tv_nsec = 100L; */
   Batch *pending = &USE_SHARED(pending_batch);
+
   insert_batch_op(ws->self, pending, operation, data, data_size, ds, result);
 
   // @todo @opt Should nanosleep here, not spin.
   // @todo @refactor An inline function that waits for batch completion,
   // which calls an inline function that checks once, would be better.
-  while (pending->array[ws->self].status != DS_DONE) {;}
+  while (pending->array[ws->self].status != DS_DONE) {
+    /* nanosleep(&temp, NULL); */
+    ;
+  }
 
   return;
 }

@@ -172,7 +172,7 @@ void Cilk_create_children(CilkContext *const context,
 #ifdef HAVE_SCHED_SETAFFINITY
 	cpu_set_t mask;
 	CPU_ZERO(&mask);
-	CPU_SET(1, &mask);
+	CPU_SET(0, &mask);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &mask);
 #endif
 
@@ -183,7 +183,7 @@ void Cilk_create_children(CilkContext *const context,
 #ifdef HAVE_SCHED_SETAFFINITY
 			int ret_val;
 			CPU_ZERO(&mask);
-      CPU_SET(i, &mask);
+      CPU_SET(i+1, &mask);
 
       ret_val = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &mask);
 

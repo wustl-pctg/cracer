@@ -229,6 +229,7 @@ typedef struct {
 
   // Ratio of DS workers to normal workers
   __CILKSAFE__ double dsratio;
+  __CILKSAFE__ int batch_spots;
 
   /*
    * HACK: this should be FILE *; but using a void * simplifies the

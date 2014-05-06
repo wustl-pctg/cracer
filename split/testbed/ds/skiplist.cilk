@@ -445,6 +445,7 @@ void insert_par(CilkWorkerState *const ws, int* add_op)
 
 void batchPopNode (CilkWorkerState *const ws, int inValue)
 {
+  printf("batchPopNode.\n");
   /* Cilk_batchify_sequential(ws, &popBatch, (void*)&list, */
   /*                          (void*)&inValue, sizeof(int), NULL); */
 }

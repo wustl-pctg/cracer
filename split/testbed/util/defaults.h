@@ -12,7 +12,6 @@
 #endif
 
 #ifndef BATCH_THRESHOLD
-//#define BATCH_THRESHOLD USE_PARAMETER2(active_size)
 #define BATCH_THRESHOLD 2 ///< Below this, batches should execute sequentially
 #endif
 

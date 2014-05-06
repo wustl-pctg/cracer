@@ -31,7 +31,7 @@ static inline struct Node* init_hdr()
 static inline struct Node* init_node(Skiplist* this)
 {
   struct Node* n = malloc(sizeof(struct Node));
-  // check for sufficient memory ***
+  // @todo check for sufficient memory
   n->forward[0] = NIL;
   n->forward[1] = NIL;
 
@@ -75,12 +75,12 @@ struct Node* skiplist_insert(Skiplist* this, int data)
   struct Node* location = skiplist_find_location(this, data);
   if (location->data == data) return location;
 
-  // determine level ***
+  // @todo determine level
 
   new_node = init_node(this);
   new_node->data = data;
 
-  // Update ALL forward links, not just forward[0] ***
+  // @todo Update ALL forward links, not just forward[0]
   new_node->forward[0] = location->forward[0];
   location->forward[0] = new_node;
 

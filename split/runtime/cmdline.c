@@ -8,12 +8,12 @@
  *  under the terms of the GNU Lesser General Public License as published by
  *  the Free Software Foundation; either version 2.1 of the License, or (at
  *  your option) any later version.
- *  
+ *
  *  This library is distributed in the hope that it will be useful, but
  *  WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
@@ -35,7 +35,9 @@ FILE_IDENTITY(ident,
 	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cmdline.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
 enum {
-  NONE, NPROC, DSRATIO, STATS, NO_STATS, HELP, STACK, YIELD, NO_YIELD,
+  NONE, NPROC,
+  DSRATIO, BATCHSPOTS,
+  STATS, NO_STATS, HELP, STACK, YIELD, NO_YIELD,
   PTHREAD_STACKSIZE,
   POSIX_LOCKS, MEMORY_LOCKS,
   INFOFILE, DUMP_CORE, NO_DUMP_CORE, PINNED_PROC,  ALLOC_BATCH,
@@ -65,6 +67,9 @@ static struct options {
   },
   {
     "dsratio", DSRATIO, "dsratio <n>: ratio of processors that should exclusively do data structure operations"
+  },
+  {
+    "batchspots", BATCHSPOTS, "--batchspots <n>: the number of batch spots for each worker"
   },
   {
     "pthread-stacksize", PTHREAD_STACKSIZE, "--pthread-stacksize <n> : set the size of the stack used by each worker thread"
@@ -224,6 +229,13 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
       options->dsratio = atof(argv[i]);
       CHECK(options->dsratio <= 1.0, "invalid worker ratio for ds operations");
       CHECK(options->dsratio >= 0.0, "invalid worker ratio for ds operations");
+      break;
+    case BATCHSPOTS:
+      ++i;
+      CHECK(i < *argc, "argument missing");
+      options->batch_spots = atoi(argv[i]);
+      CHECK(options->batch_spots <= 10000, "invalid num batch spots");
+      CHECK(options->batch_spots >= 0, "invalid num batch spots");
       break;
     case STACK:
       ++i;

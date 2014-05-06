@@ -98,8 +98,6 @@ cilk int main(int argc, char* argv[])
   /* } */
   /* printf("\n"); */
 
-
-
   printf("%lf\n",getWallTime());
   printf("Size: %d\n", get_size());
 

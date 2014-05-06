@@ -195,14 +195,13 @@ static void init_variables(CilkContext *context)
   /* initialize all shared_ro variables declared above */
   INIT_PARAMETER1(active_size, USE_PARAMETER1(options->nproc));
   INIT_PARAMETER1(dsratio, USE_PARAMETER1(options->dsratio));
+  INIT_PARAMETER1(batch_spots, USE_PARAMETER1(options->batch_spots));
 
   int nproc = USE_PARAMETER1(options->nproc);
   double dsratio = USE_PARAMETER1(options->dsratio);
 
   INIT_PARAMETER1(num_real_workers, nproc - (int)floor(nproc * dsratio));
   INIT_PARAMETER1(num_ds_workers, (int)floor(nproc * dsratio));
-  printf("dsratio: %f\n", dsratio);
-  printf("nproc: %d\nReal workers: %d\nDS workers: %d\n", nproc, USE_PARAMETER1(num_real_workers), USE_PARAMETER1(num_ds_workers));
 
   INIT_PARAMETER1(infofile, (FILE *)0); /*pointer to the stats. output file)*/
   INIT_PARAMETER1(pthread_stacksize, USE_PARAMETER1(options->pthread_stacksize));
@@ -340,15 +339,14 @@ static void Cilk_child_main(CilkChildParams *const childParams)
     Cilk_worker_wait_for_invocation(context, id, &local_terminating);
 
     if(! local_terminating){
-      if (id == 0)
+      if (id == 0) {
         Cilk_scheduler(ws, USE_PARAMETER(invoke_main));
-
-      //BSS45
-      else if (id == USE_PARAMETER(num_real_workers))
+      } else if (id == USE_PARAMETER(num_real_workers)) {
+        //invoke_ds_main_slow(ws, USE_PARAMETER(invoke_ds_main)->frame);
         Cilk_scheduler(ws, USE_PARAMETER(invoke_ds_main));
-
-      else
+      } else {
         Cilk_scheduler(ws, (Closure *) NULL);
+      }
 
       Cilk_worker_is_done(context, &local_terminating);
     }
@@ -377,14 +375,16 @@ CilkContext* Cilk_init( int* argc, char *argv[] )
     return NULL;
   }
 
-  // I wanted to put an assert somewhere in this file to make sure we have
-  // at least one processor to do real work. But you must pass a worker state
-  // to a call to CILK_ASSERT, and we don't have a worker state if there are no
-  // real workers.
   int nproc = USE_PARAMETER1(options->nproc);
-  int dsratio = USE_PARAMETER1(options->dsratio);
-  if (nproc - (int)floor(nproc*dsratio) <= 0) {
+  double dsratio = USE_PARAMETER1(options->dsratio);
+  int num_ds = (int)floor(nproc*dsratio);
+  int num_real = nproc - num_ds;
+  if (num_real <= 0) {
     fprintf(stderr, "DSratio too high - not enough workers!\n");
+    Cilk_free_context(context);
+    return NULL;
+  } else if (num_ds < 1 && num_real > 1) {
+    fprintf(stderr, "DSratio too low - not enough batch workers!\n");
     Cilk_free_context(context);
     return NULL;
   }

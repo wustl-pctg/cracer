@@ -10,12 +10,13 @@ static inline set_batch_info(Batch* pending, InternalBatchOperation op,
   pending->data_structure = ds;
 }
 
-static inline int* compact(CilkWorkerState *const ws)
+static inline unsigned int compact(CilkWorkerState *const ws)
 {
   unsigned int num_ops = 0;
-  unsigned int register i;
+  unsigned int register i,j;
   Batch *pending = &USE_SHARED(pending_batch);
   int *work_array = USE_SHARED(batch_work_array);
+  unsigned int num_spots = USE_PARAMETER(batch_spots);
 
   InternalBatchOperation op = NULL;
   size_t data_size = 0;
@@ -36,17 +37,21 @@ static inline int* compact(CilkWorkerState *const ws)
         ds = pending->array[i].data_structure;
       }
 
-      // @todo @feature Use memcpy here (or other) to support any data type.
-      work_array[num_ops] = *((int*)pending->array[i].args);
+      // @todo @feature Use memcpy here (or other) to support any data
+      // type.
+      for (j = 0; j < num_spots; j++) {
+        work_array[num_ops + j] = ((int*)pending->array[i].args)[j];
+      }
 
-      num_ops++;
+      num_ops += num_spots;
     }
   }
 
   CILK_ASSERT(ws, ds != NULL);
   CILK_ASSERT(ws, op != NULL);
   set_batch_info(pending, op, num_ops, data_size, ds);
-  return work_array;
+  //  return work_array;
+  return num_ops;
 }
 
 // @todo @feature Also copy back the results, if the result array is not NULL.
@@ -60,9 +65,6 @@ static inline void terminate_batch(CilkWorkerState *const ws)
 			current->array[i].status = DS_DONE;
 		}
 	}
-  /* USE_SHARED(current_batch_id)++; // signal end of this batch */
-  /* USE_SHARED(batch_owner) = -1; */
-  /* __sync_lock_release(&USE_SHARED(batch_lock)); */
 }
 
 struct invoke_ds_main_frame {
@@ -92,11 +94,10 @@ static inline void wait_for_ds_work(CilkWorkerState *const ws)
 {
   struct timespec temp;
   temp.tv_sec = 0;
-  temp.tv_nsec = 1000L;
+  temp.tv_nsec = 100L * USE_PARAMETER(active_size);
 
-  while (!have_ds_work(ws->context) && !USE_SHARED(done))
-    nanosleep(&temp, NULL);
-    //    nanosleep(&USE_PARAMETER(sleeptime), NULL);
+  while (!have_ds_work(ws->context) && !USE_SHARED(done)) {;}
+    //    nanosleep(&temp, NULL);
 }
 
 static void invoke_ds_main_slow(CilkWorkerState *const _cilk_ws,
@@ -104,7 +105,8 @@ static void invoke_ds_main_slow(CilkWorkerState *const _cilk_ws,
 {
   CilkWorkerState *const ws = _cilk_ws;
   Batch *pending = &USE_SHARED(pending_batch);
-  int* work_array;
+  int *work_array = USE_SHARED(batch_work_array);
+  int num_ops = 0;
 
   CILK2C_START_THREAD_SLOW();
   switch (_cilk_frame->header.entry) {
@@ -116,10 +118,16 @@ static void invoke_ds_main_slow(CilkWorkerState *const _cilk_ws,
 
   while (1)
   {
-    wait_for_ds_work(_cilk_ws);
-    if (USE_SHARED(done)) break;
+    /* wait_for_ds_work(_cilk_ws); */
+    /* if (USE_SHARED(done)) break; */
 
-    work_array = compact(_cilk_ws);
+    /* work_array = compact(_cilk_ws); */
+    num_ops = compact(_cilk_ws);
+    while (num_ops == 0) {
+      if (USE_SHARED(done)) break;
+      num_ops = compact(_cilk_ws);
+    }
+    if (USE_SHARED(done)) break;
 
     // prepare for spawn...
     _cilk_frame->header.entry = 1;
@@ -174,8 +182,9 @@ Closure *Cilk_create_initial_ds_thread(CilkContext *const context)
 
   USE_SHARED1(pending_batch).array =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size) * sizeof(BatchRecord));
-  USE_SHARED1(pending_batch).size = USE_PARAMETER1(active_size);
-  // * USE_PARAMETER1(batchvals);
+
+  USE_SHARED1(pending_batch).size = USE_PARAMETER1(active_size) *
+    USE_PARAMETER1(batch_spots);
 
   for (i = 0; i < USE_PARAMETER1(active_size); ++i) {
     USE_SHARED1(pending_batch).array[i].status = DS_DONE;
@@ -184,9 +193,9 @@ Closure *Cilk_create_initial_ds_thread(CilkContext *const context)
   // This may not actually be sizeof(int)! It could actually change,
 	// but for now it's okay to specialize. ***
 	USE_SHARED1(batch_work_array) =
-    Cilk_malloc_fixed(USE_PARAMETER1(active_size)
-                      * sizeof(int));
-                      //                    * USE_PARAMETER1(batchvals));
+    Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
+                      sizeof(int) *
+                      USE_PARAMETER1(batch_spots));
 
 
   /* create a frame for invoke_cilk_main */
@@ -218,8 +227,5 @@ Closure *Cilk_create_initial_ds_thread(CilkContext *const context)
 
   return t;
 }
-
-
-
 
 #endif

@@ -57,7 +57,7 @@ SkipList* set_up(size_t initial_size, size_t num_ops)
   return ds;
 }
 
-cilk void runMixedTest(SkipList* ds, int size, int add_part)
+cilk void run_mixed_test(SkipList* ds, int size, int add_part)
 {
 
   int add_size = (add_part * size)/100;
@@ -77,22 +77,14 @@ cilk int main(int argc, char* argv[])
   num_ops = g_options.operations;
   initial_size = g_options.initial_size > 0 ? g_options.initial_size : INIT_SIZE;
 
-  //  g_num_spots = _cilk_ws->context->Cilk_RO_params->batchvals;
-  g_num_spots = 1;
+  g_num_spots = _cilk_ws->context->Cilk_RO_params->batch_spots;
 
   ds = set_up(initial_size, num_ops);
 
   startTimer();
-  spawn runMixedTest(ds, num_ops, 100);
+  spawn run_mixed_test(ds, num_ops, 100);
   sync;
   stopTimer();
-
-  /* startTimer(); */
-  /* for (i = 0; i < num_ops; i++) { */
-  /*   insertNode(vals[i]); */
-  /* } */
-  /* stopTimer(); */
-
 
   printf("%lf\n",getWallTime());
   printf("Size: %d\n", get_size());

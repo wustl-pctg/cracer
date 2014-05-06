@@ -196,7 +196,10 @@ struct CilkGlobalState_s{
 
   Cilk_time critical_path;
   Cilk_time total_work;
+
+  // @todo I'm not sure if this really needs to be volatile.
   int done; /* current calculation */
+
   int terminating; /* Cilk_terminate was called */
   Cilk_mutex barrier_lock;
   volatile int barrier_counter;
@@ -414,6 +417,7 @@ struct Cilk_options_s
 {
   int nproc;
   double dsratio;
+  int batch_spots;
   int stackdepth;
   int statlevel;
   int yieldslice;
@@ -426,13 +430,14 @@ struct Cilk_options_s
 };
 
 /* command-line parser */
-extern int Cilk_parse_command_line(
-                                   Cilk_options *options, int *argc, char *argv[]);
+extern int Cilk_parse_command_line(Cilk_options *options,
+                                   int *argc, char *argv[]);
 
 #define CILK_DEFAULT_OPTIONS                    \
   {                                             \
     1,                                          \
       0.5,                                      \
+      1,                                        \
       CILK_DEFAULT_STACK_DEPTH,                 \
       0,                                        \
       0,                                        \
