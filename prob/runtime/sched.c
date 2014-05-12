@@ -1910,7 +1910,6 @@ void Cilk_batchify(CilkWorkerState *const ws,
 
   BatchRecord *record = &pending->array[ws->self];
   record->status = DS_WAITING;
-  //asm volatile ("" : : : "memory");
   record->args = data;
 
   int* status = (int*) &record->status;
