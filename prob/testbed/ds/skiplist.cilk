@@ -1,0 +1,579 @@
+/* skip list */
+#include "skiplist.cilkh"
+#include <assert.h>
+#include <stdio.h>
+
+void print_info(int iteration,
+                size_t original_size, size_t numElements, int* level,
+                Node** new_nodes, Node** new_nodes_back,
+                int* prev_nodes, int maxInsertLevel)
+{
+  int i,j;
+  Node* temp;
+  printf("New nodes:");
+  for (i = 0; i < numElements; i++) {
+    printf(" %d->(", new_nodes[i]->data);
+    for (j = 0; j <= level[i]; j++) {
+      temp = new_nodes[i]->forward[j];
+      if (temp == NULL || i > iteration) printf("NULL,");
+      else printf("%d,", new_nodes[i]->forward[j]->data);
+    }
+    printf("),");
+  }
+  printf("New nodes back:");
+  for (i = 0; i < numElements; i++) {
+    printf(" %d->(", new_nodes_back[i]->data);
+    for (j = 0; j <= level[i]; j++) {
+      temp = new_nodes_back[i]->forward[j];
+      if (temp == NULL || i > iteration) printf("NULL,");
+      else printf("%d,", new_nodes_back[i]->forward[j]->data);
+    }
+    printf("),");
+  }
+
+  printf("\n");
+  printf("levels:");
+  for (i = 0; i < numElements; i++) {
+    printf(" %d,", level[i]);
+  }
+  printf("\n");
+  printf("prevnodes:");
+  for (i = 0; i < (maxInsertLevel+1) * numElements; i++) {
+    printf(" %d,", prev_nodes[i]);
+  }
+  printf("\n");
+  printf("max Insert Level: %d\n", maxInsertLevel);
+  return;
+}
+
+inline int choose_pivot(int *array, int left, int right)
+{
+  int med = (left + right) / 2;
+  if (array[left] < array[right]) {
+	  if (array[right] < array[med]) {
+      return right;
+	  } else {
+      if (array[left] < array[med])
+		    return med;
+      else
+		    return left;
+	  }
+  } else {
+	  if (array[right] > array[med]) {
+      return right;
+	  } else {
+      if (array[left] > array[med])
+		    return med;
+      else
+		    return left;
+	  }
+  }
+}
+
+inline int partition(int *array, int left, int right,
+                     int pivot_idx)
+{
+  register int i;
+  register int store_idx;
+  register T temp;
+  register T pivot = array[pivot_idx];
+
+  // move pivot to the end
+  swap(array[pivot_idx], array[right], temp);
+
+  store_idx = left;
+
+  for (i = left; i < right; i++) {
+    if (array[i] <= pivot) {
+      swap(array[i], array[store_idx], temp);
+      store_idx++;
+    }
+  }
+
+  // Move pivot to final position
+  swap(array[store_idx], array[right], temp);
+
+  return store_idx;
+}
+
+void quicksort(int* array, int left, int right)
+{
+  int new_pivot_idx, pivot_idx;
+  if (left >= right) return;
+
+  pivot_idx = choose_pivot(array, left, right);
+
+  new_pivot_idx = partition(array, left, right, pivot_idx);
+
+  quicksort(array, left, new_pivot_idx - 1);
+  quicksort(array, new_pivot_idx + 1, right);
+}
+
+void insertionSortSeq (void* data, size_t numElements) {
+  //T* elements = (T*)data;
+  int* elements = (int*)data;
+  int c, i;
+  T temp;
+  for (c=1; c < numElements; ++c) {
+    i=c;
+    while (i > 0 && compLT(elements[i], elements[i-1])) {
+      temp = elements[i];
+      elements[i] = elements[i-1];
+      elements[i-1] = temp;
+
+      i--;
+    }
+  }
+  return;
+}
+
+cilk void recursiveInsertBatch(void* data, int start, int end)
+{
+  int i;
+  if (end - start > INSERT_CHUNK) {
+    i = start + (end - start) / 2;
+    spawn recursiveInsertBatch(data, start, i);
+    spawn recursiveInsertBatch(data, i, end);
+  } else {
+    for (i = start; i < end; i++) {
+      T d = ((int*)data)[i];
+      insertNode(d);
+    }
+  }
+}
+
+cilk void batch_insert_par(void* dataStruct, void* data,
+                           size_t numElements, void* results)
+{
+  insertionSortSeq(data, numElements);
+  //spawn recursiveInsertBatch(data, 0, numElements, numElements);
+  spawn recursiveInsertBatch(data, 0, numElements);
+}
+
+void batch_createNodes(int idx, void* info)
+{
+  void** data  = info;
+  //data is {&maxInsertLevel, level, data, new_nodes,new_nodes_back}
+  // {int*,int*,int*,Node**}
+  int i;
+  Node* y;
+  Node* yback;
+
+  //Old way of using rand.
+  for (i=0; rand() < RAND_MAX/2 && i < MAXLEVEL; i++); // Use the RNG;
+  /*   for (i=0; rands[temp++] && i < MAXLEVEL; i++) { */
+  /*   	if (temp>=randsize-1){ */
+	/*   temp=0; */
+	/* } */
+  /* } */
+
+  ((int*)(data[1]))[idx] = i; //Sets the level in the level array.
+  if (*((int*)(data[0]))<i) {
+    *((int*)(data[0]))=i;  //Changes max level currently.
+  }
+  if ((y=malloc(sizeof(Node) + i*sizeof(Node*)))==0){
+    printf ("memory allocation error createNodes\n");
+    exit(1);
+  }
+  ((Node**)(data[3]))[idx]=y;
+
+  if ((yback=malloc(sizeof(Node) + i*sizeof(Node*)))==0){
+    printf ("memory allocation error createNodes\n");
+    exit(1);
+  }
+  ((Node**)(data[4]))[idx]=yback;
+
+  // For using Operations
+  //  y->data = ((int*)(data[2]))[2*idx+1];
+
+  // For using regular ints
+  y->data=((int*)(data[2]))[idx];
+  yback->data=((int*)(data[2]))[idx];
+  //  printf("data %d\n",y->data);
+}
+
+
+//cilk
+void batch_relateNodes(int idx, void* infos)
+{
+  //Here info is {new_nodes,level,size,prev_nodes, maxInsertLevel, new_nodes_back}
+  void** info = infos;
+  Node** new_nodes = (Node**)info[0];
+  int* level = ((int*)info[1]);
+  int size = *((int*)(info[2]));
+  int* prev_node_indices = ((int*)info[3]);
+  int maxlevel = *((int*)(info[4]));
+  Node** new_nodes_back = (Node**)info[5];
+  Node* y = new_nodes[idx];
+  Node* z;
+  int check = idx+1;
+  int i,j;
+
+
+  for (i=0; i <= level[idx]; i++){
+
+    y->forward[i] = NIL;
+
+    for (j = check; j < size; j++){
+
+      if (level[j] >= i) {
+
+        y->forward[i] = new_nodes[j]; //sets the forward of the (idx)th node at the ith level to node j.
+        new_nodes_back[j]->forward[i] = y;
+        prev_node_indices[(maxlevel+1)*j+i] = idx; //sets the previous pointer
+        check = j;
+
+        break;
+      }
+    }
+  }
+}
+
+cilk void batch_mergeLists(int idx, void* infos){
+  int i;
+  void** info = infos;
+  Node** new_nodes = ((Node**)info[0]);
+  int* level = ((int*)info[1]);
+  int maxlevel = *((int*)(info[2]));
+  int* prev_nodes = ((int*)info[4]);
+  Node** new_nodes_back = ((Node**)info[5]);
+  int prev_node;
+
+  Node* x = list.hdr;
+  Node* y = new_nodes[idx];
+  Node* yback=new_nodes_back[idx];
+  Node *update[MAXLEVEL+1];
+  Node* z;
+  assert(y->data == yback->data);
+
+  for (i = list.listLevel; i >= 0; i--) {
+    while (x->forward[i] != NIL
+           && compLT(x->forward[i]->data, y->data)) {
+      x=x->forward[i];
+    }
+    //No duplicates!
+    if (x != NIL
+        && x->forward[i]!=NIL && compEQ(x->forward[i]->data, y->data)) {
+      return;
+    }
+    update[i]=x;
+  }
+
+  for (i=0; i<=level[idx];i++){
+    if (y->forward[i] == NIL
+        || compLT(update[i]->forward[i]->data, y->forward[i]->data) || compEQ(update[i]->forward[i]->data, y->forward[i]->data)) {
+      y->forward[i] = update[i]->forward[i];
+    }
+    prev_node = prev_nodes[(maxlevel+1)*idx+i];
+    /* if (prev_node!=-1){ */
+    /*   z = new_nodes[prev_node]; */
+    /*   assert(yback->forward[i]->data==z->data); */
+    /*   assert(yback->forward[i]==z); */
+    /*   assert(level[prev_node] >= i); */
+    /* } */
+    if (prev_node == -1 ||  compLT(new_nodes[prev_node]->data, update[i]->data)|| compEQ(new_nodes[prev_node]->data, update[i]->data)) {
+      yback->forward[i] = update[i];
+      prev_nodes[(maxlevel+1)*idx+i] = -2;
+    }
+
+  }
+}
+
+cilk void batch_insert_par2(void* dataStruct, void* data,
+                            size_t numElements, void* results)
+{
+  int i,j,k,check;
+  int* level = calloc(numElements,sizeof(int));
+  //  int original_size = get_size();
+  int size;
+  int maxInsertLevel = 0;
+  int currMaxLevel;
+  //Node* x, *y;
+  Node** new_nodes = calloc(numElements,sizeof(Node*)); // ***
+  Node** new_nodes_back = calloc(numElements,sizeof(Node*)); // ***
+  int* prev_nodes;
+  //Par_for to create nodes
+  void* createNodeArgs[5] = {&maxInsertLevel, level, data, new_nodes, new_nodes_back};
+  void* relatedNodeArgs[6] = {new_nodes,level,&numElements,level,level,new_nodes_back};
+  void* mergeListArgs[6] = {new_nodes,level, &numElements, data, level,new_nodes_back};
+
+  Node* current = list.hdr;
+  Node* back_node;
+
+  quicksort((int*)data, 0, numElements - 1);
+  //remove duplicates
+  i=0;
+  if (numElements>1){
+    for (j=1;j<numElements;j++){
+      if (((int*)data)[j] != ((int*)data)[i]){
+        ((int*)data)[++i]= ((int*)data)[j];
+      }
+    }
+    numElements = i+1;
+  }
+
+  /* printf("Original Skip List: "); */
+  /* for (i = 0; i < get_size()+1; i++) { */
+  /*   printf("->%d", current->data); */
+  /*   current = current->forward[0]; */
+  /* } */
+  /* printf("\n"); */
+
+  /* printf("Elements to insert:"); */
+  /* for (i = 0; i < numElements; i++) { */
+  /*   printf(" %d,", ((int*)data)[i]); */
+  /* } */
+  /* printf("\n"); */
+
+  /* printf("Original size: %u\n", (unsigned)original_size); */
+  /* printf("Batch size: %u\n", (unsigned)numElements); */
+
+  currMaxLevel=((SkipList*)dataStruct)->listLevel;
+
+  /* spawn parforpar(0,numElements-1,1,&batch_createNodes, createNodeArgs); */
+  /* sync; */
+  for (i = 0; i < numElements; i++) {
+    batch_createNodes(i, createNodeArgs);
+  }
+
+  prev_nodes = calloc((maxInsertLevel+1)*numElements,sizeof(int)); //Makes a prev array.
+  //Fill in rest of info.
+  for (i=0; i<(maxInsertLevel+1)*numElements; i++){
+    prev_nodes[i] = -1;
+  }
+
+  relatedNodeArgs[3]=prev_nodes;
+  relatedNodeArgs[4]=&maxInsertLevel;
+  mergeListArgs[4]=prev_nodes;
+  mergeListArgs[2]=&maxInsertLevel;
+
+  //Switch max level!
+  if (maxInsertLevel>currMaxLevel) {
+    ((SkipList*)dataStruct)->listLevel=maxInsertLevel;
+  }
+
+  //Par_for to relations
+  /* spawn parforpar(0,numElements-1,1,&batch_relateNodes, relatedNodeArgs); */
+  /* sync; */
+  for (i = 0; i < numElements; i++) {
+    batch_relateNodes(i, relatedNodeArgs);
+    /* printf("--- After iteration %d of relateNodes ---\n", i); */
+    /* print_info(i, original_size, numElements, level, new_nodes, new_nodes_back, */
+    /*            prev_nodes, maxInsertLevel); */
+  }
+
+  //Find the place for all the elements to merge list
+  spawn parforpar(0,numElements-1,1,&batch_mergeLists,mergeListArgs);
+  sync;
+  /* printf("--- After Merge lists\n"); */
+  /* print_info(i, original_size, numElements, level, new_nodes, new_nodes_back, */
+  /*            prev_nodes, maxInsertLevel); */
+
+
+  //Do an actual merge
+  for(i=0; i<numElements;i++){
+    for(j=0; j<=level[i]; j++){
+      if (prev_nodes[(maxInsertLevel+1)*i+j] ==-2){
+        back_node = new_nodes_back[i]->forward[j];
+        back_node->forward[j] = new_nodes[i];
+      }
+    }
+  }
+
+  /* printf("--- After Actual Merge\n"); */
+  /* print_info(i, original_size, numElements, level, new_nodes, new_nodes_back, */
+  /*            prev_nodes, maxInsertLevel); */
+
+  /* size = get_size(); */
+  /* if (size < original_size + numElements) { */
+  /*   print_info(numElements, original_size, numElements, level, new_nodes, new_nodes_back, */
+  /*              prev_nodes, maxInsertLevel); */
+  /*   printf("New size: %u\n", size); */
+
+  /*   current = list.hdr; */
+  /*   printf("\nNew Skip List: "); */
+  /*   for (i = 0; i <= get_size(); i++) { */
+  /*     printf("->%d", current->data); */
+  /*     current = current->forward[0]; */
+  /*   } */
+  /*   printf("\n"); */
+
+  /*   assert(get_size() == original_size + numElements); */
+  /* } */
+
+  free(new_nodes_back);
+  free(level);
+  free(prev_nodes);
+}
+
+
+void batch_insert_seq(Batch* pending, void* ds, void* data,
+                      size_t num_ops, void* results)
+{
+  int i;
+  int* ops = (int*) data;
+  for (i = 0; i < num_ops; i++) {
+    // Assume ops are add operations.
+    insertNode(ops[i]);
+  }
+}
+
+void popBatch(Batch* pending, void* dataStruct, void* data,
+              size_t numElements, void* results)
+{
+  int i;
+  for (i=0; i < numElements; ++i) {
+    if (list.hdr->forward[0] != NIL)
+      deleteNode(list.hdr->forward[0]->data);
+  }
+}
+
+void insert_seq(CilkWorkerState *const ws, int* add_op)
+{
+  Cilk_batchify_sequential(ws, &batch_insert_seq, (void*)&list,
+                           (void*)add_op, sizeof(int), NULL);
+}
+
+void insert_par(CilkWorkerState *const ws, int* add_op)
+{
+  Cilk_batchify(ws, &batch_insert_par2, (void*)&list,
+                (void*)add_op, sizeof(int), NULL);
+}
+
+
+void batchPopNode (CilkWorkerState *const ws, int inValue)
+{
+  Cilk_batchify_sequential(ws, &popBatch, (void*)&list,
+                           (void*)&inValue, sizeof(int), NULL);
+}
+
+Node *insertNode(T data)
+{
+  int i, newLevel;
+  Node *update[MAXLEVEL+1];
+  Node *x;
+
+  /***********************************************
+   *  allocate node for data and insert in list  *
+   ***********************************************/
+
+  /* find where data belongs */
+  x = list.hdr;
+  for (i = list.listLevel; i >= 0; i--) {
+    while (x->forward[i] != NIL
+           && compLT(x->forward[i]->data, data))
+      x = x->forward[i];
+    update[i] = x;
+  }
+  x = x->forward[0];
+  if (x != NIL && compEQ(x->data, data)) {
+    //    printf("%d already in skiplist\n", x->data);
+    return(x);
+  }
+
+  /* determine level */
+  for (newLevel = 0; rand() < RAND_MAX/2 && newLevel < MAXLEVEL; newLevel++);
+
+  if (newLevel > list.listLevel) {
+    for (i = list.listLevel + 1; i <= newLevel; i++)
+      update[i] = NIL;
+    list.listLevel = newLevel;
+  }
+
+  /* make new node */
+  if ((x = malloc(sizeof(Node) +
+                  newLevel*sizeof(Node *))) == 0) {
+    printf ("insufficient memory (insertNode)\n");
+    exit(1);
+  }
+  x->data = data;
+
+  /* update forward links */
+  for (i = 0; i <= newLevel; i++) {
+    x->forward[i] = update[i]->forward[i];
+    update[i]->forward[i] = x;
+  }
+  return(x);
+}
+
+void deleteNode(T data) {
+  int i;
+  Node *update[MAXLEVEL+1], *x;
+
+  /*******************************************
+   *  delete node containing data from list  *
+   *******************************************/
+
+  /* find where data belongs */
+  x = list.hdr;
+  for (i = list.listLevel; i >= 0; i--) {
+    while (x->forward[i] != NIL
+           && compLT(x->forward[i]->data, data))
+      x = x->forward[i];
+    update[i] = x;
+  }
+  x = x->forward[0];
+  if (x == NIL || !compEQ(x->data, data)) return;
+
+  /* adjust forward pointers */
+  for (i = 0; i <= list.listLevel; i++) {
+    if (update[i]->forward[i] != x) break;
+    update[i]->forward[i] = x->forward[i];
+  }
+
+  free (x);
+
+  /* adjust header level */
+  while ((list.listLevel > 0)
+         && (list.hdr->forward[list.listLevel] == NIL))
+    list.listLevel--;
+}
+
+Node *findNode(T data) {
+  int i;
+  Node *x = list.hdr;
+
+  /*******************************
+   *  find node containing data  *
+   *******************************/
+
+  for (i = list.listLevel; i >= 0; i--) {
+    while (x->forward[i] != NIL
+           && compLT(x->forward[i]->data, data))
+      x = x->forward[i];
+  }
+  x = x->forward[0];
+  if (x != NIL && compEQ(x->data, data)) return (x);
+  return(0);
+}
+
+void initList() {
+  int i;
+  /**************************
+   *  initialize skip list  *
+   **************************/
+  /* rands=calloc(randsize,sizeof(int)); */
+  /* for (i=0;i<randsize;i++){ */
+  /*     rands[i]=rand()%2; */
+  /* } */
+
+  if ((list.hdr = malloc(sizeof(Node) + MAXLEVEL*sizeof(Node *))) == 0) {
+    printf ("insufficient memory (initList)\n");
+    exit(1);
+  }
+  for (i = 0; i <= MAXLEVEL; i++)
+    list.hdr->forward[i] = NIL;
+  list.listLevel = 0;
+}
+
+int get_size() {
+  int size = 0;
+  Node* pCur = list.hdr;
+
+  while (pCur->forward[0] != NIL) {
+    ++size;
+    pCur = pCur->forward[0];
+  }
+
+  return size;
+}
