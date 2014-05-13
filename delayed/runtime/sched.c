@@ -30,8 +30,6 @@
 #include <string.h>
 #include <time.h>
 
-#define BATCH_ASSERT(args...) CILK_ASSERT(args)
-
 // Declare early for use in Closure_steal. invoke-batch.c can't be
 // included yet because it depends on some deque manipulation
 // functions. The includes are kind of a mess.
@@ -269,6 +267,14 @@ static Closure *deque_xtract_top(CilkWorkerState *const ws, int pn,
 	}
 
 	return cl;
+}
+
+static inline int deque_empty(CilkWorkerState *const ws, int pn,
+                              ReadyDeque *const deque_pool)
+{
+  Closure *cl = deque_pool[pn].top;
+  if (cl) return 1;
+  return 0;
 }
 
 static Closure *deque_peek_top(CilkWorkerState *const ws, int pn,
@@ -1702,13 +1708,50 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 	return res;
 }
 
+static inline int choose_victim(CilkWorkerState *const ws)
+{
+  int victim;
+  do {
+    victim = rts_rand(ws) % USE_PARAMETER(active_size);
+  } while (victim = ws->self);
+  return victim;
+}
+
+// If only one deque has work, choose that deque to steal
+// from. Otherwise, choose randomly. Note that when both are empty
+// this will choose the ds_deques, but that doesn't really matter
+// anyway.
+// Maybe we should just always randomly decide?
+static inline ReadyDeque* choose_deque(CilkWorkerState *const ws, int victim)
+{
+  ReadyDeque* deque_pool;
+
+  /* if (deque_empty(ws, victim, USE_PARAMETER(deques))) { */
+
+  /*   deque_pool = USE_PARAMETER(ds_deques); */
+
+  /* } else if (deque_empty(ws, victim, USE_PARAMETER(ds_deques))) { */
+
+  /*   deque_pool = USE_PARAMETER(deques); */
+
+  /* } else { // both deques have work. */
+
+  if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(dsprob)) {
+    deque_pool = USE_PARAMETER(ds_deques);
+  } else {
+    deque_pool = USE_PARAMETER(deques);
+  }
+  /* } */
+  return deque_pool;
+}
+
 /*********************************************************
  * The scheduler itself
  *********************************************************/
 void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 {
 	int victim;
-	int batch = 0;
+  unsigned int failed_steals = 0;
 
 	CILK_ASSERT(ws, ws->self >= 0);
 	rts_srand(ws, ws->self * 162347);
@@ -1717,49 +1760,35 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 	Cilk_enter_state(ws, STATE_TOTAL);
 
 	while (!USE_SHARED(done)) {
+
 		if (!t) {
 			/* try to get work from our local queue */
-			deque_lock(ws, ws->self, deque_pool);
-			t = deque_xtract_bottom(ws, ws->self, deque_pool);
-			deque_unlock(ws, ws->self, deque_pool);
+			deque_lock(ws, ws->self, USE_PARAMETER(deques));
+			t = deque_xtract_bottom(ws, ws->self, USE_PARAMETER(deques));
+			deque_unlock(ws, ws->self, USE_PARAMETER(deques));
 		}
 
+    failed_steals = 0;
 		/* otherwise, steal */
 		while (!t && !USE_SHARED(done)) {
 
 			Cilk_enter_state(ws, STATE_STEALING);
 
-			// Decide where to steal from
-			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(dsprob)) {
+      victim = choose_victim(ws);
+      deque_pool = choose_deque(ws, victim);
 
-				Cilk_enter_state(ws, STATE_BATCH_STEALING);
-				batch = 1;
-				// data structure steal
-				victim = rts_rand(ws) % USE_PARAMETER(active_size);
+      t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
 
-				if (victim != ws->self) {
-					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
-				}
-
-				Cilk_exit_state(ws, STATE_BATCH_STEALING);
-
-			} else { // regular steal
-
-				victim = rts_rand(ws) % USE_PARAMETER(active_size);
-
-				if (victim != ws->self) {
-					t = Closure_steal(ws, victim, USE_PARAMETER(deques));
-				}
-
-			}
-			//			t = Closure_steal(ws, victim, deque_pool);
+      if (!t) {
+        failed_steals++;
+        if (failed_steals >= USE_PARAMETER(active_size)) start_batch(ws);
+      }
 
 			if (!t && USE_PARAMETER(options->yieldslice) &&
 					!USE_SHARED(done)) {
 				Cilk_lower_priority(ws);
 			}
 
-			/* Cilk_fence(); */
 			Cilk_exit_state(ws, STATE_STEALING);
 		} // End Stealing
 
@@ -1767,16 +1796,20 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			Cilk_raise_priority(ws);
 
 		if (t && !USE_SHARED(done)) {
-			if (batch) {
+
+      // @todo There's got to be a better way to handle this.
+			if (deque_pool == USE_PARAMETER(ds_deques)) {
 				Cilk_switch2batch(ws);
-				deque_pool = USE_PARAMETER(ds_deques);
 			}
+
 			t = do_what_it_says(ws, t, deque_pool);
-			if (batch) {
+
+			if (deque_pool == USE_PARAMETER(ds_deques)) {
 				Cilk_switch2core(ws);
-				USE_PARAMETER(deques);
 			}
+
 		}
+    deque_pool == USE_PARAMETER(deques);
 
 		/*
 		 * if provably-good steals happened, t will contain
@@ -1789,271 +1822,6 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 	return;
 }
 
-/*********************************************************
- * Batch scheduler for data structure operations
- *********************************************************/
-#include "invoke-batch.c"
-
-static inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
-{
-  // Don't need to check the status, but it might reduce contention.
-  //  return USE_SHARED(pending_batch).array[ws->self].status == DS_DONE
-  //    &&
-  return USE_SHARED(current_batch_id) > batch_id;
-}
-
-#define MUSEC_IN_SEC 1000000
-#define ELAPSED(begin, diff) \
-  (double)(diff.tv_sec * MUSEC_IN_SEC + diff.tv_usec -\
-           (begin.tv_sec * MUSEC_IN_SEC + begin.tv_usec))
-
-// Return 1 if the batch is actually done.
-static inline int batch_sleep(CilkWorkerState *const ws,
-                              unsigned int num_microseconds, int batch_id)
-{
-  struct timeval begin, diff;
-  gettimeofday(&begin, NULL);
-  gettimeofday(&diff, NULL);
-  while(ELAPSED(begin,diff) < num_microseconds) {
-
-    if (batch_done_yet(ws, batch_id)) return 1;
-
-    gettimeofday(&diff, NULL);
-
-  }
-  return 0;
-}
-
-void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
-{
-	int victim, should_steal;
-	int done = 0;
-  Closure* t = NULL;
-
-	Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
-
-	CILK_ASSERT(ws, ws->self >= 0);
-	CILK_ASSERT(ws, batch_id >= 0);
-
-  while (!batch_done_yet(ws, ws->batch_id)) {
-		if (!t) {
-			/* try to get work from the local ds queue */
-			deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
-			t = deque_xtract_bottom(ws, ws->self, USE_PARAMETER(ds_deques));
-			deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
-		}
-
-		if(!t && batch_done_yet(ws, ws->batch_id)) {
-			break;
-		}
-
-		while (!t && !batch_done_yet(ws, ws->batch_id)) {
-			// Otherwise, steal
-
-      should_steal = (rts_rand(ws) % 99) + 1;
-			if (should_steal <= USE_PARAMETER(batchprob)) {
-        Cilk_enter_state(ws, STATE_BATCH_STEALING);
-
-        if (should_steal <= USE_PARAMETER(bias)) {
-          victim = USE_SHARED(batch_owner);
-        } else {
-          victim = rts_rand(ws) % USE_PARAMETER(active_size);
-        }
-
-				if (victim != ws->self && victim != -1
-						&& USE_SHARED(pending_batch).array[victim].status
-            == DS_IN_PROGRESS) {
-
-					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
-
-					if (!t && USE_PARAMETER(options->yieldslice) &&
-							USE_SHARED(current_batch_id) == batch_id) {
-						Cilk_lower_priority(ws);
-					}
-				}
-        Cilk_exit_state(ws, STATE_BATCH_STEALING);
-			}
-			if (batch_done_yet(ws, batch_id)) {
-				done = 1;
-				break;
-			} else if (!t) {
-        //        nanosleep(&USE_PARAMETER(sleeptime), NULL);
-        if (batch_sleep(ws, USE_PARAMETER(sleeptime), batch_id)) break;
-      }
-		}
-    if (!t && done) break;
-
-		if (USE_PARAMETER(options->yieldslice))
-			Cilk_raise_priority(ws);
-
-		if (t) {
-      Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
-			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
-      Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
-		}
-	}
-
-	Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
-
-	return;
-
-}
-
-void Cilk_batchify(CilkWorkerState *const ws,
-									 InternalBatchOperation op, void *dataStruct,
-									 void *data, size_t dataSize, void *indvResult)
-{
-  unsigned int i, batch_id;
-  int num_spots = USE_PARAMETER(batchvals);
-  Batch* pending = &USE_SHARED(pending_batch);
-  int* work_array = USE_SHARED(batch_work_array);
-
-  BatchRecord *record = &pending->array[ws->self];
-  record->status = DS_WAITING;
-  record->args = data;
-
-  int* status = (int*) &record->status;
-  Cilk_switch2batch(ws); // done in batch_scheduler
-
-  do {
-
-    // We can get rid of one of these.
-    ws->batch_id = USE_SHARED(current_batch_id);
-    batch_id = USE_SHARED(current_batch_id);
-
-		if (*status == DS_WAITING &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
-
-      USE_SHARED(batch_owner) = ws->self;
-      ws->batch_id = USE_SHARED(current_batch_id);
-      pending->batch_no = ws->batch_id;
-
-      i = compact(ws, pending, work_array, NULL);
-
-      Closure* t = USE_PARAMETER(invoke_batch);
-      BatchFrame* f = USE_SHARED(batch_frame);
-
-      reset_batch_closure(ws->context);
-
-      // Only need these for the slow version.
-      f->args->ds = dataStruct;
-      f->args->work_array = (void*)work_array;
-      f->args->num_ops = i;
-      f->args->op = op;
-
-      invoke_batch(ws, dataStruct, op, i);
-
-    } else {
-      ws->batch_id = USE_SHARED(current_batch_id);
-      batch_scheduler(ws, batch_id);
-		}
-  } while (*status != DS_DONE);
-
-  ws->batch_id = 0;
-
-  Cilk_switch2core(ws); // done in batch_scheduler
-  return;
-
-}
-
-// Do the collect, but just call the operation - don't use invoke_batch_slow
-void Cilk_batchify_sequential(CilkWorkerState * const ws,
-															CilkBatchSeqOperation op, void *dataStruct,
-															void *data, size_t dataSize, void *indvResult)
-{
-  unsigned int i;
-  Batch* pending = &USE_SHARED(pending_batch);
-  int* work_array = USE_SHARED(batch_work_array);
-
-  BatchRecord* record = &pending->array[ws->self];
-  record->status = DS_WAITING;
-  record->args = (int*)data;
-
-  int* status = (int*)&record->status;
-  //  Cilk_switch2batch(ws);
-
-  do {
-    ws->batch_id = USE_SHARED(current_batch_id);
-		if (*status == DS_WAITING &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
-
-      ws->batch_id = USE_SHARED(current_batch_id);
-      i = compact(ws, pending, work_array, NULL);
-
-      op(pending, dataStruct, (void*)work_array, i, NULL);
-
-      Cilk_terminate_batch(ws);
-      //      USE_SHARED(batch_lock) = 0;
-      break;
-    } else {
-      //      nanosleep(&USE_PARAMETER(sleeptime), NULL);
-      if (batch_sleep(ws, USE_PARAMETER(sleeptime), ws->batch_id)) break;
-		}
-  } while (*status != DS_DONE);
-
-  //  Cilk_switch2core(ws);
-	return;
-
-}
-
-void Cilk_batchify_raw(CilkWorkerState *const ws,
-											 CilkBatchSeqOperation op, void *dataStruct,
-											 void *data, size_t dataSize, void *indvResult)
-{
-  unsigned int i;
-  Batch* pending = &USE_SHARED(pending_batch);
-  int* work_array = USE_SHARED(batch_work_array);
-
-  BatchRecord* record = &pending->array[ws->self];
-  record->status = DS_WAITING;
-
-	// Memcpy is slower than a simple array insertion. I'm not quite
-	//sure why this is so. Maybe the compiler can do some extra optimization?
-  ///  __builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
-  work_array[ws->self] = *(int*)data;
-  int* status = (int*)&record->status;
-
-  Cilk_switch2batch(ws);
-
-  do {
-    ws->batch_id = USE_SHARED(current_batch_id);
-		if (*status == DS_WAITING &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
-
-      ws->batch_id = USE_SHARED(current_batch_id);
-
-      Batch* pending = &USE_SHARED(pending_batch);
-
-      for (i = 0; i < USE_PARAMETER(active_size); i++) {
-        if (pending->array[i].status == DS_WAITING)
-          pending->array[i].status = DS_IN_PROGRESS;
-      }
-
-      op(pending, dataStruct, (void*)work_array, USE_PARAMETER(active_size), NULL);
-
-      Cilk_terminate_batch(ws);
-
-      //      USE_SHARED(batch_lock) = 0;
-      break;
-    } else {
-      //      nanosleep(&USE_PARAMETER(sleeptime), NULL);
-      if (batch_sleep(ws, USE_PARAMETER(sleeptime), ws->batch_id)) break;
-		}
-  } while (*status != DS_DONE);
-
-  Cilk_switch2core(ws);
-
-	return;
-}
 
 /*
  * initialization of the scheduler.
@@ -2156,4 +1924,85 @@ void Cilk_exit_from_user_main(CilkWorkerState *const ws, Closure *cl, int res)
 		poll_inlets(ws, cl);
 
 	Closure_unlock(ws, cl);
+}
+
+/*********************************************************
+ * Batch scheduler for data structure operations
+ *********************************************************/
+//#include "invoke-batch.c"
+
+static inline void insert_batch_op(int worker_id, Batch* pending,
+                                   InternalBatchOperation operation,
+                                   void *data, size_t data_size,
+                                   void *ds, void *result)
+{
+  pending->array[worker_id].operation = operation;
+  pending->array[worker_id].args = data;
+  pending->array[worker_id].size = data_size;
+
+  // @todo @opt I think we can safely assume that there is only one
+  // shared batch data structure, so this is really unnecessary. We
+  // should find a better way to pass this to invoke_batch, since it
+  // will always be the same. To allow multiple shared data structures
+  // would greatly increase the complexity of starting batches.
+  pending->array[worker_id].data_structure = ds;
+
+  pending->array[worker_id].result = result;
+
+  pending->array[worker_id].status = DS_WAITING;
+}
+
+// @ques Is it even possible to return a result with delayed-start
+// batcher?
+// I suppose as long as we keep track of the result memory locations
+// in user code.
+void Cilk_batchify(CilkWorkerState *const ws, InternalBatchOperation operation,
+                   void *ds, void *data, size_t data_size, void *result)
+{
+  Batch *pending = &USE_SHARED(pending_batch);
+  insert_batch_op(ws->self, pending, operation, data, data_size, ds, result);
+
+  // @todo Insert the continuation in an array (array of linked lists?)
+  return;
+}
+
+void start_batch(CilkWorkerState *const ws)
+{
+  unsigned int i, batch_id;
+  int num_spots = USE_PARAMETER(batchvals);
+  Batch* pending = &USE_SHARED(pending_batch);
+  int* work_array = USE_SHARED(batch_work_array);
+
+  if (0 == USE_SHARED(batch_lock) &&
+      0 == USE_SHARED(batch_lock) &&
+      0 == USE_SHARED(batch_lock) &&
+      __sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
+
+    Cilk_switch2batch(ws);
+
+      USE_SHARED(batch_owner) = ws->self;
+      ws->batch_id = USE_SHARED(current_batch_id);
+      pending->batch_no = ws->batch_id;
+
+      i = compact(ws, pending, work_array, NULL);
+
+      Closure* t = USE_PARAMETER(invoke_batch);
+      BatchFrame* f = USE_SHARED(batch_frame);
+
+      reset_batch_closure(ws->context);
+
+      // Only need these for the slow version.
+      f->args->ds = dataStruct;
+      f->args->work_array = (void*)work_array;
+      f->args->num_ops = i;
+      f->args->op = op;
+
+      invoke_batch(ws, dataStruct, op, i);
+
+      // Cleanup.
+      ws->batch_id = 0;
+      Cilk_switch2core(ws);
+  }
+
+  return;
 }

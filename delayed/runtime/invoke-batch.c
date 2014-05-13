@@ -87,6 +87,10 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
   USE_SHARED(batch_owner) = -1;
   __sync_lock_release(&USE_SHARED(batch_lock));
 	//	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
+
+  // @todo Now (somehow) spawn off all the continuations.
+  // To reduce the span, a parallel_for loop should be used.
+  // But for now it might be okay just to put everything on the deque.
 }
 
 // @todo @refactor I don't think this actually helps anything. We
