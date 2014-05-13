@@ -1,0 +1,47 @@
+#ifndef _STACK_H
+#define _STACK_H
+
+#include <cilk-lib.cilkh>
+
+typedef struct node_stack{
+	int data;
+	struct node_stack* prev;
+	struct node_stack* next;
+} node;
+
+typedef struct stacker {
+       node* start;
+       node* end;
+       node* nodes;
+       int size;
+       Cilk_lockvar lock;
+} Stack;
+
+typedef struct {
+	int add;
+	int data;
+} Operation;
+
+/*"Public" methods*/
+Stack* create_stack();
+void push(Stack* ds, int data);
+void printStack(Stack* ds);
+node* pop(Stack* ds);
+void pushBatchify(Stack*, int, CilkWorkerState* const);
+void popBatchify(Stack*, CilkWorkerState* const);
+void mixedBatchify(Stack*, Operation, CilkWorkerState* const);
+void mixedBatchify_sequential(Stack*, Operation, CilkWorkerState* const);
+void mixedBatchify_raw(Stack*, Operation, CilkWorkerState* const);
+
+/*More "private" methods*/
+cilk void push_batch(void* ds, void* oprec, size_t size, void* result);
+cilk void parallel_set(int i, void* data);
+node* popInternal(Stack* ds);
+cilk void pop_batch(void* ds, void* oprec, size_t size, void* result);
+cilk void doMixedOps(void* ds, void* oprec, size_t size, void* result);
+void doMixedOpsSeq(Batch* pending, void* ds, void* oprec, size_t size, void* result);
+cilk void doCleverMixedOps(void*,void*,size_t,void*);
+void doRawMixedOps(Batch* pending, void* ds, void* oprec, size_t size, void* result);
+void pushInternal(Stack*,int);
+
+#endif // _STACK_H

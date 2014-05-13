@@ -1,0 +1,337 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+#define VOID_DATA (int)-INFINITY
+#define DEFAULT_SIZE 10
+#define PARALLEL_CUTOFF 5
+
+/*Dynamically Resizing Array that supports copying and inserting in parallel*/
+//Tyler Romero
+
+/*-----------------------Structs------------------------------------------------*/
+struct dyn_array
+{
+	void* array;
+	size_t size;			//The Total Memory Allocated to the array
+	size_t used;			//The amount of the array's memory that is being used
+	enum data_type {int_, double_, long_, short_, char_, dyn_array_} type;
+};
+typedef struct dyn_array dyn_array;
+
+
+
+
+/*-----------------------Function Declarations----------------------------------*/
+dyn_array* create_array(char* data);		//Initializes a new dynamic array
+cilk void resize(dyn_array* current_array, int new_size);
+cilk void batch_push_back(dyn_array* current_array, void* input, int input_size);	//Adds input array to the end of dynamic array
+cilk void push_back(dyn_array* current_array, void* input);		//Adds integer to the end of the dynamic array
+int safe_access(dyn_array* current_array, int index);		//Gives an error and returns VOID_DATA if index is out of range
+void print_array(dyn_array* current_array);
+cilk void parallel_for(dyn_array* current_array, void* other_array, cilk void(*parallel_function)(dyn_array*,void*,int), int start, int end);
+cilk void copy(dyn_array* current_array, void* temp, int i);
+cilk void insert(dyn_array* current_array, void* input, int i);
+
+
+
+
+/*----------------------create_array and delete_array-----------------------------------------*/
+dyn_array* create_array(char* data)
+{
+	dyn_array* new_array = malloc(sizeof(dyn_array));	//Allocate struct
+	if(new_array == NULL)
+	{
+		printf("\nError allocating memory for new array");
+		return new_array;
+	}
+	
+	if(data == "int")									//Allocate array based on type
+	{
+		new_array->array = (int*)malloc(DEFAULT_SIZE*sizeof(int));
+		new_array->type = int_;
+	}
+	else if(data == "double")
+	{
+		new_array->array = (double*)malloc(DEFAULT_SIZE*sizeof(double));
+		new_array->type = double_;
+	}
+	else if(data == "long")
+	{
+		new_array->array = (long*)malloc(DEFAULT_SIZE*sizeof(long));
+		new_array->type = long_;
+	}
+	else if(data == "short")
+	{
+		new_array->array = (short*)malloc(DEFAULT_SIZE*sizeof(short));
+		new_array->type = short_;
+	}
+	else if(data == "char")
+	{
+		new_array->array = (char*)malloc(DEFAULT_SIZE*sizeof(char));
+		new_array->type = char_;
+	}
+	else
+	{
+		printf("Unrecognized Type\n");
+		return NULL;
+	}
+
+	new_array->size = DEFAULT_SIZE;
+	new_array->used = 0;
+	
+	return new_array;
+}
+
+void delete_array(dyn_array* dead_array)
+{
+	free(dead_array->array);
+	free(dead_array);
+}
+
+
+
+
+/*----------------------resize--------------------------------------------------*/
+cilk void resize(dyn_array* current_array, int new_size)		//Sets the size of current_array to new_size
+{
+	//int i;
+	void* temp;
+	
+	if(current_array->size > new_size)
+	{
+		printf("Error: Sizing Problem");
+		return;
+	}
+	
+	current_array->size = new_size;
+	
+	if(current_array->type == int_)									//Reserve a new chunk of memory based on type
+	{
+		temp = (int*)malloc(current_array->size * sizeof(int));
+	}
+	else if(current_array->type == double_)
+	{
+		temp = (double*)malloc(current_array->size * sizeof(double));
+	}
+	else if(current_array->type == long_)
+	{
+		temp = (long*)malloc(current_array->size * sizeof(long));
+	}
+	else if(current_array->type == short_)
+	{
+		temp = (short*)malloc(current_array->size * sizeof(short));
+	}
+	else if(current_array->type == char_)
+	{
+		temp = (char*)malloc(current_array->size * sizeof(char));
+	}
+	else
+	{
+		printf("Unrecognized Type\n");
+		return;
+	}
+	
+	
+	/*for(i=0; i<current_array->used; ++i){		//PARALLEL FOR
+		temp[i] = current_array->array[i];
+	}*/
+	spawn parallel_for(current_array, temp, copy, 0, current_array->used);		//Copy to new array in parallel
+	sync;
+	
+	free(current_array->array);
+	current_array->array = temp;
+}
+
+
+
+
+/*----------------------push_back------------------------------------------------*/
+cilk void batch_push_back(dyn_array* current_array, void* input, int input_size)
+{
+	//int i;
+	
+	if(input_size+current_array->used > current_array->size)	//If current_array needs more space
+	{
+		spawn resize(current_array, 2*(current_array->used+input_size));
+		sync;
+	}
+	
+	/*for(i=0; i<input_size; ++i){				//PARALLEL_FOR
+		current_array->array[current_array->used + i] = input[i];
+	}*/
+	spawn parallel_for(current_array, input, insert, 0, input_size);	//Insert input into current_array in parallel
+	sync;
+
+	current_array->used = current_array->used + input_size;		//Update the current amout of used space
+}
+
+cilk void push_back(dyn_array* current_array, void* input)
+{
+	spawn batch_push_back(current_array, input, 1);		//Need to implement with batchify function
+	sync;
+}
+
+
+
+
+/*---------------------safe_access-----------------------------------------------------*/
+/*int safe_access(dyn_array* current_array, int index)
+{
+	if(index < current_array->used)
+	{
+		return current_array->array[index];		//Need to check that this works generically
+	}
+	else
+	{
+		printf("Error: index is out of range\n");
+		return VOID_DATA;
+	}
+}*/
+
+
+
+
+/*-----------------------print_array----------------------------------------------*/
+void print_array(dyn_array* current_array)
+{
+	int i;
+	printf("\n[  ");
+	for(i=0; i<current_array->used; ++i)	//Print out array based on type
+	{
+		if(!(i%20) && !(i==0)) printf("\n   ");
+		
+		if(current_array->type == int_)
+		{
+			printf("%d  ", ((int*)current_array->array)[i]);
+		}
+		else if(current_array->type == double_)
+		{
+			printf("%f  ", ((double*)current_array->array)[i]);
+		}
+		else if(current_array->type == long_)
+		{
+			printf("%ld  ", ((long*)current_array->array)[i]);
+		}
+		else if(current_array->type == short_)
+		{
+			printf("%hd  ", ((short*)current_array->array)[i]);
+		}
+		else if(current_array->type == char_)
+		{
+			printf("%c  ", ((char*)current_array->array)[i]);
+		}
+		else
+		{
+			printf("Unrecognized Type  ");
+			break;
+		}
+	}
+	printf("]\n");
+	
+	if(current_array->type == int_)		//Print out type
+	{
+		printf("Type: int\t");
+	}
+	else if(current_array->type == double_)
+	{
+		printf("Type: double\t");
+	}
+	else if(current_array->type == long_)
+	{
+		printf("Type: long\t");
+	}
+	else if(current_array->type == short_)
+	{
+		printf("Type: short\t");
+	}
+	else if(current_array->type == char_)
+	{
+		printf("Type: char\t");
+	}
+	
+	printf("Size: %d\tUsed: %d\n", current_array->size, current_array->used);
+}
+
+
+
+/*----------------------parallel_for-----------------------------------------------*/
+cilk void parallel_for(dyn_array* current_array, void* other_array, cilk void(*parallel_function)(dyn_array*,void*,int), int start, int end)
+{
+	int middle = start+(end-start)/2;
+	if (end-start<=PARALLEL_CUTOFF) {
+		for (start; start < end; ++start) {
+            spawn parallel_function(current_array, other_array, start);
+		}
+    }
+	else
+	{		
+		spawn parallel_for(current_array, other_array, parallel_function, start, middle); 	//start -> middle-1
+		spawn parallel_for(current_array, other_array, parallel_function, middle+1, end); 	//middle+1 -> end-1
+		spawn parallel_function(current_array, other_array, middle);						//middle
+	}
+}
+
+
+
+
+
+cilk void copy(dyn_array* current_array, void* temp, int i)	//Used by parallel_for
+{
+	if(current_array->type == int_)									//Copy based on type
+	{
+		((int*)temp)[i] = ((int*)current_array->array)[i];
+	}
+	else if(current_array->type == double_)
+	{
+		((double*)temp)[i] = ((double*)current_array->array)[i];
+	}
+	else if(current_array->type == long_)
+	{
+		((long*)temp)[i] = ((long*)current_array->array)[i];
+	}
+	else if(current_array->type == short_)
+	{
+		((short*)temp)[i] = ((short*)current_array->array)[i];
+	}
+	else if(current_array->type == char_)
+	{
+		((char*)temp)[i] = ((char*)current_array->array)[i];
+	}
+	else
+	{
+		printf("Unrecognized Type\n");
+		return;
+	}
+}
+
+cilk void insert(dyn_array* current_array, void* input, int i)	//Used by parallel_for
+{
+	if(current_array->type == int_)									//Reserve a new chunk of memory based on type
+	{
+		((int*)current_array->array)[current_array->used + i] = ((int*)input)[i];
+	}
+	else if(current_array->type == double_)
+	{
+		((double*)current_array->array)[current_array->used + i] = ((double*)input)[i];
+	}
+	else if(current_array->type == long_)
+	{
+		((long*)current_array->array)[current_array->used + i] = ((long*)input)[i];
+	}
+	else if(current_array->type == short_)
+	{
+		((short*)current_array->array)[current_array->used + i] = ((short*)input)[i];
+	}
+	else if(current_array->type == char_)
+	{
+		((char*)current_array->array)[current_array->used + i] = ((char*)input)[i];
+	}
+	else
+	{
+		printf("Unrecognized Type\n");
+		return;
+	}
+}
+

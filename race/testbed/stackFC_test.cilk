@@ -1,0 +1,58 @@
+#include <stdlib.h>
+#include <time.h>
+
+#include "util/timer.h"
+#include "ds/stack_fc.cilkh"
+#include "util/benchOptions.h"
+#include "util/parfor.cilkh"
+
+int g_par_threshold = 1024;
+Stack* g_stack;
+Operation g_add_op = {1, 0};
+Operation g_rem_op = {0, 0};
+
+cilk void parforpar_stack(const int begin, const int end, Operation op, int raw)
+{
+  int i;
+
+  if (end - begin <= g_par_threshold) {
+
+		for (i = begin; i <= end; ++i) {
+
+			op.data=i;
+      mixedFC(g_stack, op, _cilk_ws);
+		}
+  } else {
+    i = begin+(end-begin)/2;
+    spawn parforpar_stack(begin, i, op, raw);
+    spawn parforpar_stack(i + 1, end, op, raw);
+  }
+}
+
+cilk int main(int argc, char* argv[])
+{
+	BenchOptions options;
+	int test_size, add_percentage;
+	int threshold, add_size;
+
+	getOptions(argc, argv, &options);
+	test_size = options.operations;
+	if (options.special) add_percentage = options.special;
+	else add_percentage = 50;
+
+  threshold = g_par_threshold ? g_par_threshold : PARFOR_THRESHOLD;
+  add_size = (add_percentage * test_size) / 100;
+
+	g_stack = create_stack();
+
+	startTimer();
+  spawn parforpar_stack(0, add_size, g_add_op, options.raw);
+  spawn parforpar_stack(0, test_size-add_size, g_rem_op, options.raw);
+  sync;
+	stopTimer();
+
+	if (options.verbose) printf("Batch Mixed. Size %d. \n", test_size);
+	printf("%lf\n",getWallTime());
+
+	return 0;
+}
