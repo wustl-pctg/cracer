@@ -539,30 +539,26 @@ typedef void (*InternalBatchOperation)(CilkWorkerState *const _cilk_ws,
                                        void *dataStruct, void *data,
                                        size_t numElements, void *result);
 
-
 typedef struct {
-  InternalBatchOperation operation;
-  void*       args;
-  size_t      size;
-  volatile enum DS_STATUS   status;
-  int         packedIndex;
-  void*       result;
+  InternalBatchOperation  operation;
+  void*                   args;
+  size_t                  size;
+  void*                   data_structure;
+  volatile enum DS_STATUS status;
+  int                     packedIndex;
+  void*                   result;
   //CILK_CACHE_LINE_PAD;
 } BatchRecord;
 
 typedef struct {
-  size_t size;
-  size_t dataSize;
-  InternalBatchOperation operation;
-  size_t batch_no;
-  BatchRecord  *array;
+  size_t                  size;
+  size_t                  data_size;
+  InternalBatchOperation  operation;
+  size_t                  batch_num;
+  void*                   data_structure;
+  BatchRecord            *array;
 	//  CILK_CACHE_LINE_PAD;
 } Batch;
-
-
-typedef void (*CilkBatchSeqOperation)(Batch* pending,
-                                      void *dataStruct, void *data,
-																			size_t numElements, void *result);
 
 typedef struct {
   InternalBatchOperation op;
