@@ -24,48 +24,68 @@ void Cilk_remove_and_keep_closure_and_frame(CilkWorkerState *const ws,
 	deque_unlock(ws, pn, deque_pool);
 }
 
-static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
-                                   int* work_array, BatchRecord *record)
-                                   //        InternalBatchOperation op)
+static inline set_batch_info(Batch* pending, InternalBatchOperation op,
+                             size_t size, size_t data_size, void* ds)
 {
-  CILK_ASSERT(ws, ws->batch_id == USE_SHARED(current_batch_id));
+  pending->operation = op;
+  pending->size = size;
+  pending->data_size = data_size;
+  pending->data_structure = ds;
+}
 
-  Cilk_enter_state(ws, STATE_BATCH_COMPACTION);
+// @todo Must also compact the array of continuations.
+static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
+                                   int *work_array, unsigned int num_spots)
+{
   unsigned int num_ops = 0;
   unsigned int register i,j;
 
+  InternalBatchOperation op = NULL;
+  size_t data_size = 0;
+  void* ds = NULL;
+
+  Cilk_enter_state(ws, STATE_BATCH_COMPACTION);
+
   for (i = 0; i < USE_PARAMETER(active_size); i++) {
 
-    // Should also check that the op matches, for multiple batch operations***
+    // @todo @features Should also check that the op matches, for
+    // multiple batch operations.
     if (pending->array[i].status == DS_WAITING) {
+
       pending->array[i].status = DS_IN_PROGRESS;
-      //			pending->array[i].packedIndex = num_ops;
-      for (j = 0; j < USE_PARAMETER(batchvals); j++) {
-        work_array[num_ops+j] = ((int*)pending->array[i].args)[j];
+      pending->array[i].packed_index = num_ops;
+
+      if (op == NULL) {
+        op = pending->array[i].operation;
+        data_size = pending->array[i].size;
+        ds = pending->array[i].data_structure;
       }
-      // num_ops++;
+
+      // @todo @feature Use memcpy here (or other) to support any data
+      // type.
+      for (j = 0; j < USE_PARAMETER(batchvals); j++) {
+        work_array[num_ops + j] = ((int*)pending->array[i].args)[j];
+      }
+
       num_ops += USE_PARAMETER(batchvals);
     }
   }
 
-  //asm volatile ("" : : : "memory");
-  Cilk_exit_state(ws, STATE_BATCH_COMPACTION);
-  /* printf("Batch %d of size %d with %d workers.\n", */
-  /*        USE_SHARED(current_batch_id), num_ops, */
-  /*        num_ops / USE_PARAMETER(batchvals)); */
+  CILK_ASSERT(ws, ds != NULL);
+  CILK_ASSERT(ws, op != NULL);
+  set_batch_info(pending, op, num_ops, data_size, ds);
+
 #if CILK_STATS
   USE_SHARED(num_batches)++;
   USE_SHARED(batch_sizes)[(num_ops / USE_PARAMETER(batchvals)) - 1]++;
 #endif
+
+  Cilk_exit_state(ws, STATE_BATCH_COMPACTION);
   return num_ops;
 }
 
 static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 {
-  //  CILK_ASSERT(ws, USE_SHARED(current_batch_id) == ws->batch_id);
-  CILK_ASSERT(ws, USE_SHARED(current_batch_id) ==
-              USE_SHARED(pending_batch).batch_no);
-
   int i, index;
 	//	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
 	Batch* current = &USE_SHARED(pending_batch);
@@ -102,14 +122,13 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 // steal again.
 // NB: I *think* this is what happens. I should check empirically just
 // to be safe.
-static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
+static void invoke_batch(CilkWorkerState* const _cilk_ws, void* ds,
                          InternalBatchOperation op,
                          unsigned int num)
 {
   CilkWorkerState* const ws = _cilk_ws;
   unsigned int num_ops = num;
   int* work_array;
-  void* ds = dataStruct;
 
   Closure* cl = USE_PARAMETER(invoke_batch);
   deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
@@ -142,14 +161,16 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
   _cilk_frame->header.entry=2;
   CILK2C_AT_SYNC_FAST();
 
-  // We can also spawn here, to do in parallel, optionally.
-
   --ws->current_cache->tail;
   CILK_WMB();
 
   Cilk_remove_and_keep_closure_and_frame(_cilk_ws, &_cilk_frame->header,
                                          _cilk_ws->self,
 																				 USE_PARAMETER(ds_deques));
+
+  // @todo @feature It would theoretically be helpful to spawn this
+  // termination to do it in parallel. But in practice this is
+  // unlikely to be useful until we have 128+ cores.
   Cilk_terminate_batch(_cilk_ws);
 }
 
@@ -240,17 +261,22 @@ void Batcher_init(CilkContext *const context)
     Cilk_malloc_fixed(USE_PARAMETER1(active_size)
                       * sizeof(BatchRecord));
 
+  USE_SHARED1(batch_continuation_array) =
+    Cilk_malloc_fixed(USE_PARAMETER1(active_size)
+                      * sizeof(Closure*));
+
   USE_SHARED1(pending_batch).size =
     USE_PARAMETER1(active_size) * USE_PARAMETER1(batchvals);
 
   for (i = 0; i < USE_PARAMETER1(active_size); i++) {
     USE_SHARED1(pending_batch).array[i].status = DS_DONE;
+    USE_SHARED1(batch_continuation_array)[i] = NULL;
   }
 
 	USE_SHARED1(batch_lock) = 0;
 
-	// This may not actually be sizeof(int)! It could actually change,
-	// but for now it's okay to specialize. ***
+	// @todo This may not actually be sizeof(int)! It could actually change,
+	// but for now it's okay to specialize.
 	USE_SHARED1(batch_work_array) =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size)
                       * sizeof(int)

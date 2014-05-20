@@ -200,25 +200,32 @@ extern void *Cilk_valloc(size_t size);
 /******************************************************
  *  Batcher operations
  ******************************************************/
-/** Batcher **/
-typedef struct helper
-{
-	int x;
-	int y;
-} helper;
-
-/** End Batcher **/
+/* struct cnt_node */
+/* { */
+/*   Closure* cl; */
+/*   struct cnt_node* next; */
+/*   struct cnt_node* tail; */
+/* }; */
 
 /* global scheduler state */
-struct CilkGlobalState_s{
+struct CilkGlobalState_s {
   /* BATCHER */
+
+  /// @ques Do we still need these two?
   int current_batch_id;
   int batch_owner;
-  Batch pending_batch;
-  int* batch_work_array;
-  //int* batch_work_array;
 
-	CilkProcInfo invoke_batch_sig[3]; // Should really be a RO param. ***
+  Batch pending_batch;
+
+  /// @todo use void* to be more general.
+  int* batch_work_array;
+
+  /// @ques Do we want to allow a worker to put 2+ continuations in
+  // this container?
+  Closure** batch_continuation_array;
+  //  cnt_node* batch_continuation_array;
+
+	CilkProcInfo invoke_batch_sig[3];
 	BatchFrame* batch_frame;
 
 #if CILK_STATS
@@ -453,7 +460,7 @@ struct Cilk_options_s
   int nproc;
 	int dsprob;
 	int batchprob;
-	int batchvals;
+	unsigned int batchvals;
   int sleeptime;
   int bias;
   int stackdepth;

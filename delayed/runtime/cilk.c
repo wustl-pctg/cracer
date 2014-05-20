@@ -342,8 +342,6 @@ static CilkWorkerState *create_worker_state(CilkContext *const context, long id)
 
   ws->self = id;
 
-  ws->batch_id = 0; // rsu ***
-
   ws->context = context;
 
 #ifdef CILK_USE_PERFCTR

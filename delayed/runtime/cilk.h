@@ -24,6 +24,8 @@
 #ifndef _CILK_H
 #define _CILK_H
 
+#include <setjmp.h>
+
 #ifdef __CILK__
 /* gcc-builtin.h is now compiler-specific builtins for other compilers too.   It is poorly named... */
 /* This must be early to make cilk2c happy about the MIPSPRO intrinsics such __synchronize() */
@@ -297,8 +299,9 @@ typedef struct {
 	struct ReadyDeque *current_deque_pool;
   CilkClosureCache cache;
   CilkClosureCache ds_cache;
-  int batch_id; // ***
   int self;
+  unsigned int batch_id; /// @todo Remove, if possible.
+  jmp_buf env;
   struct Cilk_im_descriptor im_descriptor [CILK_INTERNAL_MALLOC_BUCKETS];
   size_t stackdepth;
   Cilk_time last_cp_time;
@@ -545,7 +548,7 @@ typedef struct {
   size_t                  size;
   void*                   data_structure;
   volatile enum DS_STATUS status;
-  int                     packedIndex;
+  int                     packed_index;
   void*                   result;
   //CILK_CACHE_LINE_PAD;
 } BatchRecord;
@@ -570,13 +573,12 @@ typedef struct {
 /* This is a hand-compiled procedure that calls a batch operation */
 typedef struct {
   CilkStackFrame header;
-  BatchArgs *args; // I don't think this is actually necessary. It's
+  BatchArgs *args; // @todo I don't think this is actually necessary. It's
                    // a holdover from invoke_main_frame, where *args
                    // was the command-line arguments passed in (I
                    // think). So it's not really necessary in this
-                   // case. *** rsu
+                   // case.
   int arg_size;
-  unsigned int batch_id;
   int retval;
 } BatchFrame;
 
