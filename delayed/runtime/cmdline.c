@@ -36,7 +36,7 @@ FILE_IDENTITY(ident,
 
 enum {
   NONE, NPROC,
-  DSPROB, BATCHPROB, BATCHVALS, SLEEP, BIAS,
+  DSPROB, BATCHPROB, BATCHVALS, BATCHLIMIT, SLEEP, BIAS,
   STATS, NO_STATS, HELP, STACK, YIELD, NO_YIELD,
   PTHREAD_STACKSIZE,
   POSIX_LOCKS, MEMORY_LOCKS,
@@ -73,6 +73,9 @@ static struct options {
   },
   {
     "batchvals", BATCHVALS, "--batchvals <n>: the number of batch spots for each worker"
+  },
+  {
+    "batchlimit", BATCHLIMIT, "--batchlimit <n>: the multiplier for the number of times a worker can enter batchify before starting a batch"
   },
   {
     "sleep", SLEEP, "--sleep <n>: the number of nanoseconds to sleep between unsuccessful batch steals."
@@ -251,6 +254,13 @@ int Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[])
       CHECK(i < *argc, "argument missing");
       options->batchvals = atoi(argv[i]);
       CHECK(options->batchvals <= 10000, "invalid num batch spots");
+      CHECK(options->batchvals >= 0, "invalid num batch spots");
+      break;
+    case BATCHLIMIT:
+      ++i;
+      CHECK(i < *argc, "argument missing");
+      options->batchlimit = atoi(argv[i]);
+      CHECK(options->batchvals <= 10, "invalid num batch spots");
       CHECK(options->batchvals >= 0, "invalid num batch spots");
       break;
     case SLEEP:

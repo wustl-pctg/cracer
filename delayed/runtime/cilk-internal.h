@@ -100,6 +100,7 @@ struct Closure_s {
   int return_size;
 
   struct InletClosure *complete_inlets;  /* runnable inlets */
+
   struct InletClosure *incomplete_inlets;
   /* also, list of outstanding children */
 
@@ -200,13 +201,6 @@ extern void *Cilk_valloc(size_t size);
 /******************************************************
  *  Batcher operations
  ******************************************************/
-/* struct cnt_node */
-/* { */
-/*   Closure* cl; */
-/*   struct cnt_node* next; */
-/*   struct cnt_node* tail; */
-/* }; */
-
 /* global scheduler state */
 struct CilkGlobalState_s {
   /* BATCHER */
@@ -219,11 +213,6 @@ struct CilkGlobalState_s {
 
   /// @todo use void* to be more general.
   int* batch_work_array;
-
-  /// @ques Do we want to allow a worker to put 2+ continuations in
-  // this container?
-  Closure** batch_continuation_array;
-  //  cnt_node* batch_continuation_array;
 
 	CilkProcInfo invoke_batch_sig[3];
 	BatchFrame* batch_frame;
@@ -461,6 +450,7 @@ struct Cilk_options_s
 	int dsprob;
 	int batchprob;
 	unsigned int batchvals;
+  unsigned int batchlimit;
   int sleeptime;
   int bias;
   int stackdepth;
@@ -483,6 +473,7 @@ Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[]);
     1,																					\
       50,                                       \
       100,                                      \
+      1,                                        \
       1,                                        \
       0,                                        \
       50,                                        \

@@ -35,6 +35,7 @@
 // functions. The includes are kind of a mess.
 /* static void invoke_batch_slow(CilkWorkerState *const _cilk_ws, */
 /*                               BatchFrame *_cilk_frame); */
+void start_batch(CilkWorkerState *const ws);
 
 FILE_IDENTITY(ident,
 							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/sched.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
@@ -1711,9 +1712,13 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 static inline int choose_victim(CilkWorkerState *const ws)
 {
   int victim;
+  int p = USE_PARAMETER(active_size);
+  if (p == 1) return 0;
+
   do {
-    victim = rts_rand(ws) % USE_PARAMETER(active_size);
-  } while (victim = ws->self);
+    victim = rts_rand(ws) % p;
+  } while (victim == ws->self);
+
   return victim;
 }
 
@@ -1750,7 +1755,7 @@ static inline ReadyDeque* choose_deque(CilkWorkerState *const ws, int victim)
  *********************************************************/
 void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 {
-	int victim, setjmp_ret;
+	int victim;//, setjmp_ret;
   unsigned int failed_steals = 0;
 
 	CILK_ASSERT(ws, ws->self >= 0);
@@ -1760,10 +1765,10 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 	Cilk_enter_state(ws, STATE_TOTAL);
 
   // Set a jump point so we can return here when we call batchify.
-  setjmp_ret = setjmp(ws->env);
+  //  setjmp_ret = setjmp(ws->env);
 
   // If we jumped here, t was already executed.
-  if (setjmp_ret) t = NULL;
+  //  if (setjmp_ret) t = NULL;
 
 	while (!USE_SHARED(done)) {
 
@@ -1785,10 +1790,11 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 
       t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
 
-      if (!t) {
-        failed_steals++;
-        if (failed_steals >= USE_PARAMETER(active_size))
+      if (!t) failed_steals++;
+
+      if (failed_steals >= USE_PARAMETER(active_size)) {
           start_batch(ws);
+          break;
       }
 
 			if (!t && USE_PARAMETER(options->yieldslice) &&
@@ -1877,6 +1883,8 @@ void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws)
 
 	Cilk_reset_stack_depth_stats(ws);
 
+  ws->current_batch_index = ws->self * USE_PARAMETER(batchlimit);
+
 	CILK_CHECK(ws->cache.stack, (ws->context, ws, "failed to allocate stack\n"));
 	CILK_CHECK(ws->ds_cache.stack, (ws->context, ws, "failed to allocate stack\n"));
 }
@@ -1938,25 +1946,27 @@ void Cilk_exit_from_user_main(CilkWorkerState *const ws, Closure *cl, int res)
  *********************************************************/
 #include "invoke-batch.c"
 
-static inline void insert_batch_op(int worker_id, Batch* pending,
-                                   InternalBatchOperation operation,
+static inline void insert_batch_op(unsigned int index, Batch* pending,
+                                   Closure* cl, InternalBatchOperation operation,
                                    void *data, size_t data_size,
                                    void *ds, void *result)
 {
-  pending->array[worker_id].operation = operation;
-  pending->array[worker_id].args = data;
-  pending->array[worker_id].size = data_size;
+  pending->array[index].operation = operation;
+  pending->array[index].args = data;
+  pending->array[index].size = data_size;
 
   // @todo @opt I think we can safely assume that there is only one
   // shared batch data structure, so this is really unnecessary. We
   // should find a better way to pass this to invoke_batch, since it
   // will always be the same. To allow multiple shared data structures
   // would greatly increase the complexity of starting batches.
-  pending->array[worker_id].data_structure = ds;
+  pending->array[index].data_structure = ds;
 
-  pending->array[worker_id].result = result;
+  pending->array[index].result = result;
 
-  pending->array[worker_id].status = DS_WAITING;
+  pending->array[index].continuation = cl;
+  pending->array[index].status = DS_WAITING;
+
 }
 
 /// @ques Is it even possible to return a result with delayed-start
@@ -1969,10 +1979,11 @@ void Cilk_batchify(CilkWorkerState *const ws, InternalBatchOperation operation,
                    void *ds, void *data, size_t data_size, void *result)
 {
   Batch *pending = &USE_SHARED(pending_batch);
-  insert_batch_op(ws->self, pending, operation, data, data_size, ds, result);
+  //  insert_batch_op(ws->self, pending, operation, data, data_size, ds, result);
 
-  // @todo Insert the continuation in an array (array of linked lists?)
-  longjmp(ws->env, 1);
+  // Jump to Cilk_scheduler, which effectively deletes the stack back
+  // up to Cilk_scheduler.
+  //  longjmp(ws->env, 1);
 
   // Unreachable.
   CILK_ASSERT(ws, 0);
@@ -1997,15 +2008,19 @@ void start_batch(CilkWorkerState *const ws)
 
     // @todo @feature It would theoretically be helpful to spawn this
     // compaction to do it in parallel. But in practice this is
-    // unlikely to be useful until we have 128+ cores.
+    // unlikely to be useful until we have a lot of operation spots.
+    // Actually, it may be helpful in the case where we insert
+    // multiple operations per call to batchify.
     num_ops = compact(ws, pending, work_array, num_spots);
 
     /* Closure* t = USE_PARAMETER(invoke_batch); */
     /* BatchFrame* f = USE_SHARED(batch_frame); */
 
-    reset_batch_closure(ws->context);
+    if (num_ops > 0) {
+      reset_batch_closure(ws->context);
 
-    invoke_batch(ws, pending->data_structure, pending->operation, num_ops);
+      invoke_batch(ws, pending->data_structure, pending->operation, num_ops);
+    }
 
     // Cleanup.
     Cilk_switch2core(ws);
@@ -2014,42 +2029,62 @@ void start_batch(CilkWorkerState *const ws)
   return;
 }
 
-
-static inline void internal_delayed_batchify(CilkWorkerState *const ws)
+static Closure* promote_and_orphan_frame(CilkWorkerState *const ws,
+                                         CilkStackFrame* f)
 {
-  Closure *t;
+  Closure *continuation = Closure_create(ws);
 
-  // @todo @bug If there is already a continuation/operation ready to
-  // be executed, this will override it. There are two solutions I
-  // see:
-  //  1. Allow workers to put more than one op/continuation into the
-  // containers. This complicates inserting and compacting the
-  // containers because of race conditions.
-  //  2. Check here, and if there already exists an operation, try to
-  // start the batch first.
+	/* update the various fields */
+	continuation->parent = NULL;
+	continuation->join_counter = 0;
+  //	continuation->cache = ws->cache;
+	continuation->status = CLOSURE_READY; // RUNNING?
 
+	CLOSURE_HEAD(continuation)++;
+	continuation->frame = (CilkStackFrame*)*CLOSURE_HEAD(continuation);
 
-	deque_lock(ws, ws->self, ws->current_deque_pool);
-  t = deque_xtract_bottom(ws, ws->self, ws->current_deque_pool);
-  deque_unlock(ws, ws->self, ws->current_deque_pool);
-
-  // It could happen that the function that called this was
-  // stolen. But in that case, it was the bottom of the deque, so t
-  // will be null. Thus we only care if this is null or not.
-  if (t)
-    USE_SHARED(batch_continuation_array)[ws->self] = t;
 }
 
-struct _cilk_delayed_batchify_frame{CilkStackFrame header;};static void _cilk_delayed_batchify_slow(CilkWorkerState*const _cilk_ws,struct _cilk_delayed_batchify_frame*_cilk_frame);static CilkProcInfo _cilk_delayed_batchify_sig[]={{0,sizeof(struct _cilk_delayed_batchify_frame),_cilk_delayed_batchify_slow,0,0}};
-
-void delayed_batchify     (CilkWorkerState*const _cilk_ws){struct _cilk_delayed_batchify_frame*_cilk_frame;CILK2C_INIT_FRAME(_cilk_frame,sizeof(struct _cilk_delayed_batchify_frame),_cilk_delayed_batchify_sig);CILK2C_START_THREAD_FAST();
+static inline void internal_delayed_batchify(CilkWorkerState *const ws,
+                                             InternalBatchOperation operation,
+                                             void *data, size_t data_size,
+                                             void *ds, void *result)
 {
-  internal_delayed_batchify(_cilk_ws);
-  printf("In delayed batchify42\n");
-{CILK2C_BEFORE_RETURN_FAST();return;}}}
+  Closure *parent;//, *child;
+  Batch *pending = &USE_SHARED(pending_batch);
 
-static void _cilk_delayed_batchify_slow(CilkWorkerState*const _cilk_ws,struct _cilk_delayed_batchify_frame*_cilk_frame){CILK2C_START_THREAD_SLOW();switch (_cilk_frame->header.entry) {}
-{
-  internal_delayed_batchify(_cilk_ws);
-  printf("In delayed batchify42\n");
-{CILK2C_SET_NORESULT();CILK2C_BEFORE_RETURN_SLOW();return;}}}
+	deque_lock(ws, ws->self, ws->current_deque_pool);
+
+  /* Here we need to get the calling continuation. The problem is that
+   * what is on the bottom of the deque is not necessarily the calling
+   * continuation. The implementation of the deques is lazy, so only
+   * full closures are part of the deque. Normally, spawned
+   * continuations are just stored as CilkStackFrames in a separate
+   * location. When a  steal occurs, the child of the Closure at the
+   * top of the deque is promoted to a full closure.
+   * So what we want is the last frame on the CilkStack. But this
+   * frame has a parent, which has likely not been promoted to a
+   * Closure, and so on up the stack until we reach a real Closure.
+   * So we would need to promote all the frames above the bottom
+   * frame until we reach a frame that has a full Closure. Only then
+   * would each frame know it has an outstanding child. */
+  // To get around this, it might be sufficient to store the
+  // join_counter in the frame, rather than the continuation. I'm
+  // still thinking through ways to get around this problem.
+  parent = deque_xtract_bottom(ws, ws->self, ws->current_deque_pool);
+  deque_unlock(ws, ws->self, ws->current_deque_pool);
+
+  // @todo Insert real op.
+  insert_batch_op(ws->current_batch_index, pending, parent, operation,
+                  data, data_size, ds, result);
+
+  // Increment batch record index, or reset.
+  ws->current_batch_index++;
+  if (ws->current_batch_index % USE_PARAMETER(batchlimit) ==
+      USE_PARAMETER(active_size) - 1)
+    ws->current_batch_index = ws->self * USE_PARAMETER(batchlimit);
+
+  return;
+}
+
+#include "util.c"

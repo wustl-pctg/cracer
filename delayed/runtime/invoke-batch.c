@@ -89,6 +89,7 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
   int i, index;
 	//	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
 	Batch* current = &USE_SHARED(pending_batch);
+  Closure* t;
   //	void* results = USE_SHARED(batch_work_array);
   //	size_t dataSize = current->dataSize;
 
@@ -101,6 +102,14 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
       //      printf("Spot %i is done for batch %i.\n", i, ws->batch_id);
 			current->array[i].status = DS_DONE;
 		}
+    t = current->array[i].continuation;
+
+    /// @todo Sequentially spawning off for now...
+    if (t) {
+      deque_lock(ws, ws->self, USE_PARAMETER(deques));
+      deque_add_bottom(ws, t, ws->self, USE_PARAMETER(deques));
+      deque_unlock(ws, ws->self, USE_PARAMETER(deques));
+    }
 	}
 
   USE_SHARED(current_batch_id)++; // signal end of this batch
@@ -111,6 +120,13 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
   // @todo Now (somehow) spawn off all the continuations.
   // To reduce the span, a parallel_for loop should be used.
   // But for now it might be okay just to put everything on the deque.
+  /* t = USE_SHARED(batch_continuation_array); */
+  /* while (t != NULL) { */
+  /*   deque_lock(ws, ws->self, USE_PARAMETER(deques)); */
+  /*   deque_add_bottom(ws, t, ws->self, USE_PARAMETER(deques)); */
+  /*   deque_unlock(ws, ws->self, USE_PARAMETER(deques)); */
+  /*   t++; */
+  /* } */
 }
 
 // @todo @refactor I don't think this actually helps anything. We
@@ -153,7 +169,7 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* ds,
   CILK2C_BEFORE_SPAWN_FAST();
   CILK2C_PUSH_FRAME(_cilk_frame);
 
-  op(ws, ds, (void*)work_array, num_ops, NULL);
+  //  op(ws, ds, (void*)work_array, num_ops, NULL);
 
   CILK2C_XPOP_FRAME_NORESULT(_cilk_frame, /* return nothing*/);
   CILK2C_AFTER_SPAWN_FAST();
@@ -256,21 +272,20 @@ void Batcher_init(CilkContext *const context)
   Closure *t;
 	BatchFrame *f;
   int i;
+  int batch_limit;
+
+  batch_limit = USE_PARAMETER1(active_size) * USE_PARAMETER1(batchlimit);
+  //  if (!batch_limit) cnt_limit = 1;
 
   USE_SHARED1(pending_batch).array =
-    Cilk_malloc_fixed(USE_PARAMETER1(active_size)
-                      * sizeof(BatchRecord));
+    Cilk_malloc_fixed(batch_limit * sizeof(BatchRecord));
 
-  USE_SHARED1(batch_continuation_array) =
-    Cilk_malloc_fixed(USE_PARAMETER1(active_size)
-                      * sizeof(Closure*));
 
   USE_SHARED1(pending_batch).size =
-    USE_PARAMETER1(active_size) * USE_PARAMETER1(batchvals);
+    batch_limit * USE_PARAMETER1(batchvals);
 
-  for (i = 0; i < USE_PARAMETER1(active_size); i++) {
+  for (i = 0; i < batch_limit; i++) {
     USE_SHARED1(pending_batch).array[i].status = DS_DONE;
-    USE_SHARED1(batch_continuation_array)[i] = NULL;
   }
 
 	USE_SHARED1(batch_lock) = 0;
@@ -278,7 +293,7 @@ void Batcher_init(CilkContext *const context)
 	// @todo This may not actually be sizeof(int)! It could actually change,
 	// but for now it's okay to specialize.
 	USE_SHARED1(batch_work_array) =
-    Cilk_malloc_fixed(USE_PARAMETER1(active_size)
+    Cilk_malloc_fixed(batch_limit
                       * sizeof(int)
                       * USE_PARAMETER1(batchvals));
 

@@ -24,7 +24,7 @@
 #ifndef _CILK_H
 #define _CILK_H
 
-#include <setjmp.h>
+//#include <setjmp.h>
 
 #ifdef __CILK__
 /* gcc-builtin.h is now compiler-specific builtins for other compilers too.   It is poorly named... */
@@ -232,6 +232,7 @@ typedef struct {
   __CILKSAFE__ int dsprob;
   __CILKSAFE__ int batchprob;
   __CILKSAFE__ int batchvals;
+  __CILKSAFE__ int batchlimit;
   __CILKSAFE__ int sleeptime;
   __CILKSAFE__ int bias;
 
@@ -295,25 +296,29 @@ typedef struct {
 
 /* worker state */
 typedef struct {
-  CilkClosureCache *current_cache;
-	struct ReadyDeque *current_deque_pool;
-  CilkClosureCache cache;
-  CilkClosureCache ds_cache;
-  int self;
-  unsigned int batch_id; /// @todo Remove, if possible.
-  jmp_buf env;
-  struct Cilk_im_descriptor im_descriptor [CILK_INTERNAL_MALLOC_BUCKETS];
-  size_t stackdepth;
-  Cilk_time last_cp_time;
-  Cilk_time cp_hack;
-  Cilk_time work_hack;
-  Cilk_time user_work;
-  Cilk_time user_critical_path;
-  unsigned int rand_next;
-  int abort_flag;
-  int barrier_direction;
+  CilkClosureCache          *current_cache;
+	struct ReadyDeque         *current_deque_pool;
+  CilkClosureCache           cache;
+  CilkClosureCache           ds_cache;
+
+  /// @todo Make void* to be more general.
+  unsigned int                  current_batch_index;
+
+  int                        self;
+  unsigned int               batch_id; /// @todo Remove, if possible.
+  //  jmp_buf                           env;
+  struct Cilk_im_descriptor  im_descriptor [CILK_INTERNAL_MALLOC_BUCKETS];
+  size_t                     stackdepth;
+  Cilk_time                  last_cp_time;
+  Cilk_time                  cp_hack;
+  Cilk_time                  work_hack;
+  Cilk_time                  user_work;
+  Cilk_time                  user_critical_path;
+  unsigned int               rand_next;
+  int                        abort_flag;
+  int                        barrier_direction;
   CILK_CACHE_LINE_PAD;
-  CilkContext *context;
+  CilkContext               *context;
 #ifdef CILK_USE_PERFCTR
   volatile const struct vperfctr_state *perfctr_kstate;
 #endif
@@ -332,16 +337,16 @@ typedef struct{
  */
 extern void Cilk_dprintf(CilkWorkerState *const ws, const char *fmt,...);
 extern void Cilk_die_internal(CilkContext *const context, CilkWorkerState *const ws, const char *fmt,...);
-extern void Cilk_unalloca_internal(CilkWorkerState *const ws,
-                                   CilkStackFrame *f);
+extern void Cilk_unalloca_internal(CilkWorkerState *const  ws,
+                                   CilkStackFrame         *f);
 
 /*
  * Functions defined by the scheduler and used in Cilk programs
  */
 extern void *Cilk_internal_malloc(CilkWorkerState *const ws, size_t);
-extern void Cilk_internal_free(CilkWorkerState *const ws, void *p, size_t size);
+extern void  Cilk_internal_free(CilkWorkerState *const ws, void *p, size_t size);
 
-/***********************************************************\
+/*********************************************************** \
  * Nondeterminator race detection
 \***********************************************************/
 #ifdef CILK_ND
@@ -354,14 +359,14 @@ extern void Cilk_internal_free(CilkWorkerState *const ws, void *p, size_t size);
 extern CilkContext *Cilk_init(int* argc,char** argv);
 extern void Cilk_terminate(CilkContext *const context);
 
-/***********************************************************\
+/*********************************************************** \
  * Critical path elapsed time calculator
 \***********************************************************/
 
 static inline Cilk_time Cilk_get_elapsed_time(CilkWorkerState *const ws)
 {
   Cilk_time then = ws->last_cp_time;
-  Cilk_time now = Cilk_get_time();
+  Cilk_time now  = Cilk_get_time();
 
   CILK_ASSERT(ws, now >= then);
 
@@ -375,7 +380,7 @@ static inline Cilk_time Cilk_get_elapsed_time(CilkWorkerState *const ws)
  * this is written so that it can be __inline__d and partially
  * evaluated when size is a constant
  */
-#define CILK_INTERNAL_MALLOC_CANONICALIZE_MACRO(size, n)  \
+#define CILK_INTERNAL_MALLOC_CANONICALIZE_MACRO(size, n) \
   if (size <= n && n >= CILK_CACHE_LINE) return n;
 
 static inline int Cilk_internal_malloc_canonicalize(size_t size)
@@ -389,10 +394,10 @@ static inline int Cilk_internal_malloc_canonicalize(size_t size)
   CILK_INTERNAL_MALLOC_CANONICALIZE_MACRO(size, 1024);
   CILK_INTERNAL_MALLOC_CANONICALIZE_MACRO(size, 2048);
   CILK_INTERNAL_MALLOC_CANONICALIZE_MACRO(size, 4096);
-  return -1;  /* keep gcc happy */
+  return -1;                    /* keep gcc happy */
 }
 
-#define CILK_INTERNAL_MALLOC_SIZE_TO_BUCKET(size, n, bucket)  \
+#define CILK_INTERNAL_MALLOC_SIZE_TO_BUCKET(size, n, bucket) \
   if (size <= n && n >= CILK_CACHE_LINE) return bucket;
 
 static inline int Cilk_internal_malloc_size_to_bucket(size_t size)
@@ -426,7 +431,7 @@ static inline int Cilk_internal_malloc_bucket_to_size(int b)
   return -1;  /* keep gcc happy */
 }
 
-/***********************************************************\
+/*********************************************************** \
  * memory barriers
 \***********************************************************/
 /*
@@ -460,15 +465,15 @@ static inline void Cilk_membar_StoreLoad(void)
 /************************************************************
  * Scheduler functions used in Cilk programs
  ************************************************************/
-extern int Cilk_sync(CilkWorkerState *const ws);
-extern int Cilk_exception_handler(CilkWorkerState *const ws, void *, int);
-extern void Cilk_set_result(CilkWorkerState *const ws,
-                            void *resultp, int size);
-extern void Cilk_after_sync_slow_cp(CilkWorkerState *const ws,
-                                    Cilk_time *work, Cilk_time *cp);
-extern void Cilk_abort_standalone(CilkWorkerState *const ws);
-extern void Cilk_abort_slow(CilkWorkerState *const ws);
-extern void Cilk_event_new_thread(CilkWorkerState *const ws);
+extern int                                                  Cilk_sync(CilkWorkerState *const ws);
+extern int                                                  Cilk_exception_handler(CilkWorkerState *const ws, void *, int);
+extern void Cilk_set_result(CilkWorkerState *const          ws,
+                            void                           *resultp, int size);
+extern void Cilk_after_sync_slow_cp(CilkWorkerState *const  ws,
+                                    Cilk_time              *work, Cilk_time *cp);
+extern void                                                 Cilk_abort_standalone(CilkWorkerState *const ws);
+extern void                                                 Cilk_abort_slow(CilkWorkerState *const ws);
+extern void                                                 Cilk_event_new_thread(CilkWorkerState *const ws);
 extern void Cilk_destroy_frame(CilkWorkerState *const ws,
                                CilkStackFrame *f, size_t size);
 
@@ -511,27 +516,27 @@ extern void Cilk_destroy_frame(CilkWorkerState *const ws,
 #define CILK_NAME_STATS NOSTATS
 #endif
 
-#define CILK_MAGIC_NAME_MAGIC(a,b,c)                                  \
+#define CILK_MAGIC_NAME_MAGIC(a,b,c)            \
   Cilk_flags_are_wrong_ ## a ## _ ## b ## _ ## c ## _please_recompile
 #define CILK_MAGIC_NAME_MORE_MAGIC(a,b,c) CILK_MAGIC_NAME_MAGIC(a,b,c)
-#define CILK_MAGIC_NAME                                         \
+#define CILK_MAGIC_NAME                         \
   CILK_MAGIC_NAME_MORE_MAGIC(CILK_NAME_DEBUG, CILK_NAME_TIMING, \
                              CILK_NAME_STATS)
 
-extern __CILKSAFE__ int CILK_MAGIC_NAME;
-static __CILKSAFE__ int *Cilk_check_flags_at_link_time =  &CILK_MAGIC_NAME;
+extern __CILKSAFE__ int  CILK_MAGIC_NAME;
+static __CILKSAFE__ int *Cilk_check_flags_at_link_time = &CILK_MAGIC_NAME;
 
 static int UNUSED(Cilk_check_flags_at_link_time_hack(void));
 static int Cilk_check_flags_at_link_time_hack(void) {
   return *Cilk_check_flags_at_link_time;
 }
 
-void Cilk_start(CilkContext *const context,
-                void (*main)(CilkWorkerState *const ws, void *args),
-                void *args,
-                int return_size );
-void Cilk_free(void *);
-void *Cilk_malloc_fixed(size_t);
+void Cilk_start(CilkContext *const                   context,
+                void (*main)(CilkWorkerState *const  ws, void *args),
+                void                                *args,
+                int                                  return_size );
+void                                                 Cilk_free(void *);
+void                                                *Cilk_malloc_fixed(size_t);
 
 /*******************************************************************************
  * BATCHER
@@ -539,8 +544,8 @@ void *Cilk_malloc_fixed(size_t);
 enum DS_STATUS { DS_WAITING, DS_IN_PROGRESS, DS_DONE };
 
 typedef void (*InternalBatchOperation)(CilkWorkerState *const _cilk_ws,
-                                       void *dataStruct, void *data,
-                                       size_t numElements, void *result);
+                                       void   *dataStruct, void *data,
+                                       size_t  numElements, void *result);
 
 typedef struct {
   InternalBatchOperation  operation;
@@ -550,6 +555,7 @@ typedef struct {
   volatile enum DS_STATUS status;
   int                     packed_index;
   void*                   result;
+  Closure*                continuation;
   //CILK_CACHE_LINE_PAD;
 } BatchRecord;
 

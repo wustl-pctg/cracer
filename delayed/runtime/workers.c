@@ -169,7 +169,7 @@ void Cilk_create_children(CilkContext *const context,
 #ifdef HAVE_SCHED_SETAFFINITY
 	cpu_set_t mask;
 	CPU_ZERO(&mask);
-	CPU_SET(1, &mask);
+	CPU_SET(0, &mask);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &mask);
 #endif
 
@@ -181,14 +181,11 @@ void Cilk_create_children(CilkContext *const context,
 			CPU_ZERO(&mask);
       CPU_SET(i, &mask);
 
-
-      //			if ((USE_PARAMETER1(options->btest) & 2) == 0) {
       ret_val = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &mask);
-      //			}
 
-/*       if (ret_val != 0) { */
-/* 				printf("Warning: Could not set CPU affinity for %i with error %i\n", i, ret_val); */
-/*       } */
+      if (ret_val != 0) {
+				printf("Warning: Could not set CPU affinity for %i with error %i\n", i, ret_val);
+      }
 #endif
 
       res = pthread_create(USE_SHARED1(tid) + i,
