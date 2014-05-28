@@ -89,7 +89,7 @@ struct Closure_s {
   Cilk_mutex mutex;          /* mutual exclusion lock */
   WHEN_CILK_DEBUG(int mutex_owner;)
 
-  int join_counter; /* number of outstanding children */
+  //  int join_counter; /* number of outstanding children */
   enum ClosureStatus status;
 
   /*

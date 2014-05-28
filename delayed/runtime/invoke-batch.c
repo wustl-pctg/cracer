@@ -260,7 +260,8 @@ void reset_batch_closure(CilkContext *const context)
   Closure* t = USE_PARAMETER1(invoke_batch);
   BatchFrame* f = USE_SHARED1(batch_frame);
 
-  t->join_counter = 0;
+  //  t->join_counter = 0;
+  f->header.join_counter = 0;
   t->status = CLOSURE_READY;
   f->header.entry = 0;
   WHEN_CILK_DEBUG(f->header.magic = CILK_STACKFRAME_MAGIC);

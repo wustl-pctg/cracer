@@ -133,6 +133,7 @@ typedef struct {
   void *receiver;   /* pointer to the receiver of the outstanding spawn,
                        unless otherwise specified in CilkProcInfo->index */
   CilkProcInfo *sig;
+  int join_counter;
   WHEN_CILK_ALLOCA(struct cilk_alloca_header *alloca_h;)
   WHEN_CILK_TIMING(Cilk_time mycp;)
   WHEN_CILK_TIMING(Cilk_time cp;)

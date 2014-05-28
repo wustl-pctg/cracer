@@ -439,7 +439,7 @@ static inline int Closure_at_top_of_stack(Closure *cl)
 
 static inline int Closure_has_children(Closure *cl)
 {
-	return (cl->join_counter != 0);
+	return (cl->frame->join_counter != 0);
 }
 
 static inline void Closure_init(CilkContext *const context,
@@ -885,7 +885,7 @@ static Closure *promote_child(CilkWorkerState *const ws,
 
 	/* update the various fields */
 	child->parent = parent;
-	child->join_counter = 0;
+  //	child->join_counter = 0;
 	child->cache = parent->cache;
 	child->status = CLOSURE_RUNNING;
 
@@ -914,7 +914,7 @@ void finish_promote(CilkWorkerState *const ws,
 
 	/* the parent is still locked; we still need to update it */
 	/* join counter update */
-	parent->join_counter++;
+	parent->frame->join_counter++;
 
 	/* register this child */
 	Closure_add_child(ws, parent, child);
@@ -1242,7 +1242,7 @@ static Closure *Closure_return(CilkWorkerState *const ws, Closure *child)
 	struct InletClosure *inlet;
 
 	CILK_ASSERT(ws, child);
-	CILK_ASSERT(ws, child->join_counter == 0);
+	CILK_ASSERT(ws, child->frame->join_counter == 0);
 	CILK_ASSERT(ws, child->status == CLOSURE_RETURNING);
 	CILK_ASSERT(ws, child->owner_ready_deque == NOBODY);
 	Closure_assert_alienation(ws, child);
@@ -1291,9 +1291,9 @@ static Closure *Closure_return(CilkWorkerState *const ws, Closure *child)
 	/*
 	 * the two fences ensure dag consistency (Backer)
 	 */
-	CILK_ASSERT(ws, parent->join_counter > 0);
+	CILK_ASSERT(ws, parent->frame->join_counter > 0);
 	Cilk_fence();
-	--parent->join_counter;
+	--parent->frame->join_counter;
 	Cilk_fence();
 
 	res = provably_good_steal_maybe(ws, parent);
@@ -2029,20 +2029,18 @@ void start_batch(CilkWorkerState *const ws)
   return;
 }
 
-static Closure* promote_and_orphan_frame(CilkWorkerState *const ws,
-                                         CilkStackFrame* f)
+static Closure* promote_and_orphan_frame(CilkWorkerState *const ws)
 {
   Closure *continuation = Closure_create(ws);
 
 	/* update the various fields */
 	continuation->parent = NULL;
-	continuation->join_counter = 0;
-  //	continuation->cache = ws->cache;
-	continuation->status = CLOSURE_READY; // RUNNING?
+	continuation->status = CLOSURE_READY;
+  continuation->cache = ws->current_cache;
 
-	CLOSURE_HEAD(continuation)++;
-	continuation->frame = (CilkStackFrame*)*CLOSURE_HEAD(continuation);
-
+	continuation->frame = (CilkStackFrame*)*(CLOSURE_TAIL(continuation) - 1);
+  //	CLOSURE_TAIL(continuation)--;
+  (*(CLOSURE_TAIL(continuation) - 2))->join_counter++;
 }
 
 static inline void internal_delayed_batchify(CilkWorkerState *const ws,
@@ -2050,7 +2048,7 @@ static inline void internal_delayed_batchify(CilkWorkerState *const ws,
                                              void *data, size_t data_size,
                                              void *ds, void *result)
 {
-  Closure *parent;//, *child;
+  Closure *cl;
   Batch *pending = &USE_SHARED(pending_batch);
 
 	deque_lock(ws, ws->self, ws->current_deque_pool);
@@ -2071,18 +2069,29 @@ static inline void internal_delayed_batchify(CilkWorkerState *const ws,
   // To get around this, it might be sufficient to store the
   // join_counter in the frame, rather than the continuation. I'm
   // still thinking through ways to get around this problem.
-  parent = deque_xtract_bottom(ws, ws->self, ws->current_deque_pool);
+  //  parent = deque_xtract_bottom(ws, ws->self,
+  // ws->current_deque_pool);
+
+  cl = promote_and_orphan_frame(ws);
   deque_unlock(ws, ws->self, ws->current_deque_pool);
 
-  // @todo Insert real op.
-  insert_batch_op(ws->current_batch_index, pending, parent, operation,
+  insert_batch_op(ws->current_batch_index, pending, cl, operation,
                   data, data_size, ds, result);
 
   // Increment batch record index, or reset.
   ws->current_batch_index++;
   if (ws->current_batch_index % USE_PARAMETER(batchlimit) ==
-      USE_PARAMETER(active_size) - 1)
+      USE_PARAMETER(active_size) - 1) {
+
+    start_batch(ws);
     ws->current_batch_index = ws->self * USE_PARAMETER(batchlimit);
+
+    /// @todo @ques In this case, it may be faster to return a boolean
+    /// indicating that this operation is already done. Then this
+    /// worker will return immediately return from the calling
+    /// function and be unable to sync until the continuation is
+    /// spawned off. 
+  }
 
   return;
 }

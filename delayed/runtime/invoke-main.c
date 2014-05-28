@@ -142,12 +142,13 @@ Closure *Cilk_create_initial_thread(CilkContext *const context,
   /* create a frame for invoke_cilk_main */
   t = Cilk_Closure_create_malloc(context, NULL);
   t->parent = (Closure *) NULL;
-  t->join_counter = 0;
+  //  t->join_counter = 0;
   t->status = CLOSURE_READY;
 
   f = Cilk_malloc(sizeof(struct invoke_main_frame));
   f->header.entry = 0;
   f->header.sig = USE_SHARED1(invoke_main_sig);
+  f->header.join_counter = 0;
   WHEN_CILK_DEBUG(f->header.magic = CILK_STACKFRAME_MAGIC);
 
   f->args = args;

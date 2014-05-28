@@ -9,12 +9,12 @@
  *  under the terms of the GNU Lesser General Public License as published by
  *  the Free Software Foundation; either version 2.1 of the License, or (at
  *  your option) any later version.
- *  
+ *
  *  This library is distributed in the hope that it will be useful, but
  *  WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  *  Lesser General Public License for more details.
- *  
+ *
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
@@ -29,24 +29,23 @@
 
 void Cilk_add_hook(HookList **listp, HookT fn)
 {
-     HookList *new;
+  HookList *new;
 
-     new = (HookList *)malloc(sizeof (HookList));
+  new = (HookList *)malloc(sizeof (HookList));
 
-     new->fn = fn;
-     new->next = NULL_HOOK;
+  new->fn = fn;
+  new->next = NULL_HOOK;
 
-     /* traverse the list */
-     while (*listp != NULL_HOOK)
+  /* traverse the list */
+  while (*listp != NULL_HOOK)
 	  listp = &((*listp)->next);
 
-     /* append at the end */
-     *listp = new;
+  /* append at the end */
+  *listp = new;
 }
 
 void Cilk_run_hooks(HookList *list)
 {
-     for ( ; list != NULL_HOOK ; list = list->next) 
+  for ( ; list != NULL_HOOK ; list = list->next)
 	  list->fn();
 }
-	  
