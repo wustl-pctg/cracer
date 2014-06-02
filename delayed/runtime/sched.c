@@ -2041,6 +2041,7 @@ static Closure* promote_and_orphan_frame(CilkWorkerState *const ws)
 	continuation->frame = (CilkStackFrame*)*(CLOSURE_TAIL(continuation) - 1);
   //	CLOSURE_TAIL(continuation)--;
   (*(CLOSURE_TAIL(continuation) - 2))->join_counter++;
+  return continuation;
 }
 
 static inline void internal_delayed_batchify(CilkWorkerState *const ws,
@@ -2090,7 +2091,7 @@ static inline void internal_delayed_batchify(CilkWorkerState *const ws,
     /// indicating that this operation is already done. Then this
     /// worker will return immediately return from the calling
     /// function and be unable to sync until the continuation is
-    /// spawned off. 
+    /// spawned off.
   }
 
   return;
