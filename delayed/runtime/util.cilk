@@ -1,0 +1,8 @@
+typedef int size_t;
+typedef int InternalBatchOperation;
+
+cilk void delayed_batchify(InternalBatchOperation operation, void* data,
+                           size_t data_size, void* ds, void* result)
+{
+  internal_delayed_batchify(0, operation, data, data_size, ds, result);
+}
