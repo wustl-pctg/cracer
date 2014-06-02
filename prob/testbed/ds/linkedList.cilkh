@@ -1,0 +1,39 @@
+#ifndef LINKEDLIST_H
+#define LINKEDLIST_H
+#include <cilk-lib.cilkh>
+
+typedef struct Node_s {
+
+	struct Node_s * prev;
+	struct Node_s * next;
+
+} Node;
+
+typedef struct {
+
+	Node * head,* tail;
+	int size;
+} LinkedList;
+
+
+typedef struct {
+
+	Node	* x;
+	Node 	* y;
+
+} InsertRecord;
+
+cilk void linkedListBatchInsert( LinkedList * list,Node *x, Node *y);
+
+cilk int order (LinkedList * list, Node * x, Node * y );
+
+cilk void batchInsert(void *dataStruct, void *data, size_t size, void *result);
+
+LinkedList * createLinkedList();
+
+void cleanUp(LinkedList * ll);
+
+cilk void appendNode(LinkedList * list, Node * newNode);
+
+
+#endif

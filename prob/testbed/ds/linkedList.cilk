@@ -1,0 +1,194 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+
+
+#include <linkedList.cilkh>
+#include <../util/defaults.h>
+
+//initialize linked list
+
+LinkedList * createLinkedList(){
+
+	LinkedList * tmp;
+	
+	tmp = (LinkedList*)malloc(sizeof(LinkedList));	
+
+	tmp->head = NULL;
+	tmp->tail = NULL;
+	tmp->size = 0;
+	
+	return tmp;
+}
+
+void cleanUp(LinkedList * ll){
+	Node * tmp = ll->head;
+	Node * next;
+
+	while (!(tmp == ll->tail)){
+		next = tmp->next;	
+		free(tmp);
+		tmp = next;	
+	}
+	free(tmp);
+
+}
+
+//private function to be called to append node to end
+//add a node to end of linked list
+cilk void appendNode(LinkedList * list, Node * newNode){
+
+	//TODO: size checks? 
+	if (newNode != NULL){
+		
+		//if this is an empty list, assign head and tail
+		if (list->size == 0){
+			list->head = list->tail = newNode;
+			
+			list->size++;
+		}
+		else {
+			//update last two node's references to each other						
+			list->tail->next = newNode;
+			newNode->prev = list->tail;
+
+			//housekeeping
+			newNode->next = NULL;
+		
+			//update tail of the list
+			list->tail = newNode;
+			list->tail->next = NULL;	
+			list->size++;
+
+		}
+	}
+	else {
+	printf("Error: adding node with reference to NULL");
+	}
+	
+}
+
+
+cilk void linkedListBatchInsert(LinkedList * list, Node *x, Node *y){
+	InsertRecord ir;
+	ir.x = x;
+	ir.y = y;
+	Cilk_batchify(_cilk_ws, &batchInsert, list, &ir, sizeof(InsertRecord), NULL);
+}
+
+
+
+
+
+cilk void batchInsert(void *dataStruct, void *data, size_t size, void *result){
+
+	//array of inserts to complete
+	InsertRecord *insertRecordArray = (InsertRecord *)data;
+
+	LinkedList * list = (LinkedList *)dataStruct;
+
+	int i = 0;
+	for (; i < size; i++){
+		InsertRecord ir = insertRecordArray[i];
+
+		
+		Node * x = ir.x;
+		Node * z = x->next;
+		Node * y = ir.y;
+		
+		//update next ptrs
+		x->next = y;
+		y->next = z;
+
+		//update previous pointer for y	
+		y->prev = x;
+
+	
+		//update previ pointer for y->next
+		if (z != NULL) //if y isnt the tail		
+		{
+			z->prev = y;
+		}
+		else //if y is the tail 
+			list->tail = y;
+		
+		list->size++;	
+	}
+
+}
+/*
+// if x or y is left as NULL, the other value will be appended to the 
+// list
+void insert(LinkedList * list, void * x, void * y){
+
+	if (( x == NULL && y != NULL ) || (x != NULL && y == NULL)){
+		void * d;
+		//assign d to value x or y that is not NULL		
+		(x == NULL)?d = y:d = x;
+
+		//create new node
+		Node * tmp = (Node*)malloc(sizeof(Node));
+
+		//make sure space was allocated
+		assert(tmp == NULL);
+	
+		//add data value to new node	
+		tmp->data = d;
+		
+		//append node to end of list
+		appendNode(list, tmp);
+
+		
+	}
+	if ( x != NULL && y != NULL){
+		Node * newNode = (Node*)malloc(sizeof(Node));
+
+		//update node value
+		newNode->data = y;
+
+		
+		
+		//TODO: make thread safe	
+		
+		(list->size)++;
+	}
+		
+	
+}
+*/
+
+//we are going to assume that the data in x and y is unique to the list
+//otherwise all bets are off
+// 
+// will return false if x and y are the same
+// if x comes before y: return true
+// else returns false
+
+cilk int order(LinkedList * list, Node * x, Node *y ){
+
+	//make sure list is valid
+
+	//assert(list != NULL);
+	//assert((list->size) > 2);
+
+	Node * current;
+	current = list->head;
+
+
+	do {
+	
+	if (current == y)
+		return 0;
+	
+	if (current == x)
+		return 1;
+
+	current = current->next;
+
+	} while( current != list->tail);
+
+	
+	printf("Neither node found in linked list. Returning false");
+	return 0;
+}
+
+
