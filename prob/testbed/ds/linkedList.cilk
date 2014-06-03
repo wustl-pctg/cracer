@@ -1,17 +1,24 @@
 #include <cilk-lib.cilkh>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string>
 
 
 #include <linkedList.cilkh>
 #include <../util/defaults.h>
 
-//initialize linked list
+/* We need to talk about a few things:
+- Do we need data in a node? How does the node's name clarify
+   a p or an s in a significant way?
+- Do we need to define a _cilk_ws for linkedListBatchInsert?
+*/
 
+//initialize linked list
 LinkedList * createLinkedList(){
 
 	LinkedList * tmp;
-	
-	tmp = (LinkedList*)malloc(sizeof(LinkedList));	
+	 
+	tmp = (LinkedList*) malloc(sizeof(LinkedList));	
 
 	tmp->head = NULL;
 	tmp->tail = NULL;
@@ -20,49 +27,47 @@ LinkedList * createLinkedList(){
 	return tmp;
 }
 
+// free all Linked List nodes'and Linked List  memory
 void cleanUp(LinkedList * ll){
 	Node * tmp = ll->head;
 	Node * next;
 
-	while (!(tmp == ll->tail)){
+	while (tmp != ll->tail)
+	{
 		next = tmp->next;	
 		free(tmp);
 		tmp = next;	
 	}
-	free(tmp);
 
+	free(tmp);
+	free(ll);
 }
 
 //private function to be called to append node to end
-//add a node to end of linked list
 cilk void appendNode(LinkedList * list, Node * newNode){
 
 	//TODO: size checks? 
-	if (newNode != NULL){
+	if (newNode != NULL)
+	{
 		
 		//if this is an empty list, assign head and tail
-		if (list->size == 0){
+		if (list->size == 0)
+		{
 			list->head = list->tail = newNode;
-			
 			list->size++;
-		}
-		else {
-			//update last two node's references to each other						
+		} else {
+			//update last two node's references to each other
 			list->tail->next = newNode;
 			newNode->prev = list->tail;
 
-			//housekeeping
 			newNode->next = NULL;
 		
 			//update tail of the list
-			list->tail = newNode;
-			list->tail->next = NULL;	
+			list->tail = newNode;	
 			list->size++;
-
 		}
-	}
-	else {
-	printf("Error: adding node with reference to NULL");
+	} else {
+	       printf("%s\n","Error: trying to append a NULL node");
 	}
 	
 }
@@ -76,9 +81,6 @@ cilk void linkedListBatchInsert(LinkedList * list, Node *x, Node *y){
 }
 
 
-
-
-
 cilk void batchInsert(void *dataStruct, void *data, size_t size, void *result){
 
 	//array of inserts to complete
@@ -89,7 +91,6 @@ cilk void batchInsert(void *dataStruct, void *data, size_t size, void *result){
 	int i = 0;
 	for (; i < size; i++){
 		InsertRecord ir = insertRecordArray[i];
-
 		
 		Node * x = ir.x;
 		Node * z = x->next;
@@ -107,14 +108,14 @@ cilk void batchInsert(void *dataStruct, void *data, size_t size, void *result){
 		if (z != NULL) //if y isnt the tail		
 		{
 			z->prev = y;
-		}
-		else //if y is the tail 
+		} else //if y is the tail 
 			list->tail = y;
 		
 		list->size++;	
 	}
-
 }
+
+
 /*
 // if x or y is left as NULL, the other value will be appended to the 
 // list
@@ -166,7 +167,8 @@ void insert(LinkedList * list, void * x, void * y){
 cilk int order(LinkedList * list, Node * x, Node *y ){
 
 	//make sure list is valid
-
+	
+	/* ========= Why are these commented out? ======= */
 	//assert(list != NULL);
 	//assert((list->size) > 2);
 
@@ -175,20 +177,16 @@ cilk int order(LinkedList * list, Node * x, Node *y ){
 
 
 	do {
-	
-	if (current == y)
-		return 0;
-	
-	if (current == x)
-		return 1;
+	   if (current == y)
+	      return 0;
+	   if (current == x)
+	      return 1;
 
-	current = current->next;
+	   current = current->next;
 
 	} while( current != list->tail);
 
-	
-	printf("Neither node found in linked list. Returning false");
+	printf("%s\n", "Neither node found in linked list. Returning false");
+
 	return 0;
 }
-
-
