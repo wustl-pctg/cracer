@@ -1,0 +1,65 @@
+#include "ds/linkedList.cilkh"
+
+#include <cilk-lib.cilkh>
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+
+
+#define NUM_INSERTS 3
+
+void printList(LinkedList * list) {
+	Node * n;
+
+	n = list->head;
+	printf("Head->");
+	while (n != NULL){
+	printf("%s->", n->name);	
+	n = n->next;
+	}
+	
+	printf("Tail\n");
+}
+
+
+cilk int main(int argc, char **argv)
+
+{
+	InsertRecord ** irArray = (InsertRecord **)malloc(NUM_INSERTS * sizeof(InsertRecord));
+	InsertRecord * tmpIR = malloc(sizeof(InsertRecord));
+	LinkedList * list;
+	Node * n, *n2, *n3, *n4;
+	
+	n = malloc(sizeof(Node));
+	n2 = malloc(sizeof(Node));
+	n3 = malloc(sizeof(Node));
+	n4 = malloc(sizeof(Node));
+	
+	n->name  = "n1";
+	n2->name = "n2";
+	n3->name = "n3";
+	n4->name = "n4";
+	
+	list =createLinkedList();
+
+	//empty
+	printList(list);	
+	spawn appendNode(list, n);	
+	sync;
+
+	//
+	irArray[0] = tmpIR;
+	(irArray[0])->x = n;
+	(irArray[0])->y = n2;
+
+	spawn atomicInsert(list, irArray[0]);
+	sync;	
+	printList(list);
+	
+
+
+	cleanUp(list);
+	free(irArray);
+	//tmpIR freed
+  	return 0;
+}
