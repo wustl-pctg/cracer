@@ -5,15 +5,19 @@
 #include <stdlib.h>
 
 
+
+
 void printList(LinkedList * list) {
 	Node * n;
 
 	n = list->head;
-	while (n != list->tail){
-	printf("Node here\n");	
+	printf("Head->");
+	while (n != NULL){
+	printf("%s->", n->name);	
 	n = n->next;
 	}
 	
+	printf("Tail\n");
 }
 
 
@@ -24,24 +28,25 @@ cilk int main(int argc, char **argv)
 	n = malloc(sizeof(Node));
 	n2 = malloc(sizeof(Node));
 	n3 = malloc(sizeof(Node));
-
+	n->name = "1";
+	n2->name = "2";
+	n3->name = "3";
 	list =createLinkedList();
-	
-	printf("Size: %d\n", list->size);	
+
+	//empty
+	printList(list);	
 	spawn appendNode(list, n);	
 	sync;
-	
-	printf("Size: %d\n", list->size);	
 
-	spawn appendNode(list, n2);	
-	sync;
-
+	//should be 1
+	printList(list);	
 	
-	spawn linkedListBatchInsert(list, n2 ,n3);
+	spawn linkedListBatchInsert(list, n, n3);
 	sync;	
-	printf("Size: %d\n", list->size);	
+
+	printList(list);	
+
 
 	cleanUp(list);
-	free(list);
   	return 0;
 }

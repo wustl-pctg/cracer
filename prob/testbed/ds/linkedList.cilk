@@ -1,7 +1,6 @@
 #include <cilk-lib.cilkh>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string>
 
 
 #include <linkedList.cilkh>
@@ -12,6 +11,7 @@
    a p or an s in a significant way?
 - Do we need to define a _cilk_ws for linkedListBatchInsert?
 */
+InsertRecord global_ir;
 
 //initialize linked list
 LinkedList * createLinkedList(){
@@ -35,10 +35,13 @@ void cleanUp(LinkedList * ll){
 	while (tmp != ll->tail)
 	{
 		next = tmp->next;	
+		free(tmp->name);
 		free(tmp);
+		
 		tmp = next;	
+		
 	}
-
+	
 	free(tmp);
 	free(ll);
 }
@@ -54,6 +57,8 @@ cilk void appendNode(LinkedList * list, Node * newNode){
 		if (list->size == 0)
 		{
 			list->head = list->tail = newNode;
+			newNode->next = NULL;
+			newNode->prev = NULL;
 			list->size++;
 		} else {
 			//update last two node's references to each other
@@ -74,27 +79,52 @@ cilk void appendNode(LinkedList * list, Node * newNode){
 
 
 cilk void linkedListBatchInsert(LinkedList * list, Node *x, Node *y){
-	InsertRecord ir;
-	ir.x = x;
-	ir.y = y;
-	Cilk_batchify(_cilk_ws, &batchInsert, list, &ir, sizeof(InsertRecord), NULL);
+	
+	InsertRecord * ir =(InsertRecord *) malloc(sizeof(InsertRecord));
+	ir->x = x;
+	ir->y = y;
+	
+	Cilk_batchify(_cilk_ws, &batchInsert, list, ir, sizeof(InsertRecord), NULL);
 }
 
-
+//TODO: Add parallel for loop
 cilk void batchInsert(void *dataStruct, void *data, size_t size, void *result){
 
 	//array of inserts to complete
-	InsertRecord *insertRecordArray = (InsertRecord *)data;
+	InsertRecord **insertRecordArray = (InsertRecord *)data;
 
 	LinkedList * list = (LinkedList *)dataStruct;
 
 	int i = 0;
 	for (; i < size; i++){
-		InsertRecord ir = insertRecordArray[i];
-		
-		Node * x = ir.x;
-		Node * z = x->next;
-		Node * y = ir.y;
+		InsertRecord * ir = insertRecordArray[i];
+		Node * x, *y, *z;
+
+		if (!ir)
+		{
+			printf("Record is null");
+			continue;
+		}
+		else if(ir->x == NULL || ir->y == NULL )
+		{
+			printf("Record points to null vals\n");
+		}
+		else 
+			{
+
+			printf("%d : %d , %d\n ", ir, ir->x, ir->y);
+		}
+			
+		x = ir->x;
+		if ((void*)x == NULL)
+		 	z = NULL;
+		else
+		{
+		printf("x name: %s x address: %d\t x next name:%s\n", x->name, x->next, x->next->name);
+		 z = x->next;
+		}	
+		//z = x->next;
+		y = ir->y;
 		
 		//update next ptrs
 		x->next = y;
@@ -111,7 +141,9 @@ cilk void batchInsert(void *dataStruct, void *data, size_t size, void *result){
 		} else //if y is the tail 
 			list->tail = y;
 		
-		list->size++;	
+		list->size++;
+		
+		free(ir);	
 	}
 }
 

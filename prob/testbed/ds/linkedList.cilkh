@@ -1,12 +1,14 @@
 #ifndef LINKEDLIST_H
 #define LINKEDLIST_H
 #include <cilk-lib.cilkh>
-
+#include <stdlib.h>
+#include <stdio.h>
 typedef struct Node_s {
 
 	struct Node_s * prev;
 	struct Node_s * next;
 
+	char * name;
 } Node;
 
 typedef struct {
