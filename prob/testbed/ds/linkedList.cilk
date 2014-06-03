@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-
 #include <linkedList.cilkh>
 #include <../util/defaults.h>
 
@@ -144,10 +143,14 @@ cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 		if (z)
 			z->prev = y;
 		y->prev = x;
-
+	
 		//change next pointers
-		x->next = y;
-		y->next = z;
+		y->next = x->next;
+		//do atomic change of x pointer
+		if(__sync_bool_compare_and_swap(&(x->next), (x->next), y))
+		{
+			printf("Successful swap\n");
+		}
 		
 		
 
@@ -197,9 +200,11 @@ cilk void atomicInsert(LinkedList * list, InsertRecord *ir){
 	y->prev = x;
 
 	//change next pointers
-	x->next = y;
-	y->next = z;
-	
+	y->next = x->next;
+
+	if (__sync_bool_compare_and_swap(&(x->next), x->next, y)){
+		printf("Successful swap\n");
+	}	
 	list->size++;
 	free(ir);	
 }
