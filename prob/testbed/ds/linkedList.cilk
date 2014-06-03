@@ -102,10 +102,12 @@ cilk void non_batchInsertSeq(LinkedList * list, Node *x, Node *y){
 
 }
 
+cilk void non_batchInsertPar(LinkedList * list, InsertRecord ** irArray, int size){
+	
+	spawn insertPar((void*)list, (void *)irArray, (size_t)size, NULL); 
 
+}
 
-
-//TODO: Add parallel for loop
 cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 
 	//array of inserts to complete
@@ -155,6 +157,52 @@ cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 	}
 }
 
+//parallel version of insert
+cilk void insertPar(void *dataStruct, void *data, size_t size, void *result)
+{
+	InsertRecord ** irArray = (InsertRecord **)data;
+	LinkedList * list = (LinkedList *) dataStruct;
+	int i = 0;
+	for (; i<size;i++)
+	{
+		spawn atomicInsert(list, irArray[i]);
+	}
+}
+
+//do single insert, called by insertPar
+cilk void atomicInsert(LinkedList * list, InsertRecord *ir){
+	Node * x, *y, *z;
+	x = ir->x;
+	y = ir->y;
+
+	//if x is null
+	if (!ir->x){
+		printf("Node is null, skipping entry");
+		free(ir);
+		return;
+	}	
+
+	//if x isnt tail
+	if (x->next)	
+		z = x->next;
+	 //make z null and change y to tail
+	else
+	{
+		z = NULL;
+		list->tail = y;
+	}
+	//change prev pointers
+	if (z)
+		z->prev = y;
+	y->prev = x;
+
+	//change next pointers
+	x->next = y;
+	y->next = z;
+	
+	list->size++;
+	free(ir);	
+}
 
 //we are going to assume that the data in x and y is unique to the list
 //otherwise all bets are off
