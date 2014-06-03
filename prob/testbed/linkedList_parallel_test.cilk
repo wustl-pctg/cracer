@@ -48,7 +48,7 @@ cilk int main(int argc, char **argv)
 	sync;
 
 	//
-	irArray[0] = tmpIR;
+	//irArray[0] = tmpIR;
 	(irArray[0])->x = n;
 	(irArray[0])->y = n2;
 
