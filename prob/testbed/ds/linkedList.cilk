@@ -27,6 +27,7 @@ LinkedList * createLinkedList(){
 	return tmp;
 }
 
+
 // free all Linked List nodes'and Linked List  memory
 void cleanUp(LinkedList * ll){
 	Node * tmp = ll->head;
@@ -35,7 +36,7 @@ void cleanUp(LinkedList * ll){
 	while (tmp != ll->tail)
 	{
 		next = tmp->next;	
-		free(tmp->name);
+		//free(tmp->name);
 		free(tmp);
 		
 		tmp = next;	
@@ -78,116 +79,82 @@ cilk void appendNode(LinkedList * list, Node * newNode){
 }
 
 
-cilk void linkedListBatchInsert(LinkedList * list, Node *x, Node *y){
+cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
 	
-	InsertRecord * ir =(InsertRecord *) malloc(sizeof(InsertRecord));
+	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
 	ir->x = x;
-	ir->y = y;
-	
-	Cilk_batchify(_cilk_ws, &batchInsert, list, ir, sizeof(InsertRecord), NULL);
+	ir->y = y;	
+
+	Cilk_batchify(_cilk_ws, &insertSeq, list, ir, sizeof(Node), NULL);
 }
 
+
+cilk void non_batchInsertSeq(LinkedList * list, Node *x, Node *y){
+	
+	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
+	InsertRecord ** irArray = (InsertRecord **) malloc(1 * sizeof(InsertRecord *));
+	ir->x = x;
+	ir->y = y;	
+
+	irArray[0] = ir;
+
+	spawn insertSeq((void*)list, (void *)irArray, 1, NULL); 
+
+}
+
+
+
+
 //TODO: Add parallel for loop
-cilk void batchInsert(void *dataStruct, void *data, size_t size, void *result){
+cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 
 	//array of inserts to complete
-	InsertRecord **insertRecordArray = (InsertRecord *)data;
-
+	InsertRecord ** records =(InsertRecord **) data;
 	LinkedList * list = (LinkedList *)dataStruct;
+	Node  *x, *y, *z;
 
 	int i = 0;
 	for (; i < size; i++){
-		InsertRecord * ir = insertRecordArray[i];
-		Node * x, *y, *z;
+		InsertRecord *ir = records[i];
 
-		if (!ir)
+		// get x and y from record
+		x = ir->x;
+		y = ir->y;
+
+		//if x is null
+		if (!x)
 		{
-			printf("Record is null");
+			printf("First node is null, skipping batch entry.");
+			free(ir);
 			continue;
 		}
-		else if(ir->x == NULL || ir->y == NULL )
-		{
-			printf("Record points to null vals\n");
-		}
-		else 
-			{
-
-			printf("%d : %d , %d\n ", ir, ir->x, ir->y);
-		}
-			
-		x = ir->x;
-		if ((void*)x == NULL)
-		 	z = NULL;
+	
+		//if x isnt tail
+		if (x->next)	
+			z = x->next;
+		 //make z null and change y to tail
 		else
 		{
-		printf("x name: %s x address: %d\t x next name:%s\n", x->name, x->next, x->next->name);
-		 z = x->next;
-		}	
-		//z = x->next;
-		y = ir->y;
-		
-		//update next ptrs
-		x->next = y;
-		y->next = z;
-
-		//update previous pointer for y	
+			z = NULL;
+			list->tail = y;
+		}
+		//change prev pointers
+		if (z)
+			z->prev = y;
 		y->prev = x;
 
-	
-		//update previ pointer for y->next
-		if (z != NULL) //if y isnt the tail		
-		{
-			z->prev = y;
-		} else //if y is the tail 
-			list->tail = y;
+		//change next pointers
+		x->next = y;
+		y->next = z;
 		
+		
+
 		list->size++;
 		
 		free(ir);	
 	}
 }
 
-
-/*
-// if x or y is left as NULL, the other value will be appended to the 
-// list
-void insert(LinkedList * list, void * x, void * y){
-
-	if (( x == NULL && y != NULL ) || (x != NULL && y == NULL)){
-		void * d;
-		//assign d to value x or y that is not NULL		
-		(x == NULL)?d = y:d = x;
-
-		//create new node
-		Node * tmp = (Node*)malloc(sizeof(Node));
-
-		//make sure space was allocated
-		assert(tmp == NULL);
-	
-		//add data value to new node	
-		tmp->data = d;
-		
-		//append node to end of list
-		appendNode(list, tmp);
-
-		
-	}
-	if ( x != NULL && y != NULL){
-		Node * newNode = (Node*)malloc(sizeof(Node));
-
-		//update node value
-		newNode->data = y;
-
-		
-		
-		//TODO: make thread safe	
-		
-		(list->size)++;
-	}
-		
-	
-}
-*/
 
 //we are going to assume that the data in x and y is unique to the list
 //otherwise all bets are off
