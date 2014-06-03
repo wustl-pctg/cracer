@@ -26,9 +26,12 @@ cilk int main(int argc, char **argv)
 
 {
 	InsertRecord ** irArray = (InsertRecord **)malloc(NUM_INSERTS * sizeof(InsertRecord));
-	InsertRecord * tmpIR = malloc(sizeof(InsertRecord));
+	InsertRecord * tmpIR1 = malloc(sizeof(InsertRecord));
+	InsertRecord * tmpIR2 = malloc(sizeof(InsertRecord));
+	InsertRecord * tmpIR3 = malloc(sizeof(InsertRecord));
 	LinkedList * list;
 	Node * n, *n2, *n3, *n4;
+	int x = 0;
 	
 	n = malloc(sizeof(Node));
 	n2 = malloc(sizeof(Node));
@@ -48,11 +51,25 @@ cilk int main(int argc, char **argv)
 	sync;
 
 	//
-	//irArray[0] = tmpIR;
+
+	irArray[0] = tmpIR1;
+	irArray[1] = tmpIR2;
+	irArray[2] = tmpIR3;
+	
 	(irArray[0])->x = n;
 	(irArray[0])->y = n2;
-
+	(irArray[1])->x = n;
+	(irArray[1])->y = n3;
+	(irArray[2])->x = n;
+	(irArray[2])->y = n4;
+	
 	spawn atomicInsert(list, irArray[0]);
+	spawn atomicInsert(list, irArray[1]);
+	spawn atomicInsert(list, irArray[2]);
+	
+	x += spawn order(list, n2, n3);
+	(x)?printf("n2 before n3\n"):printf("n2 not before n3\n");
+	
 	sync;	
 	printList(list);
 	
