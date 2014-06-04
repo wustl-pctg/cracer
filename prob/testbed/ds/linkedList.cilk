@@ -5,14 +5,16 @@
 #include <linkedList.cilkh>
 #include <../util/defaults.h>
 
-/* We need to talk about a few things:
-- Do we need data in a node? How does the node's name clarify
-   a p or an s in a significant way?
-- Do we need to define a _cilk_ws for linkedListBatchInsert?
+/*!
+* Basic linked list to be utilized for English-Hebrew
+* ordering comparison.
+* Authors: Alex Jones & Shane Deiley
+* June 2014
 */
+
 InsertRecord global_ir;
 
-//initialize linked list
+/*! initialize linked list */
 LinkedList * createLinkedList(){
 
 	LinkedList * tmp;
@@ -27,8 +29,8 @@ LinkedList * createLinkedList(){
 }
 
 
-// free all Linked List nodes'and Linked List  memory
-void cleanUp(LinkedList * ll){
+/*! free all Linked List nodes'and Linked List  memory */
+void cleanUp(LinkedList * ll{
 	Node * tmp = ll->head;
 	Node * next;
 
@@ -46,7 +48,7 @@ void cleanUp(LinkedList * ll){
 	free(ll);
 }
 
-//private function to be called to append node to end
+/*! private function to be called to append node to end */
 cilk void appendNode(LinkedList * list, Node * newNode){
 
 	//TODO: size checks? 
@@ -77,7 +79,7 @@ cilk void appendNode(LinkedList * list, Node * newNode){
 	
 }
 
-
+/*! Insert a node via a call to cilk_batchify */
 cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
 	
 	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
@@ -87,11 +89,12 @@ cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
 	Cilk_batchify(_cilk_ws, &insertSeq, list, ir, sizeof(Node), NULL);
 }
 
-
+/*! A a non-batchified insert (utilized for testing while batchify updated */
 cilk void non_batchInsertSeq(LinkedList * list, Node *x, Node *y){
 	
 	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
 	InsertRecord ** irArray = (InsertRecord **) malloc(1 * sizeof(InsertRecord *));
+
 	ir->x = x;
 	ir->y = y;	
 
@@ -101,12 +104,14 @@ cilk void non_batchInsertSeq(LinkedList * list, Node *x, Node *y){
 
 }
 
+/*! Parallel insert for non-batchify insert */
 cilk void non_batchInsertPar(LinkedList * list, InsertRecord ** irArray, int size){
 	
 	spawn insertPar((void*)list, (void *)irArray, (size_t)size, NULL); 
 
 }
 
+/*! Sequential insert. Call ed in non_batchInsertSe */
 cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 
 	//array of inserts to complete
@@ -160,7 +165,7 @@ cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 	}
 }
 
-//parallel version of insert
+/*! parallel version of insert */
 cilk void insertPar(void *dataStruct, void *data, size_t size, void *result)
 {
 	InsertRecord ** irArray = (InsertRecord **)data;
@@ -172,7 +177,7 @@ cilk void insertPar(void *dataStruct, void *data, size_t size, void *result)
 	}
 }
 
-//do single insert, called by insertPar
+/*!  single insert, called by insertPar */
 cilk void atomicInsert(LinkedList * list, InsertRecord *ir){
 	Node * x, *y, *z;
 	x = ir->x;
@@ -209,13 +214,12 @@ cilk void atomicInsert(LinkedList * list, InsertRecord *ir){
 	free(ir);	
 }
 
-//we are going to assume that the data in x and y is unique to the list
-//otherwise all bets are off
-// 
-// will return false if x and y are the same
-// if x comes before y: return true
-// else returns false
-
+/*! We are going to assume that the data in x and y is unique to the list;
+* otherwise all bets are off.
+* will return false if x and y are the same
+* if x comes before y: return true
+* else returns false
+*/
 cilk int order(LinkedList * list, Node * x, Node *y ){
 
 	//make sure list is valid
