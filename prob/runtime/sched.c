@@ -1708,15 +1708,18 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 {
 	int victim;
-	int batch = 0;
 
 	CILK_ASSERT(ws, ws->self >= 0);
 	rts_srand(ws, ws->self * 162347);
-	ReadyDeque* deque_pool = USE_PARAMETER(deques);
+	ReadyDeque* deque_pool;
 
 	Cilk_enter_state(ws, STATE_TOTAL);
 
 	while (!USE_SHARED(done)) {
+
+    deque_pool = USE_PARAMETER(deques);
+    Cilk_switch2core(ws);
+
 		if (!t) {
 			/* try to get work from our local queue */
 			deque_lock(ws, ws->self, deque_pool);
@@ -1733,12 +1736,15 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(dsprob)) {
 
 				Cilk_enter_state(ws, STATE_BATCH_STEALING);
-				batch = 1;
+
+        Cilk_switch2batch(ws);
+        deque_pool = USE_PARAMETER(ds_deques);
+
 				// data structure steal
 				victim = rts_rand(ws) % USE_PARAMETER(active_size);
 
 				if (victim != ws->self) {
-					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
+					t = Closure_steal(ws, victim, deque_pool);
 				}
 
 				Cilk_exit_state(ws, STATE_BATCH_STEALING);
@@ -1748,7 +1754,7 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 				victim = rts_rand(ws) % USE_PARAMETER(active_size);
 
 				if (victim != ws->self) {
-					t = Closure_steal(ws, victim, USE_PARAMETER(deques));
+					t = Closure_steal(ws, victim, deque_pool);
 				}
 
 			}
@@ -1759,7 +1765,6 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 				Cilk_lower_priority(ws);
 			}
 
-			/* Cilk_fence(); */
 			Cilk_exit_state(ws, STATE_STEALING);
 		} // End Stealing
 
@@ -1767,15 +1772,7 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			Cilk_raise_priority(ws);
 
 		if (t && !USE_SHARED(done)) {
-			if (batch) {
-				Cilk_switch2batch(ws);
-				deque_pool = USE_PARAMETER(ds_deques);
-			}
 			t = do_what_it_says(ws, t, deque_pool);
-			if (batch) {
-				Cilk_switch2core(ws);
-				USE_PARAMETER(deques);
-			}
 		}
 
 		/*
