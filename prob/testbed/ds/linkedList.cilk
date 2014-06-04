@@ -12,9 +12,9 @@
 * June 2014
 */
 
-InsertRecord global_ir;
+//InsertRecord global_ir;
 
-/*! initialize linked list */
+//! initialize linked list
 LinkedList * createLinkedList(){
 
 	LinkedList * tmp;
@@ -29,26 +29,32 @@ LinkedList * createLinkedList(){
 }
 
 
-/*! free all Linked List nodes'and Linked List  memory */
-void cleanUp(LinkedList * ll{
+//! Frees linked list's memory
+/*! Frees the memory of the linked list by freeing each of its members and itself
+        \param ll the linked list to be freed from memory
+*/
+void cleanUp(LinkedList * ll) {
+
 	Node * tmp = ll->head;
 	Node * next;
 
 	while (tmp != ll->tail)
 	{
 		next = tmp->next;	
-		//free(tmp->name);
 		free(tmp);
 		
 		tmp = next;	
-		
 	}
 	
 	free(tmp);
 	free(ll);
 }
 
-/*! private function to be called to append node to end */
+//! Append a node to the end of a list
+/*! Private function to be called to append node to end of a list
+    	    \param list the list to be appended upon
+	    \param newNode the node being appended
+*/
 cilk void appendNode(LinkedList * list, Node * newNode){
 
 	//TODO: size checks? 
@@ -62,7 +68,9 @@ cilk void appendNode(LinkedList * list, Node * newNode){
 			newNode->next = NULL;
 			newNode->prev = NULL;
 			list->size++;
+
 		} else {
+
 			//update last two node's references to each other
 			list->tail->next = newNode;
 			newNode->prev = list->tail;
@@ -73,13 +81,19 @@ cilk void appendNode(LinkedList * list, Node * newNode){
 			list->tail = newNode;	
 			list->size++;
 		}
+		
 	} else {
-	       printf("%s\n","Error: trying to append a NULL node");
-	}
 	
+	       printf("%s\n","Error: trying to append a NULL node");
+	}	
 }
 
-/*! Insert a node via a call to cilk_batchify */
+//! Insert a record to be batchified
+/*! Batchify and insert record containing the location and node to be inserted
+        \param list the list to be inserted into
+    	\param x the node in list marking the location of the insert
+        \param y the node to be inserted after x
+*/
 cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
 	
 	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
@@ -89,7 +103,12 @@ cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
 	Cilk_batchify(_cilk_ws, &insertSeq, list, ir, sizeof(Node), NULL);
 }
 
-/*! A a non-batchified insert (utilized for testing while batchify updated */
+//! A non-parallel simulation of batchify insert
+/*! A a non-batchified insert (utilized for testing while batchify updated)
+        \param list the list to be inserted into
+    	\param x the node in list marking the location of the insert
+	\param y the node to be inserted after x
+*/
 cilk void non_batchInsertSeq(LinkedList * list, Node *x, Node *y){
 	
 	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
@@ -104,6 +123,7 @@ cilk void non_batchInsertSeq(LinkedList * list, Node *x, Node *y){
 
 }
 
+//! 
 /*! Parallel insert for non-batchify insert */
 cilk void non_batchInsertPar(LinkedList * list, InsertRecord ** irArray, int size){
 	
@@ -214,11 +234,13 @@ cilk void atomicInsert(LinkedList * list, InsertRecord *ir){
 	free(ir);	
 }
 
-/*! We are going to assume that the data in x and y is unique to the list;
-* otherwise all bets are off.
-* will return false if x and y are the same
-* if x comes before y: return true
-* else returns false
+//! Determine order of two nodes
+/*! We are going to assume that the data in x and y is unique to the list.
+    Finds if the prior is before the former in the list.
+    	  \param list the list in which the nodes reside
+	  \param x the node expected to be in front
+	  \param y the node expected to be after x
+	  \return 0 if x is before y, 1 otherwise
 */
 cilk int order(LinkedList * list, Node * x, Node *y ){
 
