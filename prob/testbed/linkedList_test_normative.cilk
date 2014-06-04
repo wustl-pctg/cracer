@@ -3,7 +3,7 @@
 #include <cilk-lib.cilkh>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <assert.h>
 
 
 
@@ -44,6 +44,13 @@ cilk void test_one() {
 
       printf("%s\n", "List1:");
       printList(list1);
+      
+      printf("%s\n", "Now using assert to check the \'next\'\n member of each node");
+      assert(n1->next == n2);
+      assert(n2->next == n3);
+      assert(n3->next == NULL);
+      assert(list1->head == n1);
+      assert(list1->tail == n3);
 
       cleanUp(list1);          
      
@@ -82,6 +89,14 @@ cilk void test_two() {
 
         printf("%s\n", "List2:");
         printList(list2);
+	
+	printf("%s\n", "Asserts starting:");
+      assert(n1->next == n3);
+      assert(n2->next == NULL);
+      assert(n3->next == n4);
+      assert(n4->next == n2);
+      assert(list2->head == n1);
+      assert(list2->tail == n2);
 	
 	cleanUp(list2);
 }
@@ -127,6 +142,16 @@ cilk void test_three() {
 
         printf("%s\n", "List3:");
         printList(list3);
+
+	printf("%s\n", "Asserts starting:");
+      assert(n1->next == n4);
+      assert(n2->next == n5);
+      assert(n3->next == n6);
+      assert(n4->next == n2);
+      assert(n5->next == n3);
+      assert(n6->next == NULL);
+      assert(list3->head == n1);
+      assert(list3->tail == n6);
 
         cleanUp(list3);
 }
