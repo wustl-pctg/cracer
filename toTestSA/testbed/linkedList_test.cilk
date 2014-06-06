@@ -1,0 +1,57 @@
+#include "ds/linkedList.cilkh"
+
+#include <cilk-lib.cilkh>
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+
+
+
+void printList(LinkedList * list) {
+	Node * n;
+
+	n = list->head;
+	printf("Head->");
+	while (n != NULL){
+	printf("%s->", n->name);	
+	n = n->next;
+	}
+	
+	printf("Tail\n");
+}
+
+
+cilk int main(int argc, char **argv)
+{
+	LinkedList * list;
+	Node * n, *n2, *n3;
+	
+	n = malloc(sizeof(Node));
+	n2 = malloc(sizeof(Node));
+	n3 = malloc(sizeof(Node));
+	n->name  = "n1";
+	n2->name = "n2";
+	n3->name = "n3";
+	
+	list =createLinkedList();
+
+	//empty
+	printList(list);	
+	spawn appendNode(list, n);	
+	sync;
+
+	//should be 1
+	printList(list);	
+	
+	spawn non_batchInsertSeq(list, n, n3);
+	sync;	
+
+	printList(list);	
+
+	spawn non_batchInsertSeq(list, n3, n2);
+	sync;
+
+	printList(list);
+	cleanUp(list);
+  	return 0;
+}

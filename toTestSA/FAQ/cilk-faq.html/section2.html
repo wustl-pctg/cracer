@@ -1,0 +1,93 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<html>
+<head><title>
+Cilk FAQ - Section 2
+</title>
+<link rev="made" href="mailto:bradley@mit.edu">
+<link rel="Contents" href="index.html">
+<link rel="Start" href="index.html">
+<link rel="Next" href="section3.html"><link rel="Previous" href="section1.html"><link rel="Bookmark" title="Cilk FAQ" href="index.html">
+</head><body text="#000000" bgcolor="#FFFFFF"><h1>
+Cilk FAQ - Section 2 <br>
+Installing Cilk
+</h1>
+
+<ul>
+<li><a href="#install" rel=subdocument>Q2.1. How do I install Cilk?</a>
+<li><a href="#install" rel=subdocument>Q2.2. How do I install Cilk in a directory different from
+<code>/usr/local</code>?</a>
+<li><a href="#cilkCrashes" rel=subdocument>Q2.3. The example programs compile, but they do not
+run.</a>
+<li><a href="#clockskew" rel=subdocument>Q2.4. `make' says: ``Warning: Clock skew detected. Your build may be
+incomplete''.</a>
+</ul><hr>
+
+<h2><A name="install">
+Question 2.1.  How do I install Cilk?
+</A></h2>
+
+Cilk uses the standard GNU installation tools.  To install Cilk, type
+<pre>
+$ ./configure
+$ make
+$ make check   # run test programs
+# make install
+</pre>
+
+<h2><A name="install">
+Question 2.2.  How do I install Cilk in a directory different from
+<code>/usr/local</code>?
+</A></h2>
+
+Type <pre>
+$ ./configure --prefix=&lt;installation directory&gt;
+$ make
+# make install
+</pre>
+The following commands *do not* work: <pre>
+$ ./configure
+$ make
+# make install prefix=&lt;installation directory&gt;  # DOES NOT WORK
+</pre>
+
+<h2><A name="cilkCrashes">
+Question 2.3.  The example programs compile, but they do not
+run.
+</A></h2>
+
+If the example programs do not run, and they complain about
+<code>libcilk.so</code> not being found, then Cilk does not know how to
+hardcode the path to the Cilk shared library into Cilk programs.  Try
+one of the following suggestions: 
+<ul>
+<li>Try to set the environment variable <code>LD_LIBRARY_PATH</code> to <code>&lt;cilk-dir&gt;/runtime/.libs</code>, where  <code>&lt;cilk-dir&gt;</code> is the top-level Cilk-5.3 directory.  
+<li>Try installing Cilk in a standard directory, such as
+<code>/usr</code> or <code>/usr/local</code>.  
+<li>Install the GNU linker.  Cilk knows how to set the correct
+shared-libraries path if the GNU linker is used.  
+<li>Disable shared libraries completely, using the command
+<pre>
+$ ./configure --disable-shared
+</pre>
+
+</ul>
+
+<h2><A name="clockskew">
+Question 2.4.  `make' says: ``Warning: Clock skew detected. Your build
+may be incomplete''.
+</A></h2>
+
+This warning occurs on a NFS client whose time is not synchronized
+with the NFS server.  The build should be correct nevertheless, but
+it is a good idea to adjust the system clock anyway. 
+<hr>
+Next: <a href="section3.html" rel=precedes>Using Cilk</a>.<br>
+Back: <a href="section1.html" rev=precedes>Introduction and General Information</a>.<br>
+<a href="index.html" rev=subdocument>Return to contents</a>.<p>
+<address>
+Bradley C. Kuszmaul / <A href="mailto:bradley@mit.edu">bradley@mit.edu</A>
+- 04 June 2014
+</address><br>
+Extracted from Cilk Frequently Asked Questions with Answers,
+Copyright &copy; 2014 Bradley C. Kuszmaul.
+</body></html>

@@ -1,0 +1,100 @@
+#include <stdio.h>
+#include <string.h>
+#include "util/timer.h"
+#include "util/benchOptions.h"
+#include "util/parfor.cilkh"
+#include "ds/skiplist.cilkh"
+
+#define INIT_SIZE 20000
+
+int g_par_threshold = 32;
+BenchOptions g_options;
+int* vals;
+int g_num_spots;
+
+cilk void parfor_skip(const int begin, const int end)
+{
+  int i,j;
+
+  if (end - begin <= g_par_threshold) {
+
+		for (i = begin; i < end; ++i) {
+      if (g_options.seq)
+        insert_seq(_cilk_ws, &vals[i * g_num_spots]);
+      else
+        insert_par(_cilk_ws, &vals[i * g_num_spots]);
+    }
+  } else {
+    i = begin + (end-begin) / 2;
+    spawn parfor_skip(begin, i);
+    spawn parfor_skip(i, end);
+  }
+}
+
+SkipList* set_up(size_t initial_size, size_t num_ops)
+{
+  int i;
+  SkipList* ds = &list;
+
+  // Initialize the skip list.
+  initList();
+
+  for (i = -1*(int)initial_size; i < 0; i++) {
+    insertNode(rand());
+    //insertNode(i);
+  }
+
+  // Prepare our array of random numbers.
+  vals = malloc(sizeof(int) * num_ops * g_num_spots);
+  if (!vals)
+    fprintf(stderr, "insufficient memory (vals)\n");
+
+  for (i = 0; i < num_ops * g_num_spots; i++) {
+    //vals[i] = i;
+    vals[i] = rand();// % 100;
+  }
+
+  return ds;
+}
+
+cilk void runMixedTest(SkipList* ds, int size, int add_part)
+{
+
+  int add_size = (add_part * size)/100;
+  spawn parfor_skip(0, add_size);
+  //  spawn parfor_skip(add_size, size, g_rem_op);
+  sync;
+}
+
+cilk int main(int argc, char* argv[])
+{
+  SkipList* ds;
+  int num_ops;
+  int i;
+  int initial_size;
+
+  getOptions(argc, argv, &g_options);
+  num_ops = g_options.operations;
+  initial_size = g_options.initial_size > 0 ? g_options.initial_size : INIT_SIZE;
+
+  g_num_spots = _cilk_ws->context->Cilk_RO_params->batchvals;
+
+  ds = set_up(initial_size, num_ops);
+
+  startTimer();
+  spawn runMixedTest(ds, num_ops, 100);
+  sync;
+  stopTimer();
+
+  /* startTimer(); */
+  /* for (i = 0; i < num_ops; i++) { */
+  /*   insertNode(vals[i]); */
+  /* } */
+  /* stopTimer(); */
+
+
+  printf("%lf\n",getWallTime());
+  //  printf("Size: %d\n", get_size());
+
+  return 0;
+}

@@ -1,0 +1,56 @@
+#ifndef _CONCHASH_CILKH
+#define _CONCHASH_CILKH
+
+//Tyler Romero and Kefu Liu
+//The insert functions are finshed, the remove functions have some problem
+
+#define PARALLEL_CUTOFF 100	//!<The cutoff for converting from a parallel_for loop to a sequential for loop
+#define ab(j) (j<0)?-j:j	//!<A generic absolute value function
+
+/*! \file
+	\brief A dynamically resizing hash table that deals with collisions through chaining. Supports parallel insertion and resizing.
+*/
+
+
+//! A data item in a hash table
+/*! A linked list component
+*/
+typedef struct tableItem{
+    int key;						//!<The actuall data being stored
+    struct tableItem* prev, *next;	//!<Pointers to the previous and next items in the linked list
+} hashTableItem;
+
+//! A hash table
+typedef struct {
+    hashTableItem** slots;	//!<The array of items that have been hashed
+    int size;				//!<The amount of memory allocated to the hash table in terms of integers
+    int load;				//!<The number of integer items in the hash table
+    #ifdef USE_LOCKS
+	Cilk_lockvar table_lock;
+	#else
+	Cilk_lockvar* locks;	//!<Used in case of collisions
+	#endif
+} hashTable;
+
+/*-----------------------------------Declarations---------------------------------------------------*/
+hashTable* hashTable_create(int size);
+hashTableItem* hashTable_createItem(int key);
+void hashTable_delete(hashTable* dead_table);
+void hashTable_deleteItems(hashTableItem* dead_item);
+cilk void hashTable_insert(hashTable* table, int key);
+cilk void hashTable_batchInsert(void* ds, void* insertions, size_t size, void* results);
+hashTableItem* hashTable_search(hashTable* table, int key); //search for the key, returns the dataItem.
+cilk void hashTable_remove(hashTable* table, hashTableItem* item);
+cilk void hashTable_batchRemove(void* ds, void* removals, size_t input_size, void* results);
+int hashTable_hash(int size, int key);
+void hashTable_print(hashTable* table, int (*printfunct)(void*));
+cilk void resize(hashTable* current_table, int new_size);
+cilk void parallel_for1(hashTable* current_table, int* inputs, cilk void(*parallel_function)(hashTable*,int), int start, int end);
+cilk void parallel_for2(hashTable* current_table, hashTable* temp, cilk void(*parallel_function)(hashTable*,hashTable*,int), int start, int end);
+cilk void parallel_for3(hashTable* current_table, int* temp, cilk void(*parallel_function)(hashTable*,int*,int), int start, int end);
+cilk void parallel_for4(hashTable* current_table, hashTableItem** temp, cilk void(*parallel_function)(hashTable*,hashTableItem**,int), int start, int end);
+cilk void parallel_for_remove(hashTable* current_table, hashTableItem** inputs, cilk void(*parallel_function)(hashTable*,hashTableItem*), int start, int end);
+cilk void copy(hashTable* current_table, hashTable* temp, int i);
+cilk void parallel_delete(hashTable* current_table, hashTable* place_holder, int i);
+
+#endif

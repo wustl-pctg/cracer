@@ -1,0 +1,161 @@
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <cilk-lib.cilkh>
+
+#define VOID_DATA (int)-INFINITY
+#define M 100000	//M = number of possible lables, N = Celling(m^(1/2))-1= Max # of records
+
+//Tyler Romero
+//Simple OM data structure
+//Implementation of the Amortized Time Algorithm given by Dietz and Sleator
+//Insert: O(log n) amortized -> Can be made O(1) Amortized through list-of-lists technique
+//Delete: O(1) worst case
+//Order: O(1) worst case
+
+//----------------------Structs----------------------------------------------------------------------------
+struct record
+{
+	int label;
+	struct record *prev, *next;
+	void* data;
+	enum bool{false, true} is_base;
+};
+typedef struct record record;
+
+//--------------------Declarations--------------------------------------------------------------
+void insert(record* record_x, record* record_y);	//Inserts y directly after x
+void delete(record* dead_record);
+int order(record* record_x, record* record_y);	//Returns 1 if x is before y, otherwise returns 0
+
+record* create_record(void* data);
+void print(record* base);
+
+//--------------------Insert-----------------------------------------------------------
+void insert(record* record_x, record* record_y)	//insert y after the existing x record
+{
+	int w;
+	record* j_record;
+	record* temp;
+	int j,k;
+	if(record_x==NULL)	//First item in the data structure ----> Base
+	{
+		record_y->is_base = true;
+		record_y->next = record_y;
+		record_y->prev = record_y;
+		record_y->label = 0;		//Arbitrary
+		return;
+	}
+	else	//A normal insertion
+	{
+		//Walk down list
+		j_record=record_x->next;
+		j=1;
+		w = (j_record->label - record_x->label)%M;
+		
+		while(w <= j*j)
+		{
+			if (j_record == record_x->prev) w = M;
+			else if(j==1) w = 1;
+			else
+			{
+				w = (j_record->label - record_x->label)%M;
+			}
+			//printf("\nw: %d\tj^2: %d", w, j*j);
+			j++;
+			j_record = j_record->next;
+		}
+		
+		//Relabel
+		temp = record_x->next;
+		w = (j_record->label - record_x->label)%M;
+		k=1;
+		while(k<j)
+		{
+			if(temp->is_base == false)	//Dont relabel the base
+			{
+				temp->label = ((int)(floor(w*k/j) + record_x->label)) % M;
+			}
+			k++;
+			temp = temp->next;
+		}
+		
+		//Insert
+		if(record_x->next->is_base == true)	//The record is the last in the list
+		{
+			record_y->label = (record_x->label + M)/2;
+		}
+		else
+		{
+			record_y->label = floor((record_x->label + record_x->next->label)/2);
+		}
+		record_y->next = record_x->next;
+		record_y->prev = record_x;
+		record_x->next = record_y;
+		return;
+	}
+}
+
+//-------------------Delete-----------------------------------------------
+void delete(record* dead_record)
+{
+	if(dead_record == NULL)
+		return;
+	else if(dead_record->next == dead_record)	//Deletion of the base is only allowed if its the last item in the structure
+	{
+		free(dead_record);
+	}
+	else if(dead_record->is_base == true)
+	{
+		printf("Deletion of the base is not allowed\n");
+	}
+	else
+	{
+		dead_record->prev->next = dead_record->next;
+		dead_record->next->prev = dead_record->prev;
+		free(dead_record);
+	}
+}
+
+
+//-------------------Order------------------------------------------------
+int order(record* record_x, record* record_y)
+{
+	if(record_x == NULL || record_y == NULL)
+	{
+		printf("A record is NULL");
+		return VOID_DATA;
+	}
+	else if(record_x->label < record_y->label)
+		return 1;		//True
+	else
+		return 0;		//False
+}
+
+//-------------------Create Record-----------------------------------------
+record* create_record(void* data)
+{
+	record* new_record = (record*)malloc(sizeof(record));
+	new_record->label = VOID_DATA;
+	new_record->next = NULL;
+	new_record->prev = NULL;
+	new_record->data = data;
+	new_record->is_base = false;
+	return new_record;
+}
+
+//--------------------Print--------------------------------------------------
+void print(record* base)
+{
+	int i = 0;
+	printf("\nPrint OM:\nLabels: ");
+	do{
+		++i;
+		printf("%d\t", base->label);
+		base = base->next;
+	}
+	while(base->is_base == false);
+	printf("\nSize: %d\n", i);
+}
+
+

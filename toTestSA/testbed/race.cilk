@@ -1,0 +1,75 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "util/benchOptions.h"
+#include "util/timer.h"
+#include "util/defaults.h"
+#include "ds/stack.cilkh"
+
+Stack* g_stack;
+Operation g_add_op = {1, 0};
+
+void batchFunc(void* ds, void* oprec, size_t size, void* result)
+{
+	//pushInternal((Stack*)ds, 0);
+  Stack* stack = ds;
+  BatchRecord* ops = oprec;
+  Operation* op;
+  int i;
+  for (i=0;i<size;i++){
+    if (ops[i].status!=DS_DONE){
+      if (ops[i].status==DS_WAITING){
+				op=ops[i].args;
+				if ((*op).add){
+					pushInternal(stack,(*op).data);
+				}
+				else {
+					popInternal(stack);
+				}
+				ops[i].status=DS_DONE;
+      }
+    }
+  }
+}
+
+cilk void parfor_stack(const int begin, const int end, Operation op)
+{
+  int i;
+
+  if (end - begin <= PARFOR_THRESHOLD) {
+
+		for (i = begin; i <= end; ++i) {
+
+			op.data=i;
+			Cilk_batchify_raw_sequential(_cilk_ws, &batchFunc, g_stack,
+																	 &op.data, sizeof(int), NULL);
+
+		}
+  } else {
+    i = begin+(end-begin)/2;
+    spawn parfor_stack(begin, i, op);
+    spawn parfor_stack(i + 1, end, op);
+  }
+}
+
+/* void dsOp(int i, void *ds) */
+/* { */
+/* 	Cilk_batchify_raw_sequential(&batchFunc, ds, NULL, 0, NULL); */
+/* } */
+
+cilk int main(int argc, char* argv[])
+{
+	BenchOptions options;
+	getOptions(argc, argv, &options);
+
+	g_stack = create_stack();
+
+	startTimer();
+	spawn parfor_stack(0, options.operations - 1, g_add_op);
+	sync;
+	stopTimer();
+
+	printf("%lf\n",getWallTime());
+	return 0;
+}

@@ -1,0 +1,270 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include <linkedList.cilkh>
+#include <../util/defaults.h>
+
+/*!
+* Basic linked list to be utilized for English-Hebrew
+* ordering comparison.
+* Authors: Alex Jones & Shane Deiley
+* June 2014
+*/
+
+//InsertRecord global_ir;
+
+//! initialize linked list
+LinkedList * createLinkedList(){
+
+	LinkedList * tmp;
+	 
+	tmp = (LinkedList*) malloc(sizeof(LinkedList));	
+
+	tmp->head = NULL;
+	tmp->tail = NULL;
+	tmp->size = 0;
+	
+	return tmp;
+}
+
+
+//! Frees linked list's memory
+/*! Frees the memory of the linked list by freeing each of its members and itself
+        \param ll the linked list to be freed from memory
+*/
+void cleanUp(LinkedList * ll) {
+
+	Node * tmp = ll->head;
+	Node * next;
+
+	while (tmp != ll->tail)
+	{
+		next = tmp->next;	
+		free(tmp);
+		
+		tmp = next;	
+	}
+	
+	free(tmp);
+	free(ll);
+}
+
+//! Append a node to the end of a list
+/*! Private function to be called to append node to end of a list
+    	    \param list the list to be appended upon
+	    \param newNode the node being appended
+*/
+cilk void appendNode(LinkedList * list, Node * newNode){
+
+	//TODO: size checks? 
+	if (newNode != NULL)
+	{
+		
+		//if this is an empty list, assign head and tail
+		if (list->size == 0)
+		{
+			list->head = list->tail = newNode;
+			newNode->next = NULL;
+			newNode->prev = NULL;
+			list->size++;
+
+		} else {
+
+			//update last two node's references to each other
+			list->tail->next = newNode;
+			newNode->prev = list->tail;
+
+			newNode->next = NULL;
+		
+			//update tail of the list
+			list->tail = newNode;	
+			list->size++;
+		}
+		
+	} else {
+	
+	       printf("%s\n","Error: trying to append a NULL node");
+	}	
+}
+
+//! Insert a record to be batchified
+/*! Batchify and insert record containing the location and node to be inserted
+        \param list the list to be inserted into
+    	\param x the node in list marking the location of the insert
+        \param y the node to be inserted after x
+*/
+cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
+	
+	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
+	ir->x = x;
+	ir->y = y;	
+
+	Cilk_batchify(_cilk_ws, &insertSeq, list, ir, sizeof(Node), NULL);
+}
+
+//! A non-parallel simulation of batchify insert
+/*! A a non-batchified insert (utilized for testing while batchify updated)
+        \param list the list to be inserted into
+    	\param x the node in list marking the location of the insert
+	\param y the node to be inserted after x
+*/
+cilk void non_batchInsertSeq(LinkedList * list, Node *x, Node *y){
+	
+	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
+	InsertRecord ** irArray = (InsertRecord **) malloc(1 * sizeof(InsertRecord *));
+
+	ir->x = x;
+	ir->y = y;	
+
+	irArray[0] = ir;
+
+	spawn insertSeq((void*)list, (void *)irArray, 1, NULL); 
+
+}
+
+//! 
+/*! Parallel insert for non-batchify insert */
+cilk void non_batchInsertPar(LinkedList * list, InsertRecord ** irArray, int size){
+	
+	spawn insertPar((void*)list, (void *)irArray, (size_t)size, NULL); 
+
+}
+
+/*! Sequential insert. Call ed in non_batchInsertSe */
+cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
+
+	//array of inserts to complete
+	InsertRecord ** records =(InsertRecord **) data;
+	LinkedList * list = (LinkedList *)dataStruct;
+	Node  *x, *y, *z;
+
+	int i = 0;
+	for (; i < size; i++){
+		InsertRecord *ir = records[i];
+
+		// get x and y from record
+		x = ir->x;
+		y = ir->y;
+
+		//if x is null
+		if (!x)
+		{
+			printf("First node is null, skipping batch entry.");
+			free(ir);
+			continue;
+		}
+	
+		//if x isnt tail
+		if (x->next)	
+			z = x->next;
+		 //make z null and change y to tail
+		else
+		{
+			z = NULL;
+			list->tail = y;
+		}
+		//change prev pointers
+		if (z)
+			z->prev = y;
+		y->prev = x;
+	
+		//change next pointers
+		y->next = x->next;
+		//do atomic change of x pointer
+		if(__sync_bool_compare_and_swap(&(x->next), (x->next), y))
+		{
+			printf("Successful swap\n");
+		}
+		
+		
+
+		list->size++;
+		
+		free(ir);	
+	}
+}
+
+/*! parallel version of insert */
+cilk void insertPar(void *dataStruct, void *data, size_t size, void *result)
+{
+	InsertRecord ** irArray = (InsertRecord **)data;
+	LinkedList * list = (LinkedList *) dataStruct;
+	int i = 0;
+	for (; i<size;i++)
+	{
+		spawn atomicInsert(list, irArray[i]);
+	}
+}
+
+/*!  single insert, called by insertPar */
+cilk void atomicInsert(LinkedList * list, InsertRecord *ir){
+	Node * x, *y, *z;
+	x = ir->x;
+	y = ir->y;
+
+	//if x is null
+	if (!ir->x){
+		printf("Node is null, skipping entry");
+		free(ir);
+		return;
+	}	
+
+	//if x isnt tail
+	if (x->next)	
+		z = x->next;
+	 //make z null and change y to tail
+	else
+	{
+		z = NULL;
+		list->tail = y;
+	}
+	//change prev pointers
+	if (z)
+		z->prev = y;
+	y->prev = x;
+
+	//change next pointers
+	y->next = x->next;
+
+	if (__sync_bool_compare_and_swap(&(x->next), x->next, y)){
+		printf("Successful swap\n");
+	}	
+	list->size++;
+	free(ir);	
+}
+
+//! Determine order of two nodes
+/*! We are going to assume that the data in x and y is unique to the list.
+    Finds if the prior is before the former in the list.
+    	  \param list the list in which the nodes reside
+	  \param x the node expected to be in front
+	  \param y the node to be insrted after x
+	  \return 0 if x is before y, 1 otherwise
+*/
+cilk int order(LinkedList * list, Node * x, Node *y ){
+
+	//make sure list is valid
+	
+	/* ========= Why are these commented out? ======= */
+	//assert(list != NULL);
+	//assert((list->size) > 2);
+
+	Node * current;
+	current = list->head;
+
+
+	do {
+	   if (current == y)
+	      return 0;
+	   if (current == x)
+	      return 1;
+
+	   current = current->next;
+
+	} while( current != list->tail);
+
+	printf("%s\n", "Neither node found in linked list. Returning false");
+
+	return 0;
+}

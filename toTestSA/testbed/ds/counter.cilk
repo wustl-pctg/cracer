@@ -1,0 +1,68 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+
+#include "counter.cilkh"
+#include "../util/defaults.h"
+#include "../util/prefixSums.cilkh"
+
+Counter* counterCreate(int init)
+{
+	Counter *c = malloc(sizeof(Counter));
+	c->value = init;
+	return c;
+}
+
+Counter* counterLockCreate(int init)
+{
+	Counter *c = counterCreate(init);
+	Cilk_lock_init(c->lock);
+	return c;
+}
+
+inline int counterGetValue(Counter* c) { return c->value; }
+
+cilk void parforCounterBatchIncrement(int loopCounter, void *argp)
+{
+	IncrArgList *argList = (IncrArgList*)argp;
+	counterBatchIncrement(_cilk_ws, argList->counter, argList->nums[loopCounter]);
+}
+
+void counterBatchIncrement(CilkWorkerState *ws, Counter *c, int incr)
+{
+	Cilk_batchify(ws, batchIncrement, c, &incr, sizeof(int), NULL);
+}
+
+cilk void parforCounterLockIncrement(int loopCounter, void *argp)
+{
+	IncrArgList *argList = (IncrArgList*)argp;
+	counterLockIncrement(argList->counter, argList->nums[loopCounter]);
+}
+void counterLockIncrement(Counter *c, int incr)
+{
+	Cilk_lock(c->lock);
+	c->value += incr;
+	Cilk_unlock(c->lock);
+}
+
+// Private functions.
+cilk void batchIncrement(void *dataStruct, void *data, size_t size, void *result)
+{
+	int *nums = (int*)data;
+	int *count = &(((Counter*)dataStruct)->value);
+	int temp;
+
+	if (size < BATCH_THRESHOLD) {
+		for (temp = 0; temp < size; temp++) {
+			*count += nums[temp];
+		}
+	} else {
+		temp = nums[size-1];
+
+		spawn prefixSumsExc(nums, size, nums);
+		sync;
+
+		result = data;
+		*count += temp + nums[size-1];
+	}
+	return;
+}
