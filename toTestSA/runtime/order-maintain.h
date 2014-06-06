@@ -18,6 +18,14 @@
  */
 
 /*
+ * Currently implemented as a linked list node
+ */
+typedef struct OMNode_s{
+
+	struct OMNode_s *next;
+
+} OMNode;
+/*
  * Abstract Order maintenance DS
  */
 typedef struct linked_list_s {
@@ -27,18 +35,10 @@ typedef struct linked_list_s {
 
 } OM_DS;
 
-/*
- * Currently implemented as a linked list node
- */
-typedef struct OMNode_s{
-
-	struct OMNode_s *next;
-
-} OMNode;
 
 typedef struct insert_op_s {
  OM_DS * ds; //data struct to operate on
- OM_Node * x, *y;//insert node y after x
+ OMNode * x, *y;//insert node y after x
 } InsertRecord;
 
 

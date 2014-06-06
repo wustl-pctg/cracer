@@ -26,6 +26,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
+
+
+
+
 OM_DS * createOM_DS(){
 	OM_DS * tmp = (OM_DS *) malloc(sizeof(OM_DS));
 
@@ -53,5 +58,14 @@ void appendNode(OM_DS * ds, OM_Node *x){
 
 
 }
+
+void OM_DS_Create(CilkContext *const context){
+
+}
+
+void OM_DS_cleanup(CilkContext *const context){
+
+}
+
 
 #endif
