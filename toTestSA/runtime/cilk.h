@@ -54,6 +54,11 @@ FILE_IDENTITY(cilk_h_ident,
 
 #include <cilk-conf.h>
 
+/*******************
+ * Order Maintenance
+ * ****************/
+#include <order-maintain.h>
+
 /***********************************************************\
  * Types used by cilk2c output
 \***********************************************************/
@@ -159,11 +164,10 @@ typedef struct {
   int first_spawn_flag; /*	A flag to maintain whether a spawn has been called
 				but sync hasnt been called yet*/
 
-  SP_Parse_Tree_Node * current_node; /*
-					A reference to the current thread as represented
+  OMNode * current_node;		/*A reference to the current thread as represented by a node
 					in the SP Parse Tree.
 					*/
-  SP_Parse_Tree_Node * post_sync_resume_node; /* A reference to the execution thread to be followed
+  OMNode * post_sync_resume_node; /* A reference to the execution thread to be followed
 						 after a sync is called. */	
 } CilkStackFrame;
 
@@ -607,6 +611,7 @@ typedef struct {
   unsigned int batch_id;
   int retval;
 } BatchFrame;
+
 
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
