@@ -156,14 +156,14 @@ typedef struct {
  *	These variables are needed to store SP-Parse tree node info
  *	as it relates to race detection algorithms.
  * */
-  int first_spawn_flag = 0; /*	A flag to maintain whether a spawn has been called
+  int first_spawn_flag; /*	A flag to maintain whether a spawn has been called
 				but sync hasnt been called yet*/
 
-  SP_Parse_Tree_Node * current_node = 0; /*
+  SP_Parse_Tree_Node * current_node; /*
 					A reference to the current thread as represented
 					in the SP Parse Tree.
 					*/
-  SP_Parse_Tree_Node * post_sync_resume_node = 0; /* A reference to the execution thread to be followed
+  SP_Parse_Tree_Node * post_sync_resume_node; /* A reference to the execution thread to be followed
 						 after a sync is called. */	
 } CilkStackFrame;
 
