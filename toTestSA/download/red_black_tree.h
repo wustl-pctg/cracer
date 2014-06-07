@@ -3,7 +3,7 @@
 #endif
 #include"misc.h"
 #include"stack.h"
-#include "../testbed/ds/linkedList.h"
+#include "../testbed/ds/linkedList.cilkh"
 
 /*  CONVENTIONS:  All data structures for red-black trees have the prefix */
 /*                "rb_" to prevent name conflicts. */

@@ -125,7 +125,7 @@ rb_red_blk_node * RBTreeFind(rb_red_blk_tree * tree, rb_red_blk_node * root, voi
 
 
 /***********************************************************************/
-/*  FUNCTION:  RighttRotate */
+p/*  FUNCTION:  RighttRotate */
 /**/
 /*  INPUTS:  This takes a tree so that it can access the appropriate */
 /*           root and nil pointers, and the node to rotate on. */

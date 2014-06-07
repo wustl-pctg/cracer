@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <linkedList.cilkh>
-#include <../util/defaults.h>
+#include "linkedList.cilkh"
+#include "../util/defaults.h"
 
 /*!
 * Basic linked list to be utilized for English-Hebrew
