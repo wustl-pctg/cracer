@@ -474,6 +474,9 @@ extern void Cilk_event_new_thread(CilkWorkerState *const ws);
 extern void Cilk_destroy_frame(CilkWorkerState *const ws,
                                CilkStackFrame *f, size_t size);
 
+
+/**OM stuff**/
+
 /***********************************************************
  *  cilk2c-only stuff
  ***********************************************************/
