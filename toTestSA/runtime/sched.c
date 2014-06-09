@@ -2057,19 +2057,39 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
  * Order Maintenance for race detection
  */
 void OM_DS_init(CilkContext *const context){
-	
+	if (context->Cilk_global_state){
+		prtinf("Debug: OM_DS_init");
+		context->Cilk_global_state->hebrewOM_DS = Cilk_malloc(sizeof(OM_DS));
+		context->Cilk_global_state->englishOM_DS = Cilk_malloc(sizeof(OM_DS));
+	}	
 }
 
 void OM_DS_free_and_free_nodes(CilkContext *const context){
-
+	//free nodes
+	//
+	
+	//free ds
+        printf("Debug: free OMDS");	
+	Cilk_free(context->Cilk_global_state->hebrewOM_DS);
+	Cilk_free(context->Cilk_global_state->englishOM_DS);
 
 }
 
-
 void OM_DS_insert(void *ds, void * x, void * y){
+
+	InsertRecord *ir = (InsertRecord *) Cilk_malloc(sizeof(InsertRecord));
+	ir->
+	Cilk_batchify(ds, 	
 }
 
 void OM_DS_append(void *ds, void * x){
+	if (ds && x){
+	OM_DS * om_ds = (OM_DS *)ds;
+	
+	}
+	else {
+	printf("Debug: appending null node or to null ds");
+	}
 }
 
 int OM_DS_order(void *ds, void * x, void * y){
