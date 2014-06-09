@@ -1786,6 +1786,8 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 	return;
 }
 
+
+
 /*********************************************************
  * Batch scheduler for data structure operations
  *********************************************************/
@@ -2051,7 +2053,28 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 
 	return;
 }
+/*************
+ * Order Maintenance for race detection
+ */
+void OM_DS_init(CilkContext *const context){
 
+}
+
+void OM_DS_free_and_free_nodes(CilkContext *const context){
+
+
+}
+
+
+void OM_DS_insert(void *ds, void * x, void * y){
+}
+
+void OM_DS_append(void *ds, void * x){
+}
+
+int OM_DS_order(void *ds, void * x, void * y){
+return 0;
+}
 /*
  * initialization of the scheduler.
  */

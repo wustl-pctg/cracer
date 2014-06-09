@@ -482,5 +482,6 @@ void Cilk_really_exit_1(CilkWorkerState *const ws,
 		ws, USE_PARAMETER(invoke_main), res);
 }
 
+
 /* magic consistency check - for compilation/link*/
 int CILK_MAGIC_NAME;
