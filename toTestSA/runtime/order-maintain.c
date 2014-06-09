@@ -19,36 +19,7 @@
 
 #ifndef _CILK_ORDER_MAINTAIN_C
 #define _CILK_ORDER_MAINTAIN_C
-#include <cilk.h>
-#include <cilk-cilk2c-pre.h>
-#include <cilk-cilk2c.h>
-#include <stdio.h>
-#include <stdlib.h>
 
-
-/*
- * Currently implemented as a linked list node
- */
-typedef struct OMNode_s{
-
-	struct OMNode_s *next;
-
-} OMNode;
-/*
- * Abstract Order maintenance DS
- */
-typedef struct linked_list_s {
-
-	OMNode * head, *tail;
-	int size;
-
-} OM_DS;
-
-
-typedef struct insert_op_s {
- OM_DS * ds; //data struct to operate on
- OMNode * x, *y;//insert node y after x
-} InsertRecord;
 
 
 
@@ -66,26 +37,26 @@ OM_DS * createOM_DS(){
 
 void destroyOM_DS(OM_DS * ds){
 
-
+	return;
 }
 
 
 void insert(OM_DS * ds, OM_Node *x, OM_Node *y){
 
-
+	return;
 
 }
 
 void appendNode(OM_DS * ds, OM_Node *x){
 
-
+	return;
 }
 
 void OM_DS_Create(CilkContext *const context){
 
 	if (context->Cilk_global_state){
-		context->Cilk_global_state->englishOM_DS = malloc(sizeof(OM_DS));
-		context->Cilk_global_state->hebrewOM_DS = malloc(sizeof(OM_DS));
+		context->Cilk_global_state->englishOM_DS = createOM_DS());
+		context->Cilk_global_state->hebrewOM_DS = createOM_DS();
 		assert(context->Cilk_global_state->englishOM_DS && context->Cilk_global_state->hebrewOM_DS); //should this be cilk_assert?	
 	}
 }

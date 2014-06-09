@@ -150,6 +150,10 @@ Closure *Cilk_create_initial_thread(CilkContext *const context,
   f->header.sig = USE_SHARED1(invoke_main_sig);
   WHEN_CILK_DEBUG(f->header.magic = CILK_STACKFRAME_MAGIC);
 
+  /**ORDER MAINTENANCE**/
+  f->header.current_node = Cilk_malloc(sizeof(struct OMNode_s));
+  f->header.first_spawn_flag = 0;
+  /**END ORDER MAINTENANCE**/
   f->args = args;
   f->return_size = return_size;
   f->import_main = import_main;

@@ -54,11 +54,6 @@ FILE_IDENTITY(cilk_h_ident,
 
 #include <cilk-conf.h>
 
-/*******************
- * Order Maintenance
- * ****************/
-#include <order-maintain.h>
-
 /***********************************************************\
  * Types used by cilk2c output
 \***********************************************************/
@@ -128,14 +123,9 @@ WHEN_CILK_ND(
              )
 
 /*****************************
- *	SP-Parse Tree Node	
+ *	Order maintenance forward declaration	
  ******************************/
-typedef struct {
-
-
-
-} SP_Parse_Tree_Node;
-
+struct OMNode_s;
 
 /*
  * a stack frame consists of this header and of a procedure-specific
@@ -164,10 +154,10 @@ typedef struct {
   int first_spawn_flag; /*	A flag to maintain whether a spawn has been called
 				but sync hasnt been called yet*/
 
-  OMNode * current_node;		/*A reference to the current thread as represented by a node
+  struct OMNode_s * current_node;		/*A reference to the current thread as represented by a node
 					in the SP Parse Tree.
 					*/
-  OMNode * post_sync_resume_node; /* A reference to the execution thread to be followed
+  struct OMNode_s * post_sync_resume_node; /* A reference to the execution thread to be followed
 						 after a sync is called. */	
 } CilkStackFrame;
 
@@ -615,8 +605,33 @@ typedef struct {
 /*************************************************************
  *Order maintenance stuff
  ************************************************************/
-extern void OM_DS_Create(CilkContext *const context);
-extern void OM_DS_cleanup(CilkContext *const context);
+
+/*
+ * Currently implemented as a linked list node
+ */
+typedef struct OMNode_s{
+
+	struct OMNode_s *next;
+
+} OMNode;
+/*
+ * Abstract Order maintenance DS
+ */
+typedef struct linked_list_s {
+
+	OMNode * head, *tail;
+	int size;
+
+} OM_DS;
+
+
+typedef struct insert_op_s {
+ OM_DS * ds; //data struct to operate on
+ OMNode * x, *y;//insert node y after x
+} InsertRecord;
+
+
+
 
 
 
