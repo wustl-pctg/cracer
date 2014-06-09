@@ -16,7 +16,7 @@ typedef struct Node_s {
 typedef struct {
 
 	Node * head,* tail;
-	int size;
+	int size;x
 } LinkedList;
 
 
