@@ -16,7 +16,8 @@
  *
  * =====================================================================================
  */
-
+#ifndef ORDER_MAINTAIN_C
+#define ORDER_MAINTAIN_C
 /*
  * Currently implemented as a linked list node
  */
@@ -41,4 +42,4 @@ typedef struct insert_op_s {
  OMNode * x, *y;//insert node y after x
 } InsertRecord;
 
-
+#endif
