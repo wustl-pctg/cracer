@@ -272,6 +272,9 @@ static void Cilk_global_init(CilkContext *const context)
 {
   init_variables(context);
 
+  /*order mainteancne for race detection*/
+  OM_DS_init(context);
+
   /* debug module */
   Cilk_debug_init(context);
 
@@ -315,6 +318,9 @@ void Cilk_terminate(CilkContext *const context)
 
   /* Terminate debug code */
   Cilk_debug_terminate(context);
+
+  /*free order maintenance for race detection space */
+  OM_DS_free_and_free_nodes(context);
 
   /* Free the address space */
   Cilk_free_global_state(context);
