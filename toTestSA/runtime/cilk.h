@@ -612,6 +612,12 @@ typedef struct {
   int retval;
 } BatchFrame;
 
+/*************************************************************
+ *Order maintenance stuff
+ ************************************************************/
+extern void OM_DS_Create(CilkContext *const context);
+extern void OM_DS_cleanup(CilkContext *const context);
+
 
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */

@@ -31,6 +31,12 @@ FILE_IDENTITY(ident_cilk_internal_h,
 #include <pthread.h>
 #endif
 
+
+/*****************************************************
+ * Order maintenance stuff
+ * ***************************************************/
+#include <order-maintain.h>
+
 /******************************************************
  *  Locks and associated operations
  ******************************************************/
