@@ -151,8 +151,11 @@ Closure *Cilk_create_initial_thread(CilkContext *const context,
   WHEN_CILK_DEBUG(f->header.magic = CILK_STACKFRAME_MAGIC);
 
   /**ORDER MAINTENANCE**/
+  printf("DEBUG: creating first node");
   f->header.current_node = Cilk_malloc(sizeof(struct OMNode_s));
   f->header.first_spawn_flag = 0;
+  printf("englishDS: %d", context->Cilk_global_state->englishOM_DS);
+  printf("hebrewDS: %d", context->Cilk_global_state->hebrewOM_DS);
   /**END ORDER MAINTENANCE**/
   f->args = args;
   f->return_size = return_size;

@@ -23,6 +23,7 @@
 #include <cilk-internal.h>
 #include <stdio.h>
 
+
 #ifdef CILK_USE_PERFCTR
 volatile const struct vperfctr_state *__cilk_vperfctr_init(int);
 #endif

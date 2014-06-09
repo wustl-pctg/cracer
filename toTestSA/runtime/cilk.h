@@ -54,6 +54,8 @@ FILE_IDENTITY(cilk_h_ident,
 
 #include <cilk-conf.h>
 
+
+
 /***********************************************************\
  * Types used by cilk2c output
 \***********************************************************/
@@ -125,7 +127,6 @@ WHEN_CILK_ND(
 /*****************************
  *	Order maintenance forward declaration	
  ******************************/
-struct OMNode_s;
 
 /*
  * a stack frame consists of this header and of a procedure-specific
@@ -602,9 +603,7 @@ typedef struct {
   int retval;
 } BatchFrame;
 
-/*************************************************************
- *Order maintenance stuff
- ************************************************************/
+/***OM for race detection **/
 
 /*
  * Currently implemented as a linked list node
@@ -613,13 +612,13 @@ typedef struct OMNode_s{
 
 	struct OMNode_s *next;
 
-} OMNode;
+} OM_Node;
 /*
  * Abstract Order maintenance DS
  */
 typedef struct linked_list_s {
 
-	OMNode * head, *tail;
+	OM_Node * head, *tail;
 	int size;
 
 } OM_DS;
@@ -627,13 +626,8 @@ typedef struct linked_list_s {
 
 typedef struct insert_op_s {
  OM_DS * ds; //data struct to operate on
- OMNode * x, *y;//insert node y after x
+ OM_Node * x, *y;//insert node y after x
 } InsertRecord;
-
-
-
-
-
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__

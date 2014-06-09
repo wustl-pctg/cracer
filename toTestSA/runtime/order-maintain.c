@@ -19,7 +19,8 @@
 
 #ifndef _CILK_ORDER_MAINTAIN_C
 #define _CILK_ORDER_MAINTAIN_C
-
+#include <cilk.h>
+#include <malloc.h>
 
 
 
