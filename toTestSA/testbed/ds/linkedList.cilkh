@@ -1,7 +1,7 @@
 #ifndef LINKEDLIST_H
 #define LINKEDLIST_H
 
-#include "../../runtime/cilk-lib.cilkh"
+#include <cilk-lib.cilkh>
 #include <stdlib.h>
 #include <stdio.h>
 

@@ -16,10 +16,11 @@ libcilk_g_p_la-sched.lo: sched.c /usr/include/stdc-predef.h ../config.h \
  /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
  /usr/include/x86_64-linux-gnu/bits/environments.h \
  /usr/include/x86_64-linux-gnu/bits/confname.h /usr/include/getopt.h \
- cilk-conf.h cilk-internal.h ../config.h /usr/include/string.h \
- /usr/include/xlocale.h invoke-batch.c cilk-cilk2c-pre.h \
- /usr/include/stdio.h /usr/include/libio.h /usr/include/_G_config.h \
- /usr/include/wchar.h /usr/lib/gcc/x86_64-linux-gnu/4.8/include/stdarg.h \
+ cilk-conf.h order-maintain.h cilk-internal.h ../config.h \
+ /usr/include/string.h /usr/include/xlocale.h invoke-batch.c \
+ cilk-cilk2c-pre.h /usr/include/stdio.h /usr/include/libio.h \
+ /usr/include/_G_config.h /usr/include/wchar.h \
+ /usr/lib/gcc/x86_64-linux-gnu/4.8/include/stdarg.h \
  /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
  /usr/include/x86_64-linux-gnu/bits/sys_errlist.h cilk-cilk2c.h
 
@@ -74,6 +75,8 @@ cilk-sysdep.h:
 /usr/include/getopt.h:
 
 cilk-conf.h:
+
+order-maintain.h:
 
 cilk-internal.h:
 

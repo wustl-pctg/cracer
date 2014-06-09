@@ -20,8 +20,8 @@ sysdep.lo: sysdep.c /usr/include/stdc-predef.h \
  /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
  /usr/include/x86_64-linux-gnu/bits/environments.h \
  /usr/include/x86_64-linux-gnu/bits/confname.h /usr/include/getopt.h \
- cilk-conf.h cilk-internal.h ../config.h /usr/include/fcntl.h \
- /usr/include/x86_64-linux-gnu/bits/fcntl.h \
+ cilk-conf.h order-maintain.h cilk-internal.h ../config.h \
+ /usr/include/fcntl.h /usr/include/x86_64-linux-gnu/bits/fcntl.h \
  /usr/include/x86_64-linux-gnu/bits/fcntl-linux.h \
  /usr/include/x86_64-linux-gnu/bits/stat.h \
  /usr/include/x86_64-linux-gnu/sys/mman.h \
@@ -99,6 +99,8 @@ cilk-sysdep.h:
 /usr/include/getopt.h:
 
 cilk-conf.h:
+
+order-maintain.h:
 
 cilk-internal.h:
 

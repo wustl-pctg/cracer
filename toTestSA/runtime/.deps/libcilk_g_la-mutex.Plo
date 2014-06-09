@@ -20,10 +20,11 @@ libcilk_g_la-mutex.lo: mutex.c /usr/include/stdc-predef.h \
  /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
  /usr/include/x86_64-linux-gnu/bits/environments.h \
  /usr/include/x86_64-linux-gnu/bits/confname.h /usr/include/getopt.h \
- cilk-conf.h cilk-internal.h ../config.h /usr/include/pthread.h \
- /usr/include/endian.h /usr/include/x86_64-linux-gnu/bits/endian.h \
- /usr/include/sched.h /usr/include/x86_64-linux-gnu/bits/sched.h \
- /usr/include/xlocale.h /usr/include/x86_64-linux-gnu/bits/setjmp.h
+ cilk-conf.h order-maintain.h cilk-internal.h ../config.h \
+ /usr/include/pthread.h /usr/include/endian.h \
+ /usr/include/x86_64-linux-gnu/bits/endian.h /usr/include/sched.h \
+ /usr/include/x86_64-linux-gnu/bits/sched.h /usr/include/xlocale.h \
+ /usr/include/x86_64-linux-gnu/bits/setjmp.h
 
 /usr/include/stdc-predef.h:
 
@@ -88,6 +89,8 @@ cilk-sysdep.h:
 /usr/include/getopt.h:
 
 cilk-conf.h:
+
+order-maintain.h:
 
 cilk-internal.h:
 

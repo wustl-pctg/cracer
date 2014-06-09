@@ -1,6 +1,7 @@
 #ifdef DMALLOC
 #include <dmalloc.h>
 #endif
+#include <cilk-lib.cilkh>
 #include"misc.h"
 #include"stack.h"
 #include "../testbed/ds/linkedList.cilkh"

@@ -18,7 +18,8 @@ libcilkrt0p_a-cilkrt0.o: cilkrt0.c /usr/include/stdc-predef.h \
  /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
  /usr/include/x86_64-linux-gnu/sys/types.h \
  /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h \
- /usr/include/x86_64-linux-gnu/bits/stdlib-float.h cilk.h cilk-conf.h
+ /usr/include/x86_64-linux-gnu/bits/stdlib-float.h cilk.h cilk-conf.h \
+ order-maintain.h
 
 /usr/include/stdc-predef.h:
 
@@ -77,3 +78,5 @@ cilk-sysdep.h:
 cilk.h:
 
 cilk-conf.h:
+
+order-maintain.h:

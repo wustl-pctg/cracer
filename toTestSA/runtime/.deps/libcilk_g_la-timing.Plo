@@ -16,7 +16,7 @@ libcilk_g_la-timing.lo: timing.c /usr/include/stdc-predef.h cilk.h \
  /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
  /usr/include/x86_64-linux-gnu/bits/environments.h \
  /usr/include/x86_64-linux-gnu/bits/confname.h /usr/include/getopt.h \
- cilk-conf.h cilk-internal.h ../config.h
+ cilk-conf.h order-maintain.h cilk-internal.h ../config.h
 
 /usr/include/stdc-predef.h:
 
@@ -67,6 +67,8 @@ cilk-sysdep.h:
 /usr/include/getopt.h:
 
 cilk-conf.h:
+
+order-maintain.h:
 
 cilk-internal.h:
 
