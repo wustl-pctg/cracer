@@ -140,6 +140,11 @@ typedef struct {
   WHEN_CILK_ND(DisjointSetMemberT s_set;)
   WHEN_CILK_ND(DisjointSetMemberT p_set;)
   WHEN_CILK_DEBUG(volatile unsigned int magic;)
+
+  //Order maintenance for race detector
+  int spawn_first_flag;
+  void * current_node, *post_sync_node;
+
 } CilkStackFrame;
 
 
@@ -583,6 +588,7 @@ typedef struct {
   unsigned int batch_id;
   int retval;
 } BatchFrame;
+
 
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */

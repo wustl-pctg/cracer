@@ -234,6 +234,10 @@ struct CilkGlobalState_s{
 	//	CILK_CACHE_LINE_PAD;
   /* End BATCHER */
 
+  /*Order Maintenance for race detection*/
+  void * englishOM_DS, hebrewOM_DS;
+ /*End OM*/
+
   Cilk_time critical_path;
   Cilk_time total_work;
   int done; /* current calculation */
