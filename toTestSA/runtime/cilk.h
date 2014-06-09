@@ -592,6 +592,30 @@ typedef struct {
   int retval;
 } BatchFrame;
 
+/*****************************
+ *Order Maintenance for race detect
+ *////////////////////////////////
+
+typedef struct OM_Node_s{
+ struct OM_Node_s *next;
+ int id;
+
+} OM_Node;
+
+typedef struct OM_DS_s {
+ OM_Node *head,*tail;
+ int size;
+
+} OM_DS;
+
+typedef struct {
+ OM_DS *ds;
+ OM_Node *x;
+ OM_Node *y;
+
+} InsertRecord;
+
+
 
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
