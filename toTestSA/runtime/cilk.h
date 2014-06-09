@@ -54,8 +54,6 @@ FILE_IDENTITY(cilk_h_ident,
 
 #include <cilk-conf.h>
 
-
-
 /***********************************************************\
  * Types used by cilk2c output
 \***********************************************************/
@@ -124,10 +122,6 @@ WHEN_CILK_ND(
              typedef unsigned int DisjointSetMemberT;
              )
 
-/*****************************
- *	Order maintenance forward declaration	
- ******************************/
-
 /*
  * a stack frame consists of this header and of a procedure-specific
  * part
@@ -146,21 +140,8 @@ typedef struct {
   WHEN_CILK_ND(DisjointSetMemberT s_set;)
   WHEN_CILK_ND(DisjointSetMemberT p_set;)
   WHEN_CILK_DEBUG(volatile unsigned int magic;)
-
-	
-/*Added by Alex Jones
- *	These variables are needed to store SP-Parse tree node info
- *	as it relates to race detection algorithms.
- * */
-  int first_spawn_flag; /*	A flag to maintain whether a spawn has been called
-				but sync hasnt been called yet*/
-
-  struct OMNode_s * current_node;		/*A reference to the current thread as represented by a node
-					in the SP Parse Tree.
-					*/
-  struct OMNode_s * post_sync_resume_node; /* A reference to the execution thread to be followed
-						 after a sync is called. */	
 } CilkStackFrame;
+
 
 
 /*
@@ -603,31 +584,6 @@ typedef struct {
   int retval;
 } BatchFrame;
 
-/***OM for race detection **/
-
-/*
- * Currently implemented as a linked list node
- */
-typedef struct OMNode_s{
-
-	struct OMNode_s *next;
-
-} OM_Node;
-/*
- * Abstract Order maintenance DS
- */
-typedef struct linked_list_s {
-
-	OM_Node * head, *tail;
-	int size;
-
-} OM_DS;
-
-
-typedef struct insert_op_s {
- OM_DS * ds; //data struct to operate on
- OM_Node * x, *y;//insert node y after x
-} InsertRecord;
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__

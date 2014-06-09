@@ -31,7 +31,6 @@ FILE_IDENTITY(ident_cilk_internal_h,
 #include <pthread.h>
 #endif
 
-
 /******************************************************
  *  Locks and associated operations
  ******************************************************/
@@ -234,10 +233,6 @@ struct CilkGlobalState_s{
 	volatile unsigned int batch_lock;
 	//	CILK_CACHE_LINE_PAD;
   /* End BATCHER */
-  /* ORDER MAINTENANCE */
-  OM_DS *englishOM_DS, *hebrewOM_DS;
-
-  /* End ORDER MAINTENANCE */
 
   Cilk_time critical_path;
   Cilk_time total_work;
@@ -442,14 +437,6 @@ extern void Cilk_lower_priority(CilkWorkerState *const ws);
 extern void Cilk_raise_priority(CilkWorkerState *const ws);
 extern void Cilk_yield(CilkWorkerState *const ws);
 extern int Cilk_partition_size(void);
-
-
-
-/*functions used by order maintenance*/
-extern void OM_DS_Create(CilkContext *const context);
-extern void OM_DS_cleanup(CilkContext *const context);
-
-
 
 /*
  * functions used by the scheduler and by other protocols

@@ -23,7 +23,6 @@
 #include <cilk-internal.h>
 #include <stdio.h>
 
-
 #ifdef CILK_USE_PERFCTR
 volatile const struct vperfctr_state *__cilk_vperfctr_init(int);
 #endif
@@ -450,8 +449,7 @@ void Cilk_start(CilkContext *const context,
   Cilk_scheduler_init_2(context);
 
   Batcher_init(context);
-  /* Init for order maintenance*/
-  OM_DS_Create(context);
+
   //  USE_PARAMETER1(invoke_batch) = Batcher_prepare_batch_structures(context);
   //  USE_SHARED1(batch_frame) = Cilk_malloc(sizeof(BatchFrame));
   //  USE_SHARED1(batch_frame)->args = Cilk_malloc(sizeof(BatchArgs));
@@ -464,8 +462,6 @@ void Cilk_start(CilkContext *const context,
   Cilk_wakeup_workers(context);
 
   Batcher_cleanup(context);
-  /*Clean up order maintenance data struct*/
-  OM_DS_cleanup(context);
 
   Cilk_internal_malloc_global_cleanup(context);
 

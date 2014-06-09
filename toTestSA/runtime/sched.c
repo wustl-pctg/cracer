@@ -1790,7 +1790,6 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
  * Batch scheduler for data structure operations
  *********************************************************/
 #include "invoke-batch.c"
-#include "order-maintain.c"
 
 static inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
 {
@@ -2155,7 +2154,3 @@ void Cilk_exit_from_user_main(CilkWorkerState *const ws, Closure *cl, int res)
 
 	Closure_unlock(ws, cl);
 }
-
-
-
-
