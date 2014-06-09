@@ -1,6 +1,5 @@
 #include "red_black_tree.h"
 
-extern SinLinkList * makeList();
 /***********************************************************************/
 /*  FUNCTION:  RBTreeCreate */
 /**/
@@ -236,7 +235,7 @@ rb_red_blk_node * RBTreeInsert(rb_red_blk_tree* tree, void* key, void* info) {
 
   // If x's key is already in tree, return it after appending to its nodes_list
   x = RBExactQuery(tree, key);
-  if (x!=NULL) {
+  if (x) {
     insert(x->nodes_list, info);
     return x;
   }
@@ -421,7 +420,7 @@ void InorderTreePrint(rb_red_blk_tree* tree, rb_red_blk_node* x) {
 void TreeDestHelper(rb_red_blk_tree* tree, rb_red_blk_node* x) {
   rb_red_blk_node* nil=tree->nil;
   if (x != nil) {
-    destoryList(x->nodes_list); //Should free memory of list and nodes
+    destroyList(x->nodes_list); //Should free memory of list and nodes
     TreeDestHelper(tree,x->left);
     TreeDestHelper(tree,x->right);
     tree->DestroyKey(x->key);
@@ -446,8 +445,8 @@ void TreeDestHelper(rb_red_blk_tree* tree, rb_red_blk_node* x) {
 
 void RBTreeDestroy(rb_red_blk_tree* tree) {
   TreeDestHelper(tree,tree->root->left);
-  destoryList(tree->root->nodes_list);
-  destoryList(tree->nil->nodes_list);
+  destroyList(tree->root->nodes_list);
+  destroyList(tree->nil->nodes_list);
   free(tree->root);
   free(tree->nil);
   free(tree);

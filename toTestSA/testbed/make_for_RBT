@@ -1,0 +1,17 @@
+CC=gcc
+CFLAGS= -c -Wall
+LDFLAGS=-g
+SOURCES= ds/singlyLinkedList.c ds/misc.c ds/stack.c ds/red_black_tree.c test_red_black_tree.c
+OBJECTS=$(SOURCES: .c=.o)
+EXECUTABLE=RBTest
+
+all: $(SOURCES) $(EXECUTABLE)
+
+$(EXECUTABLE): $(OBJECTS)
+	       $(CC) $(LDFLAGS) $(OBJECTS) -o $@
+
+.cpp.o:
+	$(CC) $(CFLAGS) $< -o $@
+
+clean:
+	rm -rf *o RBTest

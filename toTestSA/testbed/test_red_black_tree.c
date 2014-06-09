@@ -1,9 +1,9 @@
-#include <red_black_tree.h>
+#include "ds/red_black_tree.h"
 #include "ds/misc.h"
-#include<stdio.h>
-#include<ctype.h>
+#include <stdio.h>
+#include <ctype.h>
 
-extern SinLinkList * makeList();
+//extern SinLinkList * makeList();
 
 /*  this file has functions to test a red-black tree of integers */
 

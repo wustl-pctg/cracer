@@ -1,9 +1,9 @@
 #ifdef DMALLOC
 #include <dmalloc.h>
 #endif
-#include <misc.h>
-#include <stack.h>
-#include <singlyLinkedList.h>
+#include "misc.h"
+#include "stack.h"
+#include "singlyLinkedList.h"
 
 /*  CONVENTIONS:  All data structures for red-black trees have the prefix */
 /*                "rb_" to prevent name conflicts. */

@@ -9,11 +9,9 @@ SinLinkList * makeList() {
 
   sll = (SinLinkList*)malloc(sizeof(SinLinkList));
   
-  sll->head = sll->head->data = NULL;
-  sll->head->next = sll->tail;
+  sll->head = NULL;
+  sll->tail = NULL;
   
-  sll->tail = sll->tail->next = sll->tail->data = sll->tail->next->data = NULL;
-
   sll->size = 0;
 
   return sll;
@@ -54,6 +52,7 @@ void insert(SinLinkList * sll, void * data) {
   if(sll->size == 0)
   {
     sll->head = sll->tail = node;
+    sll->head->next = sll->tail;
     sll->size = sll->size + 1;
     return;
   }
@@ -75,7 +74,7 @@ s_node * find(SinLinkList * sll, void * data) {
   s_node * current;
   
   current = sll->head;
-  while(curent->data != data) 
+  while(current->data != data) 
   {   
     current = current->next;
   }
