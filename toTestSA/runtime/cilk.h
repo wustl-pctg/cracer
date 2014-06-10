@@ -343,7 +343,7 @@ typedef struct {
   volatile const struct vperfctr_state *perfctr_kstate;
 #endif
   /*ORDER MAINTENANCE FOR RACE DETECT*/
-  OM_Node *currentNode;
+  OM_Node *currentNode, *post_sync_node;
   //add data structs to hold leftmost/rightmost read/write pointers
 
  

@@ -438,8 +438,11 @@ static inline int Closure_has_children(Closure *cl)
 static inline void Closure_init(CilkContext *const context,
 																CilkWorkerState *const UNUSED(ws), Closure *new)
 {
-	Cilk_mutex_init(context, &new->mutex);
+	//adding order maintenance test code
+	OM_DS_append(context->Cilk_global_state->englishOM_DS, NULL);
 
+	Cilk_mutex_init(context, &new->mutex);
+	
 	new->cp = (Cilk_time) 0;
 	new->work = (Cilk_time) 0;
 
@@ -1373,6 +1376,13 @@ int Cilk_sync(CilkWorkerState *const ws)
 		res = 1;
 	}
 
+	/*Order maintenance for race detect*/
+	if (ws->post_sync_node)
+		{ws->currentNode = ws->post_sync_node; Cilk_free(post_sync_node);}	
+	else
+		printf("Debug:No post_sync_node to assign to current node error\n");	
+	/*End order maintenance for race detect*/
+
 	Closure_unlock(ws, t);
 
 	deque_unlock(ws, ws->self, ws->current_deque_pool);
@@ -2068,9 +2078,9 @@ void OM_DS_init(CilkContext *const context){
 void OM_DS_free_and_free_nodes(CilkContext *const context){
 	//free nodes
 	#ifdef OM_IS_LL
-	OM_LL_free_nodes(context);
+	OM_LL_free_nodes_internal(context);
 	#else
-	OM_free_nodes(context);
+	OM_free_nodes_internal(context);
 	#endif
 	//free ds
         printf("Debug: free OMDS\n");	
@@ -2080,11 +2090,29 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 }
 //frees node if LL is the OM_DS
 void OM_LL_free_nodes_internal(CilkContext *const context){
+	int i = 0;
+	OM_Node  * node, *nextNode;
+
 	printf("DEBUG:LL free nodes\n");
-	
+	node = context->Cilk_global_state->englishOM_DS->head;
+
+	while(node != NULL){  
+		nextNode = node->next;
+		Cilk_free(node);
+		node = nextNode;
+	}
+
+	node = context->Cilk_global_state->hebrewOM_DS->head;
+
+	while(node != NULL){  
+		nextNode = node->next;
+		Cilk_free(node);
+		node = nextNode;
+	}	
+			
 }
 //frees node if OM_DS is not linked list
-void OM_free_nodes_internal(CilkContext *const context){printf("DEBUG: OMDS free nodes\n");}
+void OM_free_nodes_internal(CilkContext *const context){printf("DEBUG: OMDS free nodes -- NOT COMPLETED\n");}
 
 
 void OM_DS_insert(void *ds, void * _x, void * _y){
@@ -2129,18 +2157,37 @@ void OM_DS_insert(void *ds, void * _x, void * _y){
 	#endif	
 }
 
+
 void OM_DS_append(void *ds, void * _x){
+	printf("Debug: appending node\n");
+	#ifdef OM_IS_LL
+
 	if (ds && _x){
-	OM_DS * om_ds = (OM_DS *)ds;
-	
+		OM_DS * om_ds = (OM_DS *)ds;
+		OM_Node * node = (OM_Node*)_x;
+		if (om_ds->size == 0)
+			{
+			om_ds->tail = om_ds->head = node; 
+			node->next = NULL; 
+			om_ds->size++;
+			}
+		else 	{ //if l.l. has nodes already
+			om_ds->tail->next = node;
+			om_ds->tail = node;
+			node->next = NULL;
+			om_ds->size++;	
+			}
 	}
 	else {
 	printf("Debug: appending null node or to null ds\n");
 	}
+	#else
+	printf("Debug: Don't know how to append to OM_DS yet\n");
+	#endif
 }
 
 int OM_DS_order(void *ds, void * _x, void * _y){
-return 0;
+	return 0;
 }
 /*
  * initialization of the scheduler.

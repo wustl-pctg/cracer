@@ -156,6 +156,13 @@ Closure *Cilk_create_initial_thread(CilkContext *const context,
 
   t->frame = &f->header;
 
+ /*Order maintenance for race detections*/
+  OM_Node * main_node = (OM_Node *)Cilk_malloc(sizeof(OM_Node));
+  ws->currentNode = main_node;
+  
+  OM_DS_append(context->Cilk_global_state->hebrewOM_DS, main_node); 
+  OM_DS_append(context->Cilk_global_state->englishOM_DS, main_node); 
+
   /* Initialize the signature of Cilk_main */
   memset( USE_SHARED1(invoke_main_sig), 0 , 3*sizeof(CilkProcInfo) );
   USE_SHARED1(invoke_main_sig)[0].size = sizeof(int);

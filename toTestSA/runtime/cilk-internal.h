@@ -235,7 +235,7 @@ struct CilkGlobalState_s{
   /* End BATCHER */
 
   /*Order Maintenance for race detection*/
-  void * englishOM_DS, *hebrewOM_DS;
+  OM_DS * englishOM_DS, *hebrewOM_DS;
  /*End OM*/
 
   Cilk_time critical_path;
