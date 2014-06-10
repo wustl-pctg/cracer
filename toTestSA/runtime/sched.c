@@ -2053,12 +2053,12 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 
 	return;
 }
-/*************
+/**************************************\
  * Order Maintenance for race detection
- */
+ ***************************************/
 void OM_DS_init(CilkContext *const context){
 	if (context->Cilk_global_state){
-	//	prtinf("Debug: OM_DS_init");
+		printf("Debug: OM_DS_init\n");
 		context->Cilk_global_state->hebrewOM_DS = Cilk_malloc(sizeof(OM_DS));
 		context->Cilk_global_state->englishOM_DS = Cilk_malloc(sizeof(OM_DS));
 	}	
@@ -2073,17 +2073,18 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 	OM_free_nodes(context);
 	#endif
 	//free ds
-        //printf("Debug: free OMDS");	
+        printf("Debug: free OMDS\n");	
 	Cilk_free(context->Cilk_global_state->hebrewOM_DS);
 	Cilk_free(context->Cilk_global_state->englishOM_DS);
 
 }
 //frees node if LL is the OM_DS
 void OM_LL_free_nodes(CilkContext *const context){
-	printf("LL free nodes");
+	printf("DEBUG:LL free nodes\n");
+	
 }
 //frees node if OM_DS is not linked list
-void OM_free_nodes(CilkContext *const context){}
+void OM_free_nodes(CilkContext *const context){printf("DEBUG: OMDS free nodes\n");}
 
 
 void OM_DS_insert(void *ds, void * x, void * y){
@@ -2099,7 +2100,7 @@ void OM_DS_append(void *ds, void * x){
 	
 	}
 	else {
-	//printf("Debug: appending null node or to null ds");
+	printf("Debug: appending null node or to null ds\n");
 	}
 }
 
