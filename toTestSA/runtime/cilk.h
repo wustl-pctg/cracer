@@ -91,6 +91,29 @@ struct cilk_alloca_header {
   size_t size;
 };
 
+/*****************************
+ *Order Maintenance for race detect
+ ******************************/
+
+typedef struct OM_Node_s{
+ struct OM_Node_s *next;
+ int id; //needed?
+
+} OM_Node;
+
+typedef struct OM_DS_s {
+ OM_Node *head,*tail;
+ int size;
+
+} OM_DS;
+
+typedef struct {
+ OM_DS *ds;
+ OM_Node *x;
+ OM_Node *y;
+
+} InsertRecord;
+
 /***********************************************************\
  * Hooks
 \***********************************************************/
@@ -143,7 +166,7 @@ typedef struct {
 
   //Order maintenance for race detector
   int spawn_first_flag;
-  void * current_node, *post_sync_node;
+  OM_Node * current_node, *post_sync_node;
 
 } CilkStackFrame;
 
@@ -319,6 +342,9 @@ typedef struct {
 #ifdef CILK_USE_PERFCTR
   volatile const struct vperfctr_state *perfctr_kstate;
 #endif
+  /*ORDER MAINTENANCE FOR RACE DETECT*/
+  OM_Node *currentNode;
+  
 } CilkWorkerState;
 
 typedef struct{
@@ -591,29 +617,6 @@ typedef struct {
   unsigned int batch_id;
   int retval;
 } BatchFrame;
-
-/*****************************
- *Order Maintenance for race detect
- *////////////////////////////////
-
-typedef struct OM_Node_s{
- struct OM_Node_s *next;
- int id; //needed?
-
-} OM_Node;
-
-typedef struct OM_DS_s {
- OM_Node *head,*tail;
- int size;
-
-} OM_DS;
-
-typedef struct {
- OM_DS *ds;
- OM_Node *x;
- OM_Node *y;
-
-} InsertRecord;
 
 
 
