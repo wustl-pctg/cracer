@@ -1,16 +1,25 @@
 /*! This is the header for the test-run of Alex and Shane's
- * race_detct function idea
+ * race_detect function idea
  */
 
-#ifndef RACE_DETECT
-#define RACE_DETECT
+#ifndef RACE_DETECT_H
+#define RACE_DETECT_H
 
-#include "../download/red_black_tree.h"
+#include <stdlib.h>
+#include <stdio.h>
 #include "../testbed/ds/linkedList.h"
 
-typedef rb_red_blk_tree MemoryTree;
+typedef struct {
+  
+  void * memloc; //The memory location where the read/write occurs
+  Node * left_r; //leftmost node that is reading
+  Node * right_r; //rightmost node that is reading
+  Node * left_w; //leftmost node that is writing
+  Node * right_w; //rightmost node that is writing
 
-void race_detect(MemoryTree *, void *, Node *);
+} MemADT;
+
+void race_detect(void * memloc);
 
 
-#endif //RACE_DETECT
+#endif //RACE_DETECT_H

@@ -1,30 +1,30 @@
 #include "race_detect.h"
-#include <stdio.h>
 
 /*! This is the race-detection function.
   \param memloc the memory location being checked
   \param currentNode The data structure node in eng-heb OM-DS
  */
-void race_detect(MemoryTree * memTree, void * memloc, Node * currentNode)
-{
-  rb_red_blk_node * rbNode;
-  rbNode = (rb_red_blk_node *)malloc(sizeof(rb_red_blk_node));
-  rbNode = RBTreeInsert(memTree, memloc, currentNode);
-  //TODO: call order on memloc rbNode & it's currentNodes...
+void race_detect(void * memloc) {
 
+  MemADT * detecter;
+  detecter = (MemADT *)malloc(sizeof(MemADT));
+
+  detecter = //RBInsert would return node found in tree using mem as key
+    //The tree was ordered by the key and each key had data (list)
+    // We have a pointer to the key directly, and so we wouldn't 
+    // need find/search
+    // 
+
+
+
+  // Conceptual steps:
+  // 1. Access four things pointed to by memloc
+  // 2. check current node  against leftmost write, leftmost read,
+  // rightmost write, and rightmost read nodes
+  // 3. If race-condition, report it
+  // 4. If more left than leftmost or more right than rightmost of
+  // same type, re-assign pointer to current node
+
+
+  
 }
-
-/* ======== These all need to be in the runtime system=============
-  MemoryTree * memTree;
-  memTree = RBTreeCreat(MemComp, MemDest, InfoDest, MemPrint, InfoPrint);
-
-//!Tree functions necessary for creating RBTree
-void MemDest(void* a) {free(a);}
-int MemComp(const void* a,const void* b) {
-  if( a > b) return(1); if( a < b) return(-1); return(0);
-}
-void MemPrint(const void* a) {printf("%p\n",a);}
-void InfoPrint(void* a) {;}
-void InfoDest(void *a){;}
-
-*/
