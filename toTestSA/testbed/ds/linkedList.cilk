@@ -12,7 +12,7 @@
 * June 2014
 */
 
-//InsertRecord global_ir;
+//LLInsertRecord global_ir;
 
 //! initialize linked list
 LinkedList * createLinkedList(){
@@ -96,7 +96,7 @@ cilk void appendNode(LinkedList * list, Node * newNode){
 */
 cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
 	
-	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
+	LLInsertRecord * ir = (LLInsertRecord * ) malloc(sizeof(LLInsertRecord));
 	ir->x = x;
 	ir->y = y;	
 
@@ -111,8 +111,8 @@ cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
 */
 cilk void non_batchInsertSeq(LinkedList * list, Node *x, Node *y){
 	
-	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
-	InsertRecord ** irArray = (InsertRecord **) malloc(1 * sizeof(InsertRecord *));
+	LLInsertRecord * ir = (LLInsertRecord * ) malloc(sizeof(LLInsertRecord));
+	LLInsertRecord ** irArray = (LLInsertRecord **) malloc(1 * sizeof(LLInsertRecord *));
 
 	ir->x = x;
 	ir->y = y;	
@@ -125,7 +125,7 @@ cilk void non_batchInsertSeq(LinkedList * list, Node *x, Node *y){
 
 //! 
 /*! Parallel insert for non-batchify insert */
-cilk void non_batchInsertPar(LinkedList * list, InsertRecord ** irArray, int size){
+cilk void non_batchInsertPar(LinkedList * list, LLInsertRecord ** irArray, int size){
 	
 	spawn insertPar((void*)list, (void *)irArray, (size_t)size, NULL); 
 
@@ -135,13 +135,13 @@ cilk void non_batchInsertPar(LinkedList * list, InsertRecord ** irArray, int siz
 cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 
 	//array of inserts to complete
-	InsertRecord ** records =(InsertRecord **) data;
+	LLInsertRecord ** records =(LLInsertRecord **) data;
 	LinkedList * list = (LinkedList *)dataStruct;
 	Node  *x, *y, *z;
 
 	int i = 0;
 	for (; i < size; i++){
-		InsertRecord *ir = records[i];
+		LLInsertRecord *ir = records[i];
 
 		// get x and y from record
 		x = ir->x;
@@ -188,7 +188,7 @@ cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 /*! parallel version of insert */
 cilk void insertPar(void *dataStruct, void *data, size_t size, void *result)
 {
-	InsertRecord ** irArray = (InsertRecord **)data;
+	LLInsertRecord ** irArray = (LLInsertRecord **)data;
 	LinkedList * list = (LinkedList *) dataStruct;
 	int i = 0;
 	for (; i<size;i++)
@@ -198,7 +198,7 @@ cilk void insertPar(void *dataStruct, void *data, size_t size, void *result)
 }
 
 /*!  single insert, called by insertPar */
-cilk void atomicInsert(LinkedList * list, InsertRecord *ir){
+cilk void atomicInsert(LinkedList * list, LLInsertRecord *ir){
 	Node * x, *y, *z;
 	x = ir->x;
 	y = ir->y;
