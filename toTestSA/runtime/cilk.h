@@ -598,7 +598,7 @@ typedef struct {
 
 typedef struct OM_Node_s{
  struct OM_Node_s *next;
- int id;
+ int id; //needed?
 
 } OM_Node;
 
