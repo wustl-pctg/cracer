@@ -344,7 +344,9 @@ typedef struct {
 #endif
   /*ORDER MAINTENANCE FOR RACE DETECT*/
   OM_Node *currentNode;
-  
+  //add data structs to hold leftmost/rightmost read/write pointers
+
+ 
 } CilkWorkerState;
 
 typedef struct{
