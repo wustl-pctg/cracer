@@ -2079,22 +2079,56 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 
 }
 //frees node if LL is the OM_DS
-void OM_LL_free_nodes(CilkContext *const context){
+void OM_LL_free_nodes_internal(CilkContext *const context){
 	printf("DEBUG:LL free nodes\n");
 	
 }
 //frees node if OM_DS is not linked list
-void OM_free_nodes(CilkContext *const context){printf("DEBUG: OMDS free nodes\n");}
+void OM_free_nodes_internal(CilkContext *const context){printf("DEBUG: OMDS free nodes\n");}
 
 
-void OM_DS_insert(void *ds, void * x, void * y){
+void OM_DS_insert(void *ds, void * _x, void * _y){
 
-	InsertRecord *ir = (InsertRecord *) Cilk_malloc(sizeof(InsertRecord));
-	//ir->
-	//Cilk_batchify(ds, 	
+	#ifdef BATCHIFY_WORKING
+
+	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
+	ir->x = (OM_Node *)_x;
+	ir->y = (OM_Node *) _y;	
+
+	Cilk_batchify(_cilk_ws, &insertPar, list, ir, sizeof(Node), NULL);
+	#else
+	//Do insert here
+	
+	OM_Node * x = (OM_Node *)_x;
+	OM_Node * y = (OM_Node *)_y;
+
+	//if x is null
+	if (!(x && y && ds) ){
+		printf("Some node or ds is null, skipping insert\n");
+		return;
+	}	
+
+	//if x isnt tail
+	if (x->next)	
+		z = x->next;
+	 //make z null and change y to tail
+	else
+	{
+		z = NULL;
+		( (OM_DS*)ds)->tail = y;
+	}
+
+	//change next pointers
+	y->next = x->next;
+
+	if (__sync_bool_compare_and_swap(&(x->next), x->next, y)){
+		printf("Successful swap\n");
+	}	
+	((OM_DS*)ds)->size++;
+	#endif	
 }
 
-void OM_DS_append(void *ds, void * x){
+void OM_DS_append(void *ds, void * _x){
 	if (ds && x){
 	OM_DS * om_ds = (OM_DS *)ds;
 	
@@ -2104,7 +2138,7 @@ void OM_DS_append(void *ds, void * x){
 	}
 }
 
-int OM_DS_order(void *ds, void * x, void * y){
+int OM_DS_order(void *ds, void * _x, void * _y){
 return 0;
 }
 /*
