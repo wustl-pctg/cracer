@@ -2101,6 +2101,7 @@ void OM_DS_insert(void *ds, void * _x, void * _y){
 	
 	OM_Node * x = (OM_Node *)_x;
 	OM_Node * y = (OM_Node *)_y;
+	OM_Node * z;
 
 	//if x is null
 	if (!(x && y && ds) ){
@@ -2129,7 +2130,7 @@ void OM_DS_insert(void *ds, void * _x, void * _y){
 }
 
 void OM_DS_append(void *ds, void * _x){
-	if (ds && x){
+	if (ds && _x){
 	OM_DS * om_ds = (OM_DS *)ds;
 	
 	}
