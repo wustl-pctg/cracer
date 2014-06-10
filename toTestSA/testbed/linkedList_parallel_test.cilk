@@ -25,10 +25,10 @@ void printList(LinkedList * list) {
 cilk int main(int argc, char **argv)
 
 {
-	InsertRecord ** irArray = (InsertRecord **)malloc(NUM_INSERTS * sizeof(InsertRecord));
-	InsertRecord * tmpIR1 = malloc(sizeof(InsertRecord));
-	InsertRecord * tmpIR2 = malloc(sizeof(InsertRecord));
-	InsertRecord * tmpIR3 = malloc(sizeof(InsertRecord));
+	LLInsertRecord ** irArray = (LLInsertRecord **)malloc(NUM_INSERTS * sizeof(LLInsertRecord));
+	LLInsertRecord * tmpIR1 = malloc(sizeof(LLInsertRecord));
+	LLInsertRecord * tmpIR2 = malloc(sizeof(LLInsertRecord));
+	LLInsertRecord * tmpIR3 = malloc(sizeof(LLInsertRecord));
 	LinkedList * list;
 	Node * n, *n2, *n3, *n4;
 	int x = 0;
