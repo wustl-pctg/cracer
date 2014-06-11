@@ -138,7 +138,7 @@ extern void OM_DS_free_and_free_nodes(CilkContext *const context);
 
 extern void OM_DS_init(CilkContext *const context);
 
-extern void race_detect_write(CilkWorkerState * const ws, void * memloc);
+extern void Race_detect_write(CilkWorkerState * const ws, void * memloc);
 
-extern void race_detect_read(CilkWorkerState * const ws, void * memloc);
+extern void Race_detect_read(CilkWorkerState * const ws, void * memloc);
 #endif				/* _CILK_LIB_H */

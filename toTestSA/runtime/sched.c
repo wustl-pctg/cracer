@@ -2231,13 +2231,58 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
   \param ws CilkWorkerState Node for program
   \param memloc The variable to be read
 */
-void race_detect_read(CilkWorkerState * const ws, void * memloc) {
+void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
   
   //! Retrieve currentNode from workerstate
   OM_Node * currentNode;
   currentNode = ws->currentNode;
 
+  /*! Check if there is a race:
+   * Race if another write occurs in parallel
+   * (1)
+   *   if the currentNode is before leftmost write in eng and
+   *      the currentNode is after leftmost write in heb, 
+   *      then they are in parallel => race condition
+   * (2) or
+   *   if the currentNode is before rightmost write in eng and
+   *      the currentNode is after rightmost write in heb,
+   *      then they are in parallel => race condition
+   * (3) or
+   *   if the currentNode is after leftmost write in eng and
+   *      the currentNode is before leftmost write in heb,
+   *      then they are in parallel => race condition
+   * (4) or
+   *   if the currentNode is after rightmost write in eng and
+   *      the currentNode is before rightmost write in heb,
+   *      then they are in parallel => race condition
+   */
+  if(    //(1)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->left_w) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, mem->left_w, currentNode))
+     ||  //(2)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->right_w) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, mem->right_w, currentNode))
+     ||  //(3)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->left_w, currentNode) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->left_w))
+     ||  //(4)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->right_w, currentNode) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->right_w))
+     ) { CILK_ASSERT(0); } // Halt program
+/* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
+//TODO: Decide how to interrupt for race-detection
+
+  //! Update nodes (if necessary)
+  //TODO: Is this wrong? The logic may not be correct for reads... they may be parallel
+  // but that would be mean updating may be incorrect.
+  if(OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->left_r))
+     mem->left_r = currentNode;
+  if(OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->right_r, currentNode))
+    mem->right_r = currentNode;
+
+  //! Read the data
   
+
 
 }
 
@@ -2245,11 +2290,86 @@ void race_detect_read(CilkWorkerState * const ws, void * memloc) {
   \param ws CilkWorkerState Node for program
   \param memloc The variable to be written
 */
-void race_detect_write(CilkWorkerState * const ws, void * memloc) {
+void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, void * writeValue) {
 
   //! Retrieve currentNode from workerstate
   OM_Node * currentNode;
   currentNode = ws->currentNode;
+
+  /*! Check if there is a race:
+   * Race if another write/read occurs in parallel
+   * (1)   == WRITES ==
+   *   if the currentNode is before leftmost write in eng and
+   *      the currentNode is after leftmost write in heb, 
+   *      then they are in parallel => race condition
+   * (2) or
+   *   if the currentNode is before rightmost write in eng and
+   *      the currentNode is after rightmost write in heb,
+   *      then they are in parallel => race condition
+   * (3) or
+   *   if the currentNode is after leftmost write in eng and
+   *      the currentNode is before leftmost write in heb,
+   *      then they are in parallel => race condition
+   * (4) or
+   *   if the currentNode is after rightmost write in eng and
+   *      the currentNode is before rightmost write in heb,
+   *      then they are in parallel => race condition   
+   * (5) or  == READS ==
+   *   if the currentNode is before leftmost read in eng and
+   *      the currentNode is after leftmost read in heb, 
+   *      then they are in parallel => race condition
+   * (6) or
+   *   if the currentNode is before rightmost read in eng and
+   *      the currentNode is after rightmost read in heb,
+   *      then they are in parallel => race condition
+   * (7) or
+   *   if the currentNode is after leftmost read in eng and
+   *      the currentNode is before leftmost read in heb,
+   *      then they are in parallel => race condition
+   * (8) or
+   *   if the currentNode is after rightmost read in eng and
+   *      the currentNode is before rightmost read in heb,
+   *      then they are in parallel => race condition
+   */
+  if(    //(1)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->left_w) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, mem->left_w, currentNode))
+     ||  //(2)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->right_w) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, mem->right_w, currentNode))
+     ||  //(3)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->left_w, currentNode) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->left_w))
+     ||  //(4)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->right_w, currentNode) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->right_w))
+      //(1)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->left_w) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, mem->left_w, currentNode))
+     ||  //(2)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->right_w) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, mem->right_w, currentNode))
+     ||  //(3)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->left_w, currentNode) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->left_w))
+     ||  //(4)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->right_w, currentNode) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->right_w))
+     ) { CILK_ASSERT(0); } // Halt program
+/* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
+//TODO: Decide how to interrupt for race-detection
+
+  //! Update nodes (if necessary)
+  if(OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->left_w))
+     mem->left_r = currentNode;
+  if(OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->right_w, currentNode))
+    mem->right_r = currentNode;
+
+  //! Write the data
+  
+
+
+
 
 
 }
