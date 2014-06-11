@@ -63,7 +63,11 @@ cilk int main(int argc, char **argv)
 	(irArray[2])->x = n;
 	(irArray[2])->y = n4;
 
-	spawn insertPar(list, irArray, 3, NULL);
+	
+		spawn batchInsertSeq(list, n, n2);
+		spawn batchInsertSeq(list, n, n3);
+		spawn batchInsertSeq(list, n, n4);
+		//spawn insertPar(list, irArray, 3, NULL);
 	
 	//spawn atomicInsert(list, irArray[0]);
 	//spawn atomicInsert(list, irArray[2]);

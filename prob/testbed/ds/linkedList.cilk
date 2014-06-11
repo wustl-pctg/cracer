@@ -100,7 +100,7 @@ cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
 	ir->x = x;
 	ir->y = y;	
 
-	Cilk_batchify(_cilk_ws, &insertSeq, list, ir, sizeof(Node), NULL);
+	Cilk_batchify(_cilk_ws, &insertSeq, list, ir, sizeof(InsertRecord), NULL);
 }
 
 //! A non-parallel simulation of batchify insert
