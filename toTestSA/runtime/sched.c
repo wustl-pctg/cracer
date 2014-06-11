@@ -2140,7 +2140,7 @@ void OM_DS_insert(void *ds, void * _x, void * _y){
   y->next = x->next;
 
   if (__sync_bool_compare_and_swap(&(x->next), x->next, y)){
-    printf("Successful swap\n");
+    printf("Successful atomic insert\n");
   }	
   ((OM_DS*)ds)->size++;
 #endif	
@@ -2218,11 +2218,19 @@ void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	printf("Debug: OM_DS_sync_slow\n WS: %d\t Frame: %d\n", ws, frame);
 	
+	if (frame->post_sync_node)
+		frame->current_node = frame->post_sync_node;
+
 }
 
 
 void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	printf("Debug: OM_DS_sync_fast\n WS: %d\t Frame: %d\n", ws, frame);
+	
+	/*update frame varriables*/
+	if (frame->post_sync_node)
+		frame->current_node = frame->post_sync_node;
+
 }
 
 /*! === Race detect functions in particular === */
@@ -2231,6 +2239,7 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
   \param ws CilkWorkerState Node for program
   \param memloc The variable to be read
 */
+
 void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
   
   //! Retrieve currentNode from workerstate
@@ -2268,7 +2277,7 @@ void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
      ||  //(4)
      (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->right_w, currentNode) &&
       OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->right_w))
-     ) { CILK_ASSERT(0); } // Halt program
+     ) { exit(0); } // Halt program
 /* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
 //TODO: Decide how to interrupt for race-detection
 
@@ -2355,7 +2364,7 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, void 
      ||  //(8)
      (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->right_r, currentNode) &&
       OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->right_r))
-     ) { CILK_ASSERT(0); } // Halt program
+     ) { exit(0); } // Halt program
 /* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
 //TODO: Decide how to interrupt for race-detection
 
@@ -2369,6 +2378,7 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, void 
   mem->memloc = writeValue;
 
 }
+
 /* End Order Maintenence Functions */
 
 /*

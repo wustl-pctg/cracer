@@ -220,6 +220,10 @@ struct CilkGlobalState_s{
 	volatile unsigned int batch_lock;
 	//	CILK_CACHE_LINE_PAD;
   /* End BATCHER */
+  /*! Order maintenance for race detect*/
+	OM_DS *englishOM_DS, *hebrewOM_DS;
+
+  /*End order maintenance*/
 
   Cilk_time critical_path;
   Cilk_time total_work;
