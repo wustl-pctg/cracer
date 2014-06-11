@@ -115,6 +115,17 @@ typedef struct {
 
 } InsertRecord;
 
+//! race_detect struct to hold memory and ptrs to nodes
+typedef struct {
+
+  void * memloc; //The memory location where the read/write occurs
+  Node * left_r; //leftmost node that is reading
+  Node * right_r; //rightmost node that is reading
+  Node * left_w; //leftmost node that is writing
+  Node * right_w; //rightmost node that is writing
+
+} RD_Memory_Struct;
+
 /***********************************************************\
  * Hooks
 \***********************************************************/

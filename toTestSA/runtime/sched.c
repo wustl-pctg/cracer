@@ -2213,6 +2213,35 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	printf("Debug: OM_DS_sync_fast\n");
 }
+
+/*! === Race detect functions in particular === */
+
+/*! Function that detects potential races on a given memory read
+  \param ws CilkWorkerState Node for program
+  \param memloc The variable to be read
+*/
+void race_detect_read(CilkWorkerState * const ws, void * memloc) {
+  
+  //! Retrieve currentNode from workerstate
+  OM_Node * currentNode;
+  currentNode = ws->currentNode;
+
+  
+
+}
+
+/*! Function that detects potential races on a given memory write
+  \param ws CilkWorkerState Node for program
+  \param memloc The variable to be written
+*/
+void race_detect_write(CilkWorkerState * const ws, void * memloc) {
+
+  //! Retrieve currentNode from workerstate
+  OM_Node * currentNode;
+  currentNode = ws->currentNode;
+
+
+}
 /* End Order Maintenence Functions */
 
 /*
