@@ -197,26 +197,13 @@ extern void *Cilk_calloc(size_t nelem, size_t elsize);
 extern void *Cilk_realloc(void *s, size_t size);
 extern void *Cilk_valloc(size_t size);
 
-/******************************************************
- *  Batcher operations
- ******************************************************/
-/** Batcher **/
-typedef struct helper
-{
-	int x;
-	int y;
-} helper;
-
-/** End Batcher **/
-
 /* global scheduler state */
 struct CilkGlobalState_s{
   /* BATCHER */
   int current_batch_id;
   int batch_owner;
   Batch pending_batch;
-  int* batch_work_array;
-  //int* batch_work_array;
+  void* batch_work_array;
 
 	CilkProcInfo invoke_batch_sig[3]; // Should really be a RO param. ***
 	BatchFrame* batch_frame;

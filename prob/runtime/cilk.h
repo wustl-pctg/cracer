@@ -297,7 +297,7 @@ typedef struct {
 	struct ReadyDeque *current_deque_pool;
   CilkClosureCache cache;
   CilkClosureCache ds_cache;
-  int batch_id; // ***
+  int batch_id; // @todo remove, if possible.
   int self;
   struct Cilk_im_descriptor im_descriptor [CILK_INTERNAL_MALLOC_BUCKETS];
   size_t stackdepth;
@@ -536,33 +536,34 @@ void *Cilk_malloc_fixed(size_t);
 enum DS_STATUS { DS_WAITING, DS_IN_PROGRESS, DS_DONE };
 
 typedef void (*InternalBatchOperation)(CilkWorkerState *const _cilk_ws,
-                                       void *dataStruct, void *data,
-                                       size_t numElements, void *result);
+                                       void *data_struct, void *data,
+                                       size_t num_elem, void *result);
 
-
+// @todo @feature For now, assume only one batched data structure.
 typedef struct {
-  InternalBatchOperation operation;
-  void*       args;
-  size_t      size;
-  volatile enum DS_STATUS   status;
-  int         packedIndex;
-  void*       result;
+  InternalBatchOperation  operation;
+  void*                   args;
+  size_t                  size;
+  volatile enum DS_STATUS status;
+  int                     packed_index;
+  void*                   result;
   //CILK_CACHE_LINE_PAD;
 } BatchRecord;
 
 typedef struct {
-  size_t size;
-  size_t dataSize;
+  size_t                 size;
+  size_t                 data_size;
   InternalBatchOperation operation;
-  size_t batch_no;
-  BatchRecord  *array;
+  size_t                 batch_no;
+  void*                  data_structure;
+  BatchRecord*           array;
 	//  CILK_CACHE_LINE_PAD;
 } Batch;
 
 
 typedef void (*CilkBatchSeqOperation)(Batch* pending,
-                                      void *dataStruct, void *data,
-																			size_t numElements, void *result);
+                                      void *data_struct, void *data,
+																			size_t num_elem, void *result);
 
 typedef struct {
   InternalBatchOperation op;
