@@ -1377,10 +1377,12 @@ int Cilk_sync(CilkWorkerState *const ws)
   }
 
   /*! Order maintenance for race detect */
+  /*
   if (ws->post_sync_node)
     {ws->currentNode = ws->post_sync_node; Cilk_free(post_sync_node);}	
   else
     printf("Debug:No post_sync_node to assign to current node error\n");	
+  */
   /*! End order maintenance for race detect */
 
   Closure_unlock(ws, t);
@@ -2192,6 +2194,25 @@ int OM_DS_order(void *ds, void * _x, void * _y){
   return 0;
 }
 
+void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
+	printf("Debug: OM_DS_before_fast called \n");
+
+	frame->post_sync_node = NULL;
+}
+
+void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
+	printf("Debug: OM_DS_before_spawn_slow called \n");
+
+	frame->post_sync_node = NULL;
+}
+void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
+	printf("Debug: OM_DS_sync_slow\n");
+}
+
+
+void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
+	printf("Debug: OM_DS_sync_fast\n");
+}
 /* End Order Maintenence Functions */
 
 /*

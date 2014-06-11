@@ -130,7 +130,7 @@ extern void Cilk_batchify_sequential(CilkWorkerState *const ws,
 ***********************************************/
 extern void OM_DS_insert(void * ds, void * _x, void * _y);
 
-extern void OM_DS_append(void *ds, void *_x);
+extern void OM_DS_append(void *ds, void * _x);
 
 extern int OM_DS_order(void *ds, void *_x, void *_y);
 
