@@ -2343,34 +2343,30 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, void 
      ||  //(4)
      (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->right_w, currentNode) &&
       OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->right_w))
-      //(1)
-     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->left_w) &&
-      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, mem->left_w, currentNode))
-     ||  //(2)
-     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->right_w) &&
-      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, mem->right_w, currentNode))
-     ||  //(3)
-     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->left_w, currentNode) &&
-      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->left_w))
-     ||  //(4)
-     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->right_w, currentNode) &&
-      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->right_w))
+     ||  //(5)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->left_r) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, mem->left_r, currentNode))
+     ||  //(6)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->right_r) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, mem->right_r, currentNode))
+     ||  //(7)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->left_r, currentNode) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->left_r))
+     ||  //(8)
+     (OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->right_r, currentNode) &&
+      OM_DS_order(ws->context->Cilk_global_state->hebrewOM_DS, currentNode, mem->right_r))
      ) { CILK_ASSERT(0); } // Halt program
 /* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
 //TODO: Decide how to interrupt for race-detection
 
   //! Update nodes (if necessary)
   if(OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, currentNode, mem->left_w))
-     mem->left_r = currentNode;
+     mem->left_w = currentNode;
   if(OM_DS_order(ws->context->Cilk_global_state->englishOM_DS, mem->right_w, currentNode))
-    mem->right_r = currentNode;
+    mem->right_w = currentNode;
 
   //! Write the data
-  
-
-
-
-
+  mem->memloc = writeValue;
 
 }
 /* End Order Maintenence Functions */
