@@ -1,5 +1,5 @@
 FILE_IDENTITY(ident_cilk_internal_h,
-	      "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-internal.h $ $LastChangedBy: bradley $ $Rev: 1465 $ $Date: 2004-08-02 06:31:06 -0400 (Mon, 02 Aug 2004) $");
+							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-internal.h $ $LastChangedBy: bradley $ $Rev: 1465 $ $Date: 2004-08-02 06:31:06 -0400 (Mon, 02 Aug 2004) $");
 
 /*
  * Copyright (c) 2000 Massachusetts Institute of Technology
@@ -163,16 +163,16 @@ extern void Cilk_scheduler_init(CilkContext *const context);
 extern void Cilk_scheduler_terminate(CilkContext *const);
 extern void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws);
 extern Closure *Cilk_create_initial_thread(
-					   CilkContext *const context,
-					   void (*import_main)(CilkWorkerState *const ws, void *args),
-					   void *args,
-					   int return_size);
+																					 CilkContext *const context,
+																					 void (*import_main)(CilkWorkerState *const ws, void *args),
+																					 void *args,
+																					 int return_size);
 extern void Cilk_scheduler(CilkWorkerState *const ws, Closure *t);
 void Cilk_remove_and_free_closure_and_frame(CilkWorkerState *const ws,
-					    CilkStackFrame *f, int pn,
-					    ReadyDeque *const deque_pool);
+																						CilkStackFrame *f, int pn,
+																						ReadyDeque *const deque_pool);
 extern void Cilk_destroy_frame(
-			       CilkWorkerState *const ws, CilkStackFrame *f, size_t size);
+															 CilkWorkerState *const ws, CilkStackFrame *f, size_t size);
 extern void Cilk_worker_wait_for_invocation(CilkContext *const /*context*/, long /*self*/, int */*local_terminating*/);
 extern void Cilk_worker_is_done(CilkContext *const /*context*/, int */*local_terminating*/);
 extern void Cilk_scheduler_per_worker_terminate(CilkWorkerState *const /*ws*/);
@@ -182,7 +182,7 @@ extern void Cilk_wakeup_workers(CilkContext *const /*context*/);
 
 /* exit protocol */
 extern void Cilk_exit_from_user_main(
-				     CilkWorkerState *const ws, Closure *cl, int res);
+																		 CilkWorkerState *const ws, Closure *cl, int res);
 extern void Cilk_really_exit(CilkWorkerState *const ws, int res);
 extern void Cilk_really_exit_1(CilkWorkerState *const ws, int res);
 /* Ofra and Sivan: changed Cilk_die to Cilk_die_external, 19 June 2003 */
@@ -197,46 +197,29 @@ extern void *Cilk_calloc(size_t nelem, size_t elsize);
 extern void *Cilk_realloc(void *s, size_t size);
 extern void *Cilk_valloc(size_t size);
 
-/******************************************************
- *  Batcher operations
- ******************************************************/
-/** Batcher **/
-typedef struct helper
-{
-  int x;
-  int y;
-} helper;
-
-/** End Batcher **/
-
 /* global scheduler state */
 struct CilkGlobalState_s{
   /* BATCHER */
   int current_batch_id;
   int batch_owner;
   Batch pending_batch;
-  int* batch_work_array;
-  //int* batch_work_array;
+  void* batch_work_array;
 
-  CilkProcInfo invoke_batch_sig[3]; // Should really be a RO param. ***
-  BatchFrame* batch_frame;
+	CilkProcInfo invoke_batch_sig[3]; // Should really be a RO param. ***
+	BatchFrame* batch_frame;
 
 #if CILK_STATS
-  int *batch_sizes;
-  int *batch_steals_success;
-  int *batch_steals_real;
-  int *batch_steals_fail;
-  int *num_steals;
-  int *num_steals_fail;
+	int *batch_sizes;
+	int *batch_steals_success;
+	int *batch_steals_real;
+	int *batch_steals_fail;
+	int *num_steals;
+	int *num_steals_fail;
   int num_batches;
 #endif
-  volatile unsigned int batch_lock;
-  //	CILK_CACHE_LINE_PAD;
+	volatile unsigned int batch_lock;
+	//	CILK_CACHE_LINE_PAD;
   /* End BATCHER */
-
-  /*! Order Maintenance for race detection */
-  OM_DS * englishOM_DS, *hebrewOM_DS;
-  /*! End OM */
 
   Cilk_time critical_path;
   Cilk_time total_work;
@@ -377,14 +360,14 @@ enum {
   STATE_TOTAL,
   STATE_WORKING,
   STATE_WAITING_FOR_LOCK,
-  STATE_BATCH_INVOKE,
+	STATE_BATCH_INVOKE,
   STATE_BATCH_WORKING,
   STATE_BATCH_STEALING,
   STATE_BATCH_TOTAL,
-  STATE_BATCH_SCHEDULING,
+	STATE_BATCH_SCHEDULING,
   STATE_BATCH_START,
   STATE_BATCH_COMPACTION,
-  STATE_BATCH_TERMINATE,
+	STATE_BATCH_TERMINATE,
   STATE_STEALING,
   STATE_RETURNING,
   STATE_ABORT_RECURSIVE,
@@ -435,7 +418,7 @@ extern void Cilk_debug_init(CilkContext *const context);
 extern void Cilk_debug_terminate(CilkContext *const context);
 extern void Cilk_arch_specific_per_worker_init(void);
 extern void Cilk_create_children(CilkContext *const context,
-				 void (*child)(CilkChildParams*));
+																 void (*child)(CilkChildParams*));
 extern void Cilk_terminate_children(CilkContext *const context);
 extern void Cilk_lower_priority(CilkWorkerState *const ws);
 extern void Cilk_raise_priority(CilkWorkerState *const ws);
@@ -455,9 +438,9 @@ Cilk_Closure_create_malloc(CilkContext *const context, CilkWorkerState *const ws
 struct Cilk_options_s
 {
   int nproc;
-  int dsprob;
-  int batchprob;
-  int batchvals;
+	int dsprob;
+	int batchprob;
+	int batchvals;
   int sleeptime;
   int bias;
   int stackdepth;
@@ -476,20 +459,20 @@ extern int
 Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[]);
 
 #define CILK_DEFAULT_OPTIONS                    \
-  {						\
-    1,						\
+  {																							\
+    1,																					\
       50,                                       \
       100,                                      \
       1,                                        \
       0,                                        \
-      50,					\
-      CILK_DEFAULT_STACK_DEPTH,			\
-      0,					\
-      0,					\
-      "-",					\
-      0,					\
-      64,					\
-      0,					\
-      0,					\
-      1024					\
+      50,                                        \
+      CILK_DEFAULT_STACK_DEPTH,									\
+      0,																				\
+      0,																				\
+      "-",																			\
+      0,																				\
+      64,																				\
+      0,																				\
+      0,																				\
+      1024																			\
       }
