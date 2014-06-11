@@ -2125,11 +2125,11 @@ void OM_free_nodes_internal(CilkContext *const context)
 void OM_DS_insert(void *ds, void * _x, void * _y){
 
 #ifdef BATCHIFY_WORKING
-
+			
   InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
-  ir->x = (OM_Node *)_x;
+    ir->x = (OM_Node *)_x;
   ir->y = (OM_Node *) _y;	
-
+		
   Cilk_batchify(_cilk_ws, &insertPar, list, ir, sizeof(Node), NULL);
 #else
   //Do insert here
@@ -2200,12 +2200,12 @@ int OM_DS_order(void *ds, void * _x, void * _y){
   // Really basic order function for ll
   // Assumes both _x and _y are in the list
   OM_Node * current;
-  current = ds->head; 
+  current = ((OM_DS*)ds)->head; 
 
   do {
     if (current == _y)
       return 0;
-    elseif (current == _x)
+    else if (current == _x)
       return 1;
     else
       current = current->next;
