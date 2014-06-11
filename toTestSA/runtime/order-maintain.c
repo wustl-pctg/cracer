@@ -26,54 +26,54 @@
 
 
 OM_DS * createOM_DS(){
-	OM_DS * tmp = (OM_DS *) malloc(sizeof(OM_DS));
+  OM_DS * tmp = (OM_DS *) malloc(sizeof(OM_DS));
 
-	//initialize variables (in this case linked list params)
-	tmp->head = NULL;
-	tmp->tail = NULL;
-	tmp->size = 0;
+  //initialize variables (in this case linked list params)
+  tmp->head = NULL;
+  tmp->tail = NULL;
+  tmp->size = 0;
 
-	return tmp;
+  return tmp;
 }
 
 void destroyOM_DS(OM_DS * ds){
 
-	return;
+  return;
 }
 
 
 void insert(OM_DS * ds, OM_Node *x, OM_Node *y){
 
-	return;
+  return;
 
 }
 
 void appendNode(OM_DS * ds, OM_Node *x){
 
-	return;
+  return;
 }
 
 void OM_DS_Create(CilkContext *const context){
 
-	if (context->Cilk_global_state){
-		context->Cilk_global_state->englishOM_DS = createOM_DS());
-		context->Cilk_global_state->hebrewOM_DS = createOM_DS();
-		assert(context->Cilk_global_state->englishOM_DS && context->Cilk_global_state->hebrewOM_DS); //should this be cilk_assert?	
-	}
+  if (context->Cilk_global_state){
+    context->Cilk_global_state->englishOM_DS = createOM_DS());
+  context->Cilk_global_state->hebrewOM_DS = createOM_DS();
+  assert(context->Cilk_global_state->englishOM_DS && context->Cilk_global_state->hebrewOM_DS); //should this be cilk_assert?	
+}
 }
 
 void OM_DS_cleanup(CilkContext *const context){
 
-	if (context->Cilk_global_state){
+  if (context->Cilk_global_state){
 		
-		//TODO:free node memory
+    //TODO:free node memory
 		
 
-		//free DS memory
-		(context->Cilk_global_state->englishOM_DS)?free(sizeof(OM_DS)):printf("englishOM_DS is null, can't free");
-		(context->Cilk_global_state->hebrewOM_DS)?free(sizeof(OM_DS)):printf("hebrewOM_DS is nul, can't free");
+    //free DS memory
+    (context->Cilk_global_state->englishOM_DS)?free(sizeof(OM_DS)):printf("englishOM_DS is null, can't free");
+    (context->Cilk_global_state->hebrewOM_DS)?free(sizeof(OM_DS)):printf("hebrewOM_DS is nul, can't free");
 
-	}
+  }
 }
 
 

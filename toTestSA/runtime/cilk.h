@@ -91,26 +91,27 @@ struct cilk_alloca_header {
   size_t size;
 };
 
-/*****************************
- *Order Maintenance for race detect
- ******************************/
+/*!
+************************************
+ *Order Maintenance for race detect*
+************************************/
 
 typedef struct OM_Node_s{
- struct OM_Node_s *next;
- int id; //needed?
+  struct OM_Node_s *next;
+  int id; //needed?
 
 } OM_Node;
 
 typedef struct OM_DS_s {
- OM_Node *head,*tail;
- int size;
+  OM_Node *head,*tail;
+  int size;
 
 } OM_DS;
 
 typedef struct {
- OM_DS *ds;
- OM_Node *x;
- OM_Node *y;
+  OM_DS *ds;
+  OM_Node *x;
+  OM_Node *y;
 
 } InsertRecord;
 
@@ -322,7 +323,7 @@ typedef struct {
 /* worker state */
 typedef struct {
   CilkClosureCache *current_cache;
-	struct ReadyDeque *current_deque_pool;
+  struct ReadyDeque *current_deque_pool;
   CilkClosureCache cache;
   CilkClosureCache ds_cache;
   int batch_id; // ***
@@ -405,7 +406,7 @@ static inline Cilk_time Cilk_get_elapsed_time(CilkWorkerState *const ws)
  * this is written so that it can be __inline__d and partially
  * evaluated when size is a constant
  */
-#define CILK_INTERNAL_MALLOC_CANONICALIZE_MACRO(size, n)  \
+#define CILK_INTERNAL_MALLOC_CANONICALIZE_MACRO(size, n)	\
   if (size <= n && n >= CILK_CACHE_LINE) return n;
 
 static inline int Cilk_internal_malloc_canonicalize(size_t size)
@@ -422,7 +423,7 @@ static inline int Cilk_internal_malloc_canonicalize(size_t size)
   return -1;  /* keep gcc happy */
 }
 
-#define CILK_INTERNAL_MALLOC_SIZE_TO_BUCKET(size, n, bucket)  \
+#define CILK_INTERNAL_MALLOC_SIZE_TO_BUCKET(size, n, bucket)	\
   if (size <= n && n >= CILK_CACHE_LINE) return bucket;
 
 static inline int Cilk_internal_malloc_size_to_bucket(size_t size)
@@ -439,7 +440,7 @@ static inline int Cilk_internal_malloc_size_to_bucket(size_t size)
   return -1;  /* keep gcc happy */
 }
 
-#define CILK_INTERNAL_MALLOC_BUCKET_TO_SIZE(b, n, bucket) \
+#define CILK_INTERNAL_MALLOC_BUCKET_TO_SIZE(b, n, bucket)	\
   if (bucket == b) return n;
 
 static inline int Cilk_internal_malloc_bucket_to_size(int b)
@@ -502,9 +503,6 @@ extern void Cilk_event_new_thread(CilkWorkerState *const ws);
 extern void Cilk_destroy_frame(CilkWorkerState *const ws,
                                CilkStackFrame *f, size_t size);
 
-
-/**OM stuff**/
-
 /***********************************************************
  *  cilk2c-only stuff
  ***********************************************************/
@@ -544,7 +542,7 @@ extern void Cilk_destroy_frame(CilkWorkerState *const ws,
 #define CILK_NAME_STATS NOSTATS
 #endif
 
-#define CILK_MAGIC_NAME_MAGIC(a,b,c)                                  \
+#define CILK_MAGIC_NAME_MAGIC(a,b,c)					\
   Cilk_flags_are_wrong_ ## a ## _ ## b ## _ ## c ## _please_recompile
 #define CILK_MAGIC_NAME_MORE_MAGIC(a,b,c) CILK_MAGIC_NAME_MAGIC(a,b,c)
 #define CILK_MAGIC_NAME                                         \
@@ -592,13 +590,13 @@ typedef struct {
   InternalBatchOperation operation;
   size_t batch_no;
   BatchRecord  *array;
-	//  CILK_CACHE_LINE_PAD;
+  //  CILK_CACHE_LINE_PAD;
 } Batch;
 
 
 typedef void (*CilkBatchSeqOperation)(Batch* pending,
                                       void *dataStruct, void *data,
-																			size_t numElements, void *result);
+				      size_t numElements, void *result);
 
 typedef struct {
   InternalBatchOperation op;

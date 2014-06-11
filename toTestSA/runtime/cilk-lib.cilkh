@@ -43,9 +43,9 @@ extern cilk void Cilk_really_exit(int retval);
 
 /* Cilk_exit */
 #define Cilk_exit(ret)  			\
-do {						\
-     spawn Cilk_really_exit(ret);		\
-} while (0)
+  do {						\
+    spawn Cilk_really_exit(ret);		\
+  } while (0)
 
 /* Ofra and Sivan: Changed the definition, 19 June 2003 */
 #define Cilk_die(fmt) Cilk_die_external(_cilk_ws->context,fmt);
@@ -59,20 +59,20 @@ typedef volatile int Cilk_lockvar[1];
 
 static inline void Cilk_lock_init(Cilk_lockvar v)
 {
-     v[0] = 0;
+  v[0] = 0;
 }
 
 static inline void Cilk_lock(Cilk_lockvar v)
 {
-     while (Cilk_xchg((int *)v, 1) != 0) {
-	  while (v[0]);  /* spin using only reads - reduces bus traffic */
-     }
+  while (Cilk_xchg((int *)v, 1) != 0) {
+    while (v[0]);  /* spin using only reads - reduces bus traffic */
+  }
 }
 
 static inline void Cilk_unlock(Cilk_lockvar v)
 {
-     Cilk_membar_StoreStore();
-     v[0] = 0;
+  Cilk_membar_StoreStore();
+  v[0] = 0;
 }
 
 /***********************************************************\
@@ -84,9 +84,9 @@ static inline void Cilk_unlock(Cilk_lockvar v)
 #else
 /* Ofra and Sivan 19 June 2003 */
 /*      (void)((ex) || (Cilk_die(NULL, USE_PARAMETER(assertion_failed_msg), \ */
-#define Cilk_assert(ex) \
-      (void)((ex) || (Cilk_die_external(_cilk_ws->context, USE_PARAMETER2(assertion_failed_msg), \
-             #ex, __LINE__, __FILE__), 0))
+#define Cilk_assert(ex)							\
+  (void)((ex) || (Cilk_die_external(_cilk_ws->context, USE_PARAMETER2(assertion_failed_msg), \
+				    #ex, __LINE__, __FILE__), 0))
 #endif
 
 /***********************************************************\
@@ -107,24 +107,25 @@ extern __cilksafe__ __nooutput__ __cilkonly__ CilkWorkerState *const _cilk_ws;
  * BATCHER
 \***********************************************************/
 typedef cilk void (*CilkBatchOperation)(void *dataStruct, void *data,
-																	 size_t numElements, void *result);
+					size_t numElements, void *result);
 
 extern void Cilk_terminate_batch(CilkWorkerState *const ws);
 extern void Cilk_batchify(CilkWorkerState *const ws,
-													CilkBatchOperation op, void *dataStruct,
-													void *data, size_t dataSize,
-													void *indvResult);
+			  CilkBatchOperation op, void *dataStruct,
+			  void *data, size_t dataSize,
+			  void *indvResult);
 extern void Cilk_batchify_raw(CilkWorkerState *const ws,
-															CilkBatchSeqOperation op, void *dataStruct,
-															void *data, size_t dataSize,
-															void *indvResult);
+			      CilkBatchSeqOperation op, void *dataStruct,
+			      void *data, size_t dataSize,
+			      void *indvResult);
 extern void Cilk_batchify_sequential(CilkWorkerState *const ws,
                                      CilkBatchSeqOperation op, void *dataStruct,
                                      void *data, size_t dataSize,
                                      void *indvResult);
 
 
-/**********************************************
+/*!
+***********************************************
 * Order maintenance functions for race detector
 ***********************************************/
 extern void OM_DS_insert(void * ds, void * _x, void * _y);

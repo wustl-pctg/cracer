@@ -13,20 +13,20 @@
    batch closures and frames, which we don't want to have to malloc
    and free every single time we start a batch. */
 void Cilk_remove_and_keep_closure_and_frame(CilkWorkerState *const ws,
-																						CilkStackFrame *f, int pn,
-																						ReadyDeque *const deque_pool)
+					    CilkStackFrame *f, int pn,
+					    ReadyDeque *const deque_pool)
 {
-	Closure *t;
+  Closure *t;
 
-	deque_lock(ws, pn, deque_pool);
-	t = deque_xtract_bottom(ws, pn, deque_pool);
-	CILK_ASSERT(ws, t->frame == f);
-	deque_unlock(ws, pn, deque_pool);
+  deque_lock(ws, pn, deque_pool);
+  t = deque_xtract_bottom(ws, pn, deque_pool);
+  CILK_ASSERT(ws, t->frame == f);
+  deque_unlock(ws, pn, deque_pool);
 }
 
 static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
                                    int* work_array, BatchRecord *record)
-                                   //        InternalBatchOperation op)
+//        InternalBatchOperation op)
 {
   CILK_ASSERT(ws, ws->batch_id == USE_SHARED(current_batch_id));
 
@@ -67,26 +67,26 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
               USE_SHARED(pending_batch).batch_no);
 
   int i, index;
-	//	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
-	Batch* current = &USE_SHARED(pending_batch);
+  //	Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
+  Batch* current = &USE_SHARED(pending_batch);
   //	void* results = USE_SHARED(batch_work_array);
   //	size_t dataSize = current->dataSize;
 
   for (i = 0; i < USE_PARAMETER(active_size); i++) {
     if (current->array[i].status == DS_IN_PROGRESS) {
-			//			index = current->array[i].packedIndex;
-			/* if (current->array[i].result) { */
-			/* 	memcpy(current->array[i].result, &results[index], dataSize); */
-			/* } */
+      //			index = current->array[i].packedIndex;
+      /* if (current->array[i].result) { */
+      /* 	memcpy(current->array[i].result, &results[index], dataSize); */
+      /* } */
       //      printf("Spot %i is done for batch %i.\n", i, ws->batch_id);
-			current->array[i].status = DS_DONE;
-		}
-	}
+      current->array[i].status = DS_DONE;
+    }
+  }
 
   USE_SHARED(current_batch_id)++; // signal end of this batch
   USE_SHARED(batch_owner) = -1;
   __sync_lock_release(&USE_SHARED(batch_lock));
-	//	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
+  //	Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
 
 // @todo @refactor I don't think this actually helps anything. We
@@ -145,7 +145,7 @@ static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
 
   Cilk_remove_and_keep_closure_and_frame(_cilk_ws, &_cilk_frame->header,
                                          _cilk_ws->self,
-																				 USE_PARAMETER(ds_deques));
+					 USE_PARAMETER(ds_deques));
   Cilk_terminate_batch(_cilk_ws);
 }
 
@@ -154,11 +154,11 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
 {
   //	Cilk_enter_state(_cilk_ws, STATE_BATCH_INVOKE);
   InternalBatchOperation op;
-	void* ds;
+  void* ds;
   void* work_array;
   unsigned num_ops = 0;
   CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at
-																					the end of the func.*/
+					  the end of the func.*/
 
   CILK2C_START_THREAD_SLOW();
   switch (_cilk_frame->header.entry) {
@@ -178,7 +178,7 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   CILK2C_PUSH_FRAME(_cilk_frame);
 
   //	Cilk_exit_state(ws, STATE_BATCH_INVOKE);
-	op(_cilk_ws, ds, work_array, num_ops, NULL);
+  op(_cilk_ws, ds, work_array, num_ops, NULL);
 
   CILK2C_XPOP_FRAME_NORESULT(_cilk_frame,/* return nothing */);
   CILK2C_AFTER_SPAWN_SLOW();
@@ -205,8 +205,8 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
   CILK_WMB();
 
   Cilk_remove_and_keep_closure_and_frame(_cilk_ws, &_cilk_frame->header,
-																				 _cilk_ws->self,
-																				 USE_PARAMETER(ds_deques));
+					 _cilk_ws->self,
+					 USE_PARAMETER(ds_deques));
 
   Cilk_terminate_batch(_cilk_ws);
 
@@ -229,7 +229,7 @@ void reset_batch_closure(CilkContext *const context)
 void Batcher_init(CilkContext *const context)
 {
   Closure *t;
-	BatchFrame *f;
+  BatchFrame *f;
   int i;
 
   USE_SHARED1(pending_batch).array =
@@ -243,18 +243,18 @@ void Batcher_init(CilkContext *const context)
     USE_SHARED1(pending_batch).array[i].status = DS_DONE;
   }
 
-	USE_SHARED1(batch_lock) = 0;
+  USE_SHARED1(batch_lock) = 0;
 
-	// This may not actually be sizeof(int)! It could actually change,
-	// but for now it's okay to specialize. ***
-	USE_SHARED1(batch_work_array) =
+  // This may not actually be sizeof(int)! It could actually change,
+  // but for now it's okay to specialize. ***
+  USE_SHARED1(batch_work_array) =
     Cilk_malloc_fixed(USE_PARAMETER1(active_size)
                       * sizeof(int)
                       * USE_PARAMETER1(batchvals));
 
 
   /* create a frame for invoke_batch */
-	t = Cilk_Closure_create_malloc(context, NULL);
+  t = Cilk_Closure_create_malloc(context, NULL);
   t->parent = (Closure *) NULL;
 
   f = Cilk_malloc(sizeof(BatchFrame));

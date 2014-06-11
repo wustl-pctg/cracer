@@ -122,7 +122,7 @@ volatile const struct vperfctr_state *__cilk_vperfctr_init(int set_global_variab
 #endif
 
 void Cilk_create_children(CilkContext *const context,
-													void (*child)(CilkChildParams *const childParams))
+			  void (*child)(CilkChildParams *const childParams))
 {
   long i;
   int res;
@@ -146,8 +146,8 @@ void Cilk_create_children(CilkContext *const context,
   CILK_CHECK(USE_SHARED1(thrd_params_array), (context, NULL, "could not malloc params_array\n"));
 
   for (i = 0; i < USE_PARAMETER1(active_size); i++) {
-      USE_SHARED1(thrd_params_array)[i].context = context;
-      USE_SHARED1(thrd_params_array)[i].id = i;
+    USE_SHARED1(thrd_params_array)[i].context = context;
+    USE_SHARED1(thrd_params_array)[i].id = i;
   }
 
   pthread_attr_init(&attr);
@@ -163,22 +163,22 @@ void Cilk_create_children(CilkContext *const context,
   }
   pthread_setconcurrency(USE_PARAMETER1(active_size));
 
-	// I would imagine it's helpful to set the main thread affinity the
-	// same as worker 0, disallowing cache validation for the initial
-	// closure.
+  // I would imagine it's helpful to set the main thread affinity the
+  // same as worker 0, disallowing cache validation for the initial
+  // closure.
 #ifdef HAVE_SCHED_SETAFFINITY
-	cpu_set_t mask;
-	CPU_ZERO(&mask);
-	CPU_SET(1, &mask);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &mask);
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+  CPU_SET(1, &mask);
+  pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &mask);
 #endif
 
   for (i = 0; i < USE_PARAMETER1(active_size); i++)
     {
-			// Set thread affinity
+      // Set thread affinity
 #ifdef HAVE_SCHED_SETAFFINITY
-			int ret_val;
-			CPU_ZERO(&mask);
+      int ret_val;
+      CPU_ZERO(&mask);
       CPU_SET(i, &mask);
 
 
@@ -186,17 +186,17 @@ void Cilk_create_children(CilkContext *const context,
       ret_val = pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &mask);
       //			}
 
-/*       if (ret_val != 0) { */
-/* 				printf("Warning: Could not set CPU affinity for %i with error %i\n", i, ret_val); */
-/*       } */
+      /*       if (ret_val != 0) { */
+      /* 				printf("Warning: Could not set CPU affinity for %i with error %i\n", i, ret_val); */
+      /*       } */
 #endif
 
       res = pthread_create(USE_SHARED1(tid) + i,
-													 &attr,
-													 (void * (*) (void *)) child,
-													 (void *) &(USE_SHARED1(thrd_params_array)[i]) );
+			   &attr,
+			   (void * (*) (void *)) child,
+			   (void *) &(USE_SHARED1(thrd_params_array)[i]) );
       if (res)
-				Cilk_die_internal(context, NULL, "Can't create threads\n");
+	Cilk_die_internal(context, NULL, "Can't create threads\n");
     }
 }
 
@@ -238,7 +238,7 @@ void Cilk_worker_wait_for_invocation(CilkContext *const context, long self, int 
 {
   int res;
   pthread_cond_t *my_cond = ( self != 0 ? &USE_SHARED1(wakeup_other_workers_cond)
-															: &USE_SHARED1(wakeup_first_worker_cond));
+			      : &USE_SHARED1(wakeup_first_worker_cond));
 
   res = pthread_mutex_lock(&USE_SHARED1(workers_mutex));
   CILK_CHECK((res == 0), (context, NULL, "error in pthread_mutex_lock: %d returned \n", res));
@@ -315,9 +315,9 @@ void Cilk_terminate_children(CilkContext *const context)
     {
       res = pthread_join(USE_SHARED1(tid[i]), NULL);
       CILK_CHECK(res == 0,
-								 (context, NULL,
-									"error in pthread_join: %d returned (worker %d)\n",
-									res, i));
+		 (context, NULL,
+		  "error in pthread_join: %d returned (worker %d)\n",
+		  res, i));
     }
 
 
