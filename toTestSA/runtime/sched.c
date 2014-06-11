@@ -2209,7 +2209,7 @@ int OM_DS_order(void *ds, void * _x, void * _y){
       return 1;
     else
       current = current->next;
-  } while( current != ds->tail);
+  } while( current != ((OM_DS*)ds)->tail);
 
   printf("%s\n", "Neither node found in linked list. Returning false");
 
