@@ -2123,14 +2123,14 @@ void OM_free_nodes_internal(CilkContext *const context)
 
 void OM_DS_insert(void *ds, void * _x, void * _y){
 
-#ifdef BATCHIFY_WORKING
+  #ifdef BATCHIFY_WORKING
 
   InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
   ir->x = (OM_Node *)_x;
   ir->y = (OM_Node *) _y;	
 
   Cilk_batchify(_cilk_ws, &insertPar, list, ir, sizeof(Node), NULL);
-#else
+  #else
   //Do insert here
 	
   OM_Node * x = (OM_Node *)_x;
@@ -2164,7 +2164,7 @@ void OM_DS_insert(void *ds, void * _x, void * _y){
 
 void OM_DS_append(void *ds, void * _x){
   printf("Debug: appending node\n");
-#ifdef OM_IS_LL
+  #ifdef OM_IS_LL
 
   if (ds && _x){
     OM_DS * om_ds = (OM_DS *)ds;

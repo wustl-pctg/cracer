@@ -133,4 +133,5 @@
 #define CILK2C_AT_SYNC_FAST() {						\
      Cilk_cilk2c_at_sync_fast_cp(_cilk_ws, &(_cilk_frame->header));	\
      Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);			\
+     OM_DS_sync_fast(_cilk_ws, &(_cilk_frame->header));			\
 }
