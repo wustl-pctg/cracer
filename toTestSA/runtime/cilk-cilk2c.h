@@ -80,11 +80,16 @@
      }								\
 }
 
-#define CILK2C_BEFORE_SPAWN_FAST()					\
-  Cilk_cilk2c_before_spawn_fast_cp(_cilk_ws, &(_cilk_frame->header))
+#define CILK2C_BEFORE_SPAWN_FAST(){					\
+  Cilk_cilk2c_before_spawn_fast_cp(_cilk_ws, &(_cilk_frame->header));	\
+  OM_DS_spawn_fast(_cilk_ws, &(_cilk_frame->header));			\
+}
 
-#define CILK2C_BEFORE_SPAWN_SLOW()					\
-  Cilk_cilk2c_before_spawn_slow_cp(_cilk_ws, &(_cilk_frame->header))
+
+#define CILK2C_BEFORE_SPAWN_SLOW(){					\
+  Cilk_cilk2c_before_spawn_slow_cp(_cilk_ws, &(_cilk_frame->header));	\
+  OM_DS_spawn_slow(_cilk_ws, &(_cilk_frame->header));			\
+}
 
 #define CILK2C_AT_THREAD_BOUNDARY_SLOW() {		\
      Cilk_cilk2c_at_thread_boundary_slow_cp(		\
@@ -124,8 +129,10 @@
 
 #define CILK2C_BEFORE_RETURN_INLET()
 
-#define CILK2C_BEFORE_SYNC_SLOW()					\
-  Cilk_cilk2c_before_sync_slow_cp(_cilk_ws, &(_cilk_frame->header))
+#define CILK2C_BEFORE_SYNC_SLOW()	{				\
+  Cilk_cilk2c_before_sync_slow_cp(_cilk_ws, &(_cilk_frame->header));	\
+  OM_DS_sync_slow(_cilk_ws, &(_cilk_frame->header));			\
+}
 
 #define CILK2C_AFTER_SYNC_SLOW()					\
   Cilk_cilk2c_after_sync_slow_cp(_cilk_ws, &(_cilk_frame->header))
