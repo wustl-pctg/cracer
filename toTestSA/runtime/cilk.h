@@ -91,9 +91,6 @@ struct cilk_alloca_header {
   size_t size;
 };
 
-/*!
-************************************
- *Order Maintenance for race detect*
 ************************************/
 
 typedef struct OM_Node_s{
@@ -175,11 +172,8 @@ typedef struct {
   WHEN_CILK_ND(DisjointSetMemberT s_set;)
   WHEN_CILK_ND(DisjointSetMemberT p_set;)
   WHEN_CILK_DEBUG(volatile unsigned int magic;)
-
   //Order maintenance for race detector
-  int spawn_first_flag;
   OM_Node * current_node, *post_sync_node;
-
 } CilkStackFrame;
 
 
@@ -334,10 +328,10 @@ typedef struct {
 /* worker state */
 typedef struct {
   CilkClosureCache *current_cache;
-  struct ReadyDeque *current_deque_pool;
+	struct ReadyDeque *current_deque_pool;
   CilkClosureCache cache;
   CilkClosureCache ds_cache;
-  int batch_id; // ***
+  int batch_id; // @todo remove, if possible.
   int self;
   struct Cilk_im_descriptor im_descriptor [CILK_INTERNAL_MALLOC_BUCKETS];
   size_t stackdepth;
@@ -354,11 +348,10 @@ typedef struct {
 #ifdef CILK_USE_PERFCTR
   volatile const struct vperfctr_state *perfctr_kstate;
 #endif
+
   /*ORDER MAINTENANCE FOR RACE DETECT*/
   OM_Node *currentNode;
-  //add data structs to hold leftmost/rightmost read/write pointers
 
- 
 } CilkWorkerState;
 
 typedef struct{
@@ -417,7 +410,7 @@ static inline Cilk_time Cilk_get_elapsed_time(CilkWorkerState *const ws)
  * this is written so that it can be __inline__d and partially
  * evaluated when size is a constant
  */
-#define CILK_INTERNAL_MALLOC_CANONICALIZE_MACRO(size, n)	\
+#define CILK_INTERNAL_MALLOC_CANONICALIZE_MACRO(size, n)  \
   if (size <= n && n >= CILK_CACHE_LINE) return n;
 
 static inline int Cilk_internal_malloc_canonicalize(size_t size)
@@ -434,7 +427,7 @@ static inline int Cilk_internal_malloc_canonicalize(size_t size)
   return -1;  /* keep gcc happy */
 }
 
-#define CILK_INTERNAL_MALLOC_SIZE_TO_BUCKET(size, n, bucket)	\
+#define CILK_INTERNAL_MALLOC_SIZE_TO_BUCKET(size, n, bucket)  \
   if (size <= n && n >= CILK_CACHE_LINE) return bucket;
 
 static inline int Cilk_internal_malloc_size_to_bucket(size_t size)
@@ -451,7 +444,7 @@ static inline int Cilk_internal_malloc_size_to_bucket(size_t size)
   return -1;  /* keep gcc happy */
 }
 
-#define CILK_INTERNAL_MALLOC_BUCKET_TO_SIZE(b, n, bucket)	\
+#define CILK_INTERNAL_MALLOC_BUCKET_TO_SIZE(b, n, bucket) \
   if (bucket == b) return n;
 
 static inline int Cilk_internal_malloc_bucket_to_size(int b)
@@ -553,7 +546,7 @@ extern void Cilk_destroy_frame(CilkWorkerState *const ws,
 #define CILK_NAME_STATS NOSTATS
 #endif
 
-#define CILK_MAGIC_NAME_MAGIC(a,b,c)					\
+#define CILK_MAGIC_NAME_MAGIC(a,b,c)                                  \
   Cilk_flags_are_wrong_ ## a ## _ ## b ## _ ## c ## _please_recompile
 #define CILK_MAGIC_NAME_MORE_MAGIC(a,b,c) CILK_MAGIC_NAME_MAGIC(a,b,c)
 #define CILK_MAGIC_NAME                                         \
@@ -581,33 +574,34 @@ void *Cilk_malloc_fixed(size_t);
 enum DS_STATUS { DS_WAITING, DS_IN_PROGRESS, DS_DONE };
 
 typedef void (*InternalBatchOperation)(CilkWorkerState *const _cilk_ws,
-                                       void *dataStruct, void *data,
-                                       size_t numElements, void *result);
+                                       void *data_struct, void *data,
+                                       size_t num_elem, void *result);
 
-
+// @todo @feature For now, assume only one batched data structure.
 typedef struct {
-  InternalBatchOperation operation;
-  void*       args;
-  size_t      size;
-  volatile enum DS_STATUS   status;
-  int         packedIndex;
-  void*       result;
+  InternalBatchOperation  operation;
+  void*                   args;
+  size_t                  size;
+  volatile enum DS_STATUS status;
+  int                     packed_index;
+  void*                   result;
   //CILK_CACHE_LINE_PAD;
 } BatchRecord;
 
 typedef struct {
-  size_t size;
-  size_t dataSize;
+  size_t                 size;
+  size_t                 data_size;
   InternalBatchOperation operation;
-  size_t batch_no;
-  BatchRecord  *array;
-  //  CILK_CACHE_LINE_PAD;
+  size_t                 batch_no;
+  void*                  data_structure;
+  BatchRecord*           array;
+	//  CILK_CACHE_LINE_PAD;
 } Batch;
 
 
 typedef void (*CilkBatchSeqOperation)(Batch* pending,
-                                      void *dataStruct, void *data,
-				      size_t numElements, void *result);
+                                      void *data_struct, void *data,
+																			size_t num_elem, void *result);
 
 typedef struct {
   InternalBatchOperation op;
@@ -628,8 +622,6 @@ typedef struct {
   unsigned int batch_id;
   int retval;
 } BatchFrame;
-
-
 
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
