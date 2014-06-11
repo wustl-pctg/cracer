@@ -23,6 +23,8 @@ cilk void parfor_skip(const int begin, const int end)
         insert_seq(_cilk_ws, &vals[i * g_num_spots]);
       else
         insert_par(_cilk_ws, &vals[i * g_num_spots]);
+
+      //      printf("Worker %i about to insert %i\n", _cilk_ws->self, vals[i]);
     }
   } else {
     i = begin + (end-begin) / 2;
@@ -93,8 +95,8 @@ cilk int main(int argc, char* argv[])
   /* stopTimer(); */
 
 
-  printf("%lf\n",getWallTime());
-  //  printf("Size: %d\n", get_size());
+  printf("Time: %lf",getWallTime());
+  printf(" | Size: %d\n", get_size());
 
   return 0;
 }

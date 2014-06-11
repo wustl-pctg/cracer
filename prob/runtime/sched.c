@@ -1925,6 +1925,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
                       * data_size
                       * USE_PARAMETER(batchvals));
         work_array = USE_SHARED(batch_work_array);
+        pending->data_size = data_size;
 
       }
 

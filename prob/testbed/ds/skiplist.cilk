@@ -282,6 +282,10 @@ cilk void batch_mergeLists(int idx, void* infos){
 cilk void batch_insert_par2(void* dataStruct, void* data,
                             size_t numElements, void* results)
 {
+  /* int done = 1; */
+  /* int* ops = (int*) data; */
+
+  // real
   int i,j,k,check;
   int* level = calloc(numElements,sizeof(int));
   //  int original_size = get_size();
@@ -299,6 +303,29 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
 
   Node* current = list.hdr;
   Node* back_node;
+
+  /* // fake */
+  /* size = get_size(); */
+  /* for (i = 0; i < numElements; i++) { */
+  /*   // Assume ops are add operations. */
+  /*   insertNode(ops[i]); */
+  /* } */
+
+  /* free(new_nodes_back); */
+  /* free(level); */
+  /* free(prev_nodes); */
+
+  /* /\* if (get_size() != size + numElements) { *\/ */
+  /* /\*   printf("Error in the batch function of worker %i.\n", _cilk_ws->self); *\/ */
+  /* /\*   for (i = 0; i < numElements; i++) { *\/ */
+  /* /\*     printf(" %i", ops[i]); *\/ */
+  /* /\*   } *\/ */
+  /* /\*   printf("\n"); *\/ */
+  /* /\* } *\/ */
+
+  /* if (done) return; */
+  /* // end fake */
+
 
   quicksort((int*)data, 0, numElements - 1);
   //remove duplicates
@@ -467,7 +494,8 @@ Node *insertNode(T data)
   }
   x = x->forward[0];
   if (x != NIL && compEQ(x->data, data)) {
-    //    printf("%d already in skiplist\n", x->data);
+    /* printf("%d already in skiplist. %i was originally responsible.\n", */
+    /*        x->data, resp[x->data]); */
     return(x);
   }
 

@@ -1,5 +1,5 @@
 CILKC = ../support/cilkclocal
-CFLAGS =
+CFLAGS = -cilk-debug -g -Wc,-std=c99
 MAKEDEPEND = $(CILKC) -MM
 DEPS = $(wildcard util/*.h util/*.cilkh)
 SRCS = $(wildcard *.cilk)

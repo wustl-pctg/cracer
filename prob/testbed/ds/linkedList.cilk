@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <linkedList.cilkh>
-#include <../util/defaults.h>
+#include "linkedList.cilkh"
+#include "../util/defaults.h"
 
 /*!
 * Basic linked list to be utilized for English-Hebrew
@@ -18,13 +18,13 @@
 LinkedList * createLinkedList(){
 
 	LinkedList * tmp;
-	 
-	tmp = (LinkedList*) malloc(sizeof(LinkedList));	
+
+	tmp = (LinkedList*) malloc(sizeof(LinkedList));
 
 	tmp->head = NULL;
 	tmp->tail = NULL;
 	tmp->size = 0;
-	
+
 	return tmp;
 }
 
@@ -40,12 +40,12 @@ void cleanUp(LinkedList * ll) {
 
 	while (tmp != ll->tail)
 	{
-		next = tmp->next;	
+		next = tmp->next;
 		free(tmp);
-		
-		tmp = next;	
+
+		tmp = next;
 	}
-	
+
 	free(tmp);
 	free(ll);
 }
@@ -57,10 +57,10 @@ void cleanUp(LinkedList * ll) {
 */
 cilk void appendNode(LinkedList * list, Node * newNode){
 
-	//TODO: size checks? 
+	//TODO: size checks?
 	if (newNode != NULL)
 	{
-		
+
 		//if this is an empty list, assign head and tail
 		if (list->size == 0)
 		{
@@ -76,16 +76,16 @@ cilk void appendNode(LinkedList * list, Node * newNode){
 			newNode->prev = list->tail;
 
 			newNode->next = NULL;
-		
+
 			//update tail of the list
-			list->tail = newNode;	
+			list->tail = newNode;
 			list->size++;
 		}
-		
+
 	} else {
-	
+
 	       printf("%s\n","Error: trying to append a NULL node");
-	}	
+	}
 }
 
 //! Insert a record to be batchified
@@ -95,12 +95,12 @@ cilk void appendNode(LinkedList * list, Node * newNode){
         \param y the node to be inserted after x
 */
 cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
-	
+
 	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
 	ir->x = x;
-	ir->y = y;	
+	ir->y = y;
 
-	Cilk_batchify(_cilk_ws, &insertSeq, list, ir, sizeof(InsertRecord), NULL);
+	Cilk_batchify(_cilk_ws, &insertSeq, list, ir, sizeof(InsertRecord*), NULL);
 }
 
 //! A non-parallel simulation of batchify insert
@@ -110,24 +110,24 @@ cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
 	\param y the node to be inserted after x
 */
 cilk void non_batchInsertSeq(LinkedList * list, Node *x, Node *y){
-	
+
 	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
 	InsertRecord ** irArray = (InsertRecord **) malloc(1 * sizeof(InsertRecord *));
 
 	ir->x = x;
-	ir->y = y;	
+	ir->y = y;
 
 	irArray[0] = ir;
 
-	spawn insertSeq((void*)list, (void *)irArray, 1, NULL); 
+	spawn insertSeq((void*)list, (void *)irArray, 1, NULL);
 
 }
 
-//! 
+//!
 /*! Parallel insert for non-batchify insert */
 cilk void non_batchInsertPar(LinkedList * list, InsertRecord ** irArray, int size){
-	
-	spawn insertPar((void*)list, (void *)irArray, (size_t)size, NULL); 
+
+	spawn insertPar((void*)list, (void *)irArray, (size_t)size, NULL);
 
 }
 
@@ -154,9 +154,9 @@ cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 			free(ir);
 			continue;
 		}
-	
+
 		//if x isnt tail
-		if (x->next)	
+		if (x->next)
 			z = x->next;
 		 //make z null and change y to tail
 		else
@@ -168,7 +168,7 @@ cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 		if (z)
 			z->prev = y;
 		y->prev = x;
-	
+
 		//change next pointers
 		y->next = x->next;
 		//do atomic change of x pointer
@@ -176,12 +176,12 @@ cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 		{
 			printf("Successful swap\n");
 		}
-		
-		
+
+
 
 		list->size++;
-		
-		free(ir);	
+
+		free(ir);
 	}
 }
 
@@ -208,10 +208,10 @@ cilk void atomicInsert(LinkedList * list, InsertRecord *ir){
 		printf("Node is null, skipping entry");
 		free(ir);
 		return;
-	}	
+	}
 
 	//if x isnt tail
-	if (x->next)	
+	if (x->next)
 		z = x->next;
 	 //make z null and change y to tail
 	else
@@ -229,9 +229,9 @@ cilk void atomicInsert(LinkedList * list, InsertRecord *ir){
 
 	if (__sync_bool_compare_and_swap(&(x->next), x->next, y)){
 		printf("Successful swap\n");
-	}	
+	}
 	list->size++;
-	free(ir);	
+	free(ir);
 }
 
 //! Determine order of two nodes
@@ -245,7 +245,7 @@ cilk void atomicInsert(LinkedList * list, InsertRecord *ir){
 cilk int order(LinkedList * list, Node * x, Node *y ){
 
 	//make sure list is valid
-	
+
 	/* ========= Why are these commented out? ======= */
 	//assert(list != NULL);
 	//assert((list->size) > 2);
