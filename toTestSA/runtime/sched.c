@@ -2062,6 +2062,199 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 	return;
 }
 
+void OM_DS_free_and_free_nodes(CilkContext *const context){
+  //free nodes
+#ifdef OM_IS_LL
+  OM_LL_free_nodes_internal(context);
+#else
+  OM_free_nodes_internal(context);
+#endif
+  //free ds
+  printf("Debug: free OMDS\n");	
+  Cilk_free(context->Cilk_global_state->hebrewOM_DS);
+  Cilk_free(context->Cilk_global_state->englishOM_DS);
+
+}
+
+//! frees node if LL is the OM_DS
+void OM_LL_free_nodes_internal(CilkContext *const context){
+  int i = 0;
+  OM_Node  * node, *nextNode;
+
+  printf("DEBUG:LL free nodes\n");
+  node = context->Cilk_global_state->englishOM_DS->head;
+
+  while(node != NULL){  
+    nextNode = node->next;
+    Cilk_free(node);
+    node = nextNode;
+  }
+
+  node = context->Cilk_global_state->hebrewOM_DS->head;
+
+  while(node != NULL){  
+    nextNode = node->next;
+    Cilk_free(node);
+    node = nextNode;
+  }	
+			
+}
+
+//! frees node if OM_DS is not linked list
+void OM_free_nodes_internal(CilkContext *const context)
+{printf("DEBUG: OMDS free nodes -- NOT COMPLETED\n");}
+
+
+void OM_DS_insert(void *ds, void * _x, void * _y){
+
+  #ifdef BATCHIFY_WORKING
+
+  InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
+  ir->x = (OM_Node *)_x;
+  ir->y = (OM_Node *) _y;	
+
+  Cilk_batchify(_cilk_ws, &insertPar, list, ir, sizeof(Node), NULL);
+  #else
+  //Do insert here
+	
+  OM_Node * x = (OM_Node *)_x;
+  OM_Node * y = (OM_Node *)_y;
+  OM_Node * z;
+
+  //if x is null
+  if (!(x && y && ds) ){
+    printf("Some node or ds is null, skipping insert\n");
+    return;
+  }	
+
+  //if x isnt tail
+  if (x->next)	
+    z = x->next;
+  else  //make z null and change y to tail
+    {
+      z = NULL;
+      ( (OM_DS*)ds)->tail = y;
+    }
+
+  //change next pointers
+  y->next = x->next;
+
+  if (__sync_bool_compare_and_swap(&(x->next), x->next, y)){
+    printf("Successful swap\n");
+  }	
+  ((OM_DS*)ds)->size++;
+#endif	
+}
+
+void OM_DS_append(void *ds, void * _x){
+  printf("Debug: appending node\n");
+  #ifdef OM_IS_LL
+
+  if (ds && _x){
+    OM_DS * om_ds = (OM_DS *)ds;
+    OM_Node * node = (OM_Node*)_x;
+    if (om_ds->size == 0)
+      {
+	om_ds->tail = om_ds->head = node; 
+	node->next = NULL; 
+	om_ds->size++;
+      }
+    else 	{ //if l.l. has nodes already
+      om_ds->tail->next = node;
+      om_ds->tail = node;
+      node->next = NULL;
+      om_ds->size++;	
+    }
+  }
+  else {
+    printf("Debug: appending null node or to null ds\n");
+  }
+#else
+  printf("Debug: Don't know how to append to OM_DS yet\n");
+#endif
+}
+
+int OM_DS_order(void *ds, void * _x, void * _y){
+  return 0;
+}
+
+#define WS_REF_ENG ws->context->Cilk_global_state->englishOM_DS
+#define WS_REF_HEB ws->context->Cilk_global_state->hebrewOM_DS
+
+//TOTO : function that is called when entering a spawned function
+void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
+	/*! Create three new nodes to be inserted into OM_DS*/
+	OM_Node * cont_node, * post_sync_node, * spawned_func_node;
+	
+	cont_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
+	post_sync_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
+	spawned_func_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
+
+	printf("Debug: OM_DS_before_spawn_fast called\n WS: %d\t Frame: %d\n", ws, frame);
+	//there could be redundant post_sync_node, so free it if necessary
+	if (frame->post_sync_node){
+		//do i need a lock here?
+		Cilk_free(frame->post_sync_node);
+	}
+	/*! insert the new nodes into the OM_DS*/
+
+	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node);
+	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node);
+	OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node);
+
+	OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node);
+	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node);
+	OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node);
+
+	/*!update frame variables*/
+	frame->post_sync_node = post_sync_node;
+	frame->current_node = cont_node;	
+}
+/*!The only slow threads are going to either be the main thread or a stolen frame*/
+void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
+	printf("Debug: OM_DS_before_spawn_slow called\n WS: %d\t Frame: %d\n", ws, frame);
+
+}
+void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
+	printf("Debug: OM_DS_sync_slow\n WS: %d\t Frame: %d\n", ws, frame);
+	
+}
+
+
+void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
+	printf("Debug: OM_DS_sync_fast\n WS: %d\t Frame: %d\n", ws, frame);
+}
+
+/*! === Race detect functions in particular === */
+
+/*! Function that detects potential races on a given memory read
+  \param ws CilkWorkerState Node for program
+  \param memloc The variable to be read
+*/
+void race_detect_read(CilkWorkerState * const ws, void * memloc) {
+  
+  //! Retrieve currentNode from workerstate
+  OM_Node * currentNode;
+  currentNode = ws->currentNode;
+
+  
+
+}
+
+/*! Function that detects potential races on a given memory write
+  \param ws CilkWorkerState Node for program
+  \param memloc The variable to be written
+*/
+void race_detect_write(CilkWorkerState * const ws, void * memloc) {
+
+  //! Retrieve currentNode from workerstate
+  OM_Node * currentNode;
+  currentNode = ws->currentNode;
+
+
+}
+/* End Order Maintenence Functions */
+
 /*
  * initialization of the scheduler.
  */
