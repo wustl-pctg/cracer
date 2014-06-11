@@ -2211,7 +2211,7 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 
 void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
-	printf("Debug: OM_DS_sync_fast\n");
+	printf("Debug: OM_DS_sync_fast\n WS: %d\t Frame: %d\n", ws, frame);
 }
 
 /*! === Race detect functions in particular === */
