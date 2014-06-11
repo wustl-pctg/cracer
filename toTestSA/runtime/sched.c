@@ -2100,6 +2100,18 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 			
 }
 
+/*!
+*****************************************
+* Order Maintenance for race detection *
+*****************************************/
+void OM_DS_init(CilkContext *const context){
+  if (context->Cilk_global_state){
+    printf("Debug: OM_DS_init\n");
+    context->Cilk_global_state->hebrewOM_DS = Cilk_malloc(sizeof(OM_DS));
+    context->Cilk_global_state->englishOM_DS = Cilk_malloc(sizeof(OM_DS));
+  }	
+#define OM_IS_LL
+}
 //! frees node if OM_DS is not linked list
 void OM_free_nodes_internal(CilkContext *const context)
 {printf("DEBUG: OMDS free nodes -- NOT COMPLETED\n");}
