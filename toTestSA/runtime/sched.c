@@ -2195,18 +2195,16 @@ int OM_DS_order(void *ds, void * _x, void * _y){
 }
 
 void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
-	printf("Debug: OM_DS_before_fast called \n");
+	printf("Debug: OM_DS_before_fast called\n WS: %d\t Frame: %d\n", ws, frame);
 
-	frame->post_sync_node = NULL;
 }
 
 void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
-	printf("Debug: OM_DS_before_spawn_slow called \n");
+	printf("Debug: OM_DS_before_spawn_slow called\n WS: %d\t Frame: %d\n", ws, frame);
 
-	frame->post_sync_node = NULL;
 }
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
-	printf("Debug: OM_DS_sync_slow\n");
+	printf("Debug: OM_DS_sync_slow\n WS: %d\t Frame: %d\n", ws, frame);
 }
 
 
