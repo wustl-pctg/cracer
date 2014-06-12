@@ -101,13 +101,13 @@ cilk void appendNode(LinkedList * list, Node * newNode){
   \param x the node in list marking the location of the insert
   \param y the node to be inserted after x
 */
-cilk void batchInsertSeq(LinkedList * list, Node *x, Node *y){
+cilk void batchInsertPar(LinkedList * list, Node *x, Node *y){
 
 	LLInsertRecord * ir = (LLInsertRecord * ) malloc(sizeof(LLInsertRecord));
 	ir->x = x;
 	ir->y = y;
 
-	Cilk_batchify(_cilk_ws, &insertSeq, list, ir, sizeof(LLInsertRecord *), NULL);
+	Cilk_batchify(_cilk_ws, &insertPar, list, ir, sizeof(LLInsertRecord *), NULL);
 }
 
 //! A non-parallel simulation of batchify insert
