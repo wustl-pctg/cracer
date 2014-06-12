@@ -107,7 +107,7 @@ cilk void batchInsertPar(LinkedList * list, Node *x, Node *y){
 	ir.x = x;
 	ir.y = y;
 
-	Cilk_batchify(_cilk_ws, &insertPar, list, &ir, sizeof(LLInsertRecord *), NULL);
+	Cilk_batchify(_cilk_ws, &insertPar, list, &ir, sizeof(LLInsertRecord), NULL);
 }
 
 //! A non-parallel simulation of batchify insert
@@ -158,7 +158,7 @@ cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 		if (!x)
 		{
 			printf("First node is null, skipping batch entry.");
-			free(ir);
+			//free(ir);
 			continue;
 		}
 
@@ -188,20 +188,20 @@ cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 
 		list->size++;
 
-	//	free(ir);
+//		free(ir);
 	}
 }
 
 /*! parallel version of insert */
 cilk void insertPar(void *dataStruct, void *data, size_t size, void *result)
 {
-	LLInsertRecord ** irArray = (LLInsertRecord **)data;
+	LLInsertRecord * irArray = (LLInsertRecord *)data;
 	LinkedList * list = (LinkedList *) dataStruct;
 
 	int i;
 	for (i = 0; i<size; i++)
 	{
-		spawn atomicInsert(list, irArray[i]);
+		spawn atomicInsert(list, &irArray[i]);
 	}
 }
 
@@ -213,7 +213,7 @@ cilk void atomicInsert(LinkedList * list, LLInsertRecord *ir){
 
 	if (!ir->x){//if x is null
 		printf("Node is null, skipping entry");
-		free(ir);
+		//free(ir);
 		return;
 	}
 
@@ -235,7 +235,7 @@ cilk void atomicInsert(LinkedList * list, LLInsertRecord *ir){
 		//printf("Successful swap\n");
 	}
 	list->size++;
-	free(ir);
+	//free(ir);
 
 }
 
