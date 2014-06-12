@@ -46,12 +46,13 @@ cilk int main(int argc, char **argv)
 	list =createLinkedList();
 
 	//empty
-	printList(list);
+//	printList(list);
 	spawn appendNode(list, n);
 	sync;
 
-	printf("%s\n", "Should be one node:");
-	printList(list);
+
+//	printf("%s\n", "Should be one node:");
+//	printList(list);
 
 	irArray[0] = tmpIR1;
 	irArray[1] = tmpIR2;
@@ -70,13 +71,14 @@ cilk int main(int argc, char **argv)
 	//spawn atomicInsert(list, irArray[2]);
 	//spawn atomicInsert(list, irArray[1]);
 
-	//x += spawn order(list, n3, n4);
+	
 
 	sync;
-	printList(list);
-
-	(x)?printf("n3 before n4\n"):printf("n3 not before n4\n");
-
+//	printList(list);
+	x += spawn order(list, n3, n4);
+//	(x)?printf("n3 before n4\n"):printf("n3 not before n4\n");
+	(x)?assert(0):assert(1);
+	
 	cleanUp(list);
 	free(irArray);
 	//tmpIR freed
