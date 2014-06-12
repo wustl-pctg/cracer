@@ -2209,7 +2209,6 @@ int OM_DS_order(void *ds, void * _x, void * _y){
 #endif
 }
 
-//TOTO : function that is called when entering a spawned function
 void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	/*! Create three new nodes to be inserted into OM_DS*/
@@ -2219,7 +2218,7 @@ void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	post_sync_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 
-	printf("Debug: OM_DS_before_spawn_fast called\n WS: %p\t Frame: %p\n", ws, frame);
+	printf("Debug: OM_DS_before_spawn_fast called WS: %p\t Frame: %p\n", ws, frame);
 	//there could be redundant post_sync_node, so free it if necessary
 	if (frame->post_sync_node){
 		//do i need a lock here?
@@ -2252,7 +2251,7 @@ void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	cont_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	post_sync_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
-	printf("Debug: OM_DS_before_spawn_slow called\n WS: %p\t Frame: %p\n", ws, frame);
+	printf("Debug: OM_DS_before_spawn_slow called WS: %p\t Frame: %p\n", ws, frame);
 
 	//there could be redundant post_sync_node, so free it if necessary
 	if (frame->post_sync_node){
@@ -2278,7 +2277,7 @@ void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 }
 
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
-	printf("Debug: OM_DS_sync_slow\n WS: %p\t Frame: %p\n", ws, frame);
+	printf("Debug: OM_DS_sync_slow WS: %p\t Frame: %p\n", ws, frame);
 
 	if (frame->post_sync_node)
 		frame->current_node = frame->post_sync_node;
@@ -2288,7 +2287,7 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 
 void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
-	printf("Debug: OM_DS_sync_fast\n WS: %p\t Frame: %p\n", ws, frame);
+	printf("Debug: OM_DS_sync_fast WS: %p\t Frame: %p\n", ws, frame);
 
 	/*update frame varriables*/
 	if (frame->post_sync_node)
@@ -2304,148 +2303,6 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 		printf("New thread start.\n");
 		frame->current_node = ws->next_func_node;
 
-}
-/*! === Race detect functions in particular === */
-
-/*! Function that detects potential races on a given memory read
-  \param ws CilkWorkerState Node for program
-  \param memloc The variable to be read
-*/
-void * Race_detect_read(CilkWorkerState * const ws, const RD_Memory_Struct * mem) {
-
-	//! Retrieve currentNode from workerstate
-	OM_Node * currentNode;
-	currentNode = ws->current_node;
-
-	/*! Check if there is a race:
-	 * Race if another write occurs in parallel
-	 * (1)
-	 *   if the currentNode is before leftmost write in eng and
-	 *      the currentNode is after leftmost write in heb,
-	 *      then they are in parallel => race condition
-	 * (2) or
-	 *   if the currentNode is before rightmost write in eng and
-	 *      the currentNode is after rightmost write in heb,
-	 *      then they are in parallel => race condition
-	 * (3) or
-	 *   if the currentNode is after leftmost write in eng and
-	 *      the currentNode is before leftmost write in heb,
-	 *      then they are in parallel => race condition
-	 * (4) or
-	 *   if the currentNode is after rightmost write in eng and
-	 *      the currentNode is before rightmost write in heb,
-	 *      then they are in parallel => race condition
-	 */
-	if(    //(1)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w) &&
-		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode))
-		||  //(2)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w) &&
-		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode))
-		||  //(3)
-		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w))
-		||  //(4)
-		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w))
-		) { exit(0); } // Halt program
-	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT
-
-	//! Update nodes (if necessary)
-	//TODO: Is this wrong? The logic may not be correct for reads... they may be parallel
-	// but that would be mean updating may be incorrect.
-	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r))
-		mem->left_r = currentNode;
-	if(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode))
-		mem->right_r = currentNode;
-
-	//! Read the data
-	return mem->memloc;
-
-}
-
-/*! Function that detects potential races on a given memory write
-  \param ws CilkWorkerState Node for program
-  \param memloc The variable to be written
-*/
-void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const void * writeValue, size_t writeValueTypeSize) {
-
-	//! Retrieve currentNode from workerstate
-	OM_Node * currentNode;
-	currentNode = ws->current_node;
-
-	/*! Check if there is a race:
-	 * Race if another write/read occurs in parallel
-	 * (1)   == WRITES ==
-	 *   if the currentNode is before leftmost write in eng and
-	 *      the currentNode is after leftmost write in heb,
-	 *      then they are in parallel => race condition
-	 * (2) or
-	 *   if the currentNode is before rightmost write in eng and
-	 *      the currentNode is after rightmost write in heb,
-	 *      then they are in parallel => race condition
-	 * (3) or
-	 *   if the currentNode is after leftmost write in eng and
-	 *      the currentNode is before leftmost write in heb,
-	 *      then they are in parallel => race condition
-	 * (4) or
-	 *   if the currentNode is after rightmost write in eng and
-	 *      the currentNode is before rightmost write in heb,
-	 *      then they are in parallel => race condition
-	 * (5) or  == READS ==
-	 *   if the currentNode is before leftmost read in eng and
-	 *      the currentNode is after leftmost read in heb,
-	 *      then they are in parallel => race condition
-	 * (6) or
-	 *   if the currentNode is before rightmost read in eng and
-	 *      the currentNode is after rightmost read in heb,
-	 *      then they are in parallel => race condition
-	 * (7) or
-	 *   if the currentNode is after leftmost read in eng and
-	 *      the currentNode is before leftmost read in heb,
-	 *      then they are in parallel => race condition
-	 * (8) or
-	 *   if the currentNode is after rightmost read in eng and
-	 *      the currentNode is before rightmost read in heb,
-	 *      then they are in parallel => race condition
-	 */
-	if(    //(1)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w) &&
-		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode))
-		||  //(2)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w) &&
-		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode))
-		||  //(3)
-		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w))
-		||  //(4)
-		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w))
-		||  //(5)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r) &&
-		 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode))
-		||  //(6)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r) &&
-		 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode))
-		||  //(7)
-		(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r))
-		||  //(8)
-		(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r))
-		) { exit(0); } // Halt program
-	/* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
-	//TODO: Decide how to interrupt for race-detection
-
-	//! Update nodes (if necessary)
-	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w))
-		mem->left_w = currentNode;
-	if(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode))
-		mem->right_w = currentNode;
-
-	//! Write the data
-	memcpy(&(mem->memloc),&writeValue,writeValueTypeSize);
-	
 }
 
 /* End Order Maintenence Functions */
