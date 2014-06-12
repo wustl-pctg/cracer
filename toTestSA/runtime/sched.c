@@ -49,6 +49,8 @@ FILE_IDENTITY(ident,
 
 #define NOBODY (-1)   /* invalid processor number */
 
+int global_node_count = 0;
+
 /*
  * SCHEDULER LOCK DIAGRAM
  *
@@ -2104,6 +2106,18 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 	}
 }
 
+void printList(OM_DS * list) {
+	OM_Node * n;
+
+	n = list->head;
+	printf("Head->");
+	while (n != NULL){
+	printf("%s->", n->id);
+	n = n->next;
+	}
+
+	printf("Tail\n");
+}
 
 //! frees node if OM_DS is not linked list
 void OM_free_nodes_internal(CilkContext *const context)
@@ -2218,6 +2232,10 @@ void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	post_sync_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 
+    cont_node->id = global_node_count++;
+    spawned_func_node->id = global_node_count++;
+    post_sync_node->id = global_node_count++;
+
 	printf("Debug: OM_DS_before_spawn_fast called WS: %p\t Frame: %p\n", ws, frame);
 	//there could be redundant post_sync_node, so free it if necessary
 	if (frame->post_sync_node){
@@ -2234,7 +2252,8 @@ void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node);
 	OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node);
 
-    
+		printf("ENG: "); printList(WS_REF_ENG);
+		printf("HEB: "); printList(WS_REF_HEB);
 	/*!update frame variables*/
 	frame->post_sync_node = post_sync_node;
 	frame->current_node = cont_node;
@@ -2252,6 +2271,11 @@ void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	cont_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	post_sync_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
+
+    cont_node->id = global_node_count++;
+    spawned_func_node->id = global_node_count++;
+    post_sync_node->id = global_node_count++;
+
 	printf("Debug: OM_DS_before_spawn_slow called WS: %p\t Frame: %p\n", ws, frame);
 
 	//there could be redundant post_sync_node, so free it if necessary
