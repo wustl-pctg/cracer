@@ -1925,7 +1925,7 @@ void Cilk_batchify(CilkWorkerState *const ws,
 								* data_size
 								* USE_PARAMETER(batchvals));
 				work_array = USE_SHARED(batch_work_array);
-
+				pending->data_size = data_size;
 			}
 
 
@@ -2152,9 +2152,12 @@ void OM_DS_insert(void *ds, void * _x, void * _y){
 	//change next pointers
 	y->next = x->next;
 
-	if (__sync_bool_compare_and_swap(&(x->next), x->next, y)){
-		printf("Successful atomic insert\n");
-	}
+	if(!(__sync_bool_compare_and_swap(&(x->next), x->next, y)))
+		{
+		printf("Exiting, atomic insert failed");
+		exit(0);
+		}
+
 	((OM_DS*)ds)->size++;
 #endif
 }
@@ -2217,6 +2220,7 @@ int OM_DS_order(void *ds, void * _x, void * _y){
 
 //TOTO : function that is called when entering a spawned function
 void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
+
 	/*! Create three new nodes to be inserted into OM_DS*/
 	OM_Node * cont_node, * post_sync_node, * spawned_func_node;
 
@@ -2244,11 +2248,34 @@ void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	frame->post_sync_node = post_sync_node;
 	frame->current_node = cont_node;
 }
-
 /*! The only slow threads are going to either be the main thread or a stolen frame*/
 void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
+
+	/*! Create three new nodes to be inserted into OM_DS*/
+	OM_Node * cont_node, * post_sync_node, * spawned_func_node;
+
+	cont_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
+	post_sync_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
+	spawned_func_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	printf("Debug: OM_DS_before_spawn_slow called\n WS: %d\t Frame: %d\n", ws, frame);
 
+	//there could be redundant post_sync_node, so free it if necessary
+	if (frame->post_sync_node){
+		//do i need a lock here?
+		Cilk_free(frame->post_sync_node);
+	}
+	/*! insert the new nodes into the OM_DS*/
+	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node);
+	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node);
+	OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node);
+
+	OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node);
+	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node);
+	OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node);
+
+	/*!update frame variables*/
+	frame->post_sync_node = post_sync_node;
+	frame->current_node = cont_node;
 }
 
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
@@ -2256,7 +2283,8 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	if (frame->post_sync_node)
 		frame->current_node = frame->post_sync_node;
-
+    else
+		printf("No post sync node \n");
 }
 
 
@@ -2266,7 +2294,8 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/*update frame varriables*/
 	if (frame->post_sync_node)
 		frame->current_node = frame->post_sync_node;
-
+    else
+		printf("No post sync node \n");
 }
 
 /*! === Race detect functions in particular === */
