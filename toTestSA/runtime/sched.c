@@ -2069,8 +2069,8 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 void OM_DS_init(CilkContext *const context){
 	if (context->Cilk_global_state){
 		printf("Debug: OM_DS_init\n");
-		context->Cilk_global_state->hebrewOM_DS = Cilk_malloc(sizeof(OM_DS));
-		context->Cilk_global_state->englishOM_DS = Cilk_malloc(sizeof(OM_DS));
+		context->Cilk_global_state->hebrewOM_DS = (OM_DS )Cilk_malloc(sizeof(OM_DS));
+		context->Cilk_global_state->englishOM_DS = (OM_DS) Cilk_malloc(sizeof(OM_DS));
 	}
 #define OM_IS_LL
 }
@@ -2201,7 +2201,7 @@ int OM_DS_order(void *ds, void * _x, void * _y){
 			current = current->next;
 	} while( current != ((OM_DS*)ds)->tail);
 
-	printf("%s\n", "Neither node found in linked list. Returning false");
+	printf( "Neither node found in linked list. Returning false");
 
 #else
 	printf("Debug: Don't know how to order with OM_DS yet\n");
