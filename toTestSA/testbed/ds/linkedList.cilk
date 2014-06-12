@@ -12,7 +12,6 @@
  * June 2014
  */
 
-//LLInsertRecord global_ir;
 
 //! initialize linked list
 LinkedList * createLinkedList(){
@@ -26,6 +25,14 @@ LinkedList * createLinkedList(){
 	tmp->size = 0;
 
 	return tmp;
+}
+
+
+LinkedList * DeleteAllNodes(LinkedList * ll) 
+{
+	free(ll);
+	return createLinkedList();
+	
 }
 
 
@@ -190,8 +197,9 @@ cilk void insertPar(void *dataStruct, void *data, size_t size, void *result)
 {
 	LLInsertRecord ** irArray = (LLInsertRecord **)data;
 	LinkedList * list = (LinkedList *) dataStruct;
-	int i = 0;
-	for (; i<size;i++)
+
+	int i;
+	for (i = 0; i<size; i++)
 	{
 		spawn atomicInsert(list, irArray[i]);
 	}
@@ -203,24 +211,20 @@ cilk void atomicInsert(LinkedList * list, LLInsertRecord *ir){
 	x = ir->x;
 	y = ir->y;
 
-	//if x is null
-	if (!ir->x){
+	if (!ir->x){//if x is null
 		printf("Node is null, skipping entry");
 		free(ir);
 		return;
 	}
 
-	//if x isnt tail
-	if (x->next)
+	if (x->next)//if x isnt tail
 		z = x->next;
-	//make z null and change y to tail
-	else
+	else//make z null and change y to tail
 	{
 		z = NULL;
 		list->tail = y;
 	}
-	//change prev pointers
-	if (z)
+	if (z)//change prev pointers
 		z->prev = y;
 	y->prev = x;
 
@@ -228,10 +232,11 @@ cilk void atomicInsert(LinkedList * list, LLInsertRecord *ir){
 	y->next = x->next;
 
 	if (__sync_bool_compare_and_swap(&(x->next), x->next, y)){
-		printf("Successful swap\n");
+		//printf("Successful swap\n");
 	}
 	list->size++;
 	free(ir);
+
 }
 
 //! Determine order of two nodes
