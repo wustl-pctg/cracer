@@ -2384,7 +2384,7 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const
 	currentNode = ws->current_node;
 
 	//! This is only true when it is the first write-node checked
-	if( !(mem->left_w && mem->right_W) )
+	if( !(mem->left_w && mem->right_w) )
 	{
 		mem->left_w = mem->right_w = currentNode;
 		return;
