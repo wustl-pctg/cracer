@@ -2312,7 +2312,7 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
   \param ws CilkWorkerState Node for program
   \param memloc The variable to be read
 */
-void * Race_detect_read(CilkWorkerState * const ws, const RD_Memory_Struct * mem) {
+void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
