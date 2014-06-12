@@ -351,7 +351,7 @@ typedef struct {
 #endif
 
   /*ORDER MAINTENANCE FOR RACE DETECT*/
-  OM_Node *currentNode;
+  OM_Node *current_node, *next_func_node;
 
 } CilkWorkerState;
 

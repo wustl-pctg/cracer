@@ -2235,9 +2235,13 @@ void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node);
 	OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node);
 
+    
 	/*!update frame variables*/
 	frame->post_sync_node = post_sync_node;
 	frame->current_node = cont_node;
+
+    /*update the worker state variables*/
+    ws->next_func_node = spawned_func_node;
 }
 /*! The only slow threads are going to either be the main thread or a stolen frame*/
 void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
@@ -2267,6 +2271,10 @@ void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/*!update frame variables*/
 	frame->post_sync_node = post_sync_node;
 	frame->current_node = cont_node;
+    
+    /*! update worker state*/
+    ws->current_node = frame->current_node;
+    ws->next_func_node = spawned_func_node;
 }
 
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
@@ -2289,6 +2297,14 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 		printf("No post sync node \n");
 }
 
+//a new thread is started, get the next_function_node from the ws and put as the
+//current node
+void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
+
+		printf("New thread start.\n");
+		frame->current_node = ws->next_func_node;
+
+}
 /*! === Race detect functions in particular === */
 
 /*! Function that detects potential races on a given memory read
@@ -2299,7 +2315,7 @@ void * Race_detect_read(CilkWorkerState * const ws, const RD_Memory_Struct * mem
 
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
-	currentNode = ws->currentNode;
+	currentNode = ws->current_node;
 
 	/*! Check if there is a race:
 	 * Race if another write occurs in parallel
@@ -2356,7 +2372,7 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const
 
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
-	currentNode = ws->currentNode;
+	currentNode = ws->current_node;
 
 	/*! Check if there is a race:
 	 * Race if another write/read occurs in parallel
