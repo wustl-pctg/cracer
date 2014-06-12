@@ -2295,8 +2295,7 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
   \param ws CilkWorkerState Node for program
   \param memloc The variable to be read
 */
-
-void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
+void * Race_detect_read(CilkWorkerState * const ws, const RD_Memory_Struct * mem) {
 
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
@@ -2334,8 +2333,7 @@ void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode) &&
 		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w))
 		) { exit(0); } // Halt program
-	/* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
-	//TODO: Decide how to interrupt for race-detection
+	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT
 
 	//! Update nodes (if necessary)
 	//TODO: Is this wrong? The logic may not be correct for reads... they may be parallel
@@ -2346,8 +2344,7 @@ void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 		mem->right_r = currentNode;
 
 	//! Read the data
-
-
+	return mem->memloc;
 
 }
 
@@ -2355,7 +2352,7 @@ void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
   \param ws CilkWorkerState Node for program
   \param memloc The variable to be written
 */
-void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, void * writeValue) {
+void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const void * writeValue, size_t writeValueTypeSize) {
 
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
@@ -2431,8 +2428,8 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, void 
 		mem->right_w = currentNode;
 
 	//! Write the data
-	mem->memloc = writeValue;
-
+	memcpy(&(mem->memloc),&writeValue,writeValueTypeSize);
+	
 }
 
 /* End Order Maintenence Functions */
