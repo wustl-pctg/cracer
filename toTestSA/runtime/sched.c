@@ -2319,6 +2319,13 @@ void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 	OM_Node * currentNode;
 	currentNode = ws->current_node;
 
+	//! This is only true when it is the first read-node checked
+	if( !(mem->left_r && mem->right_r) )
+	{
+		mem->left_r = mem->right_r = currentNode;
+		return mem->memloc;
+	}
+	
 	/*! Check if there is a race:
 	 * Race if another write occurs in parallel
 	 * (1)
@@ -2376,6 +2383,13 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const
 	OM_Node * currentNode;
 	currentNode = ws->current_node;
 
+	//! This is only true when it is the first write-node checked
+	if( !(mem->left_w && mem->right_W) )
+	{
+		mem->left_w = mem->right_w = currentNode;
+		return;
+	}
+	
 	/*! Check if there is a race:
 	 * Race if another write/read occurs in parallel
 	 * (1)   == WRITES ==
