@@ -2240,6 +2240,7 @@ void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	frame->current_node = cont_node;
 
     /*update the worker state variables*/
+    ws->current_node = frame->current_node;
     ws->next_func_node = spawned_func_node;
 }
 /*! The only slow threads are going to either be the main thread or a stolen frame*/
@@ -2316,7 +2317,7 @@ void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
-	currentNode = ws->currentNode;
+	currentNode = ws->current_node;
 
 	/*! Check if there is a race:
 	 * Race if another write occurs in parallel
@@ -2373,7 +2374,7 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const
 
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
-	currentNode = ws->currentNode;
+	currentNode = ws->current_node;
 
 	/*! Check if there is a race:
 	 * Race if another write/read occurs in parallel
