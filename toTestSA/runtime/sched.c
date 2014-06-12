@@ -588,7 +588,7 @@ static struct InletClosure *Closure_remove_child(CilkWorkerState *const ws,
 	Cilk_die_internal(ws->context, ws, "BUG in Closure_remove_child\n");
 	p = NULL;
 
- found:
+  found:
 	return p;
 }
 
@@ -945,63 +945,63 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim,
 
 
 		switch (cl->status) {
-		case CLOSURE_READY:
-			Cilk_event(ws, EVENT_STEAL);
-			res = deque_xtract_top(ws, victim, deque_pool);
-			CILK_ASSERT(ws, cl == res);
-
-			/* it is ok to swap these two */
-			Closure_unlock(ws, cl);
-			deque_unlock(ws, victim, deque_pool);
-			break;
-
-		case CLOSURE_RUNNING:
-			/* send the exception to the worker */
-			if (do_dekker_on(ws, cl)) {
-				/*
-				 * if we could send the exception, promote
-				 * the child to a full closure, and steal
-				 * the parent
-				 */
-				child = promote_child(ws, cl, victim, deque_pool);
-
-				/* detach the parent */
+			case CLOSURE_READY:
+				Cilk_event(ws, EVENT_STEAL);
 				res = deque_xtract_top(ws, victim, deque_pool);
 				CILK_ASSERT(ws, cl == res);
+
+				/* it is ok to swap these two */
+				Closure_unlock(ws, cl);
 				deque_unlock(ws, victim, deque_pool);
+				break;
+
+			case CLOSURE_RUNNING:
+				/* send the exception to the worker */
+				if (do_dekker_on(ws, cl)) {
+					/*
+					 * if we could send the exception, promote
+					 * the child to a full closure, and steal
+					 * the parent
+					 */
+					child = promote_child(ws, cl, victim, deque_pool);
+
+					/* detach the parent */
+					res = deque_xtract_top(ws, victim, deque_pool);
+					CILK_ASSERT(ws, cl == res);
+					deque_unlock(ws, victim, deque_pool);
+
+					/*
+					 * at this point, more steals can happen
+					 * from the victim.
+					 */
+					finish_promote(ws, cl, child);
+					Closure_unlock(ws, cl);
+					Cilk_event(ws, EVENT_STEAL);
+				} else {
+					Cilk_event(ws, EVENT_STEAL_NO_DEKKER);
+					goto give_up;
+				}
+				break;
+
+			case CLOSURE_SUSPENDED:
+				Cilk_die_internal(ws->context, ws, "Bug: suspended closure in ready deque\n");
+				break;
+
+			case CLOSURE_RETURNING:
+				/* ok, let it leave alone */
+				Cilk_event(ws, EVENT_STEAL_RETURNING);
 
 				/*
-				 * at this point, more steals can happen
-				 * from the victim.
+				 * MUST unlock the closure before the queue;
+				 * see rule D in the file PROTOCOLS
 				 */
-				finish_promote(ws, cl, child);
+			give_up:
 				Closure_unlock(ws, cl);
-				Cilk_event(ws, EVENT_STEAL);
-			} else {
-				Cilk_event(ws, EVENT_STEAL_NO_DEKKER);
-				goto give_up;
-			}
-			break;
+				deque_unlock(ws, victim, deque_pool);
+				break;
 
-		case CLOSURE_SUSPENDED:
-			Cilk_die_internal(ws->context, ws, "Bug: suspended closure in ready deque\n");
-			break;
-
-		case CLOSURE_RETURNING:
-			/* ok, let it leave alone */
-			Cilk_event(ws, EVENT_STEAL_RETURNING);
-
-			/*
-			 * MUST unlock the closure before the queue;
-			 * see rule D in the file PROTOCOLS
-			 */
-		give_up:
-			Closure_unlock(ws, cl);
-			deque_unlock(ws, victim, deque_pool);
-			break;
-
-		default:
-			Cilk_die_internal(ws->context, ws, "Bug: unknown closure status\n");
+			default:
+				Cilk_die_internal(ws->context, ws, "Bug: unknown closure status\n");
 		}
 
 	} else {
@@ -1330,10 +1330,10 @@ void Cilk_destroy_frame(CilkWorkerState *const ws,
 						CilkStackFrame *f, size_t size)
 {
 	WHEN_CILK_ALLOCA(
-					 {
-						 if (f->alloca_h)
-							 Cilk_unalloca_internal(ws, f);
-					 });
+		{
+			if (f->alloca_h)
+				Cilk_unalloca_internal(ws, f);
+		});
 
 	Cilk_internal_free(ws, f, size);
 }
@@ -1519,7 +1519,7 @@ int Cilk_exception_handler(CilkWorkerState *const ws, void *resultp, int size)
 
 			f = (CilkStackFrame *) CLOSURE_TAIL(t)[-1];
 			Cilk_destroy_frame(ws, f, get_frame_size(f));
-		skip_free: ;
+		  skip_free: ;
 		} else {
 			/* frame not being aborted */
 			maybe_reset_abort(t);
@@ -1643,59 +1643,59 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 	Closure_lock(ws, t);
 
 	switch (t->status) {
-	case CLOSURE_READY:
-		if (Closure_being_aborted(ws, t)) {
-			res = abort_ready_closure(ws, t);
-			Closure_unlock(ws, t);
-		} else {
-			/* just execute it */
-			setup_for_execution(ws, t);
-			f = t->frame;
-			CILK_ASSERT(ws, f);
-			CILK_ASSERT(ws, f->sig);
-			CILK_ASSERT(ws, f->magic == CILK_STACKFRAME_MAGIC);
-			poll_inlets(ws, t);
-			Closure_unlock(ws, t);
+		case CLOSURE_READY:
+			if (Closure_being_aborted(ws, t)) {
+				res = abort_ready_closure(ws, t);
+				Closure_unlock(ws, t);
+			} else {
+				/* just execute it */
+				setup_for_execution(ws, t);
+				f = t->frame;
+				CILK_ASSERT(ws, f);
+				CILK_ASSERT(ws, f->sig);
+				CILK_ASSERT(ws, f->magic == CILK_STACKFRAME_MAGIC);
+				poll_inlets(ws, t);
+				Closure_unlock(ws, t);
+				/*
+				 * MUST unlock the closure before locking the queue
+				 * (rule A in file PROTOCOLS)
+				 */
+				deque_lock(ws, ws->self, deque_pool);
+				deque_add_bottom(ws, t, ws->self, deque_pool);
+				deque_unlock(ws, ws->self, deque_pool);
+
+				/* now execute it */
+				if (ws->batch_id) {
+					Cilk_enter_state(ws, STATE_BATCH_WORKING);
+				} else {
+					Cilk_enter_state(ws, STATE_WORKING);
+				}
+				(get_proc_slow(f->sig)) (ws, f);
+				if (ws->batch_id) {
+					Cilk_exit_state(ws, STATE_BATCH_WORKING);
+				} else {
+					Cilk_exit_state(ws, STATE_WORKING);
+				}
+
+			}
+
+			break;
+
+		case CLOSURE_RETURNING:
 			/*
-			 * MUST unlock the closure before locking the queue
-			 * (rule A in file PROTOCOLS)
+			 * the return protocol assumes t is not locked,
+			 * and everybody will respect the fact that t is
+			 * returning
 			 */
-			deque_lock(ws, ws->self, deque_pool);
-			deque_add_bottom(ws, t, ws->self, deque_pool);
-			deque_unlock(ws, ws->self, deque_pool);
+			Closure_unlock(ws, t);
+			res = return_value(ws, t);
+			break;
 
-			/* now execute it */
-			if (ws->batch_id) {
-				Cilk_enter_state(ws, STATE_BATCH_WORKING);
-			} else {
-				Cilk_enter_state(ws, STATE_WORKING);
-			}
-			(get_proc_slow(f->sig)) (ws, f);
-			if (ws->batch_id) {
-				Cilk_exit_state(ws, STATE_BATCH_WORKING);
-			} else {
-				Cilk_exit_state(ws, STATE_WORKING);
-			}
-
-		}
-
-		break;
-
-	case CLOSURE_RETURNING:
-		/*
-		 * the return protocol assumes t is not locked,
-		 * and everybody will respect the fact that t is
-		 * returning
-		 */
-		Closure_unlock(ws, t);
-		res = return_value(ws, t);
-		break;
-
-	default:
-		Cilk_die_internal(ws->context, ws,
-						  "BUG in do_what_it_says(), t->status = %d\n",
-						  t->status);
-		break;
+		default:
+			Cilk_die_internal(ws->context, ws,
+							  "BUG in do_what_it_says(), t->status = %d\n",
+							  t->status);
+			break;
 	}
 
 	return res;
@@ -2063,9 +2063,17 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 }
 
 /*!
-********************************************************
-**************** Race Detection Functions **************
-*******************************************************/
+*****************************************
+* Order Maintenance for race detection *
+*****************************************/
+void OM_DS_init(CilkContext *const context){
+	if (context->Cilk_global_state){
+		printf("Debug: OM_DS_init\n");
+		context->Cilk_global_state->hebrewOM_DS = Cilk_malloc(sizeof(OM_DS));
+		context->Cilk_global_state->englishOM_DS = Cilk_malloc(sizeof(OM_DS));
+	}
+#define OM_IS_LL
+}
 
 void OM_DS_free_and_free_nodes(CilkContext *const context){
 	//free nodes
@@ -2075,7 +2083,7 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 	OM_free_nodes_internal(context);
 #endif
 	//free ds
-	printf("Debug: free OMDS\n");	
+	printf("Debug: free OMDS\n");
 	Cilk_free(context->Cilk_global_state->hebrewOM_DS);
 	Cilk_free(context->Cilk_global_state->englishOM_DS);
 
@@ -2089,7 +2097,7 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 	printf("DEBUG:LL free nodes\n");
 	node = context->Cilk_global_state->englishOM_DS->head;
 
-	while(node != NULL){  
+	while(node != NULL){
 		nextNode = node->next;
 		Cilk_free(node);
 		node = nextNode;
@@ -2097,26 +2105,14 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 
 	node = context->Cilk_global_state->hebrewOM_DS->head;
 
-	while(node != NULL){  
+	while(node != NULL){
 		nextNode = node->next;
 		Cilk_free(node);
 		node = nextNode;
-	}	
-			
+	}
+
 }
 
-/*!
-*****************************************
-* Order Maintenance for race detection *
-*****************************************/
-void OM_DS_init(CilkContext *const context){
-	if (context->Cilk_global_state){
-		printf("Debug: OM_DS_init\n");
-		context->Cilk_global_state->hebrewOM_DS = Cilk_malloc(sizeof(OM_DS));
-		context->Cilk_global_state->englishOM_DS = Cilk_malloc(sizeof(OM_DS));
-	}	
-#define OM_IS_LL
-}
 
 //! frees node if OM_DS is not linked list
 void OM_free_nodes_internal(CilkContext *const context)
@@ -2125,15 +2121,15 @@ void OM_free_nodes_internal(CilkContext *const context)
 void OM_DS_insert(void *ds, void * _x, void * _y){
 
 #ifdef BATCHIFY_WORKING
-			
+
 	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
     ir->x = (OM_Node *)_x;
-	ir->y = (OM_Node *) _y;	
-		
+	ir->y = (OM_Node *) _y;
+
 	Cilk_batchify(_cilk_ws, &insertPar, list, ir, sizeof(Node), NULL);
 #else
 	//Do insert here
-	
+
 	OM_Node * x = (OM_Node *)_x;
 	OM_Node * y = (OM_Node *)_y;
 	OM_Node * z;
@@ -2142,25 +2138,25 @@ void OM_DS_insert(void *ds, void * _x, void * _y){
 	if (!(x && y && ds) ){
 		printf("Some node or ds is null, skipping insert\n");
 		return;
-	}	
+	}
 
 	//if x isnt tail
-	if (x->next)	
+	if (x->next)
 		z = x->next;
 	else  //make z null and change y to tail
-		{
-			z = NULL;
-			( (OM_DS*)ds)->tail = y;
-		}
+	{
+		z = NULL;
+		( (OM_DS*)ds)->tail = y;
+	}
 
 	//change next pointers
 	y->next = x->next;
 
 	if (__sync_bool_compare_and_swap(&(x->next), x->next, y)){
 		printf("Successful atomic insert\n");
-	}	
+	}
 	((OM_DS*)ds)->size++;
-#endif	
+#endif
 }
 
 //! Simple append function for when OM_LL is defined
@@ -2172,16 +2168,16 @@ void OM_DS_append(void *ds, void * _x){
 		OM_DS * om_ds = (OM_DS *)ds;
 		OM_Node * node = (OM_Node*)_x;
 		if (om_ds->size == 0)
-			{
-				om_ds->tail = om_ds->head = node; 
-				node->next = NULL; 
-				om_ds->size++;
-			}
+		{
+			om_ds->tail = om_ds->head = node;
+			node->next = NULL;
+			om_ds->size++;
+		}
 		else 	{ //if l.l. has nodes already
 			om_ds->tail->next = node;
 			om_ds->tail = node;
 			node->next = NULL;
-			om_ds->size++;	
+			om_ds->size++;
 		}
 	}
 	else {
@@ -2200,7 +2196,7 @@ int OM_DS_order(void *ds, void * _x, void * _y){
 	// Really basic order function for ll
 	// Assumes both _x and _y are in the list
 	OM_Node * current;
-	current = ((OM_DS*)ds)->head; 
+	current = ((OM_DS*)ds)->head;
 
 	do {
 		if (current == _y)
@@ -2223,7 +2219,7 @@ int OM_DS_order(void *ds, void * _x, void * _y){
 void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/*! Create three new nodes to be inserted into OM_DS*/
 	OM_Node * cont_node, * post_sync_node, * spawned_func_node;
-	
+
 	cont_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	post_sync_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
@@ -2246,7 +2242,7 @@ void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	/*!update frame variables*/
 	frame->post_sync_node = post_sync_node;
-	frame->current_node = cont_node;	
+	frame->current_node = cont_node;
 }
 
 /*! The only slow threads are going to either be the main thread or a stolen frame*/
@@ -2257,7 +2253,7 @@ void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	printf("Debug: OM_DS_sync_slow\n WS: %d\t Frame: %d\n", ws, frame);
-	
+
 	if (frame->post_sync_node)
 		frame->current_node = frame->post_sync_node;
 
@@ -2266,7 +2262,7 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	printf("Debug: OM_DS_sync_fast\n WS: %d\t Frame: %d\n", ws, frame);
-	
+
 	/*update frame varriables*/
 	if (frame->post_sync_node)
 		frame->current_node = frame->post_sync_node;
@@ -2281,7 +2277,7 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 */
 
 void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
-  
+
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
 	currentNode = ws->currentNode;
@@ -2290,7 +2286,7 @@ void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 	 * Race if another write occurs in parallel
 	 * (1)
 	 *   if the currentNode is before leftmost write in eng and
-	 *      the currentNode is after leftmost write in heb, 
+	 *      the currentNode is after leftmost write in heb,
 	 *      then they are in parallel => race condition
 	 * (2) or
 	 *   if the currentNode is before rightmost write in eng and
@@ -2306,18 +2302,18 @@ void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 	 *      then they are in parallel => race condition
 	 */
 	if(    //(1)
-	   (OM_DS_order(WS_REF_ENG, currentNode, mem->left_w) &&
-		OM_DS_order(WS_REF_HEB, mem->left_w, currentNode))
-	   ||  //(2)
-	   (OM_DS_order(WS_REF_ENG, currentNode, mem->right_w) &&
-		OM_DS_order(WS_REF_HEB, mem->right_w, currentNode))
-	   ||  //(3)
-	   (OM_DS_order(WS_REF_ENG, mem->left_w, currentNode) &&
-		OM_DS_order(WS_REF_HEB, currentNode, mem->left_w))
-	   ||  //(4)
-	   (OM_DS_order(WS_REF_ENG, mem->right_w, currentNode) &&
-		OM_DS_order(WS_REF_HEB, currentNode, mem->right_w))
-		   ) { exit(0); } // Halt program
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w) &&
+		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode))
+		||  //(2)
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w) &&
+		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode))
+		||  //(3)
+		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w))
+		||  //(4)
+		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w))
+		) { exit(0); } // Halt program
 	/* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
 	//TODO: Decide how to interrupt for race-detection
 
@@ -2330,7 +2326,7 @@ void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 		mem->right_r = currentNode;
 
 	//! Read the data
-  
+
 
 
 }
@@ -2349,7 +2345,7 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, void 
 	 * Race if another write/read occurs in parallel
 	 * (1)   == WRITES ==
 	 *   if the currentNode is before leftmost write in eng and
-	 *      the currentNode is after leftmost write in heb, 
+	 *      the currentNode is after leftmost write in heb,
 	 *      then they are in parallel => race condition
 	 * (2) or
 	 *   if the currentNode is before rightmost write in eng and
@@ -2362,10 +2358,10 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, void 
 	 * (4) or
 	 *   if the currentNode is after rightmost write in eng and
 	 *      the currentNode is before rightmost write in heb,
-	 *      then they are in parallel => race condition   
+	 *      then they are in parallel => race condition
 	 * (5) or  == READS ==
 	 *   if the currentNode is before leftmost read in eng and
-	 *      the currentNode is after leftmost read in heb, 
+	 *      the currentNode is after leftmost read in heb,
 	 *      then they are in parallel => race condition
 	 * (6) or
 	 *   if the currentNode is before rightmost read in eng and
@@ -2381,30 +2377,30 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, void 
 	 *      then they are in parallel => race condition
 	 */
 	if(    //(1)
-	   (OM_DS_order(WS_REF_ENG, currentNode, mem->left_w) &&
-		OM_DS_order(WS_REF_HEB, mem->left_w, currentNode))
-	   ||  //(2)
-	   (OM_DS_order(WS_REF_ENG, currentNode, mem->right_w) &&
-		OM_DS_order(WS_REF_HEB, mem->right_w, currentNode))
-	   ||  //(3)
-	   (OM_DS_order(WS_REF_ENG, mem->left_w, currentNode) &&
-		OM_DS_order(WS_REF_HEB, currentNode, mem->left_w))
-	   ||  //(4)
-	   (OM_DS_order(WS_REF_ENG, mem->right_w, currentNode) &&
-		OM_DS_order(WS_REF_HEB, currentNode, mem->right_w))
-	   ||  //(5)
-	   (OM_DS_order(WS_REF_ENG, currentNode, mem->left_r) &&
-		OM_DS_order(WS_REF_HEB, mem->left_r, currentNode))
-	   ||  //(6)
-	   (OM_DS_order(WS_REF_ENG, currentNode, mem->right_r) &&
-		OM_DS_order(WS_REF_HEB, mem->right_r, currentNode))
-	   ||  //(7)
-	   (OM_DS_order(WS_REF_ENG, mem->left_r, currentNode) &&
-		OM_DS_order(WS_REF_HEB, currentNode, mem->left_r))
-	   ||  //(8)
-	   (OM_DS_order(WS_REF_ENG, mem->right_r, currentNode) &&
-		OM_DS_order(WS_REF_HEB, currentNode, mem->right_r))
-		   ) { exit(0); } // Halt program
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w) &&
+		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode))
+		||  //(2)
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w) &&
+		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode))
+		||  //(3)
+		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w))
+		||  //(4)
+		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w))
+		||  //(5)
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r) &&
+		 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode))
+		||  //(6)
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r) &&
+		 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode))
+		||  //(7)
+		(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r))
+		||  //(8)
+		(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r))
+		) { exit(0); } // Halt program
 	/* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
 	//TODO: Decide how to interrupt for race-detection
 
