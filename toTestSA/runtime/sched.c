@@ -1693,7 +1693,7 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 
 		default:
 			Cilk_die_internal(ws->context, ws,
-							  "BUG in do_what_it_says(), t->status = %d\n",
+							  "BUG in do_what_it_says(), t->status = %p\n",
 							  t->status);
 			break;
 	}
@@ -2102,15 +2102,6 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 		Cilk_free(node);
 		node = nextNode;
 	}
-
-	node = context->Cilk_global_state->hebrewOM_DS->head;
-
-	while(node != NULL){
-		nextNode = node->next;
-		Cilk_free(node);
-		node = nextNode;
-	}
-
 }
 
 
@@ -2228,7 +2219,7 @@ void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	post_sync_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 
-	printf("Debug: OM_DS_before_spawn_fast called\n WS: %d\t Frame: %d\n", ws, frame);
+	printf("Debug: OM_DS_before_spawn_fast called\n WS: %p\t Frame: %p\n", ws, frame);
 	//there could be redundant post_sync_node, so free it if necessary
 	if (frame->post_sync_node){
 		//do i need a lock here?
@@ -2257,7 +2248,7 @@ void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	cont_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	post_sync_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
-	printf("Debug: OM_DS_before_spawn_slow called\n WS: %d\t Frame: %d\n", ws, frame);
+	printf("Debug: OM_DS_before_spawn_slow called\n WS: %p\t Frame: %p\n", ws, frame);
 
 	//there could be redundant post_sync_node, so free it if necessary
 	if (frame->post_sync_node){
@@ -2279,7 +2270,7 @@ void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 }
 
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
-	printf("Debug: OM_DS_sync_slow\n WS: %d\t Frame: %d\n", ws, frame);
+	printf("Debug: OM_DS_sync_slow\n WS: %p\t Frame: %p\n", ws, frame);
 
 	if (frame->post_sync_node)
 		frame->current_node = frame->post_sync_node;
@@ -2289,7 +2280,7 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 
 void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
-	printf("Debug: OM_DS_sync_fast\n WS: %d\t Frame: %d\n", ws, frame);
+	printf("Debug: OM_DS_sync_fast\n WS: %p\t Frame: %p\n", ws, frame);
 
 	/*update frame varriables*/
 	if (frame->post_sync_node)
