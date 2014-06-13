@@ -84,14 +84,14 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
   _cilk_ws->user_work = 0;
   _cilk_ws->user_critical_path = 0;
   /*!order maintenance for race detect*/
-	{
-	OM_Node * main_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
+    {
+    OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
     main_node->id = 0; 
     OM_DS_append(_cilk_ws->context->Cilk_global_state->englishOM_DS, main_node);
     OM_DS_append(_cilk_ws->context->Cilk_global_state->hebrewOM_DS, main_node);
-    ws->current_node = main_node;
-    _cilk_frame->header.current_node = main_node;
-    printf("\nDebug:\t\t Creating main node and adding to eng/heb.\n ");
+    ws->current_node = NULL; //will ths work? main_node;
+    ws->next_func_node = main_node;
+    printf("\nDebug:\t\t Created main node and added to eng/heb.\n ");
     }
   /*end order maintenance*/
   WHEN_CILK_TIMING(_cilk_frame->header.cp = (Cilk_time) 0);

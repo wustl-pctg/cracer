@@ -2107,16 +2107,18 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 }
 
 void printList(OM_DS * list) {
-	OM_Node * n;
-
-	n = list->head;
-	printf("Head->");
-	while (n != NULL){
+    OM_Node * n;
+    if (list && list->head)	
+        n = list->head;
+    else
+	exit(10);
+    printf("Head->");
+    
+    while (n != NULL){
 	printf("%s->", n->id);
-	n = n->next;
-	}
-
-	printf("Tail\n");
+        n = n->next;
+    }
+    printf("Tail\n");
 }
 
 //! frees node if OM_DS is not linked list
@@ -2223,76 +2225,38 @@ int OM_DS_order(void *ds, void * _x, void * _y){
 #endif
 }
 
-void OM_DS_before_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
-
-	/*! Create three new nodes to be inserted into OM_DS*/
-	OM_Node * cont_node, * post_sync_node, * spawned_func_node;
-
-	cont_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
-	post_sync_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
-	spawned_func_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
-
-    cont_node->id = global_node_count++;
-    spawned_func_node->id = global_node_count++;
-    post_sync_node->id = global_node_count++;
-
-	printf("Debug: OM_DS_before_spawn_fast called WS: %p\t Frame: %p\n", ws, frame);
-	//there could be redundant post_sync_node, so free it if necessary
-	if (frame->post_sync_node){
-		//do i need a lock here?
-		Cilk_free(frame->post_sync_node);
-	}
-	/*! insert the new nodes into the OM_DS*/
-
-	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node);
-	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node);
-	OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node);
-
-	OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node);
-	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node);
-	OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node);
-
-		printf("ENG: "); printList(WS_REF_ENG);
-		printf("HEB: "); printList(WS_REF_HEB);
-	/*!update frame variables*/
-	frame->post_sync_node = post_sync_node;
-	frame->current_node = cont_node;
-
-    /*update the worker state variables*/
-    ws->current_node = frame->current_node;
-    ws->next_func_node = spawned_func_node;
-}
 /*! The only slow threads are going to either be the main thread or a stolen frame*/
-void OM_DS_before_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
+void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	/*! Create three new nodes to be inserted into OM_DS*/
 	OM_Node * cont_node, * post_sync_node, * spawned_func_node;
 
-	cont_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
-	post_sync_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
-	spawned_func_node = (OM_Node *) Cilk_malloc(sizeof(OM_Node));
+	cont_node =  Cilk_malloc(sizeof(OM_Node));
+	post_sync_node =  Cilk_malloc(sizeof(OM_Node));
+	spawned_func_node =  Cilk_malloc(sizeof(OM_Node));
 
     cont_node->id = global_node_count++;
     spawned_func_node->id = global_node_count++;
     post_sync_node->id = global_node_count++;
 
-	printf("Debug: OM_DS_before_spawn_slow called WS: %p\t Frame: %p\n", ws, frame);
+	printf("Debug: OM_DS_before_spawn called WS: %p\t Frame: %p\n", ws, frame);
 
 	//there could be redundant post_sync_node, so free it if necessary
 	if (frame->post_sync_node){
 		//do i need a lock here?
 		Cilk_free(frame->post_sync_node);
 	}
-	/*! insert the new nodes into the OM_DS*/
-	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node);
-	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node);
-	OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node);
+    /*! insert the new nodes into the OM_DS*/
+    OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node);
+    OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node);
+    OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node);
+    OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node);
+    OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node);
+    OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node);
 
-	OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node);
-	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node);
-	OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node);
-
-	/*!update frame variables*/
+	printList(WS_REF_ENG);
+	printList(WS_REF_HEB);
+    /*!update frame variables*/
 	frame->post_sync_node = post_sync_node;
 	frame->current_node = cont_node;
     
@@ -2325,9 +2289,12 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 //current node
 void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 
-		printf("New thread start.\n");
-		frame->current_node = ws->next_func_node;
-
+    printf("Debug: New thread start.\n");
+    if (ws->next_func_node)
+	frame->current_node = ws->next_func_node;
+    else
+	printf("Debug: no next function node to assign to current frame\n"); 
+    
 }
 
 
