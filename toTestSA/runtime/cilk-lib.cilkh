@@ -139,6 +139,7 @@ extern void OM_DS_free_and_free_nodes(CilkContext *const context);
 extern void OM_DS_init(CilkContext *const context);
 
 extern void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame);
+
 extern void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const void * writeValue, size_t writeValueTypeSize);
 
 extern void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct mem);
