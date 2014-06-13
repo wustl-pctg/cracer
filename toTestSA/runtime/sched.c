@@ -2334,11 +2334,22 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 /*! === Race detect functions in particular === */
 
 //! Initializes the lock for a RD_Memory_struct
+/*! This function initializes the memory for the lock in
+  the RD_Memory_Struct.  Must be called  right after the
+  instantiation of a new RD_Memory_Struct in the program.
+  \param ws The current workerstate upon being called
+  \param mem The struct whose mutex is being initialized
+*/
 void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
-	Cilk_mutex_init(ws->context, mem->mutex); 
+	Cilk_mutex_init(ws->context, mem->mutex);
 }
 
 //! Frees the allocated memory for the lock for RD_Memory_Struct 
+/*! This function destroys the memory for the lock in
+  the RD_Memory_Struct.
+  \param ws The current workerstate upon being called
+  \param mem The struct whose mutex is being initialized
+*/
 void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 	Cilk_mutex_destroy(ws->context, mem->mutex);
 }
@@ -2349,6 +2360,8 @@ void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 */
 void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 
+	//Get lock
+	Cilk_mutex_wait(ws->context, mem->mutex);
 	
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
@@ -2396,13 +2409,14 @@ void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT
 
 	//! Update nodes (if necessary)
-	//TODO: Is this wrong? The logic may not be correct for reads... they may be parallel
-	// but that would be mean updating may be incorrect.
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r))
 		mem->left_r = currentNode;
 	if(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode))
 		mem->right_r = currentNode;
 
+	//No race, release lock
+	Cilk_mutex_signal(ws->context, ws, mem->mutex);
+	
 	//! Read the data
 	return mem->memloc;
 
@@ -2414,6 +2428,9 @@ void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 */
 void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const void * writeValue, size_t writeValueTypeSize) {
 
+	//Get Lock
+	Cilk_mutex_wait(ws->context, mem->mutex);
+	
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
 	currentNode = ws->current_node;
@@ -2496,6 +2513,9 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const
 
 	//! Write the data
 	memcpy(&(mem->memloc),&writeValue,writeValueTypeSize);
+	
+	//Release Lock
+	Cilk_mutex_signal(ws->context, ws, mem->mutex);
 	
 }
 /* End Order Maintenence Functions */
