@@ -2333,12 +2333,23 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 /*! === Race detect functions in particular === */
 
+//! Initializes the lock for a RD_Memory_struct
+void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
+	Cilk_mutex_init(ws->context, mem->mutex); 
+}
+
+//! Frees the allocated memory for the lock for RD_Memory_Struct 
+void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
+	Cilk_mutex_destroy(ws->context, mem->mutex);
+}
+
 /*! Function that detects potential races on a given memory read
   \param ws CilkWorkerState Node for program
   \param memloc The variable to be read
 */
 void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 
+	
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
 	currentNode = ws->current_node;
