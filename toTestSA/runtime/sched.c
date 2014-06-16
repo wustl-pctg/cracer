@@ -2316,7 +2316,7 @@ typedef struct RD_Memory_Struct_s {
 
 	Cilk_mutex * mutex; //Lock for atomicity
 	void * data; //The memory location where the read/write occurs
-	size_t size; //Size of memloc data type
+	size_t size; //Size of 'data' data type
 	OM_Node * left_r; //leftmost node that is reading
 	OM_Node * right_r; //rightmost node that is reading
 	OM_Node * left_w; //leftmost node that is writing
@@ -2345,7 +2345,6 @@ void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 /*! Creates the structure upon the call to this function and returns a pointer
   to the address in memory to be utilized in place of the desired variable
   \param ws The CilkWorkerState of the given program
-  \param memloc The memory location to be read/written
   \param size The size of the data type to read/written
   \return the memory location of the RD_Memory_Struct
 */
@@ -2364,7 +2363,7 @@ void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 	
 /*! Function that detects potential races on a given memory read
   \param ws CilkWorkerState Node for program
-  \param handle The memory address of the struct used in checking
+  \param memPtr The memory address of the struct used in checking
   \return memory address of read location
 */
 void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
@@ -2384,7 +2383,7 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 	{
 		mem->left_r = mem->right_r = currentNode;
 		//Only node means no race, so return
-		return mem->memloc;
+		return mem->data;
 	}
 	
 	/*! Check if there is a race:
@@ -2438,8 +2437,7 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 /*! Function that detects potential races on a given memory write
   \param ws CilkWorkerState Node for program
   \param memPtr Pointer to the memory address of the struct utilized (mem)
-  \param writeValue Manually passed in value to be written to mem->memloc
-  \param writeValueTypzeSize the size of the DS written for memCpy
+  \param writeValue Manually passed in value to be written to mem->data
 */
 void Race_detect_write(CilkWorkerState * const ws,
 					   void * memPtr,
@@ -2447,7 +2445,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 {
 
 	//!Get struct
-	RD_Memory_Struct mem = (RD_Memory_Struct *)memPtr;
+	RD_Memory_Struct * mem = (RD_Memory_Struct *)memPtr;
 	
 	//!Get Lock
 	Cilk_mutex_wait(ws->context, ws, mem->mutex);
@@ -2533,7 +2531,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 		mem->right_w = currentNode;
 
 	//! Write the data
-	memcpy(&(mem->memloc),&writeValue, mem->size);
+	memcpy(&(mem->data),&writeValue, mem->size);
 	
 	//!Release Lock
 	Cilk_mutex_signal(ws->context, mem->mutex);
