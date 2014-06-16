@@ -5,6 +5,18 @@
 #include <cilk-cilk2c-pre.h>
 #include <cilk-cilk2c.h>
 
+/***********************************************************!
+ * Pre-declared functions from sched.c for OM_DS functions *
+ ***********************************************************/
+void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame);
+
+void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame);
+
+void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame);
+
+void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame);
+
+
 /************************************************************
  * Batcher-related routines
  ************************************************************/
@@ -97,7 +109,7 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 // (setup_for_execution).
 // Whether we put invoke_batch_slow on initially or the actual batch
 // function doesn't particularly matter -- someone stealing
-// invoke_batch will see that it is executing and just suspend and
+// invoke_batc will see that it is executing and just suspend and
 // steal again.
 // NB: I *think* this is what happens. I should check empirically just
 // to be safe.
