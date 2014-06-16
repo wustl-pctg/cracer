@@ -2307,7 +2307,11 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 //! Race_Detect Struct
 /*! This struct is to be utilized as if it is the memory location
-  of a particular variable.
+  of a particular variable in a program.  To change the value of
+  the pointer, race_detect_Read or rd_write must be called and the 
+  necessary changes to the real variable they care about are handled
+  internally, through the member data.
+*/
 typedef struct RD_Memory_Struct_s {
 
 	Cilk_mutex * mutex; //Lock for atomicity
