@@ -2070,7 +2070,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 *****************************************/
 
 /*! Race-Detect struct */
-typedef struct {
+typedef struct RD_Memory_Struct_s{
 
 	Cilk_mutex mutex; //Lock for atomicity 
 	void * memloc; //The memory location where the read/write occurs
