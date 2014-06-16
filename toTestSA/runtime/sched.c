@@ -2263,7 +2263,6 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame){
 	spawned_func_node->id = global_node_count++;
 	post_sync_node->id = global_node_count++;
 	
-	printf("Debug: OM_DS_before_spawn called WS: %p\t Frame: %p\n", ws, frame);
 
 	//there could be redundant post_sync_node, so free it if necessary
 	if (frame->post_sync_node){
@@ -2275,6 +2274,7 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame){
 		frame->current_node = ws->next_func_node;
 	
 	}
+	printf("Debug: OM_DS_before_spawn called currnt node id: %d", current_node->id);
     /*! insert the new nodes into the OM_DS*/
     OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
     OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node, 		ENGLISH_ID);
@@ -2432,24 +2432,24 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 	 *      then they are in parallel => race condition
 	 */
 	if(    //(1)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w) &&
-		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode))
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
 		||  //(2)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w) &&
-		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode))
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
 		||  //(3)
-		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w))
+		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
 		||  //(4)
-		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w))
+		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
 		) { exit(0); } // Halt program
 	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT
 
 	//! Update nodes (if necessary)
-	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r))
+	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
 		mem->left_r = currentNode;
-	if(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode))
+	if(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID))
 		mem->right_r = currentNode;
 
 	//!No race, release lock
@@ -2523,37 +2523,37 @@ void Race_detect_write(CilkWorkerState * const ws,
 	 *      then they are in parallel => race condition
 	 */
 	if(    //(1)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w) &&
-		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode))
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
 		||  //(2)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w) &&
-		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode))
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
 		||  //(3)
-		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w))
+		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
 		||  //(4)
-		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w))
+		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
 		||  //(5)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r) &&
-		 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode))
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
 		||  //(6)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r) &&
-		 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode))
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
 		||  //(7)
-		(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r))
+		(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
 		||  //(8)
-		(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r))
+		(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
 		) { exit(0); } // Halt program
 	/* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
 	//TODO: Decide how to interrupt for race-detection
 
 	//! Update nodes (if necessary)
-	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w))
+	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
 		mem->left_w = currentNode;
-	if(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode))
+	if(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID))
 		mem->right_w = currentNode;
 
 	//! Write the data
