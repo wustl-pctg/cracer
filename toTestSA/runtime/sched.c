@@ -2245,7 +2245,7 @@ int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 			current = current->next_hebrew;
 	} while( current != ((OM_DS*)ds)->tail);
 
-	printf( "Neither node found in linked list. Returning false");
+	printf("Debug: Neither node found in linked list. Returning false");
 #else
 	printf("Debug: Don't know how to order with OM_DS yet\n");
 	return 0;
@@ -2253,8 +2253,13 @@ int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 }
 
 /*! The only slow threads are going to either be the main thread or a stolen frame*/
-void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame){
-
+void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const int FAST_NOT_SLOW){
+	//CHECKS IF BATCH NODE
+	if  (ws->batch_id != 0)
+	{
+	    printf("Debug: In batch node, no race detect needed");	
+	    return; //then in batcher
+	}
 	/*! Create three new nodes to be inserted into OM_DS*/
 	OM_Node * cont_node, * post_sync_node, * spawned_func_node;
 
@@ -2273,13 +2278,15 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame){
 		Cilk_free(frame->post_sync_node);
 	}
 	if (!(frame->current_node)){
-		printf("CURRNT NODE IS NULL : frame->currentNode is null, so pulling from worker state: %p\n", ws->next_func_node);
-		frame->current_node = ws->next_func_node; //next_func_node;
+		printf("Debug: CURRNT NODE IS NULL : frame->currentNode is null, so pulling from worker state: %d\n", ws->next_func_node->id);
+		frame->current_node = ws->next_func_node;
 	
 	}
-	
-	printf("Debug: OM_DS_before_spawn called currnt node id: %d\n", frame->current_node->id);
-
+	if (FAST_NOT_SLOW)	
+		printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
+	else
+		printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
+		
 	/*! insert the new nodes into the OM_DS*/
 	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node, ENGLISH_ID);
 	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node, 		ENGLISH_ID);
@@ -2299,9 +2306,18 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/*! update worker state*/
 	ws->current_node = frame->current_node;
 	ws->next_func_node = spawned_func_node;
+
+	printf("End of function check ws->next_func_node->id: %d\n", ws->next_func_node->id);
 }
 
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
+	//CHECKS IF BATCH NODE
+	if  (ws->batch_id != 0)
+	{
+	    printf("Debug: In batch node, no race detect needed");	
+	    return; //then in batcher
+	}
+	
 	printf("Debug: OM_DS_sync_slow , current frame id: %d\n",  frame->current_node->id );
 
 	/*update frame varriables*/
@@ -2316,6 +2332,13 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 
 void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
+	//CHECKS IF BATCH NODE
+	if  (ws->batch_id != 0)
+	{
+	    printf("Debug: In batch node, no race detect needed");	
+	    return; //then in batcher
+	}
+
 	printf("Debug: OM_DS_sync_fast, current frame id: %d\n",  frame->current_node->id );
 
 	/*update frame varriables*/
@@ -2331,10 +2354,17 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 //a new thread is started, get the next_function_node from the ws and put as the
 //current node
 void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
+	//CHECKS IF BATCH NODE
+	if  (ws->batch_id != 0)
+	{
+	    printf("Debug: In batch node, no race detect needed");	
+	    return; //then in batcher
+	}
 
 	if ((ws->current_node) ) //if this is null, we are in invoke_main_slow and the following line has been set up
 	{
-		printf("Starting new thread, assigning ws->next_func to frame->current_node\n");
+
+		printf("Starting new thread, assigning ws->next_func(%d) to frame->current_node (frame loc: %p )\n", ws->next_func_node->id, frame);
 		frame->current_node = ws->next_func_node;
 	}
 	else

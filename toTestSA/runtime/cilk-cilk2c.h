@@ -82,13 +82,13 @@
 
 #define CILK2C_BEFORE_SPAWN_FAST(){					\
   Cilk_cilk2c_before_spawn_fast_cp(_cilk_ws, &(_cilk_frame->header));	\
-  OM_DS_before_spawn(_cilk_ws, &(_cilk_frame->header));			\
+  OM_DS_before_spawn(_cilk_ws, &(_cilk_frame->header), 1);			\
 }
 
 
 #define CILK2C_BEFORE_SPAWN_SLOW(){					\
   Cilk_cilk2c_before_spawn_slow_cp(_cilk_ws, &(_cilk_frame->header));	\
-  OM_DS_before_spawn(_cilk_ws, &(_cilk_frame->header));			\
+  OM_DS_before_spawn(_cilk_ws, &(_cilk_frame->header), 0);			\
 }
 
 #define CILK2C_AT_THREAD_BOUNDARY_SLOW() {		\

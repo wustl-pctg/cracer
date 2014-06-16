@@ -8,7 +8,7 @@
 /***********************************************************!
  * Pre-declared functions from sched.c for OM_DS functions *
  ***********************************************************/
-void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame);
+void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const int FAST_NOT_SLOW);
 
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame);
 
