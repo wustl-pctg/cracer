@@ -2354,7 +2354,7 @@ typedef struct RD_Memory_Struct_s {
   \param ws The current workerstate upon being called
   \param mem The struct whose mutex is being initialized
 */
-void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
+static void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 {
 	Cilk_mutex_init(ws->context, mem->mutex);
 }
@@ -2363,7 +2363,7 @@ void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
   \param ws The current workerstate upon being called
   \param mem The struct whose mutex is being initialized
 */
-void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
+static void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 {
 	Cilk_mutex_destroy(ws->context, mem->mutex);
 }
@@ -2376,8 +2376,7 @@ void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 */
 void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 {
-	RD_Memory_Struct * memPtr;
-	memPtr = (RD_Memory_Struct*)malloc(sizeof(RD_Memory_Struct));
+	RD_Memory_Struct * memPtr = (RD_Memory_Struct*)malloc(sizeof(RD_Memory_Struct));
 	
 	//!Inialize known members
 	memPtr->data = malloc(sizeof(size));
