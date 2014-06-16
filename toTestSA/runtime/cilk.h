@@ -96,7 +96,7 @@ struct cilk_alloca_header {
 
 
 typedef struct OM_Node_s{
-	struct OM_Node_s *next;
+	struct OM_Node_s *next_english, *next_hebrew;
 	int id; //needed?
 
 } OM_Node;

@@ -71,6 +71,17 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 
   CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at the end of the func.*/
 
+	{
+  /*!order maintenance for race detect*/
+	OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
+	main_node->id = 0; 
+	OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->englishOM_DS, main_node);
+	OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->hebrewOM_DS, main_node);
+	ws->current_node = NULL; //will ths work? main_node;
+	ws->next_func_node = main_node;
+	printf("\nDebug:\t\t Created main node and added to eng/heb.\n ");
+  /*end order maintenance*/
+	}
   CILK2C_START_THREAD_SLOW();
   switch (_cilk_frame->header.entry) {
   case 1:
@@ -83,17 +94,6 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
   _cilk_ws->work_hack = 0;
   _cilk_ws->user_work = 0;
   _cilk_ws->user_critical_path = 0;
-  /*!order maintenance for race detect*/
-    {
-    OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
-    main_node->id = 0; 
-    OM_DS_append(_cilk_ws->context->Cilk_global_state->englishOM_DS, main_node);
-    OM_DS_append(_cilk_ws->context->Cilk_global_state->hebrewOM_DS, main_node);
-    ws->current_node = NULL; //will ths work? main_node;
-    ws->next_func_node = main_node;
-    printf("\nDebug:\t\t Created main node and added to eng/heb.\n ");
-    }
-  /*end order maintenance*/
   WHEN_CILK_TIMING(_cilk_frame->header.cp = (Cilk_time) 0);
   WHEN_CILK_TIMING(_cilk_frame->header.work = (Cilk_time) 0);
   WHEN_CILK_TIMING(_cilk_frame->header.mycp = (Cilk_time) 0);
