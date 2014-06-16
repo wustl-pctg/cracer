@@ -29,6 +29,7 @@
 #include <cilk-internal.h>
 #include <string.h>
 #include <time.h>
+#include <stdlib.h>
 
 #define BATCH_ASSERT(args...) CILK_ASSERT(args)
 
@@ -2072,7 +2073,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 /*! Race-Detect struct */
 typedef struct RD_Memory_Struct_s{
 
-	Cilk_mutex mutex; //Lock for atomicity 
+	Cilk_mutex * mutex; //Lock for atomicity 
 	void * memloc; //The memory location where the read/write occurs
 	OM_Node * left_r; //leftmost node that is reading
 	OM_Node * right_r; //rightmost node that is reading
@@ -2128,7 +2129,7 @@ void printList(OM_DS * list) {
     printf("Head->");
     
     while (n != NULL){
-	printf("%s->", n->id);
+	printf("%d->", n->id);
         n = n->next;
     }
     printf("Tail\n");
@@ -2341,7 +2342,7 @@ void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 
 	//Get lock
-	Cilk_mutex_wait(ws->context, mem->mutex);
+	Cilk_mutex_wait(ws->context, ws,  mem->mutex);
 	
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
@@ -2395,7 +2396,7 @@ void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 		mem->right_r = currentNode;
 
 	//No race, release lock
-	Cilk_mutex_signal(ws->context, ws, mem->mutex);
+	Cilk_mutex_signal(ws->context, mem->mutex);
 	
 	//! Read the data
 	return mem->memloc;
@@ -2409,7 +2410,7 @@ void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const void * writeValue, size_t writeValueTypeSize) {
 
 	//Get Lock
-	Cilk_mutex_wait(ws->context, mem->mutex);
+	Cilk_mutex_wait(ws->context, ws, mem->mutex);
 	
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode;
@@ -2495,7 +2496,7 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const
 	memcpy(&(mem->memloc),&writeValue,writeValueTypeSize);
 	
 	//Release Lock
-	Cilk_mutex_signal(ws->context, ws, mem->mutex);
+	Cilk_mutex_signal(ws->context, mem->mutex);
 	
 }
 /* End Order Maintenence Functions */
