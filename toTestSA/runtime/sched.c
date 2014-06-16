@@ -2272,11 +2272,12 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame){
 		//do i need a lock here?
 		Cilk_free(frame->post_sync_node);
 	}
-	/*if (!(frame->current_node)){
+	if (!(frame->current_node)){
 		printf("CURRNT NODE IS NULL : frame->currentNode is null, so pulling from worker state: %p\n", ws->next_func_node);
-		frame->current_node = ws->current_node; //next_func_node;
+		frame->current_node = ws->next_func_node; //next_func_node;
 	
-	}*/
+	}
+	
 	printf("Debug: OM_DS_before_spawn called currnt node id: %d\n", frame->current_node->id);
 
 	/*! insert the new nodes into the OM_DS*/
