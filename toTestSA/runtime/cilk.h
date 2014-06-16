@@ -33,7 +33,6 @@
 #endif
 
 #include <sys/types.h>
-
 /****************************************************************\
  * Architecture- and compiler-specific definitions and functions
 \****************************************************************/
@@ -113,17 +112,6 @@ typedef struct {
 
 } InsertRecord;
 
-/*! Race-Detect struct */
-typedef struct {
-
-	Cilk_mutex mutex; //Lock for atomicity 
-	void * memloc; //The memory location where the read/write occurs
-	OM_Node * left_r; //leftmost node that is reading
-	OM_Node * right_r; //rightmost node that is reading
-	OM_Node * left_w; //leftmost node that is writing
-	OM_Node * right_w; //rightmost node that is writing
-
-} RD_Memory_Struct;
 
 /***********************************************************\
  * Hooks

@@ -2068,6 +2068,19 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 *****************************************
 * Order Maintenance for race detection *
 *****************************************/
+
+/*! Race-Detect struct */
+typedef struct {
+
+	Cilk_mutex mutex; //Lock for atomicity 
+	void * memloc; //The memory location where the read/write occurs
+	OM_Node * left_r; //leftmost node that is reading
+	OM_Node * right_r; //rightmost node that is reading
+	OM_Node * left_w; //leftmost node that is writing
+	OM_Node * right_w; //rightmost node that is writing
+
+} RD_Memory_Struct;
+
 void OM_DS_init(CilkContext *const context){
 	if (context->Cilk_global_state){
 		printf("Debug: OM_DS_init\n");

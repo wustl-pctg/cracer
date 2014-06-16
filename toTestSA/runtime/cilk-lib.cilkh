@@ -128,6 +128,8 @@ extern void Cilk_batchify_sequential(CilkWorkerState *const ws,
 ***********************************************
 * Order maintenance functions for race detector
 ***********************************************/
+extern typedef struct RD_Memory_Struct;
+
 extern void OM_DS_insert(void * ds, void * _x, void * _y);
 
 extern void OM_DS_append(void *ds, void * _x);
@@ -143,4 +145,6 @@ extern void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *fr
 extern void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const void * writeValue, size_t writeValueTypeSize);
 
 extern void Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct mem);
+
+
 #endif				/* _CILK_LIB_H */
