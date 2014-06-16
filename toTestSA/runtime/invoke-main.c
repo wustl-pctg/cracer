@@ -71,21 +71,22 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 
   CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at the end of the func.*/
 
-	{
   /*!order maintenance for race detect*/
-	OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
-	main_node->id = 0; 
-	OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->englishOM_DS, main_node);
-	OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->hebrewOM_DS, main_node);
-	ws->current_node = main_node; //will ths work? main_node;
-	main_node->id = 0;
-	main_node->next_english = main_node->next_hebrew = NULL;
-	_cilk_frame->header.current_node = main_node;
-		
-	//ws->next_func_node = main_node;
-	printf("\nDebug:\t\t Created main node and added to eng/heb.\n ");
-  /*end order maintenance*/
+	if (_cilk_ws->context->Cilk_global_state->englishOM_DS->size == 0 || _cilk_ws->context->Cilk_global_state->hebrewOM_DS->size == 0)
+	{
+		OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
+		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->englishOM_DS, main_node);
+		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->hebrewOM_DS, main_node);
+		main_node->id = 1;
+		printf("\nDebug: Created main node and added to eng/heb.\n");
 	}
+	else
+		printf("Nonempty OM_DS's, this is not the first invocation of slow main,dont create new nodes.\n");
+	/*!do this in stolen and non stolen mains: makes the first node (which is the same in both) the ws->next_func_node*/
+	ws->next_func_node = _cilk_ws->context->Cilk_global_state->englishOM_DS->head;
+	ws->current_node = NULL;
+
+  /*end order maintenance*/
   CILK2C_START_THREAD_SLOW();
   switch (_cilk_frame->header.entry) {
   case 1:

@@ -2272,31 +2272,32 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame){
 		//do i need a lock here?
 		Cilk_free(frame->post_sync_node);
 	}
-	if (!(frame->current_node)){
+	/*if (!(frame->current_node)){
 		printf("CURRNT NODE IS NULL : frame->currentNode is null, so pulling from worker state: %p\n", ws->next_func_node);
-		frame->current_node = ws->next_func_node;
+		frame->current_node = ws->current_node; //next_func_node;
 	
-	}
+	}*/
 	printf("Debug: OM_DS_before_spawn called currnt node id: %d\n", frame->current_node->id);
 
-    /*! insert the new nodes into the OM_DS*/
-    OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
-    OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node, 		ENGLISH_ID);
-    OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node, 		ENGLISH_ID);
-    
-    OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node, 		HEBREW_ID);
-    OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node, 		HEBREW_ID);
-    OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node, 	HEBREW_ID);
+	/*! insert the new nodes into the OM_DS*/
+	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node, ENGLISH_ID);
+	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node, 		ENGLISH_ID);
+	OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node, 		ENGLISH_ID);
+	
+	OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node, 	HEBREW_ID);
+	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node, 		HEBREW_ID);
+	OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node, 	HEBREW_ID);
 
 	printList(WS_REF_ENG, ENGLISH_ID);
 	printList(WS_REF_HEB, HEBREW_ID);
-    /*!update frame variables*/
+	
+	/*!update frame variables*/
 	frame->post_sync_node = post_sync_node;
 	frame->current_node = cont_node;
     
-    /*! update worker state*/
-    ws->current_node = frame->current_node;
-    ws->next_func_node = spawned_func_node;
+	/*! update worker state*/
+	ws->current_node = frame->current_node;
+	ws->next_func_node = spawned_func_node;
 }
 
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
@@ -2304,7 +2305,8 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	/*update frame varriables*/
 	if (frame->post_sync_node)
-		{ frame->current_node = ws->current_node = frame->post_sync_node;
+		{ 
+		frame->current_node = ws->current_node = frame->post_sync_node;
 		ws->next_func_node = NULL;
 		}
     	else
@@ -2317,7 +2319,8 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	/*update frame varriables*/
 	if (frame->post_sync_node)
-		{ frame->current_node = ws->current_node = frame->post_sync_node;
+		{ 
+		frame->current_node = ws->current_node = frame->post_sync_node;
 		ws->next_func_node = NULL;
 		}
     	else
@@ -2328,17 +2331,33 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 //current node
 void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 
-    printf("Debug: New thread start, ws->current_node node id: %d\n , new frame->current_node", ws->current_node->id);
-    if (ws->next_func_node)
+	if ((ws->current_node) ) //if this is null, we are in invoke_main_slow and the following line has been set up
 	{
+		printf("Starting new thread, assigning ws->next_func to frame->current_node\n");
+		frame->current_node = ws->next_func_node;
+	}
+	else
+		printf("In invoke_main_slow, not setting up the frame->current node\n");
+	/*
+    if (!(frame->current_node) && ws->next_func_node)
+	{
+    	printf("Debug: New thread start (no current node for frame),\
+	 ws->current_node node id: %d\n , ws->next_func_node: %d ", ws->current_node->id, ws->next_func_node->id);
+	
 	frame->current_node = ws->next_func_node;
-	ws->current_node = frame->current_node;
-	ws->next_func_node = NULL;
-	printf(" %d\n", frame->current_node->id);
+	//ws->current_node = frame->current_node;
+	//ws->next_func_node = NULL;
+	}
+    else if ( frame->current_node) {
+	printf("Debug: why am i here? new thread was started, but the frame->current_node is not null.");
 	}
     else
+	{
 	printf("Debug: no next function node to assign to current frame\n"); 
-    
+	//frame->current_node
+	}
+    */
+
 }
 
 /**************************************************************!
