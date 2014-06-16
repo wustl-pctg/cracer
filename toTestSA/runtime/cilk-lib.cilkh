@@ -128,7 +128,6 @@ extern void Cilk_batchify_sequential(CilkWorkerState *const ws,
 ***********************************************
 * Order maintenance functions for race detector
 ***********************************************/
-extern struct RD_Memory_Struct_s;
 
 extern void OM_DS_insert(void * ds, void * _x, void * _y);
 

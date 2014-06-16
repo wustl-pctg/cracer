@@ -45,6 +45,7 @@ extern void Cilk_mutex_signal(CilkContext *const context, Cilk_mutex *lock);
 extern int  Cilk_mutex_try(CilkContext *const context, Cilk_mutex *lock);
 extern void Cilk_mutex_destroy(CilkContext *const context, Cilk_mutex *lock);
 
+
 /******************************************************
  *  Closures and associated operations
  ******************************************************/

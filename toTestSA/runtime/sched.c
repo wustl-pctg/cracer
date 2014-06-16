@@ -2068,19 +2068,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 /*!
 *****************************************
 * Order Maintenance for race detection *
-*****************************************/
-
-/*! Race-Detect struct */
-typedef struct RD_Memory_Struct_s{
-
-	Cilk_mutex * mutex; //Lock for atomicity 
-	void * memloc; //The memory location where the read/write occurs
-	OM_Node * left_r; //leftmost node that is reading
-	OM_Node * right_r; //rightmost node that is reading
-	OM_Node * left_w; //leftmost node that is writing
-	OM_Node * right_w; //rightmost node that is writing
-
-} RD_Memory_Struct;
+****************************************/
 
 void OM_DS_init(CilkContext *const context){
 	if (context->Cilk_global_state){
@@ -2091,19 +2079,6 @@ void OM_DS_init(CilkContext *const context){
 #define OM_IS_LL
 }
 
-void OM_DS_free_and_free_nodes(CilkContext *const context){
-	//free nodes
-#ifdef OM_IS_LL
-	OM_LL_free_nodes_internal(context);
-#else
-	OM_free_nodes_internal(context);
-#endif
-	//free ds
-	printf("Debug: free OMDS\n");
-	Cilk_free(context->Cilk_global_state->hebrewOM_DS);
-	Cilk_free(context->Cilk_global_state->englishOM_DS);
-
-}
 
 //! frees node if LL is the OM_DS
 void OM_LL_free_nodes_internal(CilkContext *const context){
@@ -2181,6 +2156,21 @@ void OM_DS_insert(void *ds, void * _x, void * _y){
 
 	((OM_DS*)ds)->size++;
 #endif
+}
+
+//! Calls proper free function based on DS
+void OM_DS_free_and_free_nodes(CilkContext *const context){
+	//free nodes
+#ifdef OM_IS_LL
+	OM_LL_free_nodes_internal(context);
+#else
+	OM_free_nodes_internal(context);
+#endif
+	//free ds
+	printf("Debug: free OMDS\n");
+	Cilk_free(context->Cilk_global_state->hebrewOM_DS);
+	Cilk_free(context->Cilk_global_state->englishOM_DS);
+
 }
 
 //! Simple append function for when OM_LL is defined
@@ -2311,47 +2301,85 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
     
 }
 
+/**************************************************************!
+ *        === Race detect functions in particular ===         *
+ **************************************************************/
 
-/*! === Race detect functions in particular === */
+//! Race_Detect Struct
+/*! This struct is to be utilized as if it is the memory location
+  of a particular variable.
+typedef struct RD_Memory_Struct_s {
 
-//! Initializes the lock for a RD_Memory_struct
-/*! This function initializes the memory for the lock in
-  the RD_Memory_Struct.  Must be called  right after the
-  instantiation of a new RD_Memory_Struct in the program.
+	Cilk_mutex * mutex; //Lock for atomicity
+	void * data; //The memory location where the read/write occurs
+	size_t size; //Size of memloc data type
+	OM_Node * left_r; //leftmost node that is reading
+	OM_Node * right_r; //rightmost node that is reading
+	OM_Node * left_w; //leftmost node that is writing
+	OM_Node * right_w; //rightmost node that is writing
+
+} RD_Memory_Struct;
+
+/*! Initializes the lock for a RD_Memory_struct
   \param ws The current workerstate upon being called
   \param mem The struct whose mutex is being initialized
 */
-void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
+void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
+{
 	Cilk_mutex_init(ws->context, mem->mutex);
 }
 
-//! Frees the allocated memory for the lock for RD_Memory_Struct 
-/*! This function destroys the memory for the lock in
-  the RD_Memory_Struct.
+/*! Frees the allocated memory for the lock for RD_Memory_Struct 
   \param ws The current workerstate upon being called
   \param mem The struct whose mutex is being initialized
 */
-void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
+void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
+{
 	Cilk_mutex_destroy(ws->context, mem->mutex);
 }
 
+/*! Creates the structure upon the call to this function and returns a pointer
+  to the address in memory to be utilized in place of the desired variable
+  \param ws The CilkWorkerState of the given program
+  \param memloc The memory location to be read/written
+  \param size The size of the data type to read/written
+  \return the memory location of the RD_Memory_Struct
+*/
+void * RD_structure_create(CilkWorkerState * const ws, size_t size)
+{
+	RD_Memory_Struct * memPtr;
+	memPtr = (RD_Memory_Struct*)malloc(sizeof(RD_Memory_Struct));
+	
+	//!Inialize known members
+	memPtr->data = malloc(sizeof(size));
+	RD_mutex_init(ws, memPtr);
+	
+	return (void *)memPtr;
+}
+
+	
 /*! Function that detects potential races on a given memory read
   \param ws CilkWorkerState Node for program
-  \param memloc The variable to be read
+  \param handle The memory address of the struct used in checking
+  \return memory address of read location
 */
-void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
+void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
+{
 
-	//Get lock
+	//!Get struct
+	RD_Memory_Struct * mem = (RD_Memory_Struct *)memPtr;
+	
+	//!Get lock
 	Cilk_mutex_wait(ws->context, ws,  mem->mutex);
 	
 	//! Retrieve currentNode from workerstate
-	OM_Node * currentNode;
-	currentNode = ws->current_node;
+	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first read-node checked
 	if( !(mem->left_r && mem->right_r) )
 	{
 		mem->left_r = mem->right_r = currentNode;
+		//Only node means no race, so return
 		return mem->memloc;
 	}
 	
@@ -2395,31 +2423,39 @@ void * Race_detect_read(CilkWorkerState * const ws, RD_Memory_Struct * mem) {
 	if(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode))
 		mem->right_r = currentNode;
 
-	//No race, release lock
+	//!No race, release lock
 	Cilk_mutex_signal(ws->context, mem->mutex);
 	
 	//! Read the data
-	return mem->memloc;
+	return mem->data;
 
 }
 
 /*! Function that detects potential races on a given memory write
   \param ws CilkWorkerState Node for program
-  \param memloc The variable to be written
+  \param memPtr Pointer to the memory address of the struct utilized (mem)
+  \param writeValue Manually passed in value to be written to mem->memloc
+  \param writeValueTypzeSize the size of the DS written for memCpy
 */
-void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const void * writeValue, size_t writeValueTypeSize) {
+void Race_detect_write(CilkWorkerState * const ws,
+					   void * memPtr,
+					   const void * writeValue)
+{
 
-	//Get Lock
+	//!Get struct
+	RD_Memory_Struct mem = (RD_Memory_Struct *)memPtr;
+	
+	//!Get Lock
 	Cilk_mutex_wait(ws->context, ws, mem->mutex);
 	
 	//! Retrieve currentNode from workerstate
-	OM_Node * currentNode;
-	currentNode = ws->current_node;
+	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first write-node checked
 	if( !(mem->left_w && mem->right_w) )
 	{
 		mem->left_w = mem->right_w = currentNode;
+		//!Only node so no race, return
 		return;
 	}
 	
@@ -2493,12 +2529,13 @@ void Race_detect_write(CilkWorkerState * const ws, RD_Memory_Struct * mem, const
 		mem->right_w = currentNode;
 
 	//! Write the data
-	memcpy(&(mem->memloc),&writeValue,writeValueTypeSize);
+	memcpy(&(mem->memloc),&writeValue, mem->size);
 	
-	//Release Lock
+	//!Release Lock
 	Cilk_mutex_signal(ws->context, mem->mutex);
 	
 }
+
 /* End Order Maintenence Functions */
 
 /*
