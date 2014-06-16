@@ -2108,8 +2108,11 @@ void printList(OM_DS * list, const int ID) {
         n = list->head;
     else
 	exit(10);
-    printf("Head->");
-    
+	if( ID == HEBREW_ID)
+		printf("Hebrew : Head->");
+	else
+    		printf(" English: Head->"); 
+
     while (n != NULL){
 	printf("%d->", n->id);
 	if (ID == HEBREW_ID)
@@ -2138,10 +2141,10 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 	//if x is null
 	if (!(x && y && ds) ){
-		printf("Some node or ds is null, skipping insert; x: %p y:%p z:%p\n", x, y, ds);
+		printf("Some node or ds is null, skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
 		return;
 	}
-
+	printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
 	switch(ID){
 	case HEBREW_ID:
 		//if x->next is null, x  is tail
@@ -2270,11 +2273,12 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame){
 		Cilk_free(frame->post_sync_node);
 	}
 	if (!(frame->current_node)){
-		printf("frame->currentNode is null, so pulling from worker state: %p\n", ws->next_func_node);
+		printf("CURRNT NODE IS NULL : frame->currentNode is null, so pulling from worker state: %p\n", ws->next_func_node);
 		frame->current_node = ws->next_func_node;
 	
 	}
-	printf("Debug: OM_DS_before_spawn called currnt node id: %d", current_node->id);
+	printf("Debug: OM_DS_before_spawn called currnt node id: %d\n", frame->current_node->id);
+
     /*! insert the new nodes into the OM_DS*/
     OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
     OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node, 		ENGLISH_ID);
@@ -2296,22 +2300,27 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame){
 }
 
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
-	printf("Debug: OM_DS_sync_slow WS: %p\t Frame: %p\n", ws, frame);
+	printf("Debug: OM_DS_sync_slow , current frame id: %d\n",  frame->current_node->id );
 
+	/*update frame varriables*/
 	if (frame->post_sync_node)
-		frame->current_node = frame->post_sync_node;
-    else
+		{ frame->current_node = ws->current_node = frame->post_sync_node;
+		ws->next_func_node = NULL;
+		}
+    	else
 		printf("No post sync node \n");
 }
 
 
 void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
-	printf("Debug: OM_DS_sync_fast WS: %p\t Frame: %p\n", ws, frame);
+	printf("Debug: OM_DS_sync_fast, current frame id: %d\n",  frame->current_node->id );
 
 	/*update frame varriables*/
 	if (frame->post_sync_node)
-		frame->current_node = frame->post_sync_node;
-    else
+		{ frame->current_node = ws->current_node = frame->post_sync_node;
+		ws->next_func_node = NULL;
+		}
+    	else
 		printf("No post sync node \n");
 }
 
@@ -2319,9 +2328,14 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 //current node
 void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 
-    printf("Debug: New thread start.\n");
+    printf("Debug: New thread start, ws->current_node node id: %d\n , new frame->current_node", ws->current_node->id);
     if (ws->next_func_node)
+	{
 	frame->current_node = ws->next_func_node;
+	ws->current_node = frame->current_node;
+	ws->next_func_node = NULL;
+	printf(" %d\n", frame->current_node->id);
+	}
     else
 	printf("Debug: no next function node to assign to current frame\n"); 
     
