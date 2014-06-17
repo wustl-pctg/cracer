@@ -2452,8 +2452,9 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 	//! This is only true when it is the first read-node checked
 	if( !(mem->left_r && mem->right_r) )
 	{
+		//!Must initalize node pointers for comparison
 		mem->left_r = mem->right_r = currentNode;
-		//Only node means no race, so return
+		//!Only node means no race, so return
 		return mem->data;
 	}
 	
@@ -2527,6 +2528,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	//! This is only true when it is the first write-node checked
 	if( !(mem->left_w && mem->right_w) )
 	{
+		//!Inialize node pointers for comparison
 		mem->left_w = mem->right_w = currentNode;
 
 		//!Write the data
