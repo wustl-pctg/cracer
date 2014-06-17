@@ -166,6 +166,7 @@ typedef struct {
 	WHEN_CILK_DEBUG(volatile unsigned int magic;)
 	//Order maintenance for race detector
 	OM_Node * current_node, *post_sync_node;
+	int first_spawn_flag;
 } CilkStackFrame;
 
 

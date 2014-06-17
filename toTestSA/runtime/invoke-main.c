@@ -78,6 +78,7 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->englishOM_DS, main_node);
 		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->hebrewOM_DS, main_node);
 		main_node->id = 1;
+		_cilk_frame->header.first_spawn_flag = 0;
 		printf("\nDebug: Created main node and added to eng/heb.\n");
 	}
 	else

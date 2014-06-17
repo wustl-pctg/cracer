@@ -2267,19 +2267,21 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	OM_Node * cont_node, * post_sync_node, * spawned_func_node;
 
 	cont_node =  Cilk_malloc(sizeof(OM_Node));
-	post_sync_node =  Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node =  Cilk_malloc(sizeof(OM_Node));
 
 	cont_node->id = global_node_count++;
 	spawned_func_node->id = global_node_count++;
-	post_sync_node->id = global_node_count++;
-	
 
-	//there could be redundant post_sync_node, so free it if necessary
-	if (frame->post_sync_node){
-		//do i need a lock here?
-		Cilk_free(frame->post_sync_node);
+	//if frame has not hit a spawn before
+	if (!frame->first_spawn_flag){
+		
+		post_sync_node =  Cilk_malloc(sizeof(OM_Node));
+		post_sync_node->id = global_node_count++;
+		frame->first_spawn_flag = 1;	
+
+		frame->post_sync_node = post_sync_node;
 	}
+
 	if (!(frame->current_node)){
 		printf("Debug: CURRNT NODE IS NULL : frame->currentNode is null, so pulling from worker state: %d\n", ws->next_func_node->id);
 		frame->current_node = ws->next_func_node;
@@ -2328,6 +2330,7 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	{ 
 		frame->current_node = ws->current_node = frame->post_sync_node;
 		ws->next_func_node = NULL;
+		frame->first_spawn_flag = 0;
 	}
 	else
 		printf("No post sync node \n");
@@ -2349,6 +2352,7 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	{ 
 		frame->current_node = ws->current_node = frame->post_sync_node;
 		ws->next_func_node = NULL;
+		frame->first_spawn_flag = 0;
 	}
 	else
 		printf("No post sync node \n");
@@ -2364,6 +2368,9 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 	    return; //then in batcher
 	}
 
+	if (!(frame->current_node)) //this frame has not been entered yet
+	frame->first_spawn_flag = 0;
+	
 	if ((ws->current_node) ) //if this is null, we are in invoke_main_slow and the following line has been set up
 	{
 
@@ -2371,7 +2378,11 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 		frame->current_node = ws->next_func_node;
 	}
 	else
+	{
 		printf("In invoke_main_slow, not setting up the frame->current node\n");
+	}
+	
+	
 	/*
 	  if (!(frame->current_node) && ws->next_func_node)
 	  {
