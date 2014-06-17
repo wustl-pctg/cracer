@@ -591,7 +591,7 @@ static struct InletClosure *Closure_remove_child(CilkWorkerState *const ws,
 	Cilk_die_internal(ws->context, ws, "BUG in Closure_remove_child\n");
 	p = NULL;
 
-  found:
+found:
 	return p;
 }
 
@@ -948,63 +948,63 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim,
 
 
 		switch (cl->status) {
-			case CLOSURE_READY:
-				Cilk_event(ws, EVENT_STEAL);
+		case CLOSURE_READY:
+			Cilk_event(ws, EVENT_STEAL);
+			res = deque_xtract_top(ws, victim, deque_pool);
+			CILK_ASSERT(ws, cl == res);
+
+			/* it is ok to swap these two */
+			Closure_unlock(ws, cl);
+			deque_unlock(ws, victim, deque_pool);
+			break;
+
+		case CLOSURE_RUNNING:
+			/* send the exception to the worker */
+			if (do_dekker_on(ws, cl)) {
+				/*
+				 * if we could send the exception, promote
+				 * the child to a full closure, and steal
+				 * the parent
+				 */
+				child = promote_child(ws, cl, victim, deque_pool);
+
+				/* detach the parent */
 				res = deque_xtract_top(ws, victim, deque_pool);
 				CILK_ASSERT(ws, cl == res);
-
-				/* it is ok to swap these two */
-				Closure_unlock(ws, cl);
 				deque_unlock(ws, victim, deque_pool);
-				break;
-
-			case CLOSURE_RUNNING:
-				/* send the exception to the worker */
-				if (do_dekker_on(ws, cl)) {
-					/*
-					 * if we could send the exception, promote
-					 * the child to a full closure, and steal
-					 * the parent
-					 */
-					child = promote_child(ws, cl, victim, deque_pool);
-
-					/* detach the parent */
-					res = deque_xtract_top(ws, victim, deque_pool);
-					CILK_ASSERT(ws, cl == res);
-					deque_unlock(ws, victim, deque_pool);
-
-					/*
-					 * at this point, more steals can happen
-					 * from the victim.
-					 */
-					finish_promote(ws, cl, child);
-					Closure_unlock(ws, cl);
-					Cilk_event(ws, EVENT_STEAL);
-				} else {
-					Cilk_event(ws, EVENT_STEAL_NO_DEKKER);
-					goto give_up;
-				}
-				break;
-
-			case CLOSURE_SUSPENDED:
-				Cilk_die_internal(ws->context, ws, "Bug: suspended closure in ready deque\n");
-				break;
-
-			case CLOSURE_RETURNING:
-				/* ok, let it leave alone */
-				Cilk_event(ws, EVENT_STEAL_RETURNING);
 
 				/*
-				 * MUST unlock the closure before the queue;
-				 * see rule D in the file PROTOCOLS
+				 * at this point, more steals can happen
+				 * from the victim.
 				 */
-			give_up:
+				finish_promote(ws, cl, child);
 				Closure_unlock(ws, cl);
-				deque_unlock(ws, victim, deque_pool);
-				break;
+				Cilk_event(ws, EVENT_STEAL);
+			} else {
+				Cilk_event(ws, EVENT_STEAL_NO_DEKKER);
+				goto give_up;
+			}
+			break;
 
-			default:
-				Cilk_die_internal(ws->context, ws, "Bug: unknown closure status\n");
+		case CLOSURE_SUSPENDED:
+			Cilk_die_internal(ws->context, ws, "Bug: suspended closure in ready deque\n");
+			break;
+
+		case CLOSURE_RETURNING:
+			/* ok, let it leave alone */
+			Cilk_event(ws, EVENT_STEAL_RETURNING);
+
+			/*
+			 * MUST unlock the closure before the queue;
+			 * see rule D in the file PROTOCOLS
+			 */
+		give_up:
+			Closure_unlock(ws, cl);
+			deque_unlock(ws, victim, deque_pool);
+			break;
+
+		default:
+			Cilk_die_internal(ws->context, ws, "Bug: unknown closure status\n");
 		}
 
 	} else {
@@ -1522,7 +1522,7 @@ int Cilk_exception_handler(CilkWorkerState *const ws, void *resultp, int size)
 
 			f = (CilkStackFrame *) CLOSURE_TAIL(t)[-1];
 			Cilk_destroy_frame(ws, f, get_frame_size(f));
-		  skip_free: ;
+		skip_free: ;
 		} else {
 			/* frame not being aborted */
 			maybe_reset_abort(t);
@@ -1646,59 +1646,59 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 	Closure_lock(ws, t);
 
 	switch (t->status) {
-		case CLOSURE_READY:
-			if (Closure_being_aborted(ws, t)) {
-				res = abort_ready_closure(ws, t);
-				Closure_unlock(ws, t);
+	case CLOSURE_READY:
+		if (Closure_being_aborted(ws, t)) {
+			res = abort_ready_closure(ws, t);
+			Closure_unlock(ws, t);
+		} else {
+			/* just execute it */
+			setup_for_execution(ws, t);
+			f = t->frame;
+			CILK_ASSERT(ws, f);
+			CILK_ASSERT(ws, f->sig);
+			CILK_ASSERT(ws, f->magic == CILK_STACKFRAME_MAGIC);
+			poll_inlets(ws, t);
+			Closure_unlock(ws, t);
+			/*
+			 * MUST unlock the closure before locking the queue
+			 * (rule A in file PROTOCOLS)
+			 */
+			deque_lock(ws, ws->self, deque_pool);
+			deque_add_bottom(ws, t, ws->self, deque_pool);
+			deque_unlock(ws, ws->self, deque_pool);
+
+			/* now execute it */
+			if (ws->batch_id) {
+				Cilk_enter_state(ws, STATE_BATCH_WORKING);
 			} else {
-				/* just execute it */
-				setup_for_execution(ws, t);
-				f = t->frame;
-				CILK_ASSERT(ws, f);
-				CILK_ASSERT(ws, f->sig);
-				CILK_ASSERT(ws, f->magic == CILK_STACKFRAME_MAGIC);
-				poll_inlets(ws, t);
-				Closure_unlock(ws, t);
-				/*
-				 * MUST unlock the closure before locking the queue
-				 * (rule A in file PROTOCOLS)
-				 */
-				deque_lock(ws, ws->self, deque_pool);
-				deque_add_bottom(ws, t, ws->self, deque_pool);
-				deque_unlock(ws, ws->self, deque_pool);
-
-				/* now execute it */
-				if (ws->batch_id) {
-					Cilk_enter_state(ws, STATE_BATCH_WORKING);
-				} else {
-					Cilk_enter_state(ws, STATE_WORKING);
-				}
-				(get_proc_slow(f->sig)) (ws, f);
-				if (ws->batch_id) {
-					Cilk_exit_state(ws, STATE_BATCH_WORKING);
-				} else {
-					Cilk_exit_state(ws, STATE_WORKING);
-				}
-
+				Cilk_enter_state(ws, STATE_WORKING);
+			}
+			(get_proc_slow(f->sig)) (ws, f);
+			if (ws->batch_id) {
+				Cilk_exit_state(ws, STATE_BATCH_WORKING);
+			} else {
+				Cilk_exit_state(ws, STATE_WORKING);
 			}
 
-			break;
+		}
 
-		case CLOSURE_RETURNING:
-			/*
-			 * the return protocol assumes t is not locked,
-			 * and everybody will respect the fact that t is
-			 * returning
-			 */
-			Closure_unlock(ws, t);
-			res = return_value(ws, t);
-			break;
+		break;
 
-		default:
-			Cilk_die_internal(ws->context, ws,
-							  "BUG in do_what_it_says(), t->status = %p\n",
-							  t->status);
-			break;
+	case CLOSURE_RETURNING:
+		/*
+		 * the return protocol assumes t is not locked,
+		 * and everybody will respect the fact that t is
+		 * returning
+		 */
+		Closure_unlock(ws, t);
+		res = return_value(ws, t);
+		break;
+
+	default:
+		Cilk_die_internal(ws->context, ws,
+						  "BUG in do_what_it_says(), t->status = %p\n",
+						  t->status);
+		break;
 	}
 
 	return res;
@@ -2107,17 +2107,17 @@ void printList(OM_DS * list, const int ID) {
     if (list && list->head)	
         n = list->head;
     else
-	exit(10);
+		exit(10);
 	if( ID == HEBREW_ID)
 		printf("Hebrew : Head->");
 	else
-    		printf(" English: Head->"); 
+		printf(" English: Head->"); 
 
     while (n != NULL){
-	printf("%d->", n->id);
-	if (ID == HEBREW_ID)
+		printf("%d->", n->id);
+		if (ID == HEBREW_ID)
         	n = n->next_hebrew;
-	else	n = n->next_english;
+		else	n = n->next_english;
     }
     printf("Tail\n");
 }
@@ -2131,7 +2131,7 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 #ifdef BATCHIFY_WORKING
 
 	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
-    	ir->x =  x;
+	ir->x =  x;
 	ir->y =  y;
 
 	Cilk_batchify(_cilk_ws, &insertPar, list, ir, sizeof(Node), NULL);
@@ -2212,7 +2212,7 @@ void OM_DS_add_first_node(void *ds, void * _x){
 		}
 		else 	{ //if l.l. has nodes already
 			printf("List is non-empty, dont call add first node\n");
-				exit(0);
+			exit(0);
 		}
 	}
 	else {
@@ -2322,11 +2322,11 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	/*update frame varriables*/
 	if (frame->post_sync_node)
-		{ 
+	{ 
 		frame->current_node = ws->current_node = frame->post_sync_node;
 		ws->next_func_node = NULL;
-		}
-    	else
+	}
+	else
 		printf("No post sync node \n");
 }
 
@@ -2343,11 +2343,11 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	/*update frame varriables*/
 	if (frame->post_sync_node)
-		{ 
+	{ 
 		frame->current_node = ws->current_node = frame->post_sync_node;
 		ws->next_func_node = NULL;
-		}
-    	else
+	}
+	else
 		printf("No post sync node \n");
 }
 
@@ -2370,23 +2370,23 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 	else
 		printf("In invoke_main_slow, not setting up the frame->current node\n");
 	/*
-    if (!(frame->current_node) && ws->next_func_node)
-	{
-    	printf("Debug: New thread start (no current node for frame),\
-	 ws->current_node node id: %d\n , ws->next_func_node: %d ", ws->current_node->id, ws->next_func_node->id);
+	  if (!(frame->current_node) && ws->next_func_node)
+	  {
+	  printf("Debug: New thread start (no current node for frame),\
+	  ws->current_node node id: %d\n , ws->next_func_node: %d ", ws->current_node->id, ws->next_func_node->id);
 	
-	frame->current_node = ws->next_func_node;
-	//ws->current_node = frame->current_node;
-	//ws->next_func_node = NULL;
-	}
-    else if ( frame->current_node) {
-	printf("Debug: why am i here? new thread was started, but the frame->current_node is not null.");
-	}
-    else
-	{
-	printf("Debug: no next function node to assign to current frame\n"); 
-	//frame->current_node
-	}
+	  frame->current_node = ws->next_func_node;
+	  //ws->current_node = frame->current_node;
+	  //ws->next_func_node = NULL;
+	  }
+	  else if ( frame->current_node) {
+	  printf("Debug: why am i here? new thread was started, but the frame->current_node is not null.");
+	  }
+	  else
+	  {
+	  printf("Debug: no next function node to assign to current frame\n"); 
+	  //frame->current_node
+	  }
     */
 
 }
@@ -2443,6 +2443,7 @@ void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 	RD_Memory_Struct * memPtr = (RD_Memory_Struct*)malloc(sizeof(RD_Memory_Struct));
 	
 	//!Inialize known members
+	memPtr->size = size;
 	memPtr->data = malloc(sizeof(size));
 	RD_mutex_init(ws, memPtr);
 	
@@ -2470,8 +2471,10 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 	//! This is only true when it is the first read-node checked
 	if( !(mem->left_r && mem->right_r) )
 	{
+		//! Initalize ptrs for struct
 		mem->left_r = mem->right_r = currentNode;
-		//Only node means no race, so return
+		
+		//!Only node means no race, so return
 		return mem->data;
 	}
 	
@@ -2545,7 +2548,12 @@ void Race_detect_write(CilkWorkerState * const ws,
 	//! This is only true when it is the first write-node checked
 	if( !(mem->left_w && mem->right_w) )
 	{
+		//!Inialize ptrs for struct
 		mem->left_w = mem->right_w = currentNode;
+		
+		//!Write the value
+		memcpy(&(mem->data),&writeValue, mem->size);
+		
 		//!Only node so no race, return
 		return;
 	}
