@@ -141,11 +141,11 @@ extern void OM_DS_init(CilkContext *const context);
 
 extern void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame);
 
-extern void RD_structure_create(CilkWorkerState * const ws, void * memloc, size_t size);
+extern void RD_structure_create(CilkWorkerState * const ws,, size_t size);
 
 extern void Race_detect_write(CilkWorkerState * const ws, void * memPtr, const void * writeValue);
 
-extern void Race_detect_read(CilkWorkerState * const ws, void * memPtr);
+extern void * Race_detect_read(CilkWorkerState * const ws, void * memPtr);
 
 
 #endif				/* _CILK_LIB_H */
