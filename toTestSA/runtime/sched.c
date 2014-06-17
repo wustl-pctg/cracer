@@ -2552,7 +2552,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 		mem->left_w = mem->right_w = currentNode;
 		
 		//!Write the value
-		memcpy(&(mem->data),&writeValue, mem->size);
+		memcpy( mem->data, writeValue, mem->size);
 		
 		//!Only node so no race, return
 		return;
@@ -2628,7 +2628,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 		mem->right_w = currentNode;
 
 	//! Write the data
-	memcpy(&(mem->data),&writeValue, mem->size);
+	memcpy( mem->data, writeValue, mem->size);
 	
 	//!Release Lock
 	Cilk_mutex_signal(ws->context, mem->mutex);

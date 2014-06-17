@@ -1,7 +1,5 @@
 #include "RD.h"
 
-#define HEBREW_ID(0)
-#define ENGLISH_ID(1)
 
 void * create(size_t size) 
 {
@@ -13,102 +11,6 @@ void * create(size_t size)
 	return (void*)memPtr;
 	
 }
-
-void * ReadTest(void * memPtr)
-{
-	//cast
-	MemoryStruct * mem = (MemoryStruct*)memPtr;
-	
-	//return
-	return mem->data;
-	
-}
-
-void WriteTest(void * memPtr, const void *  writeValue)
-{
-	//cast
-	MemoryStruct * mem = (MemoryStruct*)memPtr;
-	
-	//write
-	memcpy( (mem->data), writeValue, mem->size);
-	
-}
-
-void OM_DS_insert(void *ds, void * _x, void * _y, int id) {
-
-	if(id)
-	{
-		//Do insert here
-
-		OM_Node * x = (OM_Node *)_x;
-		OM_Node * y = (OM_Node *)_y;
-		OM_Node * z;
-
-		//if something is null
-		if (!(x && y && ds) ){
-			printf("Some node or ds is null,
-                       skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-				   x->id, x, y->id, y, ds->tail->id, ds->tail);
-			return;
-		}
-		//printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
-		//if x isnt tail
-		if (x->next_english)
-			z = x->next_english;
-		else  //make z null and change y to tail
-		{
-			z = NULL;
-			( (OM_DS*)ds)->tail = y;
-		}
-
-		//change next pointers
-		y->next_english = x->next_english;
-
-		if(!(__sync_bool_compare_and_swap(&(x->next_english), x->next_english, y)))
-		{
-			printf("Exiting, atomic insert failed");
-			exit(0);
-		}
-
-		((OM_DS*)ds)->size++;
-	} else {
-
-		//Do insert here
-
-		OM_Node * x = (OM_Node *)_x;
-		OM_Node * y = (OM_Node *)_y;
-		OM_Node * z;
-
-		//if something is null
-		if (!(x && y && ds) ){
-			printf("Some node or ds is null,
-                       skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-				   x->id, x, y->id, y, ds->tail->id, ds->tail);
-			return;
-		}
-		//printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
-		//if x isnt tail
-		if (x->next_hebrew)
-			z = x->next_hebrew;
-		else  //make z null and change y to tail
-		{
-			z = NULL;
-			( (OM_DS*)ds)->tail = y;
-		}
-
-		//change next pointers
-		y->next_hebrew = x->next_hebrew;
-
-		if(!(__sync_bool_compare_and_swap(&(x->next_hebrew), x->next_hebrew, y)))
-		{
-			printf("Exiting, atomic insert failed");
-			exit(0);
-		}
-
-		((OM_DS*)ds)->size++;
-	}
-}
-
 
 int OM_DS_order(void *ds, void * _x, void * _y, int id) {
 
@@ -152,3 +54,239 @@ int OM_DS_order(void *ds, void * _x, void * _y, int id) {
 	}
 	
 }
+
+void * ReadTest(WorkerState * const ws, void * memPtr)
+{
+	//cast
+	MemoryStruct * mem = (MemoryStruct*)memPtr;
+
+	//! Retrieve currentNode from workerstate
+	OM_Node * currentNode = ws->current_node;
+
+	//! This is only true when it is the first read-node checked
+	if( !(mem->left_r && mem->right_r) )
+	{
+		//!Must initalize node pointers for comparison
+		mem->left_r = mem->right_r = currentNode;
+		//!Only node means no race, so return
+		return mem->data;
+	}
+	
+	/*! Check if there is a race:
+	 * Race if another write occurs in parallel
+	 * (1)
+	 *   if the currentNode is before leftmost write in eng and
+	 *      the currentNode is after leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (2) or
+	 *   if the currentNode is before rightmost write in eng and
+	 *      the currentNode is after rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (3) or
+	 *   if the currentNode is after leftmost write in eng and
+	 *      the currentNode is before leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (4) or
+	 *   if the currentNode is after rightmost write in eng and
+	 *      the currentNode is before rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 */
+	if(    //(1)
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w,ENGLISH_ID ) &&
+		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
+		||  //(2)
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
+		||  //(3)
+		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
+		||  //(4)
+		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+		) { exit(0); } // Halt program
+	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT
+
+	//! Update nodes (if necessary)
+	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
+		mem->left_r = currentNode;
+	if(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID))
+		mem->right_r = currentNode;
+	
+	//return
+	return mem->data;
+	
+}
+
+void WriteTest(void * memPtr, const void *	writeValue)
+{
+	//cast
+	MemoryStruct * mem = (MemoryStruct*)memPtr;
+
+		
+	//! Retrieve currentNode from workerstate
+	OM_Node * currentNode = ws->current_node;
+
+	//! This is only true when it is the first write-node checked
+	if( !(mem->left_w && mem->right_w) )
+	{
+		//!Inialize ptrs for struct
+		mem->left_w = mem->right_w = currentNode;
+		
+		//!Write the value
+		memcpy(&(mem->data),&writeValue, mem->size);
+		
+		//!Only node so no race, return
+		return;
+	}
+	
+	/*! Check if there is a race:
+	 * Race if another write/read occurs in parallel
+	 * (1)   == WRITES ==
+	 *   if the currentNode is before leftmost write in eng and
+	 *      the currentNode is after leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (2) or
+	 *   if the currentNode is before rightmost write in eng and
+	 *      the currentNode is after rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (3) or
+	 *   if the currentNode is after leftmost write in eng and
+	 *      the currentNode is before leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (4) or
+	 *   if the currentNode is after rightmost write in eng and
+	 *      the currentNode is before rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (5) or  == READS ==
+	 *   if the currentNode is before leftmost read in eng and
+	 *      the currentNode is after leftmost read in heb,
+	 *      then they are in parallel => race condition
+	 * (6) or
+	 *   if the currentNode is before rightmost read in eng and
+	 *      the currentNode is after rightmost read in heb,
+	 *      then they are in parallel => race condition
+	 * (7) or
+	 *   if the currentNode is after leftmost read in eng and
+	 *      the currentNode is before leftmost read in heb,
+	 *      then they are in parallel => race condition
+	 * (8) or
+	 *   if the currentNode is after rightmost read in eng and
+	 *      the currentNode is before rightmost read in heb,
+	 *      then they are in parallel => race condition
+	 */
+	if(    //(1)
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
+		||  //(2)
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
+		||  //(3)
+		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
+		||  //(4)
+		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+		||  //(5)
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
+		||  //(6)
+		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
+		||  //(7)
+		(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
+		||  //(8)
+		(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
+		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+		) { exit(0); } // Halt program
+	/* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
+	//TODO: Decide how to interrupt for race-detection
+
+	//! Update nodes (if necessary)
+	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
+		mem->left_w = currentNode;
+	if(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID))
+		mem->right_w = currentNode;
+
+	//! Write the data
+	memcpy( mem->data, writeValue, mem->size);
+
+}
+
+void OM_DS_insert(void *ds, void * _x, void * _y, int id) {
+
+	if(id)
+	{
+		//Do insert here
+
+		OM_Node * x = (OM_Node *)_x;
+		OM_Node * y = (OM_Node *)_y;
+		OM_Node * z;
+
+		//if something is null
+		if (!(x && y && ds) ){
+			printf("Some node or ds is null,
+					   skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+				   x->id, x, y->id, y, ds->tail->id, ds->tail);
+			return;
+		}
+		//printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
+		//if x isnt tail
+		if (x->next_english)
+			z = x->next_english;
+		else  //make z null and change y to tail
+		{
+			z = NULL;
+			( (OM_DS*)ds)->tail = y;
+		}
+
+		//change next pointers
+		y->next_english = x->next_english;
+
+		if(!(__sync_bool_compare_and_swap(&(x->next_english), x->next_english, y)))
+		{
+			printf("Exiting, atomic insert failed");
+			exit(0);
+		}
+
+		((OM_DS*)ds)->size++;
+	} else {
+
+		//Do insert here
+
+		OM_Node * x = (OM_Node *)_x;
+		OM_Node * y = (OM_Node *)_y;
+		OM_Node * z;
+
+		//if something is null
+		if (!(x && y && ds) ){
+			printf("Some node or ds is null,
+					   skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+				   x->id, x, y->id, y, ds->tail->id, ds->tail);
+			return;
+		}
+		//printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
+		//if x isnt tail
+		if (x->next_hebrew)
+			z = x->next_hebrew;
+		else  //make z null and change y to tail
+		{
+			z = NULL;
+			( (OM_DS*)ds)->tail = y;
+		}
+
+		//change next pointers
+		y->next_hebrew = x->next_hebrew;
+
+		if(!(__sync_bool_compare_and_swap(&(x->next_hebrew), x->next_hebrew, y)))
+		{
+			printf("Exiting, atomic insert failed");
+			exit(0);
+		}
+
+		((OM_DS*)ds)->size++;
+	}
+}
+
+
+

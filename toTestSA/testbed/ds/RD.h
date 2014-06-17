@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 
+
 typedef struct OM_Node_s{
 
 	struct OM_Node_s *next_english, *next_hebrew;
@@ -19,6 +20,14 @@ typedef struct OM_DS_s {
 	int size;
 
 } OM_DS;
+
+typedef struct {
+
+	OM_Node * current_node;
+	OM_DS * eng;
+	OM_DS * heb;
+
+} WorkerState;
 
 typedef struct 
 {
@@ -47,11 +56,14 @@ int OM_DS_order(void*,void*,void*,int);
 
 void * create(size_t size);
 
-void * ReadTest(void *);
+void * ReadTest(WorkerState *, void *);
 
-void WriteTest(void *, const void *);
+void WriteTest(WorkerState *,void *, const void *);
 
-
+#define HEBREW_ID(0)
+#define ENGLISH_ID(1)
+#define WS_REF_ENG(ws->eng)
+#define WS_REF_HEB(ws->heb)
 
 
 
