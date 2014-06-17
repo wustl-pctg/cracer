@@ -2138,14 +2138,6 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 #else
 	//Do insert here
 
-	//IF empty, make head and tail, return
-	if(!(ds->size)) {
-		ds->head = ds->tail = y;
-		ds->head->next_english = ds->head->next_hebrew = ds->tail;
-		ds->size++;
-		return;
-	}
-
 	//if x is null
 	if (!(x && y && ds) ){
 		printf("Some node or ds is null,\
@@ -2231,6 +2223,8 @@ void OM_DS_add_first_node(void *ds, void * _x){
 	printf("Debug: Don't know how to append to OM_DS yet\n");
 #endif
 }
+void OM_DS_before_return_slow(){printf("Before return slow\n");}
+void OM_DS_before_return_fast(){printf("Before return fast\n");}
 
 int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 #ifdef OM_IS_LL
@@ -2271,7 +2265,7 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	    return; //then in batcher
 	}
 	/*! Create three new nodes to be inserted into OM_DS*/
-	OM_Node * cont_node, * post_sync_node, * spawned_func_node;
+	OM_Node * cont_node = NULL , * post_sync_node = NULL, * spawned_func_node = NULL;
 
 	cont_node =  Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node =  Cilk_malloc(sizeof(OM_Node));
@@ -2302,10 +2296,12 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	/*! insert the new nodes into the OM_DS*/
 	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node, ENGLISH_ID);
 	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node, 		ENGLISH_ID);
+	if (post_sync_node)	
 	OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node, 		ENGLISH_ID);
 	
 	OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node, 	HEBREW_ID);
 	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node, 		HEBREW_ID);
+	if (post_sync_node)
 	OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node, 	HEBREW_ID);
 
 	printList(WS_REF_ENG, ENGLISH_ID);
