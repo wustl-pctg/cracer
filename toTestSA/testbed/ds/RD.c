@@ -89,7 +89,7 @@ void * ReadTest(WorkerState * const ws, void * memPtr)
 		||  //(4)
 		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
 		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
-		) { exit(0); } // Halt program
+		) { printf("READ RACE"; exit(0); } // Halt program
 	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT
 
 	//! Update nodes (if necessary)
@@ -184,7 +184,7 @@ void WriteTest(WorkerState * const ws, void * memPtr, const void *	writeValue)
 		||  //(8)
 		(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
 		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
-		) { exit(0); } // Halt program
+		) { printf("WRITE RACE"); exit(0); } // Halt program
 	/* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
 	//TODO: Decide how to interrupt for race-detection
 
@@ -203,6 +203,13 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 	//Do insert here
 
+	//if list is empty, make head, tail, and return
+	if(ds->size == 0) {
+		ds->head = ds->tail = y;
+		ds->head->next = ds->tail;
+		ds->size++;
+		return;
+	}
 
 	//if x is null
 	if (!(x && y && ds) ){
