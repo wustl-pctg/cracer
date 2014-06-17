@@ -19,9 +19,12 @@ int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 	// Assumes both _x and _y are in the list
 	OM_Node * current;
 	current = ((OM_DS*)ds)->head;
-	if (ID != HEBREW_ID || ID != ENGLISH_ID)	
+	if (ID != HEBREW_ID && ID != ENGLISH_ID)	
 	{
 		printf("ID given to order is not valid\n");
+		printf("ID1: %i\t ID2: %i\t\n", ((OM_Node*)_x)->id, ((OM_Node*)_y)->id);
+		printf("Invalid ID: %i\n", ID);
+		printf("HEBREW_ID: %i\t ENGLISH_ID: %i\n", HEBREW_ID, ENGLISH_ID);
 		exit(1);
 	}
 	do {
@@ -89,7 +92,7 @@ void * ReadTest(WorkerState * const ws, void * memPtr)
 		||  //(4)
 		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
 		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
-		) { printf("READ RACE"; exit(0); } // Halt program
+		) { printf("READ RACE"); exit(0); } // Halt program
 	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT
 
 	//! Update nodes (if necessary)
@@ -206,15 +209,14 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 	//if list is empty, make head, tail, and return
 	if(ds->size == 0) {
 		ds->head = ds->tail = y;
-		ds->head->next = ds->tail;
+		ds->head->next_english = ds->head->next_hebrew = ds->tail;
 		ds->size++;
 		return;
 	}
 
 	//if x is null
 	if (!(x && y && ds) ){
-		printf("Some node or ds is null,
-               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+		printf("Some node or ds is null, skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
 			   x->id, x, y->id, y, ds->tail->id, ds->tail);
 		return;
 	}

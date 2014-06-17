@@ -50,9 +50,9 @@ typedef struct
 } IntStruct;
 
 
-void OM_DS_insert(void *, void*, void*, const int);
+void OM_DS_insert(OM_DS*,OM_Node*,OM_Node*, const int);
 
-int OM_DS_order(void*,void*,void*, const int);
+int OM_DS_order(void *, void*, void*, const int);
 
 void * create(size_t size);
 
@@ -62,8 +62,8 @@ void WriteTest(WorkerState *,void *, const void *);
 
 #define HEBREW_ID 11
 #define ENGLISH_ID 10
-#define WS_REF_ENG(ws->eng)
-#define WS_REF_HEB(ws->heb)
+#define WS_REF_ENG ws->eng
+#define WS_REF_HEB ws->heb
 
 
 

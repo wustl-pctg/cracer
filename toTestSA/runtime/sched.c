@@ -2138,6 +2138,13 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 #else
 	//Do insert here
 
+	//IF empty, make head and tail, return
+	if(!(ds->size)) {
+		ds->head = ds->tail = y;
+		ds->head->next_english = ds->head->next_hebrew = ds->tail;
+		ds->size++;
+		return;
+	}
 
 	//if x is null
 	if (!(x && y && ds) ){
@@ -2231,7 +2238,7 @@ int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 	// Assumes both _x and _y are in the list
 	OM_Node * current;
 	current = ((OM_DS*)ds)->head;
-	if (ID != HEBREW_ID || ID != ENGLISH_ID)	
+	if (ID != HEBREW_ID && ID != ENGLISH_ID)	
 	{
 		printf("ID given to order is not valid\n");
 		exit(1);

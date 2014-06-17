@@ -126,27 +126,27 @@ int main(int argc, char ** argv)
 	ws->current_node = OM9;
 	OM_DS_insert(ws->eng, OM1, OM9, ENGLISH_ID);
 	OM_DS_insert(ws->heb, OM1, OM9, HEBREW_ID);
-	WriteTest(ws, test_double, dub);
+	WriteTest(ws, test_double, (void*)&dub);
 	//
 	ws->current_node = OM10;
 	OM_DS_insert(ws->eng, OM9, OM10, ENGLISH_ID);
 	OM_DS_insert(ws->heb, OM9, OM10, HEBREW_ID);
-	WriteTest(ws, test_double, dub2);
+	WriteTest(ws, test_double, (void*)&dub2);
 	//
 	ws->current_node = OM11;
 	OM_DS_insert(ws->eng, OM10, OM11, ENGLISH_ID);
 	OM_DS_insert(ws->heb, OM10, OM11, HEBREW_ID);
-	WriteTest(ws, test_double, dub3);
+	WriteTest(ws, test_double, (void*)&dub3);
 	//
 	ws->current_node = OM12;
 	OM_DS_insert(ws->eng, OM11, OM12, ENGLISH_ID);
 	OM_DS_insert(ws->heb, OM11, OM12, HEBREW_ID);
-	WriteTest(ws, test_double, dub4);
+	WriteTest(ws, test_double, (void*)&dub4);
 	//
 	ws->current_node = OM13;
 	OM_DS_insert(ws->eng, OM12, OM13, ENGLISH_ID);
 	OM_DS_insert(ws->heb, OM12, OM13, HEBREW_ID);
-	WriteTest(ws, test_double, dub5);
+	WriteTest(ws, test_double, (void*)&dub5);
 
 
 
