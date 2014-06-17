@@ -2141,7 +2141,7 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 	//if x is null
 	if (!(x && y && ds) ){
-		printf("Some node or ds is null,
+		printf("Some node or ds is null,\
                skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
 			   x->id, x, y->id, y, ds->tail->id, ds->tail);
 		return;

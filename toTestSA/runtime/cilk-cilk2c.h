@@ -36,6 +36,7 @@
 
 #define CILK2C_INIT_FRAME(f,s,signat) {			\
      f = Cilk_cilk2c_init_frame(_cilk_ws, s, signat);	\
+     OM_DS_new_thread_start(_cilk_ws, &(f->header));			 \
 }
 
 #define CILK2C_SYNC Cilk_sync(_cilk_ws)
@@ -108,12 +109,11 @@
 #define CILK2C_START_THREAD_FAST() {					 \
      Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header)); \
      Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);			 \
-     OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header)); }
+}
 
 #define CILK2C_START_THREAD_SLOW() {					 \
      Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header)); \
      Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));	 \
-     OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));			 \
 }
 
 #define CILK2C_BEFORE_RETURN_FAST() {					  \

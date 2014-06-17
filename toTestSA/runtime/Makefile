@@ -149,7 +149,7 @@ AUTOMAKE = ${SHELL} /home/alexjones/DS/toTestSA/missing --run automake-1.10
 AWK = gawk
 CC = $(PTHREAD_CC)
 CCDEPMODE = depmode=gcc3
-CFLAGS = -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L
+CFLAGS = -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L -ggdb
 CPP = gcc -E
 CPPFLAGS = 
 CXX = g++
