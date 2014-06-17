@@ -2284,10 +2284,9 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	}
 
 	if (!(frame->current_node)){
-		//printf("Debug: CURRNT NODE IS NULL : frame->currentNode is null, so pulling from worker state: %d\n", ws->next_func_node->id);
-		frame->current_node = ws->next_func_node;
-	
-	}
+		printf("Debug: CURRNT NODE IS NULL error\n");
+		exit(0);
+	}	
 //	if (FAST_NOT_SLOW)	
 		//printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
 	//else
@@ -2308,12 +2307,13 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	//printList(WS_REF_HEB, HEBREW_ID);
 	
 	/*!update frame variables*/
-	frame->post_sync_node = post_sync_node;
+	if (post_sync_node)
+		frame->post_sync_node = post_sync_node;
 	frame->current_node = cont_node;
+	frame->next_spawned_node = spawned_func_node;
     
 	/*! update worker state*/
 	ws->current_node = frame->current_node;
-	ws->next_func_node = spawned_func_node;
 
 	//printf("End of function check ws->next_func_node->id: %d\n", ws->next_func_node->id);
 }
@@ -2332,7 +2332,7 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	if (frame->post_sync_node)
 	{ 
 		frame->current_node = ws->current_node = frame->post_sync_node;
-		ws->next_func_node = NULL;
+		frame->next_spawned_node = NULL;
 		frame->first_spawn_flag = 0;
 	}
 	else
@@ -2354,7 +2354,7 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	if (frame->post_sync_node)
 	{ 
 		frame->current_node = ws->current_node = frame->post_sync_node;
-		ws->next_func_node = NULL;
+		frame->next_spawned_node = NULL;
 		frame->first_spawn_flag = 0;
 	}
 	else
@@ -2367,12 +2367,14 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 	//CHECKS IF BATCH NODE
 	if  (ws->batch_id != 0)
 	{
-	    //printf("Debug: In batch node, no race detect needed");	
+	    printf("Debug: In batch node, no race detect needed");	
 	    return; //then in batcher
 	}
 
 	if (!(frame->current_node)) //this frame has not been entered yet
 		frame->first_spawn_flag = 0;
+	
+	ws->current_node = frame->current_node;
 	/*
 	if ((ws->current_node) ) //if this is null, we are in invoke_main_slow and the following line has been set up
 	{

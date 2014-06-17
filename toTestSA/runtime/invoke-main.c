@@ -84,8 +84,8 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 	else
 		printf("Nonempty OM_DS's, this is not the first invocation of slow main,dont create new nodes.\n");
 	/*!do this in stolen and non stolen mains: makes the first node (which is the same in both) the ws->next_func_node*/
-	ws->next_func_node = _cilk_ws->context->Cilk_global_state->englishOM_DS->head;
-	ws->current_node = NULL;
+	_cilk_frame->header.current_node = _cilk_ws->context->Cilk_global_state->englishOM_DS->head;
+	ws->current_node = _cilk_frame->header.current_node;
 
   /*end order maintenance*/
   CILK2C_START_THREAD_SLOW();
