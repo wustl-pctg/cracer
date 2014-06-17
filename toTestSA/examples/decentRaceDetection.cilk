@@ -1,0 +1,73 @@
+static const char *ident __attribute__((__unused__))
+	= "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/examples/fib.cilk $ $LastChangedBy: sukhaj $ $Rev: 517 $ $Date: 2003-10-27 10:05:37 -0500 (Mon, 27 Oct 2003) $";
+
+/*
+ * Program written for the purpose of testing race-detection programs.
+ * 
+ * This should have a race condition and it should be detected.
+ *
+ * Author: Shane Deiley
+ * Date: 6/17/14
+ *
+ */
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <cilk-lib.cilkh>
+#define GET(type, var) *(type*)Race_detect_read(_cilk_ws, var)
+/* Before Program edits*/
+/*
+cilk void Increment(int * i)
+{
+	++*i;
+	printf("inc\n");
+	if(*i < 100)
+		spawn Increment(i);
+}
+
+cilk void  Decrement(int * i)
+{
+	--*i;
+	printf("dec\n");
+	if(*i > 0)
+		spawn Decrement(i);
+}
+*/
+
+cilk void Increment(void * int_i)
+{
+	int temp = GET(int,int_i) + 1;
+	Race_detect_write(_cilk_ws, i, (void*)&temp);
+	//printf("inc\n");
+	if(*(int*)Race_detect_read(_cilk_ws, int_i) < 100)
+		spawn Increment(int_i);
+}
+
+cilk void  Decrement(void * int_i)
+{
+	int temp = *(int*)Race_detect_read(_cilk_ws, int_i) - 1;
+	Race_detect_write(_cilk_ws, i, (void*)&temp);
+	//printf("dec\n");
+	if(*(int*)Race_detect_read(_cilk_ws, int_i) > 0)
+		spawn Decrement(int_i);
+}
+
+cilk int main(int argc, char *argv[])
+{
+	void * int_i = RD_structure_create(_cilk_ws, sizeof(int));
+	int temp = 3;
+
+	if(argc != 1) {
+		fprintf(stderr, "Usage: decentRaceDetection.cilk [<cilk options>]\n");
+		Cilk_exit(1);
+	}
+
+	Race_detect_write(_cilk_ws, int_i, (void*)&temp);
+	spawn Increment( int_i );
+	spawn Decrement( int_i) );
+	printf("i: %i\n", *(int*)Race_detect_read(_cilk_ws, int_i) );
+
+	return 0;
+}
+
+
