@@ -133,7 +133,8 @@ static inline void *Cilk_cilk2c_init_frame(CilkWorkerState *const ws,
 								(ws->context, ws, USE_PARAMETER(stack_overflow_msg)));
 
   *t = (CilkStackFrame *) f;
-
+ //added for ORDER MAINTENANCE - RACE DETECT
+  ws->current_node = t;
   Cilk_membar_StoreStore();
   ws->current_cache->tail = t + 1;
 
