@@ -40,9 +40,9 @@ cilk void Increment(void * int_i)
 {
 	int temp;
 	printf("starting increment");
-	temp = GET(int,int_i) + 1;
-	SET(temp, int_i);
-	if(GET(int,int_i) < 100)
+	temp = *(int*)Race_detect_read(_cilk_ws, int_i) + 1;
+	Race_detect_write(_cilk_ws, int_i, (void*)&temp);
+	if(*(int*)Race_detect_read(_cilk_ws, int_i) < 100)
 		spawn Increment(int_i);
 }
 
@@ -50,9 +50,9 @@ cilk void Decrement(void * int_i)
 {
 	int temp;
 	printf("starting decrement");
-	temp = GET(int,int_i) - 1;
-	SET(temp, int_i);
-	if(GET(int,int_i) > 0)
+	temp = *(int*)Race_detect_read(_cilk_ws, int_i) - 1;
+	Race_detect_write(_cilk_ws, int_i, (void*)&temp);
+	if(*(int*)Race_detect_read(_cilk_ws, int_i) > 0)
 		spawn Decrement(int_i);
 }
 
@@ -69,10 +69,10 @@ cilk int main(int argc, char *argv[])
 		Cilk_exit(1);
 	}
 
-	SET(temp, int_i);
+	Race_detect_write(_cilk_ws, int_i, (void*)&temp);
 	spawn Increment( int_i );
 	spawn Decrement( int_i );
-	printf("i: %i\n", GET(int, int_i) );
+	printf("i: %i\n", *(int*)Race_detect_read(_cilk_ws, int_i) );
 
 	return 0;
 }

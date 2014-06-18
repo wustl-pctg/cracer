@@ -2404,7 +2404,7 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 */
 typedef struct RD_Memory_Struct_s {
 
-	Cilk_mutex * mutex; //Lock for atomicity
+	Cilk_mutex mutex; //Lock for atomicity
 	void * data; //The memory location where the read/write occurs
 	size_t size; //Size of 'data' data type
 	OM_Node * left_r; //leftmost node that is reading
@@ -2421,7 +2421,7 @@ typedef struct RD_Memory_Struct_s {
 static void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 {
 	printf("RD_mutex_inti");
-	Cilk_mutex_init(ws->context, mem->mutex);
+	Cilk_mutex_init(ws->context, &mem.mutex);
 }
 
 /*! Frees the allocated memory for the lock for RD_Memory_Struct 
@@ -2430,7 +2430,7 @@ static void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 */
 static void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 {
-	Cilk_mutex_destroy(ws->context, mem->mutex);
+	Cilk_mutex_destroy(ws->context, &mem.mutex);
 }
 
 /*! Creates the structure upon the call to this function and returns a pointer
@@ -2443,13 +2443,23 @@ void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 {
 	RD_Memory_Struct * memPtr;
 	printf("RD_structure_create");
-	memPtr = (RD_Memory_Struct*)malloc(sizeof(RD_Memory_Struct));
+	memPtr = Cilk_malloc(sizeof(RD_Memory_Struct));
 	//!Inialize known members
-	memPtr->size = size;
-	memPtr->data = malloc(sizeof(size));
+	memPtr->size = size; 
+	memPtr->data = Cilk_malloc(sizeof(size));
 	RD_mutex_init(ws, memPtr);
 	
 	return (void *)memPtr;
+}
+
+void RD_free(CilkWorkerState * const ws, void * mem)
+{
+	RD_Memory_Struct * memptr;
+	printf("RD_free");
+	memptr = (RD_Memory_Struct*)mem;
+	Cilk_free(memptr->data);
+	RD_mutex_destroy(_cilk_ws, memptr);
+	Cilk_free(mem);
 }
 
 	
