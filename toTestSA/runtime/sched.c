@@ -2296,12 +2296,12 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node, ENGLISH_ID);
 	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node, 		ENGLISH_ID);
 	if (post_sync_node)	
-	OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node, 		ENGLISH_ID);
+		OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node, 		ENGLISH_ID);
 	
 	OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node, 	HEBREW_ID);
 	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node, 		HEBREW_ID);
 	if (post_sync_node)
-	OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node, 	HEBREW_ID);
+		OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node, 	HEBREW_ID);
 
 	//printList(WS_REF_ENG, ENGLISH_ID);
 	//printList(WS_REF_HEB, HEBREW_ID);
@@ -2376,16 +2376,16 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 	
 	ws->current_node = frame->current_node;
 	/*
-	if ((ws->current_node) ) //if this is null, we are in invoke_main_slow and the following line has been set up
-	{
+	  if ((ws->current_node) ) //if this is null, we are in invoke_main_slow and the following line has been set up
+	  {
 
-		printf("Starting new thread, assigning ws->next_func(%d) to frame->current_node (frame loc: %p )\n", ws->next_func_node->id, frame);
-		frame->current_node = ws->next_func_node;
-	}
-	else
-	{
-		printf("In invoke_main_slow, not setting up the frame->current node\n");
-	}
+	  printf("Starting new thread, assigning ws->next_func(%d) to frame->current_node (frame loc: %p )\n", ws->next_func_node->id, frame);
+	  frame->current_node = ws->next_func_node;
+	  }
+	  else
+	  {
+	  printf("In invoke_main_slow, not setting up the frame->current node\n");
+	  }
 	*/
 	
 
@@ -2489,6 +2489,9 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 		//! Initalize ptrs for struct
 		mem->left_r = mem->right_r = currentNode;
 		
+		//! Have to release lock
+		Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
 		//!Only node means no race, so return
 		return mem->data;
 	}
@@ -2518,15 +2521,21 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 		||  //(2)
 		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
 		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
-		||  //(3)
+ 		||  //(3)
 		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
 		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
 		||  //(4)
 		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
 		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
-		) { exit(0); } // Halt program
+ 		)
+	{
+		//! Have to release lock
+	   	Cilk_mutex_signal(ws->context, &(mem->mutex) );
+		printf("Detected Race: Read\n");
+	}
 	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT
 
+	
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
 		mem->left_r = currentNode;
@@ -2570,6 +2579,9 @@ void Race_detect_write(CilkWorkerState * const ws,
 		
 		//!Write the value
 		memcpy( mem->data, writeValue, mem->size);
+
+		//! Have to release lock
+		Cilk_mutex_signal(ws->context, &(mem->mutex) );
 		
 		//!Only node so no race, return
 		return;
@@ -2634,9 +2646,13 @@ void Race_detect_write(CilkWorkerState * const ws,
 		||  //(8)
 		(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
 		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
-		) { exit(0); } // Halt program
-	/* ========== THROW RACE DETECTION ===== FIGURE THIS OUT */
-	//TODO: Decide how to interrupt for race-detection
+ 		)
+	{
+		//! Have to release lock
+	   	Cilk_mutex_signal(ws->context, &(mem->mutex) );
+		printf("Detected Race: Read\n");
+	}
+	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT	
 
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
