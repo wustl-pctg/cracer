@@ -38,8 +38,9 @@ static const char *ident __attribute__((__unused__))
 
 cilk void Increment(void * int_i)
 {
-	int temp = GET(int,int_i) + 1;
+	int temp;
 	printf("starting increment");
+	temp = GET(int,int_i) + 1;
 	SET(temp, int_i);
 	if(GET(int,int_i) < 100)
 		spawn Increment(int_i);
@@ -47,8 +48,9 @@ cilk void Increment(void * int_i)
 
 cilk void Decrement(void * int_i)
 {
-	int temp = GET(int,int_i) - 1;
+	int temp;
 	printf("starting decrement");
+	temp = GET(int,int_i) - 1;
 	SET(temp, int_i);
 	if(GET(int,int_i) > 0)
 		spawn Decrement(int_i);
@@ -56,9 +58,11 @@ cilk void Decrement(void * int_i)
 
 cilk int main(int argc, char *argv[])
 {
-	void * int_i = RD_structure_create(_cilk_ws, sizeof(int));
-	int temp = 3;
-	printf("just before structure create");
+	void * int_i;
+	int temp;
+ 	printf("just before structure create");
+ 	int_i = RD_structure_create(_cilk_ws, sizeof(int));
+	temp = 3;
 
 	if(argc != 1) {
 		fprintf(stderr, "Usage: decentRaceDetection.cilk [<cilk options>]\n");
