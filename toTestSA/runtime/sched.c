@@ -2411,7 +2411,7 @@ typedef struct RD_Memory_Struct_s {
 	OM_Node * right_r; //rightmost node that is reading
 	OM_Node * left_w; //leftmost node that is writing
 	OM_Node * right_w; //rightmost node that is writing
-	RD_Memory_Struct * next;
+	struct RD_Memory_Struct_s * next;
 
 } RD_Memory_Struct;
 
