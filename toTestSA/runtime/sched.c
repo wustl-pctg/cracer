@@ -2420,6 +2420,7 @@ typedef struct RD_Memory_Struct_s {
 */
 static void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 {
+	printf("RD_mutex_inti");
 	Cilk_mutex_init(ws->context, mem->mutex);
 }
 
@@ -2441,7 +2442,7 @@ static void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 {
 	RD_Memory_Struct * memPtr = (RD_Memory_Struct*)malloc(sizeof(RD_Memory_Struct));
-	
+	printf("RD_structure_create");
 	//!Inialize known members
 	memPtr->size = size;
 	memPtr->data = malloc(sizeof(size));
@@ -2461,7 +2462,7 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 
 	//!Get struct
 	RD_Memory_Struct * mem = (RD_Memory_Struct *)memPtr;
-	
+	printf("Race_detect_Read");
 	//!Get lock
 	Cilk_mutex_wait(ws->context, ws,  mem->mutex);
 	
@@ -2539,6 +2540,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	//!Get struct
 	RD_Memory_Struct * mem = (RD_Memory_Struct *)memPtr;
 	
+	printf("Race_detect_write");
 	//!Get Lock
 	Cilk_mutex_wait(ws->context, ws, mem->mutex);
 	
