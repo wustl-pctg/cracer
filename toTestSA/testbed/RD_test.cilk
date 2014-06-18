@@ -16,15 +16,17 @@ cilk int main(int argv, char* argc){
 	
 	x = RD_INIT(int);
 	
+	*y = READ(x, int); 	
+
 	spawn sp_write(x, 1);
 	spawn sp_write(x, 2);
 
 	*y = READ(x, int); 	
 	
-
+	printf("before sync\n:");
 	sync;
-	printf("y: %d\n", *y);
 	
+	printf("y: %d\n", *y);
 	RD_free(_cilk_ws, (void *)x);
 
 	return 0;
