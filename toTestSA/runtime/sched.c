@@ -2248,10 +2248,10 @@ int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 			current = current->next_hebrew;
 	} while( current != ((OM_DS*)ds)->tail);
 
-	;//printf("Debug: Neither node found in linked list. Returning false");
+	printf("Debug: Neither node found in linked list. Returning false");
 	return 0;
 #else
-	;//printf("Debug: Don't know how to order with OM_DS yet\n");
+	printf("Debug: Don't know how to order with OM_DS yet\n");
 	return 0;
 #endif
 }
@@ -2442,7 +2442,7 @@ static void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 {
 	RD_Memory_Struct * memPtr;
-	printf("RD_structure_create\n");
+	//printf("RD_structure_create\n");
 	memPtr = Cilk_malloc(sizeof(RD_Memory_Struct));
 	//!Inialize known members
 	memPtr->size = size; 
@@ -2455,7 +2455,7 @@ void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 void RD_free(CilkWorkerState * const ws, void * mem)
 {
 	RD_Memory_Struct * memptr;
-	printf("RD_free\n");
+	//printf("RD_free\n");
 	memptr = (RD_Memory_Struct*)mem;
 	Cilk_free(memptr->data);
 	RD_mutex_destroy(ws, memptr);
@@ -2473,12 +2473,12 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 
 	//!Get struct
 	RD_Memory_Struct * mem;
-	printf("Race_detect_Read\n");
+	//printf("Race_detect_Read\n");
 	mem = (RD_Memory_Struct *)memPtr;
 
 	//!Get lock
 	Cilk_mutex_wait(ws->context, ws,  &(mem->mutex) );
-	printf("Got lock - RD_read\n");
+	//printf("Got lock - RD_read\n");
 
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
@@ -2544,7 +2544,7 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 
 	//!No race, release lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
-	printf("Release lock - RD-read\n");
+	//printf("Release lock - RD-read\n");
 	//! Read the data
 	return mem->data;
 
@@ -2562,7 +2562,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 
 	//!Get struct
 	RD_Memory_Struct * mem;
-	printf("Race_detect_write\n");
+	//printf("Race_detect_write\n");
 	mem = (RD_Memory_Struct *)memPtr;
 	
 	//!Get Lock
@@ -2650,7 +2650,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	{
 		//! Have to release lock
 	   	Cilk_mutex_signal(ws->context, &(mem->mutex) );
-		printf("Detected Race: Read\n");
+		printf("Detected Race: Write im a dumbass\n");
 	}
 	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT	
 
