@@ -132,8 +132,8 @@ extern void Cilk_batchify_sequential(CilkWorkerState *const ws,
 extern void OM_DS_add_first_node(void *ds, void * _x);
 
 extern void OM_DS_before_return_slow();
-extern void OM_DS_before_return_fast();
 
+extern void OM_DS_before_return_fast();
 
 extern int OM_DS_order(void *ds, void *_x, void *_y, const int ID);
 
@@ -143,7 +143,7 @@ extern void OM_DS_init(CilkContext *const context);
 
 extern void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame);
 
-extern void RD_structure_create(CilkWorkerState * const ws, size_t size);
+extern void * RD_structure_create(CilkWorkerState * const ws, size_t size);
 
 extern void Race_detect_write(CilkWorkerState * const ws, void * memPtr, const void * writeValue);
 

@@ -27,6 +27,7 @@ static const char *ident __attribute__((__unused__))
 
 cilk int fib(int n)
 {
+	printf("Entering %s at line %i\n", __FUNCTION__, __LINE__);
 	if (n < 2)
 	  return (n);
 	else {

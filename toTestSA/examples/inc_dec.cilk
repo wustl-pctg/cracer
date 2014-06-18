@@ -11,44 +11,46 @@ static const char *ident __attribute__((__unused__))
  *
  */
 
+#include "cilk-lib.cilkh"
 #include <stdlib.h>
 #include <stdio.h>
-#include <cilk-lib.cilkh>
 #define GET(type, var) *(type*)Race_detect_read(_cilk_ws, var)
+#define SET(type_var, var) Race_detect_write(_cilk_ws, var, (void*)&type_var)
+
 /* Before Program edits*/
 /*
-cilk void Increment(int * i)
-{
-	++*i;
-	printf("inc\n");
-	if(*i < 100)
-		spawn Increment(i);
-}
+  cilk void Increment(int * i)
+  {
+  ++*i;
+  printf("inc\n");
+  if(*i < 100)
+  spawn Increment(i);
+  }
 
-cilk void  Decrement(int * i)
-{
-	--*i;
-	printf("dec\n");
-	if(*i > 0)
-		spawn Decrement(i);
-}
+  cilk void  Decrement(int * i)
+  {
+  --*i;
+  printf("dec\n");
+  if(*i > 0)
+  spawn Decrement(i);
+  }
 */
 
 cilk void Increment(void * int_i)
 {
 	int temp = GET(int,int_i) + 1;
-	Race_detect_write(_cilk_ws, i, (void*)&temp);
-	//printf("inc\n");
-	if(*(int*)Race_detect_read(_cilk_ws, int_i) < 100)
+	printf("starting increment");
+	SET(temp, int_i);
+	if(GET(int,int_i) < 100)
 		spawn Increment(int_i);
 }
 
-cilk void  Decrement(void * int_i)
+cilk void Decrement(void * int_i)
 {
-	int temp = *(int*)Race_detect_read(_cilk_ws, int_i) - 1;
-	Race_detect_write(_cilk_ws, i, (void*)&temp);
-	//printf("dec\n");
-	if(*(int*)Race_detect_read(_cilk_ws, int_i) > 0)
+	int temp = GET(int,int_i) - 1;
+	printf("starting decrement");
+	SET(temp, int_i);
+	if(GET(int,int_i) > 0)
 		spawn Decrement(int_i);
 }
 
@@ -56,16 +58,17 @@ cilk int main(int argc, char *argv[])
 {
 	void * int_i = RD_structure_create(_cilk_ws, sizeof(int));
 	int temp = 3;
+	printf("just before structure create");
 
 	if(argc != 1) {
 		fprintf(stderr, "Usage: decentRaceDetection.cilk [<cilk options>]\n");
 		Cilk_exit(1);
 	}
 
-	Race_detect_write(_cilk_ws, int_i, (void*)&temp);
+	SET(temp, int_i);
 	spawn Increment( int_i );
-	spawn Decrement( int_i) );
-	printf("i: %i\n", *(int*)Race_detect_read(_cilk_ws, int_i) );
+	spawn Decrement( int_i );
+	printf("i: %i\n", GET(int, int_i) );
 
 	return 0;
 }
