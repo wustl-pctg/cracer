@@ -79,10 +79,10 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->hebrewOM_DS, main_node);
 		main_node->id = 1;
 		_cilk_frame->header.first_spawn_flag = 0;
-		printf("\nDebug: Created main node and added to eng/heb.\n");
+		;//printf("\nDebug: Created main node and added to eng/heb.\n");
 	}
 	else
-		printf("Nonempty OM_DS's, this is not the first invocation of slow main,dont create new nodes.\n");
+		;//printf("Nonempty OM_DS's, this is not the first invocation of slow main,dont create new nodes.\n");
 	/*!do this in stolen and non stolen mains: makes the first node (which is the same in both) the ws->next_func_node*/
 	_cilk_frame->header.current_node = _cilk_ws->context->Cilk_global_state->englishOM_DS->head;
 	ws->current_node = _cilk_frame->header.current_node;

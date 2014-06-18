@@ -2092,7 +2092,7 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 	int i = 0;
 	OM_Node  * node, *nextNode;
 
-	printf("DEBUG:LL free nodes\n");
+	;//printf("DEBUG:LL free nodes\n");
 	node = context->Cilk_global_state->englishOM_DS->head;
 
 	while(node != NULL){
