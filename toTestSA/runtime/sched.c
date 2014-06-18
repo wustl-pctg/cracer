@@ -2421,7 +2421,7 @@ typedef struct RD_Memory_Struct_s {
 static void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 {
 	printf("RD_mutex_inti");
-	Cilk_mutex_init(ws->context, &mem.mutex);
+	Cilk_mutex_init(ws->context, &(mem.mutex) );
 }
 
 /*! Frees the allocated memory for the lock for RD_Memory_Struct 
@@ -2430,7 +2430,7 @@ static void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 */
 static void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 {
-	Cilk_mutex_destroy(ws->context, &mem.mutex);
+	Cilk_mutex_destroy(ws->context, &(mem.mutex) );
 }
 
 /*! Creates the structure upon the call to this function and returns a pointer
@@ -2458,7 +2458,7 @@ void RD_free(CilkWorkerState * const ws, void * mem)
 	printf("RD_free");
 	memptr = (RD_Memory_Struct*)mem;
 	Cilk_free(memptr->data);
-	RD_mutex_destroy(_cilk_ws, memptr);
+	RD_mutex_destroy(ws, memptr);
 	Cilk_free(mem);
 }
 
@@ -2476,7 +2476,7 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 	printf("Race_detect_Read");
 	mem = (RD_Memory_Struct *)memPtr;
 	//!Get lock
-	Cilk_mutex_wait(ws->context, ws,  mem->mutex);
+	Cilk_mutex_wait(ws->context, ws,  &(mem.mutex) );
 	
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
@@ -2532,7 +2532,7 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 		mem->right_r = currentNode;
 
 	//!No race, release lock
-	Cilk_mutex_signal(ws->context, mem->mutex);
+	Cilk_mutex_signal(ws->context, &(mem.mutex) );
 	
 	//! Read the data
 	return mem->data;
@@ -2555,7 +2555,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	mem = (RD_Memory_Struct *)memPtr;
 	
 	//!Get Lock
-	Cilk_mutex_wait(ws->context, ws, mem->mutex);
+	Cilk_mutex_wait(ws->context, ws, &(mem.mutex) );
 	
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
@@ -2646,7 +2646,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	memcpy( mem->data, writeValue, mem->size);
 	
 	//!Release Lock
-	Cilk_mutex_signal(ws->context, mem->mutex);
+	Cilk_mutex_signal(ws->context, &(mem.mutex) );
 	
 }
 
