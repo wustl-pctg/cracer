@@ -3,8 +3,8 @@
 #include <stdio.h>
 
 #define RD_INIT(type) (type * )RD_structure_create(_cilk_ws, sizeof(type))
-#define READ(mem, type) *(type *)Race_detect_read(_cilk_ws, mem)
-#define WRITE(mem, mem_to_copy) Race_detect_write(_cilk_ws, mem, mem_to_copy)
+#define READ(mem, type) *(type *)Race_detect_read(_cilk_ws, mem, __FUNCTION__, __LINE__)
+#define WRITE(mem, mem_to_copy) Race_detect_write(_cilk_ws, mem, mem_to_copy, __FUNCTION__, __LINE__)
 
 cilk void sp_write(int * x, int _z){
 	WRITE(x, &_z);
@@ -17,6 +17,16 @@ cilk int main(int argv, char* argc){
 	x = RD_INIT(int);
 
 	spawn sp_write(x, 1);
+	spawn sp_write(x, 1);
+	spawn sp_write(x, 1);
+	spawn sp_write(x, 2);
+
+	y = READ(x, int);
+
+	spawn sp_write(x, 2);
+
+	y = READ(x, int);
+
 	spawn sp_write(x, 2);
 
 	y = READ(x, int);

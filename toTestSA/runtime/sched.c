@@ -2479,7 +2479,7 @@ void RD_free(CilkWorkerState * const ws, void * mem)
   \param memPtr The memory address of the struct used in checking
   \return memory address of read location
 */
-void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
+void * Race_detect_read(CilkWorkerState * const ws, void * memPtr, const char * func_name, const int line_num)
 {
 
 	//!Get struct
@@ -2536,7 +2536,7 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 	{
 		//! Have to release lock
 	   	Cilk_mutex_signal(ws->context, &(mem->mutex) );
-		printf("Detected Race: Read\n");
+		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 	}
 	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT
 
@@ -2562,7 +2562,7 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 */
 void Race_detect_write(CilkWorkerState * const ws,
 					   void * memPtr,
-					   const void * writeValue)
+					   const void * writeValue, const char *func_name, const int line_num)
 {
 
 	//!Get struct
@@ -2597,7 +2597,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 			 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
 		  )
 		{
-			printf("Detected Race: Write\n");
+			printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 
 		   	//! Write the data
 			memcpy( mem->data, writeValue, mem->size);
@@ -2672,7 +2672,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	{
 		//! Have to release lock
 	   	Cilk_mutex_signal(ws->context, &(mem->mutex) );
-		printf("Detected Race: Write\n");
+		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 	}
 	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT	
 

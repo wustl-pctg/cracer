@@ -147,9 +147,9 @@ extern void * RD_structure_create(CilkWorkerState * const ws, size_t size);
 
 extern void RD_free(CilkWorkerState * const ws, void * mem);
 
-extern void Race_detect_write(CilkWorkerState * const ws, void * memPtr, const void * writeValue);
+extern void Race_detect_write(CilkWorkerState * const ws, void * memPtr, const void * writeValue, const char* func_name, const int line_num);
 
-extern void * Race_detect_read(CilkWorkerState * const ws, void * memPtr);
+extern void * Race_detect_read(CilkWorkerState * const ws, void * memPtr, const char* func_name, const int line_num);
 
 
 #endif				/* _CILK_LIB_H */
