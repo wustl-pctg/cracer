@@ -2411,8 +2411,16 @@ typedef struct RD_Memory_Struct_s {
 	OM_Node * right_r; //rightmost node that is reading
 	OM_Node * left_w; //leftmost node that is writing
 	OM_Node * right_w; //rightmost node that is writing
+	RD_Memory_Struct * next;
 
 } RD_Memory_Struct;
+
+typedef struct {
+
+	int size;
+	RD_Memory_Struct * head;
+	
+} RD_List;
 
 /*! Initializes the lock for a RD_Memory_struct
   \param ws The current workerstate upon being called
@@ -2444,10 +2452,13 @@ void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 	RD_Memory_Struct * memPtr;
 	//printf("RD_structure_create\n");
 	memPtr = Cilk_malloc(sizeof(RD_Memory_Struct));
+
 	//!Inialize known members
 	memPtr->size = size; 
 	memPtr->data = Cilk_malloc(sizeof(size));
 	RD_mutex_init(ws, memPtr);
+	
+	//!Append this struct to the end of the RD_List
 	
 	return (void *)memPtr;
 }
@@ -2488,12 +2499,6 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 	{
 		//! Initalize ptrs for struct
 		mem->left_r = mem->right_r = currentNode;
-		
-		//! Have to release lock
-		Cilk_mutex_signal(ws->context, &(mem->mutex) );
-
-		//!Only node means no race, so return
-		return mem->data;
 	}
 	
 	/*! Check if there is a race:
@@ -2576,15 +2581,32 @@ void Race_detect_write(CilkWorkerState * const ws,
 	{
 		//!Inialize ptrs for struct
 		mem->left_w = mem->right_w = currentNode;
-		
-		//!Write the value
-		memcpy( mem->data, writeValue, mem->size);
 
-		//! Have to release lock
-		Cilk_mutex_signal(ws->context, &(mem->mutex) );
-		
-		//!Only node so no race, return
-		return;
+		//!Only check for races on reads, fuller explanation below
+		if(  //(5)
+			(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
+			 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
+			||  //(6)
+			(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
+			 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
+			||  //(7)
+			(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
+			 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
+			||  //(8)
+			(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
+			 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+		  )
+		{
+			printf("Detected Race: Write\n");
+
+		   	//! Write the data
+			memcpy( mem->data, writeValue, mem->size);
+
+			//! Have to release lock
+			Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+			return;
+		}
 	}
 	
 	/*! Check if there is a race:
@@ -2650,7 +2672,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	{
 		//! Have to release lock
 	   	Cilk_mutex_signal(ws->context, &(mem->mutex) );
-		printf("Detected Race: Write im a dumbass\n");
+		printf("Detected Race: Write\n");
 	}
 	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT	
 
