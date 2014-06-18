@@ -2475,9 +2475,11 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 	RD_Memory_Struct * mem;
 	printf("Race_detect_Read\n");
 	mem = (RD_Memory_Struct *)memPtr;
+
 	//!Get lock
 	Cilk_mutex_wait(ws->context, ws,  &(mem->mutex) );
-	
+	printf("Got lock - RD_read\n");
+
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
 
@@ -2533,7 +2535,7 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr)
 
 	//!No race, release lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
-	
+	printf("Release lock - RD-read\n");
 	//! Read the data
 	return mem->data;
 
