@@ -191,11 +191,14 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
 	/// Check if our race conditions were as expected
 	/// Note: This is overly specific, but it will catch errors in the
 	/// 	  test itself if the op1/op2 are passed incorrectly
-	if (op1 == READ_ARG && op2 == READ_ARG)
-	    	assert(!(race_detect_results1 | race_detect_results2) == 0); /// No races
-	else if (  (op1 == READ_ARG  && op2 == WRITE_ARG) 
-		|| (op1 == WRITE_ARG && op2 == READ_ARG)  
-		|| (op1 == READ_ARG  && op2 == WRITE_ARG))
+	if ((op1 == READ_ARG && op2 == READ_ARG) || par_flag == SEQUENTIAL )
+	    	assert((race_detect_results1 | race_detect_results2) == 0); /// No races
+	else if ((	(
+			op1 == READ_ARG  && op2 == WRITE_ARG) 
+		    	|| (op1 == WRITE_ARG && op2 == READ_ARG)  
+			|| (op1 == READ_ARG  && op2 == WRITE_ARG) 
+			) 
+			&&  par_flag == PARALLEL)
 	    	assert((race_detect_results1 ^ race_detect_results2) == 1); /// Only one had a race
 	else 
 		assert(0); /// Only done if incorrectly passed op1/op2 into function
@@ -580,6 +583,244 @@ cilk void rd_cousin_test() {
 
 /// End rd_cousin_test
 
+/// Functions used by rd_parent_child_test
+cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const int par_flag ){
+	/// Create var to store race detection result
+	int race_detect_result1 = -1, race_detect_results2 = -1;
+
+	/// Create tmp variables to assign to ds
+	test_struct_gen tmp_s;
+	test_union_gen tmp_u;
+	
+	/// Give struct and union random variables and allocate memory to members
+	Assign_struct_random_vars(&tmp_s);
+	Assign_union_random_vars(&tmp_u);
+
+	/// Execute first operation	
+	/// Races possible
+	if (op1 == READ_ARG){
+		
+		/// Spawn a function that calls read
+		spawn cilk_read_func(rd_ds, &tmp_s, &race_detect_result1);
+		
+		///Sync if sequential
+		if (par_flag == SEQUENTIAL)
+		    sync;
+	}
+	else	{
+	    	/// Spawn a function that calls write
+		spawn cilk_write_func(rd_ds, &tmp_s, &race_detect_results1);
+		
+		/// Sync if sequential
+		if (par_flag == SEQUENTIAL)
+		    sync;
+	}
+
+	/// Execute second operation
+	/// Races possible
+	if (op2 == READ_ARG){
+		/// Read into tmp structure
+		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result2);
+	}
+	else	{
+	    	/// Write into tmp structure
+		WRITE_b(rd_ds, &tmp_s, &race_detect_results2); 
+	}
+
+	//Sync to end parallel threads
+	if (par_flag == PARALLEL)
+		sync;
+
+	/// Check if our race conditions were as expected
+	/// Note: This is overly specific, but it will catch errors in the
+	/// 	  test itself if the op1/op2 are passed incorrectly
+	if (op1 == READ_ARG && op2 == READ_ARG)
+	    	assert((race_detect_results1 | race_detect_results2) == 0); /// No races
+	else if (  (op1 == READ_ARG  && op2 == WRITE_ARG) 
+		|| (op1 == WRITE_ARG && op2 == READ_ARG)  
+		|| (op1 == READ_ARG  && op2 == WRITE_ARG))
+	    	assert((race_detect_results1 ^ race_detect_results2) == 1); /// Only one had a race
+	else 
+		assert(0); /// Only done if incorrectly passed op1/op2 into function
+
+	/// Free dynamically allocated members of test structs.
+	Free_test_union_members(&tmp_u);
+	Free_test_struct_members(&tmp_s);
+}
+/// End functions used by rd_parent_child_test
+	
+/**\fn rd_parent_child_test
+*\brief Tests the operations op1 in the parent and op2 in the child function. First runs sequentially then in parallel.
+*\param op1 either 0 to do a read first or 1 to do a write in the parent
+*\param op2 either 0 to do a read second or 1 to do a write in the child
+*/
+cilk void rd_parent_child_test(){
+	/// Declare the four types of sequential race detect variables
+	void * seq_r_r, * seq_r_w, *seq_w_r, *seq_w_w;
+	
+	/// Declare the four types of parallel race detect variables
+	void * par_r_r, * par_r_w, *par_w_r, *par_w_w;
+	
+	/// Instantiate all of the race detect structures 
+	seq_r_r = RD_INIT(test_struct_gen);
+	seq_r_w = RD_INIT(test_struct_gen);
+	seq_w_r = RD_INIT(test_struct_gen);
+	seq_w_w = RD_INIT(test_struct_gen);
+	par_r_r = RD_INIT(test_struct_gen);
+	par_r_w = RD_INIT(test_struct_gen);
+	par_w_r = RD_INIT(test_struct_gen);
+	par_w_w = RD_INIT(test_struct_gen);
+
+	/// Run sequentially read/read
+	spawn parent_child_spawned(seq_r_r, READ_ARG, READ_ARG, SEQUENTIAL);sync;
+
+	/// Run sequentially read/write
+	spawn parent_child_spawned(seq_r_w, READ_ARG, WRITE_ARG, SEQUENTIAL);sync;
+
+	/// Run sequentially write/read
+	spawn parent_child_spawned(seq_w_r, WRITE_ARG, READ_ARG, SEQUENTIAL);sync;
+
+	/// Run sequentially write/write
+	spawn parent_child_spawned(seq_w_w, WRITE_ARG, WRITE_ARG, SEQUENTIAL);sync;
+
+	/// Run parallel read/read
+	spawn parent_child_spawned(par_r_r, READ_ARG, READ_ARG, PARALLEL);sync;
+
+	/// Run parallel read/write
+	spawn parent_child_spawned(par_r_w, READ_ARG, WRITE_ARG, PARALLEL);sync;
+
+	/// Run parallel write/read
+	spawn parent_child_spawned(par_w_r, WRITE_ARG, READ_ARG, PARALLEL);sync;
+
+	/// Run parallel write/write
+	spawn parent_child_spawned(par_w_w, WRITE_ARG, WRITE_ARG, PARALLEL);sync;
+
+
+	/// Free all race detect data structures
+	RD_free(_cilk_ws, seq_r_r);
+	RD_free(_cilk_ws, seq_r_w);
+	RD_free(_cilk_ws, seq_w_r);
+	RD_free(_cilk_ws, seq_w_w);
+	RD_free(_cilk_ws, par_r_r);
+	RD_free(_cilk_ws, par_r_w);
+	RD_free(_cilk_ws, par_w_r);
+	RD_free(_cilk_ws, par_w_w);
+	
+} /// End rd_parent_child_test
+
+/// Functions used by rd_gparent_gchild_test
+cilk void gparent_gchild_spawned(void * rd_ds, const int op1, const int op2){
+	/// Create var to store race detection result
+	int race_detect_result1 = -1, race_detect_results2 = -1;
+
+	/// Create tmp variables to assign to ds
+	test_struct_gen tmp_s;
+	test_union_gen tmp_u;
+	
+	/// Give struct and union random variables and allocate memory to members
+	Assign_struct_random_vars(&tmp_s);
+	Assign_union_random_vars(&tmp_u);
+
+	/// Execute first operation	
+	/// Races possible
+	if (op1 == READ_ARG){
+		
+		/// Spawn a function that calls read
+		spawn cilk_read_func_nest(rd_ds, &tmp_s, &race_detect_result1);
+		
+	}
+	else	{
+	    	/// Spawn a function that calls write
+		spawn cilk_write_func_nest(rd_ds, &tmp_s, &race_detect_results1);
+		
+	}
+
+	/// Execute second operation
+	/// Races possible
+	if (op2 == READ_ARG){
+		/// Read into tmp structure
+		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result2);
+	}
+	else	{
+	    	/// Write into tmp structure
+		WRITE_b(rd_ds, &tmp_s, &race_detect_results2); 
+	}
+
+	//Sync to end parallel threads
+	sync;
+
+	/// Check if our race conditions were as expected
+	/// Note: This is overly specific, but it will catch errors in the
+	/// 	  test itself if the op1/op2 are passed incorrectly
+	if (op1 == READ_ARG && op2 == READ_ARG)
+	    	assert((race_detect_results1 | race_detect_results2) == 0); /// No races
+	else if (  (op1 == READ_ARG  && op2 == WRITE_ARG) 
+		|| (op1 == WRITE_ARG && op2 == READ_ARG)  
+		|| (op1 == READ_ARG  && op2 == WRITE_ARG))
+	    	assert((race_detect_results1 ^ race_detect_results2) == 1); /// Only one had a race
+	else 
+		assert(0); /// Only done if incorrectly passed op1/op2 into function
+
+	/// Free dynamically allocated members of test structs.
+	Free_test_union_members(&tmp_u);
+	Free_test_struct_members(&tmp_s);
+}
+/// End functions used by rd_parent_child_test
+	
+
+cilk void rdtest_gparent_gchild_test(){
+	/// Declare the four types of sequential race detect variables
+	void * seq_r_r, * seq_r_w, *seq_w_r, *seq_w_w;
+	
+	/// Declare the four types of parallel race detect variables
+	void * par_r_r, * par_r_w, *par_w_r, *par_w_w;
+	
+	/// Instantiate all of the race detect structures 
+	seq_r_r = RD_INIT(test_struct_gen);
+	seq_r_w = RD_INIT(test_struct_gen);
+	seq_w_r = RD_INIT(test_struct_gen);
+	seq_w_w = RD_INIT(test_struct_gen);
+	par_r_r = RD_INIT(test_struct_gen);
+	par_r_w = RD_INIT(test_struct_gen);
+	par_w_r = RD_INIT(test_struct_gen);
+	par_w_w = RD_INIT(test_struct_gen);
+
+	/// Run sequentially read/read
+	spawn gparent_gchild_spawned(seq_r_r, READ_ARG, READ_ARG);sync;
+
+	/// Run sequentially read/write
+	spawn gparent_gchild_spawned(seq_r_w, READ_ARG, WRITE_ARG);sync;
+
+	/// Run sequentially write/read
+	spawn gparent_gchild_spawned(seq_w_r, WRITE_ARG, READ_ARG);sync;
+
+	/// Run sequentially write/write
+	spawn gparent_gchild_spawned(seq_w_w, WRITE_ARG, WRITE_ARG);sync;
+
+	/// Run parallel read/read
+	spawn gparent_gchild_spawned(par_r_r, READ_ARG, READ_ARG);sync;
+
+	/// Run parallel read/write
+	spawn gparent_gchild_spawned(par_r_w, READ_ARG, WRITE_ARG);sync;
+
+	/// Run parallel write/read
+	spawn gparent_gchild_spawned(par_w_r, WRITE_ARG, READ_ARG);sync;
+
+	/// Run parallel write/write
+	spawn gparent_gchild_spawned(par_w_w, WRITE_ARG, WRITE_ARG);sync;
+
+
+	/// Free all race detect data structures
+	RD_free(_cilk_ws, seq_r_r);
+	RD_free(_cilk_ws, seq_r_w);
+	RD_free(_cilk_ws, seq_w_r);
+	RD_free(_cilk_ws, seq_w_w);
+	RD_free(_cilk_ws, par_r_r);
+	RD_free(_cilk_ws, par_r_w);
+	RD_free(_cilk_ws, par_w_r);
+	RD_free(_cilk_ws, par_w_w);
+	
+}
 
 cilk int main(int argv, char* argc){
 	srand(time(NULL));
@@ -602,13 +843,6 @@ cilk int main(int argv, char* argc){
 	spawn rd_gparent_gchild_test();
 
 	/// Case 4:
-	/// These functions test each combination of read/write
-	/// within a parent function and its reat grandchildren
-	/// in both the serial and parallel case.
-	spawn rd_ggparent_ggchild_test();
-	
-	
-	/// Case 5:
 	/// These functions test each combination of read/write
 	/// within cousin nodes and sibling nodes
 	/// in both the serial and parallel case.
