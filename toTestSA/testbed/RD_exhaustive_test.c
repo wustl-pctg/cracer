@@ -8,7 +8,7 @@
 #define WRITE_ARG 	1
 #define PARALLEL	10
 #define SEQUENTIAL	11
-
+#define RD_INIT_SIZE_1(mem) RD_INIT(mem ,  1)
 /**\union general union to test on*/
 typedef union test_union_gen_u {
 	int x, y, z;
@@ -38,7 +38,7 @@ typedef struct test_struct_gen_s {
  * \brief Checks if all of the variables in the rd_ds-> and the test_struct_gen are the same
  */
 inline void Check_test_struct_equal(const void *rd_ds, test_struct_gen * s){
-    	test_struct_gen tmp = *(test_struct_gen *)( (RD_Memory_Struct*)rd)->data;
+    	test_struct_gen tmp = *(test_struct_gen *)( (RD_Memory_Struct*)rd_ds)->data;
 	
 	/// Asserts that the structure in rd_ds is the same as s
     	//assert(memcmp( tmp, s, sizeof(test_struct_gen)));
@@ -55,39 +55,6 @@ inline void Check_test_struct_equal(const void *rd_ds, test_struct_gen * s){
 	assert(tmp.v = s->v);
 	assert(tmp.size = s->size);
 
-}
-
-
-/**\fn Assign_struct_random_vars
- * \brief Assign random variables and allocate variables for members of struct
-*/
-inline void Assign_struct_random_vars(test_struct_gen * s){
-
-	/// Assign a
-       s->a 	= malloc(sizeof(int)); 
-	*s->a = (int) rand();	 
-	/// Assign b
-	s->b	=  (int) rand();
-	/// Allocate c
-	s->c 	= malloc(sizeof(1));
-	/// Assign d
-	s->d 	= malloc(sizeof(double));
-	*s->d 	= (double) rand();
-	/// Assign e
-	s->e 	= (double) rand();
-	/// Assign f
-	s->f 	= malloc(sizeof(float));
-	*s->f 	= (float) rand();
-	/// Assign g
-	s->g 	= (float) rand();
-	/// Assign u
-	s->u 	= malloc(sizeof(test_union_struct));
-	assignUnionRandomVars(s->u);
-	/// Assign v
-	assignUnionRandomVars(&s->v);
-	/// Assign size
-	s->size = sizeof(*s);
-	
 }
 
 /**\fn Assign_union_random_vars
@@ -111,10 +78,43 @@ inline void Assign_union_random_vars(test_union_gen * u){
 	
 }
 
-/** \fn Free_test_union_members
+
+
+/**\fn Assign_struct_random_vars
+ * \brief Assign random variables and allocate variables for members of struct
+*/
+inline void Assign_struct_random_vars(test_struct_gen * s){
+
+	/// Assign a
+       	s->a 	= malloc(sizeof(int)); 
+	*s->a = (int) rand();	 
+	/// Assign b
+	s->b	=  (int) rand();
+	/// Allocate c
+	s->c 	= malloc(sizeof(1));
+	/// Assign d
+	s->d 	= malloc(sizeof(double));
+	*s->d 	= (double) rand();
+	/// Assign e
+	s->e 	= (double) rand();
+	/// Assign f
+	s->f 	= malloc(sizeof(float));
+	*s->f 	= (float) rand();
+	/// Assign g
+	s->g 	= (float) rand();
+	/// Assign u
+	s->u 	= malloc(sizeof(test_union_gen));
+	Assign_union_random_vars(s->u);
+	/// Assign v
+	Assign_union_random_vars(&s->v);
+	/// Assign size
+	s->size = sizeof(*s);
+	
+}
+/** \fn Free_test_union_member
  *  \brief Free all members of the union that were dynamically allocated
  */
-inline void Free_test_union_members(test_union_gen *u){
+inline void Free_test_union_member(test_union_gen *u){
 	/// Free a
 	free(u->a);
 	/// Free b
@@ -135,8 +135,12 @@ inline void Free_test_struct_member(test_struct_gen *s){
 	free(s->d);
 	/// Free f
 	free(s->f);
+	/// Free u's members
+	Free_test_union_member(s->u);
 	/// Free u
 	free(s->u);
+	/// Free v's members
+	Free_test_union_member(&s->v);
 }
 
 /// A spawned write helper function
@@ -160,7 +164,7 @@ cilk void cilk_read_func(void *rd_ds, test_struct_gen * s, int * result){
 /// Functions used by rd_parent_child_test
 cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const int par_flag ){
 	/// Create var to store race detection result
-	int race_detect_result1 = -1, race_detect_results2 = -1;
+	int race_detect_result1 = -1, race_detect_result2 = -1;
 
 	/// Create tmp variables to assign to ds
 	test_struct_gen tmp_s;
@@ -183,7 +187,7 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
 	}
 	else	{
 	    	/// Spawn a function that calls write
-		spawn cilk_write_func(rd_ds, &tmp_s, &race_detect_results1);
+		spawn cilk_write_func(rd_ds, &tmp_s, &race_detect_result1);
 		
 		/// Sync if sequential
 		if (par_flag == SEQUENTIAL)
@@ -198,7 +202,7 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
 	}
 	else	{
 	    	/// Write into tmp structure
-		WRITE_b(rd_ds, &tmp_s, &race_detect_results2); 
+		WRITE_b(rd_ds, &tmp_s, &race_detect_result2); 
 	}
 
 	//Sync to end parallel threads
@@ -209,20 +213,20 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
 	/// Note: This is overly specific, but it will catch errors in the
 	/// 	  test itself if the op1/op2 are passed incorrectly
 	if ((op1 == READ_ARG && op2 == READ_ARG) || par_flag == SEQUENTIAL )
-	    	assert((race_detect_results1 | race_detect_results2) == 0); /// No races
+	    	assert((race_detect_result1 | race_detect_result2) == 0); /// No races
 	else if ((	(
 			op1 == READ_ARG  && op2 == WRITE_ARG) 
 		    	|| (op1 == WRITE_ARG && op2 == READ_ARG)  
 			|| (op1 == READ_ARG  && op2 == WRITE_ARG) 
 			) 
 			&&  par_flag == PARALLEL)
-	    	assert((race_detect_results1 ^ race_detect_results2) == 1); /// Only one had a race
+	    	assert((race_detect_result1 ^ race_detect_result2) == 1); /// Only one had a race
 	else 
 		assert(0); /// Only done if incorrectly passed op1/op2 into function
 
 	/// Free dynamically allocated members of test structs.
-	Free_test_union_members(&tmp_u);
-	Free_test_struct_members(&tmp_s);
+	Free_test_union_member(&tmp_u);
+	Free_test_struct_member(&tmp_s);
 }
 /// End functions used by rd_parent_child_test
 	
@@ -239,14 +243,14 @@ cilk void rd_parent_child_test(){
 	void * par_r_r, * par_r_w, *par_w_r, *par_w_w;
 	
 	/// Instantiate all of the race detect structures 
-	seq_r_r = RD_INIT(test_struct_gen);
-	seq_r_w = RD_INIT(test_struct_gen);
-	seq_w_r = RD_INIT(test_struct_gen);
-	seq_w_w = RD_INIT(test_struct_gen);
-	par_r_r = RD_INIT(test_struct_gen);
-	par_r_w = RD_INIT(test_struct_gen);
-	par_w_r = RD_INIT(test_struct_gen);
-	par_w_w = RD_INIT(test_struct_gen);
+	seq_r_r = RD_INIT_SIZE_1(test_struct_gen);
+	seq_r_w = RD_INIT_SIZE_1(test_struct_gen);
+	seq_w_r = RD_INIT_SIZE_1(test_struct_gen);
+	seq_w_w = RD_INIT_SIZE_1(test_struct_gen);
+	par_r_r = RD_INIT_SIZE_1(test_struct_gen);
+	par_r_w = RD_INIT_SIZE_1(test_struct_gen);
+	par_w_r = RD_INIT_SIZE_1(test_struct_gen);
+	par_w_w = RD_INIT_SIZE_1(test_struct_gen);
 
 	/// Run sequentially read/read
 	spawn parent_child_spawned(seq_r_r, READ_ARG, READ_ARG, SEQUENTIAL);sync;
@@ -286,13 +290,10 @@ cilk void rd_parent_child_test(){
 } /// End rd_parent_child_test
 
 /// Functions used by rd_same_function_test
-cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
-	seq_same_func_c(rd_ds, op1, op2);	
-}
 
 inline void seq_same_func_c(void * rd_ds, const int op1, const int op2 ){
 	/// Create var to store race detection result
-	int race_detect_result = 0;
+	int race_detect_result = -1;
 
 	/// Create tmp variables to assign to ds
 	test_struct_gen tmp_s;
@@ -308,32 +309,40 @@ inline void seq_same_func_c(void * rd_ds, const int op1, const int op2 ){
 	if (op1 == READ_ARG){
 		/// Read from tmp structure
 		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
+
 		/// Check test struct equal to passed in race detect data structure
 		assert(Check_test_struct_equal(rd_ds, &tmp_s));
+
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
 	}
 	else	{
-		WRITE_b(rd_ds, &tmp_s); 
+		WRITE_b(rd_ds, &tmp_s, &race_detect_result); 
+
 		/// Check test struct equal to passed in race detect data structure
 		assert(Check_test_struct_equal(rd_ds, &tmp_s));
+
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
 	}
+
+	/// Reset race detect results
+	race_detect_result = -1;
 
 	/// Execute second operation
 	/// No races expected
 	if (op2 == READ_ARG){
 		/// Read from tmp structure
 		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
+
 		/// Check test struct equal to passed in race detect data structure
 		assert(Check_test_struct_equal(rd_ds, &tmp_s));
+
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
-		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
 	}
 	else	{
-		WRITE_b(rd_ds, &tmp_s); 
+		WRITE_b(rd_ds, &tmp_s, &race_detect_result); 
 		/// Check test struct equal to passed in race detect data structure
 		assert(Check_test_struct_equal(rd_ds, &tmp_s));
 		/// Assert that no race happened
@@ -341,10 +350,13 @@ inline void seq_same_func_c(void * rd_ds, const int op1, const int op2 ){
 	}
 
 	/// Free dynamically allocated members of test structs.
-	Free_test_union_members(&tmp_u);
-	Free_test_struct_members(&tmp_s);
+	Free_test_union_member(&tmp_u);
+	Free_test_struct_member(&tmp_s);
 }
 
+cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
+	seq_same_func_c(rd_ds, op1, op2);	
+}
 
 /// End functions used by rd_same_function_test
 
@@ -363,14 +375,14 @@ cilk void rd_same_function_test(){
 	void * par_r_r, * par_r_w, *par_w_r, *par_w_w;
 	
 	/// Instantiate all of the race detect structures 
-	seq_r_r = RD_INIT(test_struct_gen);
-	seq_r_w = RD_INIT(test_struct_gen);
-	seq_w_r = RD_INIT(test_struct_gen);
-	seq_w_w = RD_INIT(test_struct_gen);
-	par_r_r = RD_INIT(test_struct_gen);
-	par_r_w = RD_INIT(test_struct_gen);
-	par_w_r = RD_INIT(test_struct_gen);
-	par_w_w = RD_INIT(test_struct_gen);
+	seq_r_r = RD_INIT_SIZE_1(test_struct_gen);
+	seq_r_w = RD_INIT_SIZE_1(test_struct_gen);
+	seq_w_r = RD_INIT_SIZE_1(test_struct_gen);
+	seq_w_w = RD_INIT_SIZE_1(test_struct_gen);
+	par_r_r = RD_INIT_SIZE_1(test_struct_gen);
+	par_r_w = RD_INIT_SIZE_1(test_struct_gen);
+	par_w_r = RD_INIT_SIZE_1(test_struct_gen);
+	par_w_w = RD_INIT_SIZE_1(test_struct_gen);
 
 	/// Run sequentially read/read
 	spawn seq_same_func_spawned(seq_r_r, READ_ARG, READ_ARG);sync;
@@ -387,23 +399,6 @@ cilk void rd_same_function_test(){
 	/// Run sequentially write/write
 	spawn seq_same_func_spawned(seq_w_w, WRITE_ARG, WRITE_ARG);sync;
 	seq_same_func_c(seq_w_w, WRITE_ARG, WRITE_ARG);
-
-	/// Run parallel read/read
-	spawn par_same_func_spawned(par_r_r, READ_ARG, READ_ARG);sync;
-	par_same_func_c(par_r_r, READ_ARG, READ_ARG);
-
-	/// Run parallel read/write
-	spawn par_same_func_spawned(par_r_w, READ_ARG, WRITE_ARG);sync;
-	par_same_func_c(par_r_w, READ_ARG, WRITE_ARG);
-
-	/// Run parallel write/read
-	spawn par_same_func_spawned(par_w_r, WRITE_ARG, READ_ARG);sync;
-	par_same_func_c(par_w_r, WRITE_ARG, READ_ARG);
-
-	/// Run parallel write/write
-	spawn par_same_func_spawned(par_w_w, WRITE_ARG, WRITE_ARG);sync;
-	par_same_func_c(par_w_w, WRITE_ARG, WRITE_ARG);
-
 
 	/// Free all race detect data structures
 	RD_free(_cilk_ws, seq_r_r);
@@ -520,14 +515,14 @@ cilk void rd_cousin_test() {
 	test_struct_gen *e,*f,*g,*h;
 	
 	/// Instantiate all of the race detect structures 
-	seq_r_r = RD_INIT(test_struct_gen);
-	seq_r_w = RD_INIT(test_struct_gen);
-	seq_w_r = RD_INIT(test_struct_gen);
-	seq_w_w = RD_INIT(test_struct_gen);
-	par_r_r = RD_INIT(test_struct_gen);
-	par_r_w = RD_INIT(test_struct_gen);
-	par_w_r = RD_INIT(test_struct_gen);
-	par_w_w = RD_INIT(test_struct_gen);
+	seq_r_r = RD_INIT_SIZE_1(test_struct_gen);
+	seq_r_w = RD_INIT_SIZE_1(test_struct_gen);
+	seq_w_r = RD_INIT_SIZE_1(test_struct_gen);
+	seq_w_w = RD_INIT_SIZE_1(test_struct_gen);
+	par_r_r = RD_INIT_SIZE_1(test_struct_gen);
+	par_r_w = RD_INIT_SIZE_1(test_struct_gen);
+	par_w_r = RD_INIT_SIZE_1(test_struct_gen);
+	par_w_w = RD_INIT_SIZE_1(test_struct_gen);
 
 	/// Instantiate all of the dummy structs for passing 
 	Assign_struct_random_vars(a);	
@@ -603,7 +598,7 @@ cilk void rd_cousin_test() {
 /// Functions used by rd_parent_child_test
 cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const int par_flag ){
 	/// Create var to store race detection result
-	int race_detect_result1 = -1, race_detect_results2 = -1;
+	int race_detect_result1 = -1, race_detect_result2 = -1;
 
 	/// Create tmp variables to assign to ds
 	test_struct_gen tmp_s;
@@ -626,7 +621,7 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
 	}
 	else	{
 	    	/// Spawn a function that calls write
-		spawn cilk_write_func(rd_ds, &tmp_s, &race_detect_results1);
+		spawn cilk_write_func(rd_ds, &tmp_s, &race_detect_result1);
 		
 		/// Sync if sequential
 		if (par_flag == SEQUENTIAL)
@@ -641,7 +636,7 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
 	}
 	else	{
 	    	/// Write into tmp structure
-		WRITE_b(rd_ds, &tmp_s, &race_detect_results2); 
+		WRITE_b(rd_ds, &tmp_s, &race_detect_result2); 
 	}
 
 	//Sync to end parallel threads
@@ -652,17 +647,17 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
 	/// Note: This is overly specific, but it will catch errors in the
 	/// 	  test itself if the op1/op2 are passed incorrectly
 	if (op1 == READ_ARG && op2 == READ_ARG)
-	    	assert((race_detect_results1 | race_detect_results2) == 0); /// No races
+	    	assert((race_detect_result1 | race_detect_result2) == 0); /// No races
 	else if (  (op1 == READ_ARG  && op2 == WRITE_ARG) 
 		|| (op1 == WRITE_ARG && op2 == READ_ARG)  
 		|| (op1 == READ_ARG  && op2 == WRITE_ARG))
-	    	assert((race_detect_results1 ^ race_detect_results2) == 1); /// Only one had a race
+	    	assert((race_detect_result1 ^ race_detect_result2) == 1); /// Only one had a race
 	else 
 		assert(0); /// Only done if incorrectly passed op1/op2 into function
 
 	/// Free dynamically allocated members of test structs.
-	Free_test_union_members(&tmp_u);
-	Free_test_struct_members(&tmp_s);
+	Free_test_union_member(&tmp_u);
+	Free_test_struct_member(&tmp_s);
 }
 /// End functions used by rd_parent_child_test
 	
@@ -679,14 +674,14 @@ cilk void rd_parent_child_test(){
 	void * par_r_r, * par_r_w, *par_w_r, *par_w_w;
 	
 	/// Instantiate all of the race detect structures 
-	seq_r_r = RD_INIT(test_struct_gen);
-	seq_r_w = RD_INIT(test_struct_gen);
-	seq_w_r = RD_INIT(test_struct_gen);
-	seq_w_w = RD_INIT(test_struct_gen);
-	par_r_r = RD_INIT(test_struct_gen);
-	par_r_w = RD_INIT(test_struct_gen);
-	par_w_r = RD_INIT(test_struct_gen);
-	par_w_w = RD_INIT(test_struct_gen);
+	seq_r_r = RD_INIT_SIZE_1(test_struct_gen);
+	seq_r_w = RD_INIT_SIZE_1(test_struct_gen);
+	seq_w_r = RD_INIT_SIZE_1(test_struct_gen);
+	seq_w_w = RD_INIT_SIZE_1(test_struct_gen);
+	par_r_r = RD_INIT_SIZE_1(test_struct_gen);
+	par_r_w = RD_INIT_SIZE_1(test_struct_gen);
+	par_w_r = RD_INIT_SIZE_1(test_struct_gen);
+	par_w_w = RD_INIT_SIZE_1(test_struct_gen);
 
 	/// Run sequentially read/read
 	spawn parent_child_spawned(seq_r_r, READ_ARG, READ_ARG, SEQUENTIAL);sync;
@@ -738,7 +733,7 @@ cilk void cilk_read_func_nest(void *rd_ds, test_struct_gen *s, int * result){
 
 cilk void gparent_gchild_spawned(void * rd_ds, const int op1, const int op2){
 	/// Create var to store race detection result
-	int race_detect_result1 = -1, race_detect_results2 = -1;
+	int race_detect_result1 = -1, race_detect_result2 = -1;
 
 	/// Create tmp variables to assign to ds
 	test_struct_gen tmp_s;
@@ -758,7 +753,7 @@ cilk void gparent_gchild_spawned(void * rd_ds, const int op1, const int op2){
 	}
 	else	{
 	    	/// Spawn a function that calls write
-		spawn cilk_write_func_nest(rd_ds, &tmp_s, &race_detect_results1);
+		spawn cilk_write_func_nest(rd_ds, &tmp_s, &race_detect_result1);
 		
 	}
 
@@ -770,7 +765,7 @@ cilk void gparent_gchild_spawned(void * rd_ds, const int op1, const int op2){
 	}
 	else	{
 	    	/// Write into tmp structure
-		WRITE_b(rd_ds, &tmp_s, &race_detect_results2); 
+		WRITE_b(rd_ds, &tmp_s, &race_detect_result2); 
 	}
 
 	//Sync to end parallel threads
@@ -780,22 +775,22 @@ cilk void gparent_gchild_spawned(void * rd_ds, const int op1, const int op2){
 	/// Note: This is overly specific, but it will catch errors in the
 	/// 	  test itself if the op1/op2 are passed incorrectly
 	if (op1 == READ_ARG && op2 == READ_ARG)
-	    	assert((race_detect_results1 | race_detect_results2) == 0); /// No races
+	    	assert((race_detect_result1 | race_detect_result2) == 0); /// No races
 	else if (  (op1 == READ_ARG  && op2 == WRITE_ARG) 
 		|| (op1 == WRITE_ARG && op2 == READ_ARG)  
 		|| (op1 == READ_ARG  && op2 == WRITE_ARG))
-	    	assert((race_detect_results1 ^ race_detect_results2) == 1); /// Only one had a race
+	    	assert((race_detect_result1 ^ race_detect_result2) == 1); /// Only one had a race
 	else 
 		assert(0); /// Only done if incorrectly passed op1/op2 into function
 
 	/// Free dynamically allocated members of test structs.
-	Free_test_union_members(&tmp_u);
-	Free_test_struct_members(&tmp_s);
+	Free_test_union_member(&tmp_u);
+	Free_test_struct_member(&tmp_s);
 }
 /// End functions used by rd_parent_child_test
 	
 
-cilk void rdtest_gparent_gchild_test(){
+cilk void rd_gparent_gchild_test(){
 	/// Declare the four types of sequential race detect variables
 	void * seq_r_r, * seq_r_w, *seq_w_r, *seq_w_w;
 	
@@ -803,14 +798,14 @@ cilk void rdtest_gparent_gchild_test(){
 	void * par_r_r, * par_r_w, *par_w_r, *par_w_w;
 	
 	/// Instantiate all of the race detect structures 
-	seq_r_r = RD_INIT(test_struct_gen);
-	seq_r_w = RD_INIT(test_struct_gen);
-	seq_w_r = RD_INIT(test_struct_gen);
-	seq_w_w = RD_INIT(test_struct_gen);
-	par_r_r = RD_INIT(test_struct_gen);
-	par_r_w = RD_INIT(test_struct_gen);
-	par_w_r = RD_INIT(test_struct_gen);
-	par_w_w = RD_INIT(test_struct_gen);
+	seq_r_r = RD_INIT_SIZE_1(test_struct_gen);
+	seq_r_w = RD_INIT_SIZE_1(test_struct_gen);
+	seq_w_r = RD_INIT_SIZE_1(test_struct_gen);
+	seq_w_w = RD_INIT_SIZE_1(test_struct_gen);
+	par_r_r = RD_INIT_SIZE_1(test_struct_gen);
+	par_r_w = RD_INIT_SIZE_1(test_struct_gen);
+	par_w_r = RD_INIT_SIZE_1(test_struct_gen);
+	par_w_w = RD_INIT_SIZE_1(test_struct_gen);
 
 	/// Run sequentially read/read
 	spawn gparent_gchild_spawned(seq_r_r, READ_ARG, READ_ARG);sync;
