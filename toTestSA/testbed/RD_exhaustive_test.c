@@ -709,6 +709,16 @@ cilk void rd_parent_child_test(){
 } /// End rd_parent_child_test
 
 /// Functions used by rd_gparent_gchild_test
+cilk void cilk_write_func_nest(void *rd_ds, test_struct_gen *s, int * result){
+	spawn cilk_write_func(rd_ds, s, result);
+	sync;
+}
+
+cilk void cilk_read_func_nest(void *rd_ds, test_struct_gen *s, int * result){
+	spawn cilk_read_func(rd_ds, s, result);
+	sync;
+}
+
 cilk void gparent_gchild_spawned(void * rd_ds, const int op1, const int op2){
 	/// Create var to store race detection result
 	int race_detect_result1 = -1, race_detect_results2 = -1;
