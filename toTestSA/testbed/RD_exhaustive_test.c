@@ -32,6 +32,9 @@ typedef struct test_struct_gen_s {
 	size_t size;
 } test_struct_gen;
 
+/**\fn Assign_struct_random_vars
+ * \brief Assign random variables and allocate variables for members of struct
+*/
 inline void Assign_struct_random_vars(test_struct_gen * s){
 
 	/// Assign a
@@ -61,6 +64,9 @@ inline void Assign_struct_random_vars(test_struct_gen * s){
 	
 }
 
+/**\fn Assign_struct_random_vars
+ * \brief Assign random variables and allocate variables for members of struct
+ */
 inline void Assign_union_random_vars(test_union_gen * u){
 
     	/// Assign a
