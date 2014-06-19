@@ -38,7 +38,7 @@ typedef struct test_struct_gen_s {
 inline void Assign_struct_random_vars(test_struct_gen * s){
 
 	/// Assign a
-    	s->a 	= malloc(sizeof(int)); 
+       s->a 	= malloc(sizeof(int)); 
 	*s->a = (int) rand();	 
 	/// Assign b
 	s->b	=  (int) rand();
@@ -330,47 +330,65 @@ cilk void rd_same_function_test(){
 	RD_free(_cilk_ws, par_w_w);
 }
 
+/// A spawned write helper function
+cilk void spawn_rd_cousin_write(void *rd_ds, test_struct_gen * s, int result){
+	/// Write to rd_ds
+	WRITE_b(rd_ds, s, &result);
+	
+	/// Check test struct equal to passed in race detect data structure
+	assert(Check_test_struct_equal(rd_ds, s));
+}
+
+/// A spawned read helper function
+cilk void spawn_rd_cousin_read(void *rd_ds, test_struct_gen * s, int result){
+    /// Read from rd_ds and store in tmp rd_ds
+	*s = READ_b(rd_ds, test_struct_gen, &result);
+
+	/// Compare to test_Struct passed in
+	assert(Check_test_struct_equal(rd_ds, s));
+}
+
 
 /// End rd_same_function_test
 /// Start functions for rd_cousin_test
 
-cilk void cousin_sequential(const int op1, const int op2, void * mem_ptr) {
+cilk void cousin_sequential(const int op1, const int op2, void * mem_ptr, test_struct_gen * s) {
 
 	/// Booleans to use to check if races are detected
 	int race_detected1, race_detected2;
 
 	/// Spawn op1, then sync
 	if(op1) {
-		spawn spawn_rd_cousin_write(mem_ptr, race_detected1);
+		spawn spawn_rd_cousin_write(mem_ptr, s, race_detected1);
 	} else {
-		spawn spawn_rd_cousin_read(mem_ptr, race_detected1);
+		spawn spawn_rd_cousin_read(mem_ptr, s, race_detected1);
 	} sync;
 	
 	/// Spawn op2, then sync
 	if(op2) {
-		spawn spawn_rd_cousin_write(mem_ptr, race_detected2);
+		spawn spawn_rd_cousin_write(mem_ptr, s, race_detected2);
 	} else {
-		spawn spawn_rd_cousin_write(mem_ptr, race_detected2);
+		spawn spawn_rd_cousin_write(mem_ptr, s, race_detected2);
 	} sync;
 }
 
-cilk void cousin_parallel(const int op1, const int op2, void * mem_ptr) {
+cilk void cousin_parallel(const int op1, const int op2, void * mem_ptr, test_struct_gen * s) {
 
 	/// Booleans to use to check if races are detected
 	int race_detected1, race_detected2;
 
 	/// Spawn op1 *DON'T SYNC*
 	if(op1) {
-		spawn spawn_rd_cousin_write(mem_ptr, race_detected1);
+		spawn spawn_rd_cousin_write(mem_ptr, s,race_detected1);
 	} else {
-		spawn spawn_rd_cousin_read(mem_ptr, race_detected1);
+		spawn spawn_rd_cousin_read(mem_ptr, s, race_detected1);
 	}
 	
 	/// Spawn op2
 	if(op2) {
-		spawn spawn_rd_cousin_write(mem_ptr, race_detected2);
+		spawn spawn_rd_cousin_write(mem_ptr, s, race_detected2);
 	} else {
-		spawn spawn_rd_cousin_write(mem_ptr, race_detected2);
+		spawn spawn_rd_cousin_write(mem_ptr, s, race_detected2);
 	}
 
 	/// Now Sync
@@ -389,6 +407,9 @@ cilk void rd_cousin_test() {
 	/// Declare the four types of parallel race detect variables
 	/// These will be used in cousins that are parallel
 	void * par_r_r, * par_r_w, *par_w_r, *par_w_w;
+
+	/// Declare various empty structs for passing into the functions
+	
 	
 	/// Instantiate all of the race detect structures 
 	seq_r_r = RD_INIT(test_struct_gen);
