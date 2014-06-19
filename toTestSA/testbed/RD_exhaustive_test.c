@@ -389,6 +389,8 @@ cilk void rd_same_function_test(){
 	RD_free(_cilk_ws, par_w_w);
 }
 
+/// Start rd_cousin_test helper functions
+
 /// A spawned write helper function
 cilk void spawn_rd_cousin_write(void *rd_ds, test_struct_gen * s, int result){
 	/// Write to rd_ds
@@ -411,7 +413,8 @@ cilk void spawn_rd_cousin_read(void *rd_ds, test_struct_gen * s, int result){
 /// End rd_same_function_test
 /// Start functions for rd_cousin_test
 
-cilk void cousin_sequential(const int op1, const int op2, void * mem_ptr, test_struct_gen * s) {
+cilk void cousin_sequential(const int op1, const int op2, void * mem_ptr,
+							test_struct_gen * s, test_struct_gen * t) {
 
 	/// Booleans to use to check if races are detected
 	int race_detected1, race_detected2;
@@ -425,13 +428,18 @@ cilk void cousin_sequential(const int op1, const int op2, void * mem_ptr, test_s
 	
 	/// Spawn op2, then sync
 	if(op2) {
-		spawn spawn_rd_cousin_write(mem_ptr, s, race_detected2);
+		spawn spawn_rd_cousin_write(mem_ptr, t, race_detected2);
 	} else {
-		spawn spawn_rd_cousin_write(mem_ptr, s, race_detected2);
+		spawn spawn_rd_cousin_write(mem_ptr, t, race_detected2);
 	} sync;
+
+	/// Confirm no race was found
+	assert(race_detected1 == 0);
+	assert(race_detected2 == 0);
 }
 
-cilk void cousin_parallel(const int op1, const int op2, void * mem_ptr, test_struct_gen * s) {
+cilk void cousin_parallel(const int op1, const int op2, void * mem_ptr,
+						  test_struct_gen * s, test_struct_gen * t) {
 
 	/// Booleans to use to check if races are detected
 	int race_detected1, race_detected2;
@@ -445,19 +453,31 @@ cilk void cousin_parallel(const int op1, const int op2, void * mem_ptr, test_str
 	
 	/// Spawn op2
 	if(op2) {
-		spawn spawn_rd_cousin_write(mem_ptr, s, race_detected2);
+		spawn spawn_rd_cousin_write(mem_ptr, t, race_detected2);
 	} else {
-		spawn spawn_rd_cousin_write(mem_ptr, s, race_detected2);
+		spawn spawn_rd_cousin_write(mem_ptr, t, race_detected2);
 	}
 
 	/// Now Sync
 	sync;
+
+	/// If both are reads, it shouldn't be a race condition
+	if( !op1 && !op2 ) {
+		assert(race_detected1 == 0);
+		assert(race_detected2 == 0);
+		return;
+	} else
+
+	/// A race should be found, however, we have no way of
+	/// knowing which (if at all) will detect the race
+	assert( !(race_detected1 && race_deteced2) ); ///< Can't both detect race 
+	assert( race_detected1 || race_detected2 ); ///< Exactly one should detect a race
 }
 
-
+/// End helper functions for rd_cousin_test
+/// Start rd_cousin_test
 
 cilk void rd_cousin_test() {
-
 
 	/// Declare the four types of race detect variables
 	/// These will be used in cousins that are sequential
@@ -468,7 +488,8 @@ cilk void rd_cousin_test() {
 	void * par_r_r, * par_r_w, *par_w_r, *par_w_w;
 
 	/// Declare various empty structs for passing into the functions
-	
+	test_struct_gen *a,*b,*c,*d;
+	test_struct_gen *e,*f,*g,*h;
 	
 	/// Instantiate all of the race detect structures 
 	seq_r_r = RD_INIT(test_struct_gen);
@@ -480,17 +501,53 @@ cilk void rd_cousin_test() {
 	par_w_r = RD_INIT(test_struct_gen);
 	par_w_w = RD_INIT(test_struct_gen);
 
+	/// Instantiate all of the dummy structs for passing 
+	Assign_struct_random_vars(a);	
+	Assign_struct_random_vars(b);	
+	Assign_struct_random_vars(c);	
+	Assign_struct_random_vars(d);	
+	Assign_struct_random_vars(e);	
+	Assign_struct_random_vars(f);	
+	Assign_struct_random_vars(g);	
+	Assign_struct_random_vars(h);	
+	
+	/// Four sets of sequential cousin tests
+	spawn cousin_sequential(READ_ARG, READ_ARG, seq_r_r, a, b); sync;
 
+	spawn cousin_sequential(READ_ARG, WRITE_ARG, seq_r_w, c, d); sync;
 
+	spawn cousin_sequential(WRITE_ARG, READ_ARG, seq_w_r, e, f); sync;
+	
+	spawn cousin_sequential(WRITE_ARG, READ_ARG, seq_w_w, g, h); sync;
 
+	/// Redefine all the dummy structs
+	Assign_struct_random_vars(a);	
+	Assign_struct_random_vars(b);	
+	Assign_struct_random_vars(c);	
+	Assign_struct_random_vars(d);	
+	Assign_struct_random_vars(e);	
+	Assign_struct_random_vars(f);	
+	Assign_struct_random_vars(g);	
+	Assign_struct_random_vars(h);	
+ 
+	/// Four sets of parallel cousin tests - All races but first
+	spawn cousin_parallel(READ_ARG, READ_ARG, seq_r_r, a, b); sync;
 
+	spawn cousin_parallel(READ_ARG, WRITE_ARG, seq_r_w, c, d); sync;
 
+	spawn cousin_parallel(WRITE_ARG, READ_ARG, seq_w_r, e, f); sync;
+	
+	spawn cousin_parallel(WRITE_ARG, READ_ARG, seq_w_w, g, h); sync;
 
-
-
-
-
-
+	/// Free all of the dummy structs
+	Free_test_struct_member(a);
+	Free_test_struct_member(b);
+	Free_test_struct_member(c);
+	Free_test_struct_member(d);
+	Free_test_struct_member(e);
+	Free_test_struct_member(f);
+	Free_test_struct_member(g);
+	Free_test_struct_member(h);
 
 	/// Free all race detect data structures
 	RD_free(_cilk_ws, seq_r_r);
@@ -501,15 +558,9 @@ cilk void rd_cousin_test() {
 	RD_free(_cilk_ws, par_r_w);
 	RD_free(_cilk_ws, par_w_r);
 	RD_free(_cilk_ws, par_w_w);
-
-
 }
 
-
-
-
-
-
+/// End rd_cousin_test
 
 
 cilk int main(int argv, char* argc){
