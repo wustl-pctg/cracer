@@ -114,6 +114,67 @@ inline void Free_test_struct_member(test_struct_gen *s){
 }
 
 /// Functions used by rd_parent_child_test
+cilk void seq_parent_child_spawned(void * rd_ds, const int op1, const int op2 ){
+	
+}
+
+cilk void par_parent_child_spawned(void * rd_ds, const int op1, const int op2 ){
+	
+}
+
+inline void seq_parent_child_c(void * rd_ds, const int op1, const int op2 ){
+	/// Create var to store race detection result
+	int race_detect_result = 0;
+
+	/// Create tmp variables to assign to ds
+	test_struct_gen tmp_s;
+	test_union_gen tmp_u;
+	
+	/// Give struct and union random variables and allocate memory to members
+	Assign_struct_random_vars(&tmp_s);
+	Assign_union_random_vars(&tmp_u);
+
+	/// Execute first operation	
+	/// No races expected
+
+	if (op1 == READ_ARG){
+		/// Read from tmp structure
+		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
+		/// Check test struct equal to passed in race detect data structure
+		assert(Check_test_struct_equal(rd_ds, tmp_s));
+		/// Assert that no race happened
+		assert(race_detect_result == 0);
+	}
+	else	{
+		WRITE_b(rd_ds, &tmp_s); 
+		/// Check test struct equal to passed in race detect data structure
+		assert(Check_test_struct_equal(rd_ds, tmp_s));
+		/// Assert that no race happened
+		assert(race_detect_result == 0);
+	}
+
+	/// Execute second operation
+	/// No races expected
+	if (op2 == READ_ARG){
+		/// Read from tmp structure
+		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
+		/// Check test struct equal to passed in race detect data structure
+		assert(Check_test_struct_equal(rd_ds, tmp_s));
+		/// Assert that no race happened
+		assert(race_detect_result == 0);
+		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
+	}
+	else	{
+		WRITE_b(rd_ds, &tmp_s); 
+		/// Check test struct equal to passed in race detect data structure
+		assert(Check_test_struct_equal(rd_ds, tmp_s));
+		/// Assert that no race happened
+		assert(race_detect_result == 0);
+	}
+
+	/// Free dynamically allocated members of test structs.
+	Free_test_union_members(&tmp_u);
+	Free_test_struct_members(&tmp_s);
 /// End functions used by rd_parent_child_test
 	
 /**\fn rd_parent_child_test
