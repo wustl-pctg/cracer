@@ -1,0 +1,53 @@
+/*
+ * Program written for the purpose of testing race-detection programs.
+ * 
+ * This should have a race condition and it should be detected.
+ *
+ * Author: Shane Deiley
+ * Date: 6/17/14
+ *
+ */
+
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+
+cilk void Increment(void * int_i)
+{
+	int temp;
+	temp = READ(int_i, int) + 1;
+	WRITE(int_i, &temp);
+	if(READ(int_i, int) < 100)
+		spawn Increment(int_i);
+}
+
+cilk void Decrement(void * int_i)
+{
+	int temp;
+	temp = READ(int_i, int) - 1;
+	WRITE(int_i, &temp);
+	if(READ(int_i, int) > 0)
+		spawn Decrement(int_i);
+}
+
+cilk int main(int argc, char *argv[])
+{
+	int * int_i;
+	int temp;
+ 	int_i = RD_INIT(int);
+	temp = 3;
+
+	if(argc != 1) {
+		fprintf(stderr, "Usage: decentRaceDetection.cilk [<cilk options>]\n");
+		Cilk_exit(1);
+	}
+
+	WRITE(int_i, &temp);
+	spawn Increment( int_i );
+	spawn Decrement( int_i );
+	printf("i: %i\n", READ(int_i, int) );
+
+	return 0;
+}
+
+
