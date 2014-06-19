@@ -52,7 +52,7 @@ cilk char *nqueens(int n, int j, char *a)
 	} if (n == j) {
 		/* put good solution in heap, return pointer to it. */
 		b = malloc(n * sizeof(char));
-
+		memcpy(b, a, n * sizeof(char));
 		return b;
 	}
 
@@ -76,7 +76,8 @@ cilk char *nqueens(int n, int j, char *a)
 cilk int cilk_main(int argc, char *argv[])
 {
 	int n, i;
-	char * charptr_a, a;
+	char * charptr_a;
+	char * a;
 
 
 	if (argc < 2) {
@@ -95,15 +96,16 @@ cilk int cilk_main(int argc, char *argv[])
 	printf("running queens %d\n", n);
 
 	a = spawn nqueens(n, 0, (char*)Race_detect_read(_cilk_ws, charptr_a, __FUNCTION__, __LINE__) );
-	WRITE(charptr_a,a); //!<Write a's holding value to chaptr;
+	WRITE(charptr_a, a); //!<Write a's holding value to chaptr;
 	sync;
 
 	//!Since we want to check a ptr, READ macro is a bit different
 	if ( (char*)Race_detect_read(_cilk_ws, charptr_a, __FUNCTION__, __LINE__) != NULL) {
 
 		//!Instead pass struct ptr
-		if (!ok(n, (char*)Race_detect_read(_cilk_ws, charptr_a, __FUNCTION__, __LINE__) )
+		if ( !ok(n, (char*)Race_detect_read(_cilk_ws, charptr_a, __FUNCTION__, __LINE__) )) {
 			printf("RESULT IS BAD!!!\n");
+		}
 
 		printf("result: ");
 
@@ -113,7 +115,9 @@ cilk int cilk_main(int argc, char *argv[])
 		}
 		
 		printf("\n");
-	} else
+	} else {
 		printf("no possible result!\n");
+	}
+
 	return 0;
 }
