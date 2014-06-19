@@ -113,6 +113,24 @@ inline void Free_test_struct_member(test_struct_gen *s){
 	free(s->u);
 }
 
+/// A spawned write helper function
+cilk void cilk_write_func(void *rd_ds, test_struct_gen * s, int * result){
+	/// Write to rd_ds
+	WRITE_b(rd_ds, s, results);
+	
+	/// Check test struct equal to passed in race detect data structure
+	assert(Check_test_struct_equal(rd_ds, s));
+}
+
+/// A spawned read helper function
+cilk void cilk_read_func(void *rd_ds, test_struct_gen * s, int * result){
+    	/// Read from rd_ds and store in tmp rd_ds
+	*s = READ_b(rd_ds, test_struct_gen, results);
+
+	/// Compare to test_Struct passed in
+	assert(Check_test_struct_equal(rd_ds, s));
+}
+
 /// Functions used by rd_parent_child_test
 cilk void seq_parent_child_spawned(void * rd_ds, const int op1, const int op2 ){
 	
@@ -121,12 +139,9 @@ cilk void seq_parent_child_spawned(void * rd_ds, const int op1, const int op2 ){
 cilk void par_parent_child_spawned(void * rd_ds, const int op1, const int op2 ){
 	
 }
-cilk test_struct_gen cilk_read_func(void *rd_ds, int * result){
-	return READ_b(rd_ds, test_struct_gen, results);
-}
 inline void seq_parent_child_c(void * rd_ds, const int op1, const int op2 ){
 	/// Create var to store race detection result
-	int race_detect_result = 0;
+	int race_detect_result1 = -1, race_detect_results2 = -1;
 
 	/// Create tmp variables to assign to ds
 	test_struct_gen tmp_s;
@@ -137,47 +152,36 @@ inline void seq_parent_child_c(void * rd_ds, const int op1, const int op2 ){
 	Assign_union_random_vars(&tmp_u);
 
 	/// Execute first operation	
-	/// No races expected
-
+	/// Races possible
 	if (op1 == READ_ARG){
 		
-		/// Spawn a function that calls read, then sync
-		tmp_s = spawn cilk_read_func(rd_ds, &race_detect_result);
-		sync;
-
-		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, tmp_s));
-
-		/// Assert that no race happened
-		assert(race_detect_result == 0);
+		/// Spawn a function that calls read
+		spawn cilk_read_func(rd_ds, &tmp_s, &race_detect_result1);
 	}
 	else	{
-		WRITE_b(rd_ds, &tmp_s); 
-		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, tmp_s));
-		/// Assert that no race happened
-		assert(race_detect_result == 0);
+	    	/// Spawn a function that calls write
+		spawn cilk_write_func(rd_ds, &tmp_s, &race_detect_results1);
 	}
 
 	/// Execute second operation
-	/// Races expected
+	/// Races possible
 	if (op2 == READ_ARG){
-		/// Read from tmp structure
-		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
-		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, tmp_s));
-		/// Assert that no race happened
-		assert(race_detect_result == 0);
-		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
+		/// Read into tmp structure
+		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result2);
 	}
 	else	{
-		WRITE_b(rd_ds, &tmp_s); 
-		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, tmp_s));
-		/// Assert that no race happened
-		assert(race_detect_result == 0);
+	    	/// Write into tmp structure
+		WRITE_b(rd_ds, &tmp_s, &race_detect_results2); 
 	}
 
+	//Sync to end parallel threads
+	sync;
+
+	/// Check if our race conditions were as expected
+	
+	if (op1 == READ_ARG && op2 == READ_ARG)
+	    	assert(race_detect_results1 || race_detect_Results2 == 0);
+	else if (op1 == READ_ARG && op2 == WRITE_ARG
 	/// Free dynamically allocated members of test structs.
 	Free_test_union_members(&tmp_u);
 	Free_test_struct_members(&tmp_s);
