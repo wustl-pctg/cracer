@@ -121,7 +121,9 @@ cilk void seq_parent_child_spawned(void * rd_ds, const int op1, const int op2 ){
 cilk void par_parent_child_spawned(void * rd_ds, const int op1, const int op2 ){
 	
 }
-
+cilk test_struct_gen cilk_read_func(void *rd_ds, int * result){
+	return READ_b(rd_ds, test_struct_gen, results);
+}
 inline void seq_parent_child_c(void * rd_ds, const int op1, const int op2 ){
 	/// Create var to store race detection result
 	int race_detect_result = 0;
@@ -138,10 +140,14 @@ inline void seq_parent_child_c(void * rd_ds, const int op1, const int op2 ){
 	/// No races expected
 
 	if (op1 == READ_ARG){
-		/// Read from tmp structure
-		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
+		
+		/// Spawn a function that calls read, then sync
+		tmp_s = spawn cilk_read_func(rd_ds, &race_detect_result);
+		sync;
+
 		/// Check test struct equal to passed in race detect data structure
 		assert(Check_test_struct_equal(rd_ds, tmp_s));
+
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
 	}
@@ -154,7 +160,7 @@ inline void seq_parent_child_c(void * rd_ds, const int op1, const int op2 ){
 	}
 
 	/// Execute second operation
-	/// No races expected
+	/// Races expected
 	if (op2 == READ_ARG){
 		/// Read from tmp structure
 		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
@@ -175,6 +181,7 @@ inline void seq_parent_child_c(void * rd_ds, const int op1, const int op2 ){
 	/// Free dynamically allocated members of test structs.
 	Free_test_union_members(&tmp_u);
 	Free_test_struct_members(&tmp_s);
+}
 /// End functions used by rd_parent_child_test
 	
 /**\fn rd_parent_child_test
@@ -182,7 +189,7 @@ inline void seq_parent_child_c(void * rd_ds, const int op1, const int op2 ){
 *\param op1 either 0 to do a read first or 1 to do a write in the parent
 *\param op2 either 0 to do a read second or 1 to do a write in the child
 */
-cilk void rd_parent_child_test(const int op1, const int op2){
+cilk void rd_parent_child_test(){
 	
 	
 }
@@ -256,7 +263,7 @@ inline void seq_same_func_c(void * rd_ds, const int op1, const int op2 ){
 *\param op1 either 0 to do a read first or 1 to do a write first
 *\param op2 either 0 to do a read second or 1 to do a write second
 */
-cilk void rd_same_function_test(const int op1, const int op2){
+cilk void rd_same_function_test(){
 
 	/// Declare the four types of sequential race detect variables
 	void * seq_r_r, * seq_r_w, *seq_w_r, *seq_w_w;
@@ -326,47 +333,32 @@ cilk int main(int argv, char* argc){
 	/// This function tests each combination of read/write
 	/// within the same spawned function. None of these should
 	/// have any races within them, as they are all executed serially.
-	spawn rd_same_function_test(READ_ARG, READ_ARG);
-	spawn rd_same_function_test(READ_ARG, WRITE_ARG);
-	spawn rd_same_function_test(WRITE_ARG, READ_ARG);
-	spawn rd_same_function_test(WRITE_ARG, WRITE_ARG);
+	spawn rd_same_function_test();
 
 	/// Case 2:
 	/// These functions tests each combination of read/write
 	/// within a parent function and its child, in both the serial and
 	/// parallel case.	
-	spawn rd_parent_child_test(READ_ARG, READ_ARG);
-	spawn rd_parent_child_test(READ_ARG, WRITE_ARG);
-	spawn rd_parent_child_test(WRITE_ARG, READ_ARG);
-	spawn rd_parent_child_test(WRITE_ARG, WRITE_ARG);
+	spawn rd_parent_child_test();
 
 	/// Case 3:
 	/// These functions test each combination of read/write
 	/// within a parent function and its grandchildren and great grandchildren
 	/// in both the serial and parallel case.
-	spawn rd_gparent_gchild_test(READ_ARG, READ_ARG);
-	spawn rd_gparent_gchild_test(READ_ARG, WRITE_ARG)
-	spawn rd_gparent_gchild_test(WRITE_ARG, READ_ARG);
-	spawn rd_gparent_gchild_test(WRITE_ARG, WRITE_ARG);
+	spawn rd_gparent_gchild_test();
 
 	/// Case 4:
 	/// These functions test each combination of read/write
 	/// within a parent function and its reat grandchildren
 	/// in both the serial and parallel case.
-	spawn rd_ggparent_ggchild_test(READ_ARG, READ_ARG);
-	spawn rd_ggparent_ggchild_test(READ_ARG, WRITE_ARG)
-	spawn rd_ggparent_ggchild_test(WRITE_ARG, READ_ARG);
-	spawn rd_ggparent_ggchild_test(WRITE_ARG, WRITE_ARG);
+	spawn rd_ggparent_ggchild_test();
 	
 	
 	/// Case 5:
 	/// These functions test each combination of read/write
 	/// within cousin nodes and sibling nodes
 	/// in both the serial and parallel case.
-	spawn rd_cousin_test(READ_ARG, READ_ARG);
-	spawn rd_cousin_test(READ_ARG, WRITE_ARG);
-	spawn rd_cousin_test(WRITE_ARG, READ_ARG);
-	spawn rd_cousin_test(WRITE_ARG, WRITE_ARG);
+	spawn rd_cousin_test();
 	
 	
 	sync;	
