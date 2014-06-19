@@ -38,8 +38,25 @@ typedef struct test_struct_gen_s {
  * \brief Checks if all of the variables in the rd_ds-> and the test_struct_gen are the same
  */
 inline void Check_test_struct_equal(const void *rd_ds, test_struct_gen * s){
-//TODO: include this struct so we cn compare memory	assert(memcmp( (RD_Memory_Struct*) rd_ds
+    	test_struct_gen tmp = *(test_struct_gen *)( (RD_Memory_Struct*)rd)->data;
+	
+	/// Asserts that the structure in rd_ds is the same as s
+    	//assert(memcmp( tmp, s, sizeof(test_struct_gen)));
+
+	/// Assert that each variable within rd_ds->data is the same as s
+	assert(*tmp.a = *s->a);
+	assert(tmp.b = s->b);
+	assert(tmp.c = s->c); //VOID, dont dereference
+	assert(*tmp.d = s->d);
+	assert(tmp.e = s->e);
+	assert(*tmp.f = *s->f);
+	assert(tmp.g = s->g);
+	assert(*tmp.u = *s->u);
+	assert(tmp.v = s->v);
+	assert(tmp.size = s->size);
+
 }
+
 
 /**\fn Assign_struct_random_vars
  * \brief Assign random variables and allocate variables for members of struct
