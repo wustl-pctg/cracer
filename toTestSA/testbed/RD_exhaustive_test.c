@@ -69,6 +69,33 @@ inline void assignUnionRandomVars(test_union_gen * u){
 	
 }
 
+/** \fn Free_test_union_members
+ *  \brief Free all members of the union that were dynamically allocated
+ */
+inline void Free_test_union_members(test_union_gen *u){
+	/// Free a
+	free(u->a);
+	/// Free b
+	free(u->b);
+	/// Free c
+	free(u->c);
+}
+/** \fn FreeTestStructMembers
+ *  \brief Free all members of the struct that were dynamically allocated
+ */
+inline void Free_test_struct_member(test_struct_gen *s){
+	/// Free a
+	free(s->a);
+	/// Free c
+	free(s->c);
+	/// Free d
+	free(s->d);
+	/// Free f
+	free(s->f);
+	/// Free u
+	free(s->u);
+}
+
 /// Functions used by rd_parent_child_test
 /// End functions used by rd_parent_child_test
 	
@@ -240,18 +267,18 @@ cilk int main(int argv, char* argc){
 	/// within a parent function and its grandchildren and great grandchildren
 	/// in both the serial and parallel case.
 	spawn rd_gparent_gchild_test(READ_ARG, READ_ARG);
-	spawn rd_gparent_gchild_test(READ_ARG,(READ_ARG, WRITE_ARG)
-	spawn rd_gparent_gchild_test(READ_ARG,(WRITE_ARG, READ_ARG);
-	spawn rd_gparent_gchild_test(READ_ARG,(WRITE_ARG, WRITE_ARG);
+	spawn rd_gparent_gchild_test(READ_ARG, WRITE_ARG)
+	spawn rd_gparent_gchild_test(WRITE_ARG, READ_ARG);
+	spawn rd_gparent_gchild_test(WRITE_ARG, WRITE_ARG);
 
 	/// Case 4:
 	/// These functions test each combination of read/write
 	/// within a parent function and its reat grandchildren
 	/// in both the serial and parallel case.
-	spawn rd_gparent_gchild_test(READ_ARG, READ_ARG);
-	spawn rd_gparent_gchild_test(READ_ARG,(READ_ARG, WRITE_ARG)
-	spawn rd_gparent_gchild_test(READ_ARG,(WRITE_ARG, READ_ARG);
-	spawn rd_gparent_gchild_test(READ_ARG,(WRITE_ARG, WRITE_ARG);
+	spawn rd_ggparent_ggchild_test(READ_ARG, READ_ARG);
+	spawn rd_ggparent_ggchild_test(READ_ARG, WRITE_ARG)
+	spawn rd_ggparent_ggchild_test(WRITE_ARG, READ_ARG);
+	spawn rd_ggparent_ggchild_test(WRITE_ARG, WRITE_ARG);
 	
 	
 	/// Case 5:
