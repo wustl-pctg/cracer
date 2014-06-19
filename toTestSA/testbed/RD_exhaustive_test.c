@@ -243,9 +243,18 @@ cilk int main(int argv, char* argc){
 	spawn rd_gparent_gchild_test(READ_ARG,(READ_ARG, WRITE_ARG)
 	spawn rd_gparent_gchild_test(READ_ARG,(WRITE_ARG, READ_ARG);
 	spawn rd_gparent_gchild_test(READ_ARG,(WRITE_ARG, WRITE_ARG);
-	
-	
+
 	/// Case 4:
+	/// These functions test each combination of read/write
+	/// within a parent function and its reat grandchildren
+	/// in both the serial and parallel case.
+	spawn rd_gparent_gchild_test(READ_ARG, READ_ARG);
+	spawn rd_gparent_gchild_test(READ_ARG,(READ_ARG, WRITE_ARG)
+	spawn rd_gparent_gchild_test(READ_ARG,(WRITE_ARG, READ_ARG);
+	spawn rd_gparent_gchild_test(READ_ARG,(WRITE_ARG, WRITE_ARG);
+	
+	
+	/// Case 5:
 	/// These functions test each combination of read/write
 	/// within cousin nodes and sibling nodes
 	/// in both the serial and parallel case.
