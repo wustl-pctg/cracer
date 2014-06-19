@@ -151,8 +151,13 @@ extern void Race_detect_write(CilkWorkerState * const ws, void * memPtr, const v
 
 extern void * Race_detect_read(CilkWorkerState * const ws, void * memPtr, const char* func_name, const int line_num);
 
+//! Macro for initializing RD_Memory_Struct by specified type
 #define RD_INIT(type) (type*)RD_structure_create(_cilk_ws, sizeof(type))
+
+//! Macro for reading relevant RD memory holder's data and for detecting races
 #define READ(mem, type) *(type*)Race_detect_read(_cilk_ws, mem, __FUNCTION__, __LINE__)
+
+//! Macro for writing to relevant RD memory holder's data and for detecting races
 #define WRITE(mem, mem_to_copy)Race_detect_write(_cilk_ws, mem, mem_to_copy, __FUNCTION__, __LINE__)
 
 
