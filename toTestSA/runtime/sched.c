@@ -30,6 +30,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include <RD_and_OM.h>
 
 #define BATCH_ASSERT(args...) CILK_ASSERT(args)
 
@@ -2075,6 +2076,27 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 #define ENGLISH_ID 10
 #define HEBREW_ID 11
 
+
+//! Race_Detect Struct
+/*! This struct is to be utilized as if it is the memory location
+  of a particular variable in a program.  To change the value of
+  the pointer, race_detect_Read or rd_write must be called and the 
+  necessary changes to the real variable they care about are handled
+  internally, through the member data.
+*/
+struct RD_Memory_Struct_s {
+
+	Cilk_mutex mutex; //Lock for atomicity
+	void * data; //The memory location where the read/write occurs
+	size_t size; //Size of 'data' data type
+	OM_Node * left_r; //leftmost node that is reading
+	OM_Node * right_r; //rightmost node that is reading
+	OM_Node * left_w; //leftmost node that is writing
+	OM_Node * right_w; //rightmost node that is writing
+
+};
+
+
 void OM_DS_init(CilkContext *const context){
 	if (context->Cilk_global_state){
 		;//printf("Debug: OM_DS_init\n");
@@ -2394,25 +2416,6 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 /**************************************************************!
  *        === Race detect functions in particular ===         *
  **************************************************************/
-
-//! Race_Detect Struct
-/*! This struct is to be utilized as if it is the memory location
-  of a particular variable in a program.  To change the value of
-  the pointer, race_detect_Read or rd_write must be called and the 
-  necessary changes to the real variable they care about are handled
-  internally, through the member data.
-*/
-typedef struct RD_Memory_Struct_s {
-
-	Cilk_mutex mutex; //Lock for atomicity
-	void * data; //The memory location where the read/write occurs
-	size_t size; //Size of 'data' data type
-	OM_Node * left_r; //leftmost node that is reading
-	OM_Node * right_r; //rightmost node that is reading
-	OM_Node * left_w; //leftmost node that is writing
-	OM_Node * right_w; //rightmost node that is writing
-
-} RD_Memory_Struct;
 
 /*! Initializes the lock for a RD_Memory_struct
   \param ws The current workerstate upon being called

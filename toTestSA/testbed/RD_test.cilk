@@ -10,7 +10,7 @@ cilk void sp_write(int * x, int _z){
 cilk int main(int argv, char* argc){
 	int * x, y;
 
-	x = RD_INIT(int);
+	x = RD_INIT(int, 1);
 
 	spawn sp_write(x, 1);
 	spawn sp_write(x, 1);

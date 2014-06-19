@@ -24,6 +24,7 @@
 #define _CILK_LIB_H
 
 #include <cilk.h>
+#include <RD_and_OM.h>
 
 FILE_IDENTITY (ident_cilk_lib_h,
 	       "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-lib.cilkh $ $LastChangedBy: bradley $ $Rev: 1699 $ $Date: 2004-10-22 22:22:25 -0400 (Fri, 22 Oct 2004) $");
@@ -142,34 +143,6 @@ extern void OM_DS_free_and_free_nodes(CilkContext *const context);
 extern void OM_DS_init(CilkContext *const context);
 
 extern void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame);
-
-extern void * RD_structure_create(CilkWorkerState * const ws, size_t size);
-
-extern void RD_free(CilkWorkerState * const ws, void * mem);
-
-extern void Race_detect_write(CilkWorkerState * const ws, void * memPtr, const void * writeValue, const char* func_name, const int line_num);
-
-extern void * Race_detect_read(CilkWorkerState * const ws, void * memPtr, const char* func_name, const int line_num);
-
-//!For boolean checking
-extern void Race_detect_write_b(CilkWorkerState * const ws, void * memPtr, const void * writeValue, const char* func_name, const int line_num, int *);
-
-extern void * Race_detect_read_b(CilkWorkerState * const ws, void * memPtr, const char* func_name, const int line_num, int *);
-
-//! Macro for initializing RD_Memory_Struct by specified type
-#define RD_INIT(type, sizefactor) (type*)RD_structure_create(_cilk_ws, sizefactor*sizeof(type))
-
-//!For boolean checking
-#define READ_b(mem, type, bool) *(type*)Race_detect_read_b(_cilk_ws, mem, __FUNCTION__, __LINE__, bool)
-
-//!For boolean checking
-#define WRITE_b(mem, mem_to_copy, bool) Race_detect_write_b(_cilk_ws, mem, mem_to_copy, __FUNCTION__, __LINE__, bool)
-
-//! Macro for reading relevant RD memory holder's data and for detecting races
-#define READ(mem, type) *(type*)Race_detect_read(_cilk_ws, mem, __FUNCTION__, __LINE__)
-
-//! Macro for writing to relevant RD memory holder's data and for detecting races
-#define WRITE(mem, mem_to_copy) Race_detect_write(_cilk_ws, mem, mem_to_copy, __FUNCTION__, __LINE__)
 
 
 #endif				/* _CILK_LIB_H */
