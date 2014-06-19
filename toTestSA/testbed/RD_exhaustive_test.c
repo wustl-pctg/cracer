@@ -34,6 +34,13 @@ typedef struct test_struct_gen_s {
 	size_t size;
 } test_struct_gen;
 
+/**\fCheck_test_struct_equal
+ * \brief Checks if all of the variables in the rd_ds-> and the test_struct_gen are the same
+ */
+inline void Check_test_struct_equal(const void *rd_ds, test_struct_gen * s){
+//TODO: include this struct so we cn compare memory	assert(memcmp( (RD_Memory_Struct*) rd_ds
+}
+
 /**\fn Assign_struct_random_vars
  * \brief Assign random variables and allocate variables for members of struct
 */
@@ -185,11 +192,11 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
 	/// Note: This is overly specific, but it will catch errors in the
 	/// 	  test itself if the op1/op2 are passed incorrectly
 	if (op1 == READ_ARG && op2 == READ_ARG)
-	    	assert(race_detect_results1 || race_detect_Results2 == 0); /// No races
-	else if (  (op1 == READ_ARG  && op2 == WRITE_ARG) \
-		|| (op1 == WRITE_ARG && op2 == READ_ARG)  \
+	    	assert(!(race_detect_results1 | race_detect_results2) == 0); /// No races
+	else if (  (op1 == READ_ARG  && op2 == WRITE_ARG) 
+		|| (op1 == WRITE_ARG && op2 == READ_ARG)  
 		|| (op1 == READ_ARG  && op2 == WRITE_ARG))
-	    	assert(race_detect_results1 ^ race_detect_results2 == 1); /// Only one had a race
+	    	assert((race_detect_results1 ^ race_detect_results2) == 1); /// Only one had a race
 	else 
 		assert(0); /// Only done if incorrectly passed op1/op2 into function
 
@@ -228,10 +235,10 @@ cilk void rd_parent_child_test(){
 	spawn parent_child_spawned(seq_r_w, READ_ARG, WRITE_ARG, SEQUENTIAL);sync;
 
 	/// Run sequentially write/read
-	spawn parent_child_spawned(seq_r_r, WRITE_ARG, READ_ARG, SEQUENTIAL);sync;
+	spawn parent_child_spawned(seq_w_r, WRITE_ARG, READ_ARG, SEQUENTIAL);sync;
 
 	/// Run sequentially write/write
-	spawn parent_child_spawned(seq_r_r, WRITE_ARG, WRITE_ARG, SEQUENTIAL);sync;
+	spawn parent_child_spawned(seq_w_w, WRITE_ARG, WRITE_ARG, SEQUENTIAL);sync;
 
 	/// Run parallel read/read
 	spawn parent_child_spawned(par_r_r, READ_ARG, READ_ARG, PARALLEL);sync;
@@ -240,10 +247,10 @@ cilk void rd_parent_child_test(){
 	spawn parent_child_spawned(par_r_w, READ_ARG, WRITE_ARG, PARALLEL);sync;
 
 	/// Run parallel write/read
-	spawn parent_child_spawned(par_r_r, WRITE_ARG, READ_ARG, PARALLEL);sync;
+	spawn parent_child_spawned(par_w_r, WRITE_ARG, READ_ARG, PARALLEL);sync;
 
 	/// Run parallel write/write
-	spawn parent_child_spawned(par_r_r, WRITE_ARG, WRITE_ARG, PARALLEL);sync;
+	spawn parent_child_spawned(par_w_w, WRITE_ARG, WRITE_ARG, PARALLEL);sync;
 
 
 	/// Free all race detect data structures
@@ -282,14 +289,14 @@ inline void seq_same_func_c(void * rd_ds, const int op1, const int op2 ){
 		/// Read from tmp structure
 		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
 		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, tmp_s));
+		assert(Check_test_struct_equal(rd_ds, &tmp_s));
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
 	}
 	else	{
 		WRITE_b(rd_ds, &tmp_s); 
 		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, tmp_s));
+		assert(Check_test_struct_equal(rd_ds, &tmp_s));
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
 	}
@@ -300,7 +307,7 @@ inline void seq_same_func_c(void * rd_ds, const int op1, const int op2 ){
 		/// Read from tmp structure
 		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
 		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, tmp_s));
+		assert(Check_test_struct_equal(rd_ds, &tmp_s));
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
 		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
@@ -308,7 +315,7 @@ inline void seq_same_func_c(void * rd_ds, const int op1, const int op2 ){
 	else	{
 		WRITE_b(rd_ds, &tmp_s); 
 		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, tmp_s));
+		assert(Check_test_struct_equal(rd_ds, &tmp_s));
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
 	}
@@ -351,15 +358,15 @@ cilk void rd_same_function_test(){
 
 	/// Run sequentially read/write
 	spawn seq_same_func_spawned(seq_r_w, READ_ARG, WRITE_ARG);sync;
-	seq_same_func_c(seq_r_r, READ_ARG, WRITE_ARG);
+	seq_same_func_c(seq_r_w, READ_ARG, WRITE_ARG);
 
 	/// Run sequentially write/read
-	spawn seq_same_func_spawned(seq_r_r, WRITE_ARG, READ_ARG);sync;
-	seq_same_func_c(seq_r_r, WRITE_ARG, READ_ARG);
+	spawn seq_same_func_spawned(seq_w_r, WRITE_ARG, READ_ARG);sync;
+	seq_same_func_c(seq_w_r, WRITE_ARG, READ_ARG);
 
 	/// Run sequentially write/write
-	spawn seq_same_func_spawned(seq_r_r, WRITE_ARG, WRITE_ARG);sync;
-	seq_same_func_c(seq_r_r, WRITE_ARG, WRITE_ARG);
+	spawn seq_same_func_spawned(seq_w_w, WRITE_ARG, WRITE_ARG);sync;
+	seq_same_func_c(seq_w_w, WRITE_ARG, WRITE_ARG);
 
 	/// Run parallel read/read
 	spawn par_same_func_spawned(par_r_r, READ_ARG, READ_ARG);sync;
@@ -367,15 +374,15 @@ cilk void rd_same_function_test(){
 
 	/// Run parallel read/write
 	spawn par_same_func_spawned(par_r_w, READ_ARG, WRITE_ARG);sync;
-	par_same_func_c(par_r_r, READ_ARG, WRITE_ARG);
+	par_same_func_c(par_r_w, READ_ARG, WRITE_ARG);
 
 	/// Run parallel write/read
-	spawn par_same_func_spawned(par_r_r, WRITE_ARG, READ_ARG);sync;
-	par_same_func_c(par_r_r, WRITE_ARG, READ_ARG);
+	spawn par_same_func_spawned(par_w_r, WRITE_ARG, READ_ARG);sync;
+	par_same_func_c(par_w_r, WRITE_ARG, READ_ARG);
 
 	/// Run parallel write/write
-	spawn par_same_func_spawned(par_r_r, WRITE_ARG, WRITE_ARG);sync;
-	par_same_func_c(par_r_r, WRITE_ARG, WRITE_ARG);
+	spawn par_same_func_spawned(par_w_w, WRITE_ARG, WRITE_ARG);sync;
+	par_same_func_c(par_w_w, WRITE_ARG, WRITE_ARG);
 
 
 	/// Free all race detect data structures
