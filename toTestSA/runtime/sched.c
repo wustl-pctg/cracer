@@ -2411,16 +2411,8 @@ typedef struct RD_Memory_Struct_s {
 	OM_Node * right_r; //rightmost node that is reading
 	OM_Node * left_w; //leftmost node that is writing
 	OM_Node * right_w; //rightmost node that is writing
-	struct RD_Memory_Struct_s * next;
 
 } RD_Memory_Struct;
-
-typedef struct {
-
-	int size;
-	RD_Memory_Struct * head;
-	
-} RD_List;
 
 /*! Initializes the lock for a RD_Memory_struct
   \param ws The current workerstate upon being called
@@ -2428,7 +2420,7 @@ typedef struct {
 */
 static void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 {
-	printf("RD_mutex_inti\n");
+	/*printf("Debug: RD_mutex_init\n");*/
 	Cilk_mutex_init(ws->context, &(mem->mutex) );
 }
 
@@ -2438,6 +2430,7 @@ static void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 */
 static void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 {
+	/*printf("Debug: RD_mutex_destroy\n");*/
 	Cilk_mutex_destroy(ws->context, &(mem->mutex) );
 }
 
@@ -2450,15 +2443,15 @@ static void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 {
 	RD_Memory_Struct * memPtr;
-	//printf("RD_structure_create\n");
+	/*printf("Debug: RD_structure_create\n");*/
 	memPtr = Cilk_malloc(sizeof(RD_Memory_Struct));
 
 	//!Inialize known members
 	memPtr->size = size; 
 	memPtr->data = Cilk_malloc(sizeof(size));
+
+	//!Initialize the lock
 	RD_mutex_init(ws, memPtr);
-	
-	//!Append this struct to the end of the RD_List
 	
 	return (void *)memPtr;
 }
@@ -2466,10 +2459,16 @@ void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 void RD_free(CilkWorkerState * const ws, void * mem)
 {
 	RD_Memory_Struct * memptr;
-	//printf("RD_free\n");
+	/*printf("Debug: RD_free\n");*/
 	memptr = (RD_Memory_Struct*)mem;
+
+	//!First free data held in struct
 	Cilk_free(memptr->data);
+
+	//! Clear the lock
 	RD_mutex_destroy(ws, memptr);
+
+	//!Finally, free the struct itself
 	Cilk_free(mem);
 }
 
@@ -2487,12 +2486,12 @@ void * Race_detect_read(CilkWorkerState * const ws,
 
 	//!Get struct
 	RD_Memory_Struct * mem;
-	//printf("Race_detect_Read\n");
+	/*printf("Debug: Race_detect_Read\n");*/
 	mem = (RD_Memory_Struct *)memPtr;
 
 	//!Get lock
 	Cilk_mutex_wait(ws->context, ws,  &(mem->mutex) );
-	//printf("Got lock - RD_read\n");
+	/*printf("Debug: Got lock - RD_read\n");*/
 
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
@@ -2541,8 +2540,6 @@ void * Race_detect_read(CilkWorkerState * const ws,
 	   	Cilk_mutex_signal(ws->context, &(mem->mutex) );
 		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 	}
-	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT
-
 	
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
@@ -2552,7 +2549,8 @@ void * Race_detect_read(CilkWorkerState * const ws,
 
 	//!No race, release lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
-	//printf("Release lock - RD-read\n");
+	/*printf("Debug: Release lock - RD-read\n");*/
+
 	//! Read the data
 	return mem->data;
 
@@ -2572,7 +2570,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 
 	//!Get struct
 	RD_Memory_Struct * mem;
-	//printf("Race_detect_write\n");
+	/*printf("Race_detect_write\n");*/
 	mem = (RD_Memory_Struct *)memPtr;
 	
 	//!Get Lock
@@ -2587,7 +2585,12 @@ void Race_detect_write(CilkWorkerState * const ws,
 		//!Inialize ptrs for struct
 		mem->left_w = mem->right_w = currentNode;
 
-		//!Only check for races on reads, fuller explanation below
+		/*! ****Fuller Explanation of Race Detection Conditions Below**** 
+		 * In the event that the first write node is encounterd, races must be
+		 * check only with read nodes, for the conditionals below will detect a
+		 * "race" with itself (since at this point the left=right=current).
+		 * As a result, we check for races within this if and write instead 
+		 */
 		if(  //(5)
 			(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
 			 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
@@ -2675,11 +2678,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
  		)
 	{
+		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
+
 		//! Have to release lock
 	   	Cilk_mutex_signal(ws->context, &(mem->mutex) );
-		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 	}
-	//TODO ========== THROW RACE DETECTION ===== FIGURE THIS OUT	
 
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
