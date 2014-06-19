@@ -151,5 +151,9 @@ extern void Race_detect_write(CilkWorkerState * const ws, void * memPtr, const v
 
 extern void * Race_detect_read(CilkWorkerState * const ws, void * memPtr, const char* func_name, const int line_num);
 
+#define RD_INIT(type) (type*)RD_structure_create(_cilk_ws, sizeof(type))
+#define READ(mem, type) *(type*)Race_detect_read(_cilk_ws, mem, __FUNCTION__, __LINE__)
+#define WRITE(mem, mem_to_copy)Race_detect_write(_cilk_ws, mem, mem_to_copy, __FUNCTION__, __LINE__)
+
 
 #endif				/* _CILK_LIB_H */

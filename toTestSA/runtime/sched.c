@@ -2479,7 +2479,10 @@ void RD_free(CilkWorkerState * const ws, void * mem)
   \param memPtr The memory address of the struct used in checking
   \return memory address of read location
 */
-void * Race_detect_read(CilkWorkerState * const ws, void * memPtr, const char * func_name, const int line_num)
+void * Race_detect_read(CilkWorkerState * const ws,
+						void * memPtr,
+						const char * func_name,
+						const int line_num)
 {
 
 	//!Get struct
@@ -2562,7 +2565,9 @@ void * Race_detect_read(CilkWorkerState * const ws, void * memPtr, const char * 
 */
 void Race_detect_write(CilkWorkerState * const ws,
 					   void * memPtr,
-					   const void * writeValue, const char *func_name, const int line_num)
+					   const void * writeValue,
+					   const char *func_name,
+					   const int line_num)
 {
 
 	//!Get struct
