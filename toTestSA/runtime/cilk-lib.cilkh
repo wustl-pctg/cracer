@@ -160,10 +160,10 @@ extern void * Race_detect_read_b(CilkWorkerState * const ws, void * memPtr, cons
 #define RD_INIT(type, sizefactor) (type*)RD_structure_create(_cilk_ws, sizefactor*sizeof(type))
 
 //!For boolean checking
-#define READ_b(mem, type, int*) *(type*)Race_detect_read_b(_cilk_ws, mem, __FUNCTION__, __LINE__, int*)
+#define READ_b(mem, type, bool) *(type*)Race_detect_read_b(_cilk_ws, mem, __FUNCTION__, __LINE__, bool)
 
 //!For boolean checking
-#define WRITE_b(mem, mem_to_copy, int*) Race_detect_write_b(_cilk_ws, mem, mem_to_copy, __FUNCTION__, __LINE__, int*)
+#define WRITE_b(mem, mem_to_copy, bool) Race_detect_write_b(_cilk_ws, mem, mem_to_copy, __FUNCTION__, __LINE__, bool)
 
 //! Macro for reading relevant RD memory holder's data and for detecting races
 #define READ(mem, type) *(type*)Race_detect_read(_cilk_ws, mem, __FUNCTION__, __LINE__)

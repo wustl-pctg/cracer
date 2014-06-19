@@ -139,6 +139,7 @@ cilk void seq_parent_child_spawned(void * rd_ds, const int op1, const int op2 ){
 cilk void par_parent_child_spawned(void * rd_ds, const int op1, const int op2 ){
 	
 }
+
 inline void seq_parent_child_c(void * rd_ds, const int op1, const int op2 ){
 	/// Create var to store race detection result
 	int race_detect_result1 = -1, race_detect_results2 = -1;
@@ -328,6 +329,106 @@ cilk void rd_same_function_test(){
 	RD_free(_cilk_ws, par_w_r);
 	RD_free(_cilk_ws, par_w_w);
 }
+
+
+/// End rd_same_function_test
+/// Start functions for rd_cousin_test
+
+cilk void cousin_sequential(const int op1, const int op2, void * mem_ptr) {
+
+	/// Booleans to use to check if races are detected
+	int race_detected1, race_detected2;
+
+	/// Spawn op1, then sync
+	if(op1) {
+		spawn spawn_rd_cousin_write(mem_ptr, race_detected1);
+	} else {
+		spawn spawn_rd_cousin_read(mem_ptr, race_detected1);
+	} sync;
+	
+	/// Spawn op2, then sync
+	if(op2) {
+		spawn spawn_rd_cousin_write(mem_ptr, race_detected2);
+	} else {
+		spawn spawn_rd_cousin_write(mem_ptr, race_detected2);
+	} sync;
+}
+
+cilk void cousin_parallel(const int op1, const int op2, void * mem_ptr) {
+
+	/// Booleans to use to check if races are detected
+	int race_detected1, race_detected2;
+
+	/// Spawn op1 *DON'T SYNC*
+	if(op1) {
+		spawn spawn_rd_cousin_write(mem_ptr, race_detected1);
+	} else {
+		spawn spawn_rd_cousin_read(mem_ptr, race_detected1);
+	}
+	
+	/// Spawn op2
+	if(op2) {
+		spawn spawn_rd_cousin_write(mem_ptr, race_detected2);
+	} else {
+		spawn spawn_rd_cousin_write(mem_ptr, race_detected2);
+	}
+
+	/// Now Sync
+	sync;
+}
+
+
+
+cilk void rd_cousin_test() {
+
+
+	/// Declare the four types of race detect variables
+	/// These will be used in cousins that are sequential
+	void * seq_r_r, * seq_r_w, *seq_w_r, *seq_w_w;
+	
+	/// Declare the four types of parallel race detect variables
+	/// These will be used in cousins that are parallel
+	void * par_r_r, * par_r_w, *par_w_r, *par_w_w;
+	
+	/// Instantiate all of the race detect structures 
+	seq_r_r = RD_INIT(test_struct_gen);
+	seq_r_w = RD_INIT(test_struct_gen);
+	seq_w_r = RD_INIT(test_struct_gen);
+	seq_w_w = RD_INIT(test_struct_gen);
+	par_r_r = RD_INIT(test_struct_gen);
+	par_r_w = RD_INIT(test_struct_gen);
+	par_w_r = RD_INIT(test_struct_gen);
+	par_w_w = RD_INIT(test_struct_gen);
+
+
+
+
+
+
+
+
+
+
+
+
+
+	/// Free all race detect data structures
+	RD_free(_cilk_ws, seq_r_r);
+	RD_free(_cilk_ws, seq_r_w);
+	RD_free(_cilk_ws, seq_w_r);
+	RD_free(_cilk_ws, seq_w_w);
+	RD_free(_cilk_ws, par_r_r);
+	RD_free(_cilk_ws, par_r_w);
+	RD_free(_cilk_ws, par_w_r);
+	RD_free(_cilk_ws, par_w_w);
+
+
+}
+
+
+
+
+
 
 
 
