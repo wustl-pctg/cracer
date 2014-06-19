@@ -10,21 +10,30 @@
 /**\union general union to test on*/
 typedef union test_union_gen_u {
 	int x, y, z;
+
 	void *a, *b, *c;
+
 } test_union_gen;
 
 /**\struct General struct to test
 */
 typedef struct test_struct_gen_s {
+
 	int * a, b;
+
 	void * c;
+
 	double *d, e;
+
 	float *f, g;
+
 	test_union_gen *u, v;
+
 	size_t size;
 } test_struct_gen;
 
-inline void assignStructRandomVars(test_struct_gen * s){
+inline void Assign_struct_random_vars(test_struct_gen * s){
+
 	/// Assign a
     	s->a 	= malloc(sizeof(int)); 
 	*s->a = (int) rand();	 
@@ -52,7 +61,8 @@ inline void assignStructRandomVars(test_struct_gen * s){
 	
 }
 
-inline void assignUnionRandomVars(test_union_gen * u){
+inline void Assign_union_random_vars(test_union_gen * u){
+
     	/// Assign a
 	u->a = (int)rand();
     	/// Assign b
@@ -80,6 +90,7 @@ inline void Free_test_union_members(test_union_gen *u){
 	/// Free c
 	free(u->c);
 }
+
 /** \fn FreeTestStructMembers
  *  \brief Free all members of the struct that were dynamically allocated
  */
@@ -123,8 +134,8 @@ inline void seq_same_func_c(void * rd_ds, const int op1, const int op2 ){
 	test_union_gen tmp_u;
 	
 	/// Give struct and union random variables and allocate memory to members
-	assignStructRandomVars(&tmp_s);
-	assignUnionRandomVars(&tmp_u);
+	Assign_struct_random_vars(&tmp_s);
+	Assign_union_random_vars(&tmp_u);
 
 	/// Execute first operation	
 	/// No races expected
@@ -165,8 +176,8 @@ inline void seq_same_func_c(void * rd_ds, const int op1, const int op2 ){
 	}
 
 	/// Free dynamically allocated members of test structs.
-	freeTestUnionMembers(&tmp_u);
-	freeTestStructMembers(&tmp_s);
+	Free_test_union_members(&tmp_u);
+	Free_test_struct_members(&tmp_s);
 }
 
 
