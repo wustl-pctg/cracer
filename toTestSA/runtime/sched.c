@@ -2546,6 +2546,9 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
 		//!Print that there's a race and continue
 		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 	}
+	else
+		//!Make the bool 0
+		*bool = 0;
 	
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
@@ -2553,8 +2556,6 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
 	if(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID))
 		mem->right_r = currentNode;
 
-	//!Make the bool 0
-	*bool = 0;
 
 	//!No race, release lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
@@ -2778,7 +2779,9 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 		//!Make boolean true
 		*bool = 1;
 	}
-
+	else
+		//! Make bool 0
+		*bool = 0;
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
 		mem->left_w = currentNode;
@@ -2788,8 +2791,6 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 	//! Write the data
 	memcpy( mem->data, writeValue, mem->size);
 
-	//! Make bool 0
-	*bool = 0;
 
 	//!Release Lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
