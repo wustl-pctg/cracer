@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <time.h>
 #include <assert.h>
-#include <RD_and_OM.h>
 
 
 #define READ_ARG 	0
@@ -14,7 +13,7 @@
 
 
 /**\union general union to test on*/
-typedef union test_union_gen_u {
+typedef  struct test_union_gen_u {
 	int x, y, z;
 
 	void *a, *b, *c;
@@ -38,27 +37,27 @@ typedef struct test_struct_gen_s {
 	size_t size;
 } test_struct_gen;
 
-/**\fCheck_test_struct_equal
+/**\fn Check_test_struct_equal
  * \brief Checks if all of the variables in the rd_ds-> and the test_struct_gen are the same
  */
-inline int Check_test_struct_equal(const void *rd_ds, test_struct_gen * s){
-	/*TODO: FIX FUNCTION struct RD_Memory_Struct_s * ms = (struct RD_Memory_Struct_s*)rd_ds;
-	void * ms_data_v = (void *)(ms->data);
-	test_struct_gen tmp = *(test_struct_gen*)ms_data_v;
+cilk void  Check_test_struct_equal(void *rd_ds, test_struct_gen * s){
 
+	test_struct_gen tmp;
+	printf("***ignore this line*****( doing memory checks ): ");
+	tmp = READ(rd_ds, test_struct_gen);	
+	
 	/// Assert that each variable within rd_ds->data is the same as s
 	assert(*tmp.a = *s->a);
 	assert(tmp.b = s->b);
 	assert(tmp.c = s->c); //VOID, dont dereference
-	assert(*tmp.d = s->d);
+	assert(*tmp.d = *s->d);
 	assert(tmp.e = s->e);
 	assert(*tmp.f = *s->f);
 	assert(tmp.g = s->g);
-	assert(*tmp.u = *s->u);
-	assert(tmp.v = s->v);
+	assert(memcmp(tmp.u, s->u, sizeof(test_union_gen)));
+	assert(memcmp(&tmp.v, &(s->v), sizeof(test_union_gen)));
 	assert(tmp.size = s->size);
-	*/
-	return 1;
+	
 }
 
 /**\fn Assign_union_random_vars
@@ -153,7 +152,9 @@ cilk void cilk_write_func(void *rd_ds, test_struct_gen * s, int * result){
 	WRITE_b(rd_ds, s, result);
 	
 	/// Check test struct equal to passed in race detect data structure
-	assert(Check_test_struct_equal(rd_ds, s));
+	
+	spawn Check_test_struct_equal(rd_ds, s);
+	sync;
 }
 
 /// A spawned read helper function
@@ -162,7 +163,8 @@ cilk void cilk_read_func(void *rd_ds, test_struct_gen * s, int * result){
 	*s = READ_b(rd_ds, test_struct_gen, result);
 
 	/// Compare to test_Struct passed in
-	assert(Check_test_struct_equal(rd_ds, s));
+	spawn Check_test_struct_equal(rd_ds, s);
+	sync;
 }
 
 /// Functions used by rd_parent_child_test
@@ -315,7 +317,8 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
 
 		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, &tmp_s));
+		spawn Check_test_struct_equal(rd_ds, &tmp_s);
+		sync;
 
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
@@ -324,7 +327,8 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 		WRITE_b(rd_ds, &tmp_s, &race_detect_result); 
 
 		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, &tmp_s));
+		spawn Check_test_struct_equal(rd_ds, &tmp_s);
+		sync; 
 
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
@@ -340,7 +344,8 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
 
 		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, &tmp_s));
+		spawn Check_test_struct_equal(rd_ds, &tmp_s);
+		sync;
 
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
@@ -348,7 +353,8 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 	else	{
 		WRITE_b(rd_ds, &tmp_s, &race_detect_result); 
 		/// Check test struct equal to passed in race detect data structure
-		assert(Check_test_struct_equal(rd_ds, &tmp_s));
+		spawn Check_test_struct_equal(rd_ds, &tmp_s);
+		sync;
 		/// Assert that no race happened
 		assert(race_detect_result == 0);
 	}
@@ -415,7 +421,8 @@ cilk void spawn_rd_cousin_write(void *rd_ds, test_struct_gen * s, int result){
 	WRITE_b(rd_ds, s, &result);
 	
 	/// Check test struct equal to passed in race detect data structure
-	assert(Check_test_struct_equal(rd_ds, s));
+	spawn Check_test_struct_equal(rd_ds, s);
+	sync;
 }
 
 /// A spawned read helper function
@@ -424,7 +431,8 @@ cilk void spawn_rd_cousin_read(void *rd_ds, test_struct_gen * s, int result){
 	*s = READ_b(rd_ds, test_struct_gen, &result);
 
 	/// Compare to test_Struct passed in
-	assert(Check_test_struct_equal(rd_ds, s));
+	spawn Check_test_struct_equal(rd_ds, s);
+	sync;
 }
 
 
