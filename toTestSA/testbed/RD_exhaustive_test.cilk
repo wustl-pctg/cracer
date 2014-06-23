@@ -124,20 +124,18 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
 	//Sync to end parallel threads
 	if (par_flag == PARALLEL)
 		sync;
-
+printf("RD1: %i, RD2: %i, (RD1 ^ RD2): %i\n", race_detect_result1, race_detect_result2, (race_detect_result1 ^ race_detect_result2));
 	/// Check if our race conditions were as expected
 	/// Note: This is overly specific, but it will catch errors in the
 	/// 	  test itself if the op1/op2 are passed incorrectly
 	if ((op1 == READ_ARG && op2 == READ_ARG) || par_flag == SEQUENTIAL )
 		assert((race_detect_result1 | race_detect_result2) == 0); /// No races
-	else if ((	(
-					op1 == READ_ARG  && op2 == WRITE_ARG) 
-		    	|| (op1 == WRITE_ARG && op2 == READ_ARG)  
-				|| (op1 == READ_ARG  && op2 == WRITE_ARG) 
-				 ) 
+	else if (((op1 == READ_ARG  && op2 == WRITE_ARG) 
+		   	|| (op1 == WRITE_ARG && op2 == READ_ARG)  
+			|| (op1 == WRITE_ARG  && op2 == WRITE_ARG) ) 
 			 &&  par_flag == PARALLEL)
-//	    	assert((race_detect_result1 ^ race_detect_result2) == 1); /// Only one had a race
-	{printf("RD1: %i, RD2: %i, (RD1 ^ RD2): %i\n", race_detect_result1, race_detect_result2, (race_detect_result1 ^ race_detect_result2));}
+	    	assert((race_detect_result1 ^ race_detect_result2) == 1); /// Only one had a race
+	
 	else 
 		assert(0); /// Only done if incorrectly passed op1/op2 into function
 }
