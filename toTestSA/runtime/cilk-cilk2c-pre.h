@@ -134,7 +134,9 @@ static inline void *Cilk_cilk2c_init_frame(CilkWorkerState *const ws,
   *t = (CilkStackFrame *) f;
 
   //added for ORDER MAINTENANCE for RACE DETECT
+  printf("Debug: Calling init frame\n");
   (*t)->current_node = ((CilkStackFrame *)(*(ws->current_cache->tail - 1)))->next_spawned_node;
+  printf("Current node id: %i\n", (*t)->current_node->id);
 
   Cilk_membar_StoreStore();
   ws->current_cache->tail = t + 1;

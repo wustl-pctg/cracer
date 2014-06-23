@@ -99,12 +99,14 @@
 
 #define CILK2C_AFTER_SPAWN_FAST() {					\
      Cilk_cilk2c_after_spawn_fast_cp(_cilk_ws, &(_cilk_frame->header));	\
+     OM_DS_after_spawn_fast(_cilk_ws, &(_cilk_frame->header));		\
      Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);			\
 }
 
-#define CILK2C_AFTER_SPAWN_SLOW() \
-  Cilk_cilk2c_after_spawn_slow_cp(_cilk_ws, &(_cilk_frame->header))
-
+#define CILK2C_AFTER_SPAWN_SLOW() { \
+  Cilk_cilk2c_after_spawn_slow_cp(_cilk_ws, &(_cilk_frame->header));	\
+  OM_DS_after_spawn_slow(_cilk_ws, &(_cilk_frame->header));		\
+      }
 #define CILK2C_START_THREAD_FAST() {					 \
      Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header)); \
      Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);			 \
