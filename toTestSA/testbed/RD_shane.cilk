@@ -1,0 +1,114 @@
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+
+
+cilk void sp_write(int * x, int _z){
+	WRITE(x, &_z);
+}
+
+cilk void sp_read(int * x, int * _y){
+	*_y = READ(x,int);
+}
+
+cilk void Read_S_Write_S(int *x, int * y, int z){
+
+	printf("\n***************************%s starting. Should be race detected.\n", __FUNCTION__);
+	spawn sp_read(x, y);
+	spawn sp_write(x,z);
+	sync;
+}
+
+cilk void Read_Write_S(int *x, int * y, int z){
+
+	printf("\n***************************%s starting. Should be *no* race detected.\n", __FUNCTION__);
+	*y = READ(x,int);
+	spawn sp_write(x, z);
+	sync;
+
+}
+
+cilk void Read_S_Write(int *x, int * y, int z){
+
+	printf("\n***************************%s starting. Should be race detected.\n", __FUNCTION__);
+	spawn sp_read(x,y);
+	WRITE(x, &z);
+	sync;
+
+}
+
+cilk void Read_Write(int *x, int * y, int z){
+
+	printf("\n****************************%s starting. Should be *no* race detected.\n", __FUNCTION__);
+	*y = READ(x, int);
+	WRITE(x, &z);
+
+}
+
+cilk void Write_S_Write_S(int *x, int * y, int z){
+
+	printf("\n***************************%s starting. Should be race detected.\n", __FUNCTION__);
+	spawn sp_write(x, &z);
+	spawn sp_write(x, &z);
+	sync;
+
+}
+
+cilk void Write_Write_S(int *x, int * y, int z){
+
+	printf("\n***************************%s starting. Should be *no* race detected.\n", __FUNCTION__);
+	WRITE(x, &z);
+	spawn sp_write(x, &z);
+	sync;
+
+}
+
+cilk void Write_S_Write(int *x, int * y, int z){
+
+	printf("\n***************************%s starting. Should be race detected.\n", __FUNCTION__);
+	spawn sp_write(x, &z);
+	WRITE(x, &z);
+	sync;
+
+}
+
+cilk void Write_Write(int *x, int * y, int z){
+
+	printf("\n***************************%s starting. Should be *no* race detected.\n", __FUNCTION__);
+	WRITE(x, &z);
+	WRITE(x, &z);
+
+}
+
+
+
+
+
+
+
+cilk int main(int argv, char* argc){
+	int * x, y;
+	int z = 2;
+	x = RD_INIT(int, 1);
+
+	WRITE(x, &z);
+
+	spawn Read_S_Write_S(x, &y, 1); sync;
+
+	spawn Read_Write_S(x, &y, 1); sync;
+
+	spawn Read_S_Write(x, &y, 1); sync;
+
+	spawn Read_Write(x, &y, 1); sync;
+
+	spawn Write_S_Write_S(x, &y, 1); sync;
+
+	spawn Write_Write_S(x, &y, 1); sync;
+
+	spawn Write_S_Write(x, &y, 1); sync;
+
+	spawn Write_Write(x, &y, 1); sync;
+
+	RD_free(_cilk_ws, (void *)x);
+	return 0;
+}
