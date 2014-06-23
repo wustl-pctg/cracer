@@ -2509,7 +2509,7 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
 	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first read-node checked
-	if( !(mem->left_r && mem->right_r) )
+	if( mem->left_w == NULL && mem->right_w == NULL )
 	{
 		//! Initalize ptrs for struct
 		mem->left_r = mem->right_r = currentNode;
@@ -2555,8 +2555,8 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
 		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 	}
 	else
-		//!Make the bool 0
-		*bool = 0;
+		*bool = 0; //!< Make the bool 0
+
 	
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
@@ -2598,7 +2598,7 @@ void * Race_detect_read(CilkWorkerState * const ws,
 	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first read-node checked
-	if( !(mem->left_r && mem->right_r) )
+	if( mem->left_r == NULL && mem->right_r == NULL )
 	{
 		//! Initalize ptrs for struct
 		mem->left_r = mem->right_r = currentNode;
@@ -2681,7 +2681,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first write-node checked
-	if( !(mem->left_w && mem->right_w) )
+	if( mem->left_w == NULL && mem->right_w == NULL )
 	{
 		//!Inialize ptrs for struct
 		mem->left_w = mem->right_w = currentNode;
@@ -2706,10 +2706,23 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 			 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
 			)
 		{
+			//! Print the race
 			printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 
 			//!Make boolean true
 			*bool = 1;
+
+		   	//! Write the data
+			memcpy( mem->data, writeValue, mem->size);
+
+			//! Have to release lock
+			Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+			return;
+		} else {
+
+			//!Make boolean false
+			*bool = 0;
 
 		   	//! Write the data
 			memcpy( mem->data, writeValue, mem->size);
@@ -2782,14 +2795,15 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
  		)
 	{
+		//! Print the race
 		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 
 		//!Make boolean true
 		*bool = 1;
 	}
 	else
-		//! Make bool 0
-		*bool = 0;
+		*bool = 0; //!< Make bool 0
+
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
 		mem->left_w = currentNode;
@@ -2829,7 +2843,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first write-node checked
-	if( !(mem->left_w && mem->right_w) )
+	if( mem->left_w == NULL && mem->right_w == NULL )
 	{
 		//!Inialize ptrs for struct
 		mem->left_w = mem->right_w = currentNode;
@@ -2854,6 +2868,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 			 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
 			)
 		{
+			//! Print the race
 			printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 
 		   	//! Write the data
@@ -2863,7 +2878,17 @@ void Race_detect_write(CilkWorkerState * const ws,
 			Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
 			return;
+		} else {
+
+		   	//! Write the data
+			memcpy( mem->data, writeValue, mem->size);
+
+			//! Have to release lock
+			Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+			return;
 		}
+
 	}
 	
 	/*! Check if there is a race:
@@ -2927,6 +2952,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
  		)
 	{
+		//! Print the race
 		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 	}
 
@@ -2944,7 +2970,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	
 }
 
-/* End Order Maintenence Functions */
+/* ============= End Order Maintenence Functions ============= */
 
 /*
  * initialization of the scheduler.

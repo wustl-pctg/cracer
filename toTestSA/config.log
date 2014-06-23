@@ -136,11 +136,11 @@ configure:3797: checking lex output file root
 configure:3813: result: lex.yy
 configure:3818: checking lex library
 configure:3837: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c   >&5
-/tmp/ccHzH2DD.o: In function `yylex':
+/tmp/ccWycmbP.o: In function `yylex':
 conftest.c:(.text+0x676): undefined reference to `yywrap'
-/tmp/ccHzH2DD.o: In function `input':
+/tmp/ccWycmbP.o: In function `input':
 conftest.c:(.text+0x10d2): undefined reference to `yywrap'
-/tmp/ccHzH2DD.o: In function `main':
+/tmp/ccWycmbP.o: In function `main':
 conftest.c:(.text+0x1d88): undefined reference to `yywrap'
 collect2: error: ld returned 1 exit status
 configure:3843: $? = 1
@@ -2481,7 +2481,7 @@ configure:20798: $? = 0
 configure:20816: result: yes
 configure:20830: checking for gethrtime
 configure:20886: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c -lm  >&5
-/tmp/ccyEymRu.o: In function `main':
+/tmp/ccE9KAqD.o: In function `main':
 conftest.c:(.text+0xa): undefined reference to `gethrtime'
 collect2: error: ld returned 1 exit status
 configure:20892: $? = 1
@@ -2570,7 +2570,7 @@ configure: failed program was:
 configure:20910: result: no
 configure:20924: checking for gethrvtime
 configure:20980: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c -lm  >&5
-/tmp/ccsAGT9A.o: In function `main':
+/tmp/ccncwYyI.o: In function `main':
 conftest.c:(.text+0xa): undefined reference to `gethrvtime'
 collect2: error: ld returned 1 exit status
 configure:20986: $? = 1
@@ -2667,7 +2667,7 @@ configure:21174: $? = 0
 configure:21192: result: yes
 configure:21206: checking for yield
 configure:21262: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c -lm  >&5
-/tmp/ccQp2iLK.o: In function `main':
+/tmp/ccMkXElP.o: In function `main':
 conftest.c:(.text+0xa): undefined reference to `yield'
 collect2: error: ld returned 1 exit status
 configure:21268: $? = 1
@@ -2758,7 +2758,7 @@ configure: failed program was:
 configure:21286: result: no
 configure:21300: checking for sginap
 configure:21356: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c -lm  >&5
-/tmp/ccu8x2YN.o: In function `main':
+/tmp/ccpVQoSU.o: In function `main':
 conftest.c:(.text+0xa): undefined reference to `sginap'
 collect2: error: ld returned 1 exit status
 configure:21362: $? = 1
@@ -2935,7 +2935,7 @@ conftest.c:55:37: warning: null argument where non-null required (argument 1) [-
                                      (void*(*)(void *)) 0, (void*) 0);
                                      ^
 conftest.c:55:37: warning: null argument where non-null required (argument 3) [-Wnonnull]
-/tmp/ccrDNkrY.o: In function `main':
+/tmp/ccsd1Hl8.o: In function `main':
 conftest.c:(.text+0x1b): undefined reference to `pthread_join'
 conftest.c:(.text+0x7e): undefined reference to `__pthread_register_cancel'
 conftest.c:(.text+0x97): undefined reference to `pthread_create'

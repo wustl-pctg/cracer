@@ -17,8 +17,8 @@ endif
 ifeq ($(mode),)
 	mode = bench
 endif
-ifeq ($(mode),bench)
-	CFLAGS += -O3 -DNDEBUG -m64
+ifeq ($(mode),bench) #SHANE'S EDITS - change to -O3
+	CFLAGS += -O0 -DNDEBUG -m64
 endif
 ifeq ($(mode),debug)
 	CFLAGS += -O0 -g -cilk-debug -save-temps -Wall
