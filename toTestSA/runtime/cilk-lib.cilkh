@@ -144,5 +144,8 @@ extern void OM_DS_init(CilkContext *const context);
 
 extern void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame);
 
+cilk void hahaha(){
+	printf("haha\n");
+}
 
 #endif				/* _CILK_LIB_H */
