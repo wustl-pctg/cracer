@@ -2,17 +2,25 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+extern cilk void hahaha();
 
-cilk void sp_write(int * x, int _z){
-	WRITE(x, &_z);
+cilk void sp_write(int * x, int  z){
+	WRITE(x, &z);
 }
 
+cilk void sp_read(int * x, int * z){
+	*z = READ(x,int);
+}
+
+
 cilk int main(int argv, char* argc){
-	int * x, y;
+	int * x, y = 6, z = 8, w = 0;
 //	int * b;
 //	int * c;
 //	int * d;
 //	int * e;
+	spawn hahaha();
+	sync;
 
 	x = RD_INIT(int, 1);
 //	b = RD_INIT(int, 1);
@@ -20,38 +28,19 @@ cilk int main(int argv, char* argc){
 //	d = RD_INIT(int, 1);
 //	e = RD_INIT(int, 1);
 
-	spawn sp_write(x, 1);
+	spawn sp_write(x,y);
+	w = READ(x,int);
 	sync;
 
 
+	spawn sp_read(x,&y);
+	WRITE(x,&z);
 
-	spawn sp_write(x, 2);
-
-	y = READ(x, int);
-
-//	spawn sp_write(x, 3);
-//	spawn sp_write(x, 4);
-
-
-//	spawn sp_write(x, 2);
-
-//	y = READ(x, int);
-
-//	spawn sp_write(x, 2);
-
-//	y = READ(x, int);
-
-	printf("before sync\n:");
-	sync;
-	y = READ(x, int);
 
 	printf("y: %d\n", y);
+
+	sync;
 	RD_free(_cilk_ws, (void *)x);
-//	RD_free(_cilk_ws, (void *)b);
-//	RD_free(_cilk_ws, (void *)c);
-//	RD_free(_cilk_ws, (void *)d);
-//	RD_free(_cilk_ws, (void *)e);
-
-
+	
 	return 0;
 }

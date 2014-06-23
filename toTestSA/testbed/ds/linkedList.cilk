@@ -193,7 +193,7 @@ cilk void insertSeq(void *dataStruct, void *data, size_t size, void *result){
 }
 
 /*! parallel version of insert */
-cilk void insertPar(void *dataStruct, void *data, size_t size, void *result)
+void insertPar(void *dataStruct, void *data, size_t size, void *result)
 {
 	LLInsertRecord ** irArray = (LLInsertRecord **)data;
 	LinkedList * list = (LinkedList *) dataStruct;
@@ -201,12 +201,12 @@ cilk void insertPar(void *dataStruct, void *data, size_t size, void *result)
 	int i;
 	for (i = 0; i<size; i++)
 	{
-		spawn atomicInsert(list, irArray[i]);
+		atomicInsert(list, irArray[i]);
 	}
 }
 
 /*!  single insert, called by insertPar */
-cilk void atomicInsert(LinkedList * list, LLInsertRecord *ir){
+void atomicInsert(LinkedList * list, LLInsertRecord *ir){
 	Node * x, *y, *z;
 	x = ir->x;
 	y = ir->y;
