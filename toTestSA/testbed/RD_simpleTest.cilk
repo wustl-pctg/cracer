@@ -21,11 +21,17 @@ cilk int main(int argv, char* argc){
 //	e = RD_INIT(int, 1);
 
 	spawn sp_write(x, 1);
-//	spawn sp_write(x, 2);
+	sync;
+
+
+
+	spawn sp_write(x, 2);
+
+	y = READ(x, int);
+
 //	spawn sp_write(x, 3);
 //	spawn sp_write(x, 4);
 
-	y = READ(x, int);
 
 //	spawn sp_write(x, 2);
 
@@ -37,6 +43,7 @@ cilk int main(int argv, char* argc){
 
 	printf("before sync\n:");
 	sync;
+	y = READ(x, int);
 
 	printf("y: %d\n", y);
 	RD_free(_cilk_ws, (void *)x);
