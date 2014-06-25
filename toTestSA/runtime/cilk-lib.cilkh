@@ -131,7 +131,7 @@ extern void Cilk_batchify_sequential(CilkWorkerState *const ws,
 /*!
 ***********************************************
 * Order maintenance functions for race detector
-***********************************************/
 
+*/
 
 #endif				/* _CILK_LIB_H */
