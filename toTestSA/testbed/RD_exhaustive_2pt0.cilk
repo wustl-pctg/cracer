@@ -578,7 +578,7 @@ cilk int main(int argv, char* argc){
 	RD_free(_cilk_ws, par_w_w);
 	
 	free(seqArr);
-	free(parArr);
+	free(parseqArr);
 
 	printf("Test completed fully as expected. No errors.\n");
 
