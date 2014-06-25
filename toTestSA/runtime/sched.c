@@ -2533,12 +2533,14 @@ void RD_free(CilkWorkerState * const ws, void * mem)
 
 	//!First free data held in struct
 	Cilk_free(memptr->data);
+	memptr->data = NULL; //!< Prevents dangling pointers
 
 	//! Clear the lock
 	RD_mutex_destroy(ws, memptr);
 
 	//!Finally, free the struct itself
 	Cilk_free(mem);
+	mem = NULL; //!< Prevents dangling pointers
 }
 
 	

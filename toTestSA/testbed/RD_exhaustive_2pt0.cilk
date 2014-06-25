@@ -23,7 +23,8 @@ typedef struct test_struct_gen_s {
 
 	float f;
 
-	//size_t size;
+	void * j;
+	size_t size;
 } test_struct_gen;
 
 /**\fn Check_test_struct_equal

@@ -149,28 +149,28 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
  */
 cilk void rd_parent_child_test(void ** parseqArr){
 	/// Run sequentially read/read
-	spawn parent_child_spawned(parseqArr[0], READ_ARG, READ_ARG, SEQUENTIAL);sync;
+//	spawn parent_child_spawned(parseqArr[0], READ_ARG, READ_ARG, SEQUENTIAL);sync;
 
 	/// Run sequentially read/write
-	spawn parent_child_spawned(parseqArr[1], READ_ARG, WRITE_ARG, SEQUENTIAL);sync;
+//	spawn parent_child_spawned(parseqArr[1], READ_ARG, WRITE_ARG, SEQUENTIAL);sync;
 
 	/// Run sequentially write/read
-	spawn parent_child_spawned(parseqArr[2], WRITE_ARG, READ_ARG, SEQUENTIAL);sync;
+//	spawn parent_child_spawned(parseqArr[2], WRITE_ARG, READ_ARG, SEQUENTIAL);sync;
 
 	/// Run sequentially write/write
 	spawn parent_child_spawned(parseqArr[3], WRITE_ARG, WRITE_ARG, SEQUENTIAL);sync;
 
 	/// Run parallel read/read
-	spawn parent_child_spawned(parseqArr[4], READ_ARG, READ_ARG, PARALLEL);sync;
+//	spawn parent_child_spawned(parseqArr[4], READ_ARG, READ_ARG, PARALLEL);sync;
 
 	/// Run parallel read/write
-	spawn parent_child_spawned(parseqArr[5], READ_ARG, WRITE_ARG, PARALLEL);sync;
+//	spawn parent_child_spawned(parseqArr[5], READ_ARG, WRITE_ARG, PARALLEL);sync;
 
 	/// Run parallel write/read
-	spawn parent_child_spawned(parseqArr[6], WRITE_ARG, READ_ARG, PARALLEL);sync;
+//	spawn parent_child_spawned(parseqArr[6], WRITE_ARG, READ_ARG, PARALLEL);sync;
 
 	/// Run parallel write/write
-	spawn parent_child_spawned(parseqArr[7], WRITE_ARG, WRITE_ARG, PARALLEL);sync;
+//	spawn parent_child_spawned(parseqArr[7], WRITE_ARG, WRITE_ARG, PARALLEL);sync;
 
 } /// End rd_parent_child_test
 
@@ -255,13 +255,13 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 cilk void rd_same_function_test(void ** seqArr){
 
 	/// Run sequentially read/read
-	spawn seq_same_func_spawned(seqArr[0], READ_ARG, READ_ARG);sync;
+//	spawn seq_same_func_spawned(seqArr[0], READ_ARG, READ_ARG);sync;
 
 	/// Run sequentially read/write
-	spawn seq_same_func_spawned(seqArr[1], READ_ARG, WRITE_ARG);sync;
+//	spawn seq_same_func_spawned(seqArr[1], READ_ARG, WRITE_ARG);sync;
 
 	/// Run sequentially write/read
-	spawn seq_same_func_spawned(seqArr[2], WRITE_ARG, READ_ARG);sync;
+//	spawn seq_same_func_spawned(seqArr[2], WRITE_ARG, READ_ARG);sync;
 
 	/// Run sequentially write/write
 	spawn seq_same_func_spawned(seqArr[3], WRITE_ARG, WRITE_ARG);sync;
@@ -544,8 +544,8 @@ cilk int main(int argv, char* argc){
 	/// This function tests each combination of read/write
 	/// within the same spawned function. None of these should
 	/// have any races within them, as they are all executed serially.
-	spawn rd_same_function_test(seqArr);
-	sync;
+//	spawn rd_same_function_test(seqArr);
+//	sync;
 
 	/// Case 2:
 	/// These functions tests each combination of read/write
@@ -558,15 +558,15 @@ cilk int main(int argv, char* argc){
 	/// These functions test each combination of read/write
 	/// within a parent function and its grandchildren and great grandchildren
 	/// in both the serial and parallel case.
-	spawn rd_gparent_gchild_test(parseqArr);
-	sync;
+//	spawn rd_gparent_gchild_test(parseqArr);
+//	sync;
 
 	/// Case 4:
 	/// These functions test each combination of read/write
 	/// within cousin nodes and sibling nodes
 	/// in both the serial and parallel case.
-	spawn rd_cousin_test(parseqArr);
-	sync;
+//	spawn rd_cousin_test(parseqArr);
+//	sync;
 
 	printf("====================================================================================================Test completed fully as expected. No errors [before the frees...]\n");
 
