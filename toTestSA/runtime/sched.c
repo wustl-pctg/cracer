@@ -2102,7 +2102,7 @@ void OM_DS_init(CilkContext *const context){
 	/// -- use a linked list for the OM_DS
 #define OM_IS_LL
     	//Batchify works
-#define BATCHIFY_WORKING
+//#define BATCHIFY_WORKING
 
 	if (context->Cilk_global_state){
 		/// Debug message
