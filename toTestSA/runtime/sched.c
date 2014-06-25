@@ -2188,7 +2188,7 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 		return;
 	}
 	/// Debug messages
-	;//printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
+	;printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
 	switch(ID){
 	case HEBREW_ID:
 		//if x->next is null, x  is tail
@@ -2386,8 +2386,8 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	if (post_sync_node) OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node, HEBREW_ID);
 
 	/// Used for debug
-	;//printList(WS_REF_ENG, ENGLISH_ID);
-	;//printList(WS_REF_HEB, HEBREW_ID);
+	;printList(WS_REF_ENG, ENGLISH_ID);
+	;printList(WS_REF_HEB, HEBREW_ID);
 
 	/// If we had updates to post_sync_node, reset the frame's post_sync_node
 	if (post_sync_node) frame->post_sync_node = post_sync_node;
