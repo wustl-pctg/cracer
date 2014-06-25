@@ -2179,7 +2179,7 @@ void atomicInsert(OM_DS * ds, InsertRecord *ir){
 		return;
 	}
 	/// Debug messages
-	;printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
+	;//printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
 	switch(ID){
 	case HEBREW_ID:
 		//if x->next is null, x  is tail
@@ -2219,13 +2219,13 @@ void atomicInsert(OM_DS * ds, InsertRecord *ir){
 /*! parallel version of insert */
 void insertPar(CilkWorkerState *const ws, void *dataStruct, void *data, size_t size, void *result)
 {
-	InsertRecord ** irArray = (InsertRecord **)data;
+	InsertRecord * irArray = (InsertRecord *)data;
 	OM_DS * list = (OM_DS *) dataStruct;
 
 	int i;
 	for (i = 0; i<size; i++)
 	{
-		atomicInsert(list, irArray[i]);
+		atomicInsert(list, &irArray[i]);
 	}
 }
 void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
@@ -2395,7 +2395,7 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	    printf("Debug: In batch node, no race detect needed");
+	//	    printf("Debug: In batch node, no race detect needed");
 	    return;
 	}
 	/// Instantiate three new nodes
@@ -2451,8 +2451,8 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	if (post_sync_node) OM_DS_insert(ws, WS_REF_HEB, spawned_func_node, post_sync_node, HEBREW_ID);
 
 	/// Used for debug
-	;printList(WS_REF_ENG, ENGLISH_ID);
-	;printList(WS_REF_HEB, HEBREW_ID);
+	;//printList(WS_REF_ENG, ENGLISH_ID);
+	;//printList(WS_REF_HEB, HEBREW_ID);
 
 	/// If we had updates to post_sync_node, reset the frame's post_sync_node
 	if (post_sync_node) frame->post_sync_node = post_sync_node;
@@ -2473,7 +2473,7 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	    printf("Debug: In batch node, no race detect needed");
+	//	    printf("Debug: In batch node, no race detect needed");
 	    return; //then in batcher
 	}
 
@@ -2500,7 +2500,7 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	    printf("Debug: In batch node, no race detect needed");
+	//	    printf("Debug: In batch node, no race detect needed");
 	    return;
 	}
 
@@ -2535,7 +2535,7 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	    printf("Debug: In batch node, no race detect needed");
+	//    printf("Debug: In batch node, no race detect needed");
 	    return;
 	}
 
