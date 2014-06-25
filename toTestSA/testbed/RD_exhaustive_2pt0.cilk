@@ -23,7 +23,7 @@ typedef struct test_struct_gen_s {
 
 	float f;
 
-	size_t size;
+	//size_t size;
 } test_struct_gen;
 
 /**\fn Check_test_struct_equal
@@ -53,7 +53,7 @@ inline void Assign_struct_random_vars(test_struct_gen * s){
 	/// Assign f
 	s->f = (float) rand()/1000.0;
 	/// Assign size
-	s->size = sizeof(*s);
+	//s->size = sizeof(*s);
 
 }
 
@@ -185,7 +185,7 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 
 	/// Give struct and union random variables and allocate memory to members
 	Assign_struct_random_vars(&tmp_s);
-	printf("tmp_s: %p with i: %i and size: %lu\n", &tmp_s, tmp_s.i, tmp_s.size);
+	printf("tmp_s: %p with i: %i and size: \n", &tmp_s, tmp_s.i);
 
 	/// Execute first operation
 	/// No races expected
@@ -194,7 +194,7 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 
 		/// Read from tmp structure
 		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
-		printf("tmp_s: %p with i: %i and size: %lu\n", &tmp_s, tmp_s.i, tmp_s.size);
+		printf("tmp_s: %p with i: %i and size: \n", &tmp_s, tmp_s.i);
 
 		/// Check test struct equal to passed in race detect data structure
 		spawn Check_test_struct_equal(rd_ds, &tmp_s);
@@ -223,7 +223,7 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 
 		/// Read from tmp structure
 		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
-		printf("tmp_s: %p with i: %i and size: %lu\n", &tmp_s, tmp_s.i, tmp_s.size);
+		printf("tmp_s: %p with i: %i and size: \n", &tmp_s, tmp_s.i );
 
 		/// Check test struct equal to passed in race detect data structure
 		spawn Check_test_struct_equal(rd_ds, &tmp_s);
