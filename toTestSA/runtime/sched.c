@@ -2073,12 +2073,14 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 
 #define WS_REF_ENG ws->context->Cilk_global_state->englishOM_DS
 #define WS_REF_HEB ws->context->Cilk_global_state->hebrewOM_DS
+#define ENGLISH_ID 10
+#define HEBREW_ID 11
 
 
 //! Race_Detect Struct
 /*! This struct is to be utilized as if it is the memory location
   of a particular variable in a program.  To change the value of
-  the pointer, race_detect_Read or rd_write must be called and the 
+  the pointer, race_detect_Read or rd_write must be called and the
   necessary changes to the real variable they care about are handled
   internally, through the member data.
 */
@@ -2098,12 +2100,10 @@ struct RD_Memory_Struct_s {
 void OM_DS_init(CilkContext *const context){
 	/// Define CILK running parameters
 	/// -- use a linked list for the OM_DS
-	#define OM_IS_LL
-	/// --use batchify
-	/// #define BATCHIFY_WORKING
+#define OM_IS_LL
 
 	if (context->Cilk_global_state){
-	    	/// Debug message
+		/// Debug message
 		;//printf("Debug: OM_DS_init\n");
 
 		/// Allocate heap memory for both lists
@@ -2118,18 +2118,18 @@ void OM_DS_init(CilkContext *const context){
 
 /// Frees the nodes of the linked list
 /// Since both linked lists contain the same nodes, it is sufficient
-/// to move through the english list only. 
+/// to move through the english list only.
 void OM_LL_free_nodes_internal(CilkContext *const context){
-    	/// Create tmp nodes
+	/// Create tmp nodes
 	OM_Node  * node, *nextNode;
-	
+
 	/// Debug message
 	;//printf("DEBUG:LL free nodes\n");
 
 	/// Assign node to head of english list
 	node = context->Cilk_global_state->englishOM_DS->head;
-	
-	/// Move through english, freeing each node. 
+
+	/// Move through english, freeing each node.
 	while(node != NULL){
 		nextNode = node->next_english;
 		Cilk_free(node);
@@ -2142,14 +2142,14 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 /// on the ID parameter passed in.
 void printList(OM_DS * list, const int ID) {
     OM_Node * n;
-    if (list && list->head)	
+    if (list && list->head)
         n = list->head;
     else
 		exit(10);
 	if( ID == HEBREW_ID)
 		printf("Hebrew : Head->");
 	else
-		printf(" English: Head->"); 
+		printf(" English: Head->");
 
     while (n != NULL){
 		printf("%d->", n->id);
@@ -2164,74 +2164,7 @@ void printList(OM_DS * list, const int ID) {
 void OM_free_nodes_internal(CilkContext *const context)
 {printf("DEBUG: OMDS free nodes -- NOT COMPLETED\n");}
 
-/*spawned atomic insert (Batched operation)*/
-void atomicInsertLL(OM_DS *ds, InsertRecord * ir){
-	OM_Node *x = ir->x, *y = ir->y;
-	/// Stores english or hebrew id
-	int ID = ir->ID; 
-
-	//if x is null
-	if (!(x && y && ds) ){
-		printf("Some node or ds is null,\
-               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-			   x->id, x, y->id, y, ds->tail->id, ds->tail);
-		return;
-	}
-	/// Debug messages
-	printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
-	switch(ID){
-	case HEBREW_ID:
-		//if x->next is null, x  is tail
-		if (!(x->next_hebrew))
-			ds->tail = y;	
-
-		//change next pointers
-		y->next_hebrew = x->next_hebrew;
-
-		if(!(__sync_bool_compare_and_swap(&(x->next_hebrew), x->next_hebrew, y)))
-		{
-			printf("Exiting, atomic insert failed");
-			exit(0);
-		}
-		break;
-	case ENGLISH_ID:
-		//if x->next is null, x  is tail
-		if (!(x->next_english))
-			ds->tail = y;
-	
-		//change next pointers
-		y->next_english = x->next_english;
-	
-		if(!(__sync_bool_compare_and_swap(&(x->next_english), x->next_english, y)))
-		{
-			printf("Exiting, atomic insert failed");
-			exit(0);
-		}
-		break;
-	}
-	
-	ds->size++;
-
-	free(ir);
-	ir = NULL;
-}
-
-/*! parallel version of insert */
-void insertParLL(CilkWorkerState *const ws,void *dataStruct, void *data, size_t size, void *result)
-{
-	InsertRecord ** irArray = (InsertRecord **)data;
-	OM_DS * ds = (OM_DS *) dataStruct;
-
-	int i;
-	for (i = 0; i<size; i++)
-	{
-		atomicInsertLL(ds, irArray[i]);
-	}
-}
-
-
-
-void OM_DS_insert(CilkWorkerState* const ws, OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
+void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 #ifdef BATCHIFY_WORKING
 	/// Batchify insert
@@ -2240,12 +2173,10 @@ void OM_DS_insert(CilkWorkerState* const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
 	ir->x =  x;
 	ir->y =  y;
-	ir->ID = ID;
+
 	/// Make call to batchify to assign this data structure opeartion
 	/// to be executed at another time.
-
-	Cilk_batchify(ws, &insertParLL, ds, ir, sizeof(InsertRecord), NULL);
-	
+	Cilk_batchify(_cilk_ws, &insertPar, list, ir, sizeof(Node), NULL);
 #else
 	//Do insert here
 
@@ -2257,12 +2188,12 @@ void OM_DS_insert(CilkWorkerState* const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 		return;
 	}
 	/// Debug messages
-	printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
+	;printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
 	switch(ID){
 	case HEBREW_ID:
 		//if x->next is null, x  is tail
 		if (!(x->next_hebrew))
-			ds->tail = y;	
+			ds->tail = y;
 
 		//change next pointers
 		y->next_hebrew = x->next_hebrew;
@@ -2277,10 +2208,10 @@ void OM_DS_insert(CilkWorkerState* const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 		//if x->next is null, x  is tail
 		if (!(x->next_english))
 			ds->tail = y;
-	
+
 		//change next pointers
 		y->next_english = x->next_english;
-	
+
 		if(!(__sync_bool_compare_and_swap(&(x->next_english), x->next_english, y)))
 		{
 			printf("Exiting, atomic insert failed");
@@ -2288,7 +2219,7 @@ void OM_DS_insert(CilkWorkerState* const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 		}
 		break;
 	}
-	
+
 	ds->size++;
 #endif
 }
@@ -2296,7 +2227,7 @@ void OM_DS_insert(CilkWorkerState* const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 /// Frees the OM_DS in the context and all of the nodes within.
 void OM_DS_free_and_free_nodes(CilkContext *const context){
 #ifdef OM_IS_LL
-    	/// Free nodes of linked list
+	/// Free nodes of linked list
 	OM_LL_free_nodes_internal(context);
 #else
 	/// Free nodes of OM_DS
@@ -2311,33 +2242,33 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 
 }
 
-/// This is called in the initialization of cilk:wq:wq
-/// Add the first node to the OM_DS 
+/// This is called in the initialization of cilk
+/// Add the first node to the OM_DS
 void OM_DS_add_first_node(void *ds, void * _x){
-    	/// Debug message
+	/// Debug message
 	;//printf("Debug: appending node\n");
 #ifdef OM_IS_LL
-	/// Enter if ds and x are not NULL	
+	/// Enter if ds and x are not NULL
 	if (ds && _x){
 		OM_DS * om_ds = (OM_DS *)ds;
 		OM_Node * node = (OM_Node*)_x;
 		if (om_ds->size == 0)
 		{
-		    	/// Assign head and tail to new node
+			/// Assign head and tail to new node
 			om_ds->tail = om_ds->head = node;
-			
+
 			/// Ensure node has no next
 			node->next_english = node->next_hebrew = NULL;
 
 			/// Assign unique node id
-			node->id =global_node_count++; 
+			node->id =global_node_count++;
 
 			/// Increment size of linked list
 			om_ds->size++;
 		}
-		else 	{ 
-		    	/// Debug code
-		    	/// If linked list has nodes already, exit. Don't let this be called
+		else 	{
+			/// Debug code
+			/// If linked list has nodes already, exit. Don't let this be called
 			/// incorrectly and let code continue
 			printf("List is non-empty, dont call add first node\n");
 			exit(0);
@@ -2356,18 +2287,18 @@ void OM_DS_add_first_node(void *ds, void * _x){
 /// Note: the ID will determine which ordering to follow (english or hebrew)
 int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 #ifdef OM_IS_LL
-    	///Temp node to hold current node
+	///Temp node to hold current node
 	OM_Node * current;
 
 	/// Point tmp to head
 	current = ((OM_DS*)ds)->head;
 
-	/* Debug code to ensure correct calling of order function 
-	if (ID != HEBREW_ID && ID != ENGLISH_ID)	
-	{
-		printf("ID given to order is not valid\n");
-		exit(1);
-	}
+	/* Debug code to ensure correct calling of order function
+	   if (ID != HEBREW_ID && ID != ENGLISH_ID)
+	   {
+	   printf("ID given to order is not valid\n");
+	   exit(1);
+	   }
 	*/
 	/// For a linked list, inc. the node pointer down the correct list.
 	/// If at any point current is x, we immediately exit true
@@ -2384,9 +2315,9 @@ int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 	} while( current != ((OM_DS*)ds)->tail);
 
 	/// Debug code, to ensure we are not getting false or true by calling order
-	/// on incorrect nodes.	
+	/// on incorrect nodes.
 	printf("Debug: Neither node found in linked list. Error, exiting.");
-	exit(1);	
+	exit(1);
 	return 0;
 #else
 	printf("Debug: Don't know how to order with OM_DS yet\n");
@@ -2399,7 +2330,7 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	    printf("Debug: In batch node, no race detect needed");	
+	    printf("Debug: In batch node, no race detect needed");
 	    return;
 	}
 	/// Instantiate three new nodes
@@ -2409,14 +2340,14 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	/// spawned_func_node: the node that the spawned function will be represented by
 	OM_Node * cont_node = NULL , * post_sync_node = NULL, * spawned_func_node = NULL;
 
-	/// Create heap memory for the two guaranteed nodes 
+	/// Create heap memory for the two guaranteed nodes
 	cont_node =  Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node =  Cilk_malloc(sizeof(OM_Node));
 
 	/// Assign uniquee node ID's
 	cont_node->id = global_node_count++;
 	spawned_func_node->id = global_node_count++;
-	
+
 	/// Enter only if this is the first spawn after a sync/in a function
 	if (frame->first_spawn_flag != 1){
 		/// Allocate heap memory
@@ -2427,7 +2358,7 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 
 		/// Set first_spawn_flag to indicate the next spawn will not be the first, barring
 		/// that a sync occurs.
-		frame->first_spawn_flag = 1;	
+		frame->first_spawn_flag = 1;
 
 		/// Set the frame's post sync node to this node. This ensures we can keep track of the node
 		/// if the child that is spawned creates its own tree beneath it.
@@ -2438,27 +2369,26 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	CILK_ASSERT(ws, frame->current_node != NULL);
 
 	/* Debug messages
-	if (FAST_NOT_SLOW)	
-		printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
-	else
-		printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
+	   if (FAST_NOT_SLOW)
+	   printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
+	   else
+	   printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
 	*/
 
 	/// Insert {current, spawned function, continuation node} into the english OM_DS
-	OM_DS_insert(ws, WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
-	OM_DS_insert(ws, WS_REF_ENG, spawned_func_node, cont_node, 			ENGLISH_ID);
-	if (post_sync_node) OM_DS_insert(ws, WS_REF_ENG, cont_node, post_sync_node,	ENGLISH_ID);
-	
+	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
+	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node, 			ENGLISH_ID);
+	if (post_sync_node) OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node,	ENGLISH_ID);
+
 	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-	OM_DS_insert(ws, WS_REF_HEB, frame->current_node, cont_node, 			HEBREW_ID);
-	OM_DS_insert(ws, WS_REF_HEB, cont_node, spawned_func_node, 				HEBREW_ID);
-	if (post_sync_node) OM_DS_insert(ws, WS_REF_HEB, spawned_func_node, post_sync_node, HEBREW_ID);
+	OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node, 			HEBREW_ID);
+	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node, 				HEBREW_ID);
+	if (post_sync_node) OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node, HEBREW_ID);
 
 	/// Used for debug
-	printList(WS_REF_ENG, ENGLISH_ID);
-	printList(WS_REF_HEB, HEBREW_ID);
-	printf("size e/h: %i ; %i \n", WS_REF_ENG->size, WS_REF_HEB->size);
-		
+	;printList(WS_REF_ENG, ENGLISH_ID);
+	;printList(WS_REF_HEB, HEBREW_ID);
+
 	/// If we had updates to post_sync_node, reset the frame's post_sync_node
 	if (post_sync_node) frame->post_sync_node = post_sync_node;
 
@@ -2468,7 +2398,7 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	/// the most current value.
 	frame->current_node = ws->current_node = cont_node;
 
-	/// Update the next spawned node so when the function is actually spawned and it looks to the 
+	/// Update the next spawned node so when the function is actually spawned and it looks to the
 	/// frame above it on the stack (which is this frame) it can locate its current frame node.
 	frame->next_spawned_node = spawned_func_node;
 }
@@ -2478,7 +2408,7 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	    printf("Debug: In batch node, no race detect needed");	
+	    printf("Debug: In batch node, no race detect needed");
 	    return; //then in batcher
 	}
 
@@ -2491,7 +2421,7 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Assign frame/worker state's current node to the post sync node
 	frame->current_node = ws->current_node = frame->post_sync_node;
 
-	/// Reset the frame's next_spawned_node, since to use this we would need to spawn again. 
+	/// Reset the frame's next_spawned_node, since to use this we would need to spawn again.
 	/// At that point a new one will be created
 	frame->next_spawned_node = NULL;
 
@@ -2505,8 +2435,8 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	    printf("Debug: In batch node, no race detect needed");	
-	    return; 
+	    printf("Debug: In batch node, no race detect needed");
+	    return;
 	}
 
 	/// For debug
@@ -2518,7 +2448,7 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Assign frame/worker state's current node to the post sync node
 	frame->current_node = ws->current_node = frame->post_sync_node;
 
-	/// Reset the frame's next_spawned_node, since to use this we would need to spawn again. 
+	/// Reset the frame's next_spawned_node, since to use this we would need to spawn again.
 	/// At that point a new one will be created
 	frame->next_spawned_node = NULL;
 
@@ -2540,13 +2470,13 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	    printf("Debug: In batch node, no race detect needed");	
+	    printf("Debug: In batch node, no race detect needed");
 	    return;
 	}
 
 	if (!(frame->current_node)) //this frame has not been entered yet
 		frame->first_spawn_flag = 0;
-	
+
 	ws->current_node = frame->current_node;
 }
 /**************************************************************!
@@ -2563,7 +2493,7 @@ static void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
 	Cilk_mutex_init(ws->context, &(mem->mutex) );
 }
 
-/*! Frees the allocated memory for the lock for RD_Memory_Struct 
+/*! Frees the allocated memory for the lock for RD_Memory_Struct
   \param ws The current workerstate upon being called
   \param mem The struct whose mutex is being initialized
 */
@@ -2586,12 +2516,12 @@ void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 	memPtr = Cilk_malloc(sizeof(RD_Memory_Struct));
 
 	//!Inialize known members
-	memPtr->size = size; 
+	memPtr->size = size;
 	memPtr->data = Cilk_malloc(sizeof(size));
 
 	//!Initialize the lock
 	RD_mutex_init(ws, memPtr);
-	
+
 	return (void *)memPtr;
 }
 
@@ -2613,17 +2543,17 @@ void RD_free(CilkWorkerState * const ws, void * mem)
 	mem = NULL; //!< Prevents dangling pointers
 }
 
-	
+
 /*! Function that detects potential races on a given memory read
   \param ws CilkWorkerState Node for program
   \param memPtr The memory address of the struct used in checking
   \return memory address of read location
 */
 void * Race_detect_read_b(CilkWorkerState * const ws,
-						void * memPtr,
-						const char * func_name,
-						const int line_num,
-						int * rd_result)
+						  void * memPtr,
+						  const char * func_name,
+						  const int line_num,
+						  int * rd_result)
 {
 
 	//!Get struct
@@ -2644,7 +2574,7 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
 		//! Initalize ptrs for struct
 		mem->left_r = mem->right_r = currentNode;
 	}
-	
+
 	/*! Check if there is a race:
 	 * Race if another write occurs in parallel
 	 * (1)
@@ -2652,30 +2582,44 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
 	 *      the currentNode is after leftmost write in heb,
 	 *      then they are in parallel => race condition
 	 * (2) or
-	 *   if the currentNode is before rightmost write in eng and
-	 *      the currentNode is after rightmost write in heb,
-	 *      then they are in parallel => race condition
-	 * (3) or
 	 *   if the currentNode is after leftmost write in eng and
 	 *      the currentNode is before leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (3) or
+	 *   if the currentNode is before rightmost write in eng and
+	 *      the currentNode is after rightmost write in heb,
 	 *      then they are in parallel => race condition
 	 * (4) or
 	 *   if the currentNode is after rightmost write in eng and
 	 *      the currentNode is before rightmost write in heb,
 	 *      then they are in parallel => race condition
 	 */
-	if(    //(1)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
-		||  //(2)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
- 		||  //(3)
-		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
-		||  //(4)
-		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+	if(
+		(
+			(mem->left_w != NULL)
+			&&
+			(
+				//(1)
+				(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
+				||  //(2)
+				(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
+				)
+			)
+		||
+		(
+			(mem->right_w != NULL)
+			&&
+			(
+				//(3)
+				(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
+				||  //(4)
+				(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+				)
+			)
  		)
 	{
 		//!Make boolean true
@@ -2687,7 +2631,7 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
 	else
 		*rd_result = 0; //!< Make the bool 0
 
-	
+
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
 		mem->left_r = currentNode;
@@ -2733,7 +2677,7 @@ void * Race_detect_read(CilkWorkerState * const ws,
 		//! Initalize ptrs for struct
 		mem->left_r = mem->right_r = currentNode;
 	}
-	
+
 	/*! Check if there is a race:
 	 * Race if another write occurs in parallel
 	 * (1)
@@ -2741,36 +2685,50 @@ void * Race_detect_read(CilkWorkerState * const ws,
 	 *      the currentNode is after leftmost write in heb,
 	 *      then they are in parallel => race condition
 	 * (2) or
-	 *   if the currentNode is before rightmost write in eng and
-	 *      the currentNode is after rightmost write in heb,
-	 *      then they are in parallel => race condition
-	 * (3) or
 	 *   if the currentNode is after leftmost write in eng and
 	 *      the currentNode is before leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (3) or
+	 *   if the currentNode is before rightmost write in eng and
+	 *      the currentNode is after rightmost write in heb,
 	 *      then they are in parallel => race condition
 	 * (4) or
 	 *   if the currentNode is after rightmost write in eng and
 	 *      the currentNode is before rightmost write in heb,
 	 *      then they are in parallel => race condition
 	 */
-	if(    //(1)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
-		||  //(2)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
- 		||  //(3)
-		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
-		||  //(4)
-		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+	if(
+		(
+			(mem->left_w != NULL)
+			&&
+			(
+				//(1)
+				(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
+				||  //(2)
+				(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
+				)
+			)
+		||
+		(
+			(mem->right_w != NULL)
+			&&
+			(
+				//(3)
+				(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
+				||  //(4)
+				(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+				)
+			)
  		)
 	{
 		//!Print that there's a race and continue
 		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 	}
-	
+
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
 		mem->left_r = currentNode;
@@ -2792,21 +2750,21 @@ void * Race_detect_read(CilkWorkerState * const ws,
   \param writeValue Manually passed in value to be written to mem->data
 */
 void Race_detect_write_b(CilkWorkerState * const ws,
-					   void * memPtr,
-					   const void * writeValue,
-					   const char *func_name,
-					   const int line_num,
-					   int * rd_result)
+						 void * memPtr,
+						 const void * writeValue,
+						 const char *func_name,
+						 const int line_num,
+						 int * rd_result)
 {
 
 	//!Get struct
 	RD_Memory_Struct * mem;
 	/*printf("Race_detect_write\n");*/
 	mem = (RD_Memory_Struct *)memPtr;
-	
+
 	//!Get Lock
 	Cilk_mutex_wait(ws->context, ws, &(mem->mutex) );
-	
+
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
 
@@ -2816,24 +2774,38 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 		//!Inialize ptrs for struct
 		mem->left_w = mem->right_w = currentNode;
 
-		/*! ****Fuller Explanation of Race Detection Conditions Below**** 
+		/*! ****Fuller Explanation of Race Detection Conditions Below****
 		 * In the event that the first write node is encounterd, races must be
 		 * check only with read nodes, for the conditionals below will detect a
 		 * "race" with itself (since at this point the left=right=current).
-		 * As a result, we check for races within this if and write instead 
+		 * As a result, we check for races within this if and write instead
 		 */
-		if(  //(5)
-			(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
-			 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
-			||  //(6)
-			(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
-			 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
-			||  //(7)
-			(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
-			 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
-			||  //(8)
-			(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
-			 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+		if(
+			(
+				(mem->left_r != NULL)
+				&&
+				(
+					//(5)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
+					||  //(6)
+					(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_r != NULL)
+				&&
+				(
+					//(7)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
+					||  //(8)
+					(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+					)
+				)
 			)
 		{
 			//! Print the race
@@ -2863,7 +2835,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 			return;
 		}
 	}
-	
+
 	/*! Check if there is a race:
 	 * Race if another write/read occurs in parallel
 	 * (1)   == WRITES ==
@@ -2871,12 +2843,12 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 	 *      the currentNode is after leftmost write in heb,
 	 *      then they are in parallel => race condition
 	 * (2) or
-	 *   if the currentNode is before rightmost write in eng and
-	 *      the currentNode is after rightmost write in heb,
-	 *      then they are in parallel => race condition
-	 * (3) or
 	 *   if the currentNode is after leftmost write in eng and
 	 *      the currentNode is before leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (3) or
+	 *   if the currentNode is before rightmost write in eng and
+	 *      the currentNode is after rightmost write in heb,
 	 *      then they are in parallel => race condition
 	 * (4) or
 	 *   if the currentNode is after rightmost write in eng and
@@ -2887,43 +2859,80 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 	 *      the currentNode is after leftmost read in heb,
 	 *      then they are in parallel => race condition
 	 * (6) or
-	 *   if the currentNode is before rightmost read in eng and
-	 *      the currentNode is after rightmost read in heb,
-	 *      then they are in parallel => race condition
-	 * (7) or
 	 *   if the currentNode is after leftmost read in eng and
 	 *      the currentNode is before leftmost read in heb,
+	 *      then they are in parallel => race condition
+	 * (7) or
+	 *   if the currentNode is before rightmost read in eng and
+	 *      the currentNode is after rightmost read in heb,
 	 *      then they are in parallel => race condition
 	 * (8) or
 	 *   if the currentNode is after rightmost read in eng and
 	 *      the currentNode is before rightmost read in heb,
 	 *      then they are in parallel => race condition
 	 */
-	if(    //(1)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
-		||  //(2)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
-		||  //(3)
-		(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
-		||  //(4)
-		(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
-		||  //(5)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
-		||  //(6)
-		(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
-		||  //(7)
-		(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
-		||  //(8)
-		(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
-		 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
- 		)
+	if(
+
+		//! Check the writes for races
+		(
+			(
+				(mem->left_w != NULL)
+				&&
+				(
+					//(1)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
+					||  //(2)
+					(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_w != NULL)
+				&&
+				(
+					//(3)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
+					||  //(4)
+					(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+					)
+				)
+			)
+
+		||
+
+		//! Now check the reads for races
+		(
+			(
+				(mem->left_r != NULL)
+				&&
+				(
+					//(5)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
+					||  //(6)
+					(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_r != NULL)
+				&&
+				(
+					//(7)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
+					||  //(8)
+					(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+					)
+				)
+			)
+		)
 	{
 		//! Print the race
 		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
@@ -2946,7 +2955,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 
 	//!Release Lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
-	
+
 }
 
 /*! Function that detects potential races on a given memory write
@@ -2965,10 +2974,10 @@ void Race_detect_write(CilkWorkerState * const ws,
 	RD_Memory_Struct * mem;
 	/*printf("Race_detect_write\n");*/
 	mem = (RD_Memory_Struct *)memPtr;
-	
+
 	//!Get Lock
 	Cilk_mutex_wait(ws->context, ws, &(mem->mutex) );
-	
+
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
 
@@ -2978,24 +2987,38 @@ void Race_detect_write(CilkWorkerState * const ws,
 		//!Inialize ptrs for struct
 		mem->left_w = mem->right_w = currentNode;
 
-		/*! ****Fuller Explanation of Race Detection Conditions Below**** 
+		/*! ****Fuller Explanation of Race Detection Conditions Below****
 		 * In the event that the first write node is encounterd, races must be
 		 * check only with read nodes, for the conditionals below will detect a
 		 * "race" with itself (since at this point the left=right=current).
-		 * As a result, we check for races within this if and write instead 
+		 * As a result, we check for races within this if and write instead
 		 */
-		if(  //(5)
-			(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
-			 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
-			||  //(6)
-			(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
-			 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
-			||  //(7)
-			(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
-			 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
-			||  //(8)
-			(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
-			 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+		if(
+			(
+				(mem->left_r != NULL)
+				&&
+				(
+					//(5)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
+					||  //(6)
+					(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_r != NULL)
+				&&
+				(
+					//(7)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
+					||  //(8)
+					(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+					)
+				)
 			)
 		{
 			//! Print the race
@@ -3018,9 +3041,8 @@ void Race_detect_write(CilkWorkerState * const ws,
 
 			return;
 		}
-
 	}
-	
+
 	/*! Check if there is a race:
 	 * Race if another write/read occurs in parallel
 	 * (1)   == WRITES ==
@@ -3028,12 +3050,12 @@ void Race_detect_write(CilkWorkerState * const ws,
 	 *      the currentNode is after leftmost write in heb,
 	 *      then they are in parallel => race condition
 	 * (2) or
-	 *   if the currentNode is before rightmost write in eng and
-	 *      the currentNode is after rightmost write in heb,
-	 *      then they are in parallel => race condition
-	 * (3) or
 	 *   if the currentNode is after leftmost write in eng and
 	 *      the currentNode is before leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (3) or
+	 *   if the currentNode is before rightmost write in eng and
+	 *      the currentNode is after rightmost write in heb,
 	 *      then they are in parallel => race condition
 	 * (4) or
 	 *   if the currentNode is after rightmost write in eng and
@@ -3044,18 +3066,124 @@ void Race_detect_write(CilkWorkerState * const ws,
 	 *      the currentNode is after leftmost read in heb,
 	 *      then they are in parallel => race condition
 	 * (6) or
-	 *   if the currentNode is before rightmost read in eng and
-	 *      the currentNode is after rightmost read in heb,
-	 *      then they are in parallel => race condition
-	 * (7) or
 	 *   if the currentNode is after leftmost read in eng and
 	 *      the currentNode is before leftmost read in heb,
+	 *      then they are in parallel => race condition
+	 * (7) or
+	 *   if the currentNode is before rightmost read in eng and
+	 *      the currentNode is after rightmost read in heb,
 	 *      then they are in parallel => race condition
 	 * (8) or
 	 *   if the currentNode is after rightmost read in eng and
 	 *      the currentNode is before rightmost read in heb,
 	 *      then they are in parallel => race condition
 	 */
+	if(
+
+		//! Check the writes for races
+		(
+			(
+				(mem->left_w != NULL)
+				&&
+				(
+					//(1)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
+					||  //(2)
+					(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_w != NULL)
+				&&
+				(
+					//(3)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
+					||  //(4)
+					(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+					)
+				)
+			)
+
+		||
+
+		//! Now check the reads for races
+		(
+			(
+				(mem->left_r != NULL)
+				&&
+				(
+					//(5)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
+					||  //(6)
+					(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_r != NULL)
+				&&
+				(
+					//(7)
+					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
+					||  //(8)
+					(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+					)
+				)
+			)
+		)
+	{
+		//! Print the race
+		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
+	}
+
+	//! Update nodes (if necessary)
+	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
+		mem->left_w = currentNode;
+	if(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID))
+		mem->right_w = currentNode;
+
+	//! Write the data
+	memcpy( mem->data, writeValue, mem->size);
+
+	//!Release Lock
+	Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+}
+
+/* ============= End Order Maintenence Functions ============= */
+
+/*
+ * initialization of the scheduler.
+ */
+void Cilk_scheduler_init(CilkContext *const context)
+{
+	CILK_CHECK(USE_PARAMETER1(active_size) > 0,
+			   (context, NULL, "Partition size must be positive\n"));
+	create_deques(context);
+	Cilk_internal_malloc_global_init(context);
+	Cilk_internal_malloc_global_init_2(context);
+}
+
+void Cilk_scheduler_terminate(CilkContext *const context)
+{
+	Cilk_internal_malloc_global_terminate_2(context);
+	Cilk_internal_malloc_global_terminate(context);
+	free_deques(context);
+}
+
+void Cilk_scheduler_init_2(CilkContext *const context)
+{
+	USE_SHARED1(done) = 0;
+	init_deques(context);
 	/*Cilk_internal_malloc_global_init_2(context); */
 }
 
