@@ -2278,110 +2278,131 @@ int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 #endif
 }
 
-/*! The only slow threads are going to either be the main thread or a stolen frame*/
 void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const int FAST_NOT_SLOW){
-	//CHECKS IF BATCH NODE
+	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
 	    printf("Debug: In batch node, no race detect needed");	
-	    return; //then in batcher
+	    return;
 	}
-	/*! Create three new nodes to be inserted into OM_DS*/
+	/// Instantiate three new nodes
+	//
+	/// cont_node: continuation node, will follow from the current node (continues after spawn)
+	/// post_sync_node: the node to move to after the next sync occurs (only malloc'ed if first_Spawn_flag is 0)
+	/// spawned_func_node: the node that the spawned function will be represented by
 	OM_Node * cont_node = NULL , * post_sync_node = NULL, * spawned_func_node = NULL;
 
+	/// Create heap memory for the two guaranteed nodes 
 	cont_node =  Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node =  Cilk_malloc(sizeof(OM_Node));
 
+	/// Assign uniquee node ID's
 	cont_node->id = global_node_count++;
 	spawned_func_node->id = global_node_count++;
-
-	//if frame has not hit a spawn before
+	
+	/// Enter only if this is the first spawn after a sync/in a function
 	if (frame->first_spawn_flag != 1){
-		
+		/// Allocate heap memory
 		post_sync_node =  Cilk_malloc(sizeof(OM_Node));
+
+		/// Assign unique id
 		post_sync_node->id = global_node_count++;
+
+		/// Set first_spawn_flag to indicate the next spawn will not be the first, barring
+		/// that a sync occurs.
 		frame->first_spawn_flag = 1;	
 
+		/// Set the frame's post sync node to this node. This ensures we can keep track of the node
+		/// if the child that is spawned creates its own tree beneath it.
 		frame->post_sync_node = post_sync_node;
 	}
 
-	if (!(frame->current_node)){
-		printf("Debug: CURRNT NODE IS NULL error\n");
-		exit(0);
-	}	
+	/// Asserts we have a valid (non-null) frame current node before we start inserting
+	CILK_ASSERT(ws, frame->current_node != NULL);
+	/* Debug messages
 	if (FAST_NOT_SLOW)	
 		printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
 	else
 		printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
-		
-	/*! insert the new nodes into the OM_DS*/
-	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node, ENGLISH_ID);
-	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node, 		ENGLISH_ID);
-	if (post_sync_node)	
-		OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node, 		ENGLISH_ID);
-	
-	OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node, 	HEBREW_ID);
-	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node, 		HEBREW_ID);
-	if (post_sync_node)
-		OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node, 	HEBREW_ID);
+	*/
 
-	printList(WS_REF_ENG, ENGLISH_ID);
-	printList(WS_REF_HEB, HEBREW_ID);
+	/// Insert {current, spawned function, continuation node} into the english OM_DS
+	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
+	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node, 			ENGLISH_ID);
+	if (post_sync_node) OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node,	ENGLISH_ID);
 	
-	/*!update frame variables*/
-	if (post_sync_node)
-		frame->post_sync_node = post_sync_node;
+	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
+	OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node, 			HEBREW_ID);
+	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node, 				HEBREW_ID);
+	if (post_sync_node) OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node, HEBREW_ID);
+
+	/// Used for debug
+	;//printList(WS_REF_ENG, ENGLISH_ID);
+	;//printList(WS_REF_HEB, HEBREW_ID);
+	
+	/// If we had updates to post_sync_node, reset the frame's post_sync_node
+	if (post_sync_node) frame->post_sync_node = post_sync_node;
+
 	frame->current_node = cont_node;
 	frame->next_spawned_node = spawned_func_node;
     
 	/*! update worker state*/
 	ws->current_node = frame->current_node;
 
-	//printf("End of function check ws->next_func_node->id: %d\n", ws->next_func_node->id);
 }
-
+/// After a sync in a slow clone, execute this function.
+///
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
-	//CHECKS IF BATCH NODE
+	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
 	    printf("Debug: In batch node, no race detect needed");	
 	    return; //then in batcher
 	}
-	
-	printf("Debug: OM_DS_sync_slow , current frame id: %d\n",  frame->current_node->id );
 
-	/*update frame varriables*/
-	if (frame->post_sync_node)
-	{ 
-		frame->current_node = ws->current_node = frame->post_sync_node;
-		frame->next_spawned_node = NULL;
-		frame->first_spawn_flag = 0;
-	}
-	else
-		printf("No post sync node \n");
+	/// For debug
+	;//printf("Debug: OM_DS_sync_slow, current frame id: %d\n",  frame->current_node->id );
+
+	/// If the sync was legitimate, then reset frame and worker state to post_sync_node.
+	CILK_ASSERT(ws, frame->post_sync_node != NULL);
+
+	/// Assign frame/worker state's current node to the post sync node
+	frame->current_node = ws->current_node = frame->post_sync_node;
+
+	/// Reset the frame's next_spawned_node, since to use this we would need to spawn again. 
+	/// At that point a new one will be created
+	frame->next_spawned_node = NULL;
+
+	/// Reset spawn flag
+	frame->first_spawn_flag = 0;
 }
 
 
 void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
-	//CHECKS IF BATCH NODE
+	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
 	    printf("Debug: In batch node, no race detect needed");	
 	    return; //then in batcher
 	}
 
-	printf("Debug: OM_DS_sync_fast, current frame id: %d\n",  frame->current_node->id );
+	/// For debug
+	;//printf("Debug: OM_DS_sync_slow, current frame id: %d\n",  frame->current_node->id );
 
-	/*update frame varriables*/
-	if (frame->post_sync_node)
-	{ 
-		frame->current_node = ws->current_node = frame->post_sync_node;
-		frame->next_spawned_node = NULL;
-		frame->first_spawn_flag = 0;
-	}
-	else
-		printf("No post sync node \n");
+	/// If the sync was legitimate, then reset frame and worker state to post_sync_node.
+	CILK_ASSERT(ws, frame->post_sync_node != NULL);
+
+	/// Assign frame/worker state's current node to the post sync node
+	frame->current_node = ws->current_node = frame->post_sync_node;
+
+	/// Reset the frame's next_spawned_node, since to use this we would need to spawn again. 
+	/// At that point a new one will be created
+	frame->next_spawned_node = NULL;
+
+	/// Reset spawn flag
+	frame->first_spawn_flag = 0;
 }
+
 /// After a spawn is finished, update the worker state to match the frame
 inline void OM_DS_after_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
     ws->current_node = frame->current_node;
@@ -2391,36 +2412,20 @@ inline void OM_DS_after_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *fr
     ws->current_node = frame->current_node;
 }
 
-//a new thread is started, get the next_function_node from the ws and put as the
-//current node
+/// Start a new thread: reset first spawn flag
 void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
-	//CHECKS IF BATCH NODE
+	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
 	    printf("Debug: In batch node, no race detect needed");	
-	    return; //then in batcher
+	    return;
 	}
 
 	if (!(frame->current_node)) //this frame has not been entered yet
 		frame->first_spawn_flag = 0;
 	
 	ws->current_node = frame->current_node;
-	/*
-	  if ((ws->current_node) ) //if this is null, we are in invoke_main_slow and the following line has been set up
-	  {
-
-	  printf("Starting new thread, assigning ws->next_func(%d) to frame->current_node (frame loc: %p )\n", ws->next_func_node->id, frame);
-	  frame->current_node = ws->next_func_node;
-	  }
-	  else
-	  {
-	  printf("In invoke_main_slow, not setting up the frame->current node\n");
-	  }
-	*/
-	
-
 }
-
 /**************************************************************!
  *        === Race detect functions in particular ===         *
  **************************************************************/
