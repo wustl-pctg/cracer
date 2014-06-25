@@ -2551,7 +2551,7 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
 						void * memPtr,
 						const char * func_name,
 						const int line_num,
-						int * bool)
+						int * rd_result)
 {
 
 	//!Get struct
@@ -2607,13 +2607,13 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
  		)
 	{
 		//!Make boolean true
-		*bool = 1;
+		*rd_result = 1;
 
 		//!Print that there's a race and continue
 		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 	}
 	else
-		*bool = 0; //!< Make the bool 0
+		*rd_result = 0; //!< Make the bool 0
 
 	
 	//! Update nodes (if necessary)
@@ -2724,7 +2724,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 					   const void * writeValue,
 					   const char *func_name,
 					   const int line_num,
-					   int * bool)
+					   int * rd_result)
 {
 
 	//!Get struct
@@ -2768,7 +2768,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 			printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 
 			//!Make boolean true
-			*bool = 1;
+			*rd_result = 1;
 
 		   	//! Write the data
 			memcpy( mem->data, writeValue, mem->size);
@@ -2780,7 +2780,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 		} else {
 
 			//!Make boolean false
-			*bool = 0;
+			*rd_result = 0;
 
 		   	//! Write the data
 			memcpy( mem->data, writeValue, mem->size);
@@ -2857,10 +2857,10 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
 
 		//!Make boolean true
-		*bool = 1;
+		*rd_result = 1;
 	}
 	else
-		*bool = 0; //!< Make bool 0
+		*rd_result = 0; //!< Make bool 0
 
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
