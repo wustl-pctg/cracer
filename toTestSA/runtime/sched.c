@@ -2101,6 +2101,8 @@ void OM_DS_init(CilkContext *const context){
 	/// Define CILK running parameters
 	/// -- use a linked list for the OM_DS
 #define OM_IS_LL
+    	//Batchify works
+#define BATCHIFY_WORKING
 
 	if (context->Cilk_global_state){
 		/// Debug message
@@ -2164,7 +2166,69 @@ void printList(OM_DS * list, const int ID) {
 void OM_free_nodes_internal(CilkContext *const context)
 {printf("DEBUG: OMDS free nodes -- NOT COMPLETED\n");}
 
-void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
+/*!  single insert, called by insertPar */
+void atomicInsert(OM_DS * ds, InsertRecord *ir){
+	OM_Node *x = ir->x, *y = ir->y;
+	int ID = ir->ID;
+
+	//if x is null
+	if (!(x && y && ds) ){
+		printf("Some node or ds is null,\
+               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+			   x->id, x, y->id, y, ds->tail->id, ds->tail);
+		return;
+	}
+	/// Debug messages
+	;printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
+	switch(ID){
+	case HEBREW_ID:
+		//if x->next is null, x  is tail
+		if (!(x->next_hebrew))
+			ds->tail = y;
+
+		//change next pointers
+		y->next_hebrew = x->next_hebrew;
+
+		if(!(__sync_bool_compare_and_swap(&(x->next_hebrew), x->next_hebrew, y)))
+		{
+			printf("Exiting, atomic insert failed");
+			exit(0);
+		}
+		break;
+	case ENGLISH_ID:
+		//if x->next is null, x  is tail
+		if (!(x->next_english))
+			ds->tail = y;
+
+		//change next pointers
+		y->next_english = x->next_english;
+
+		if(!(__sync_bool_compare_and_swap(&(x->next_english), x->next_english, y)))
+		{
+			printf("Exiting, atomic insert failed");
+			exit(0);
+		}
+		break;
+	}
+
+	ds->size++;
+
+}
+
+
+/*! parallel version of insert */
+void insertPar(CilkWorkerState *const ws, void *dataStruct, void *data, size_t size, void *result)
+{
+	InsertRecord ** irArray = (InsertRecord **)data;
+	OM_DS * list = (OM_DS *) dataStruct;
+
+	int i;
+	for (i = 0; i<size; i++)
+	{
+		atomicInsert(list, irArray[i]);
+	}
+}
+void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 #ifdef BATCHIFY_WORKING
 	/// Batchify insert
@@ -2173,10 +2237,11 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
 	ir->x =  x;
 	ir->y =  y;
+	ir->ID = ID;
 
 	/// Make call to batchify to assign this data structure opeartion
 	/// to be executed at another time.
-	Cilk_batchify(_cilk_ws, &insertPar, list, ir, sizeof(Node), NULL);
+	Cilk_batchify(ws, &insertPar, ds, ir, sizeof(InsertRecord), NULL);
 #else
 	//Do insert here
 
@@ -2376,14 +2441,14 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	*/
 
 	/// Insert {current, spawned function, continuation node} into the english OM_DS
-	OM_DS_insert(WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
-	OM_DS_insert(WS_REF_ENG, spawned_func_node, cont_node, 			ENGLISH_ID);
-	if (post_sync_node) OM_DS_insert(WS_REF_ENG, cont_node, post_sync_node,	ENGLISH_ID);
+	OM_DS_insert(ws, WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
+	OM_DS_insert(ws, WS_REF_ENG, spawned_func_node, cont_node, 			ENGLISH_ID);
+	if (post_sync_node) OM_DS_insert(ws, WS_REF_ENG, cont_node, post_sync_node,	ENGLISH_ID);
 
 	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-	OM_DS_insert(WS_REF_HEB, frame->current_node, cont_node, 			HEBREW_ID);
-	OM_DS_insert(WS_REF_HEB, cont_node, spawned_func_node, 				HEBREW_ID);
-	if (post_sync_node) OM_DS_insert(WS_REF_HEB, spawned_func_node, post_sync_node, HEBREW_ID);
+	OM_DS_insert(ws, WS_REF_HEB, frame->current_node, cont_node, 			HEBREW_ID);
+	OM_DS_insert(ws, WS_REF_HEB, cont_node, spawned_func_node, 				HEBREW_ID);
+	if (post_sync_node) OM_DS_insert(ws, WS_REF_HEB, spawned_func_node, post_sync_node, HEBREW_ID);
 
 	/// Used for debug
 	;printList(WS_REF_ENG, ENGLISH_ID);
