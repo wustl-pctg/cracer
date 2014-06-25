@@ -507,7 +507,7 @@ cilk int main(int argv, char* argc){
 	void * par_r_r, * par_r_w, *par_w_r, *par_w_w;
 
 	/// Arrays to be passed into functions
-	void **seqArr, **parseqArr;
+	void **seqArr = malloc(4*sizeof(void*)), **parseqArr = malloc(8 * sizeof(void *));
 
 	/// Instantiate all of the race detect structures
 	seq_r_r = RD_INIT_SIZE_1(test_struct_gen);
