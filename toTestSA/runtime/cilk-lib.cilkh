@@ -133,18 +133,5 @@ extern void Cilk_batchify_sequential(CilkWorkerState *const ws,
 * Order maintenance functions for race detector
 ***********************************************/
 
-extern void OM_DS_add_first_node(void *ds, void * _x);
-
-extern void OM_DS_before_return_slow();
-
-extern void OM_DS_before_return_fast();
-
-extern int OM_DS_order(void *ds, void *_x, void *_y, const int ID);
-
-extern void OM_DS_free_and_free_nodes(CilkContext *const context);
-
-extern void OM_DS_init(CilkContext *const context);
-
-extern void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame);
 
 #endif				/* _CILK_LIB_H */

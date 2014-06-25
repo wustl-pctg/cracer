@@ -2096,7 +2096,7 @@ struct RD_Memory_Struct_s {
 
 };
 
-
+/// Allocate memory and set variables
 void OM_DS_init(CilkContext *const context){
 	/// Define CILK running parameters
 	/// -- use a linked list for the OM_DS
@@ -2187,7 +2187,8 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 			   x->id, x, y->id, y, ds->tail->id, ds->tail);
 		return;
 	}
-	printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
+	/// Debug messages
+	;//printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
 	switch(ID){
 	case HEBREW_ID:
 		//if x->next is null, x  is tail
@@ -2233,7 +2234,7 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 	OM_free_nodes_internal(context);
 #endif
 	///Debug message
-	printf("Debug: free OMDS\n");
+	;//printf("Debug: free OMDS\n");
 
 	///Free the english and hebrew OM_DS
 	Cilk_free(context->Cilk_global_state->hebrewOM_DS);

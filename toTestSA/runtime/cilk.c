@@ -272,7 +272,7 @@ static void Cilk_global_init(CilkContext *const context)
 {
   init_variables(context);
 
-  /*! order mainteancne for race detection */
+  /*! order maintenance for race detection */
   OM_DS_init(context);
   /*  ==== TODO: add race-detect ptr list for (de)allocation  ===== */
 

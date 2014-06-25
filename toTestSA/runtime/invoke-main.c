@@ -71,23 +71,36 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 
   CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at the end of the func.*/
 
-  /*!order maintenance for race detect*/
+  /// If starting a slow main function and size of the OM_DS
 	if (_cilk_ws->context->Cilk_global_state->englishOM_DS->size == 0 || _cilk_ws->context->Cilk_global_state->hebrewOM_DS->size == 0)
 	{
+	    	/// Create and allocate mem for main node
 		OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
+
+		/// Add main node onto both OM_DS's
 		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->englishOM_DS, main_node);
 		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->hebrewOM_DS, main_node);
+
+		/// Assign id one to this node
 		main_node->id = 1;
+
+		/// Reset first spawn flag of the fram in the invoke main slow frame
 		_cilk_frame->header.first_spawn_flag = 0;
-		printf("\nDebug: Created main node and added to eng/heb.\n");
+
+		/// Debug messages
+		;//printf("\nDebug: Created main node and added to eng/heb.\n");
 	}
 	else
-		printf("Nonempty OM_DS's, this is not the first invocation of slow main,dont create new nodes.\n");
-	/*!do this in stolen and non stolen mains: makes the first node (which is the same in both) the ws->next_func_node*/
+	/// Debug message	
+	    ;//printf("Nonempty OM_DS's, this is not the first invocation of slow main,dont create new nodes.\n");
+
+	/// Set the current node equal the first node 
 	_cilk_frame->header.current_node = _cilk_ws->context->Cilk_global_state->englishOM_DS->head;
+
+	/// Update the worker state to match the frame
 	ws->current_node = _cilk_frame->header.current_node;
 
-  /*end order maintenance*/
+  	/*end order maintenance*/
   CILK2C_START_THREAD_SLOW();
   switch (_cilk_frame->header.entry) {
   case 1:
