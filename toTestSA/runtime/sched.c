@@ -2098,25 +2098,38 @@ struct RD_Memory_Struct_s {
 
 
 void OM_DS_init(CilkContext *const context){
+	/// Define CILK running parameters
+	/// -- use a linked list for the OM_DS
+	#define OM_IS_LL
+
 	if (context->Cilk_global_state){
-		printf("Debug: OM_DS_init\n");
+	    	/// Debug message
+		;//printf("Debug: OM_DS_init\n");
+
+		/// Allocate heap memory for both lists
 		context->Cilk_global_state->hebrewOM_DS = (OM_DS* )Cilk_malloc(sizeof(OM_DS));
 		context->Cilk_global_state->englishOM_DS = (OM_DS *) Cilk_malloc(sizeof(OM_DS));
+
+		/// Reset size of both lists to 0
 		context->Cilk_global_state->hebrewOM_DS->size = 0;
 		context->Cilk_global_state->englishOM_DS->size= 0;
 	}
-#define OM_IS_LL
 }
 
-
-//! frees node if LL is the OM_DS
+/// Frees the nodes of the linked list
+/// Since both linked lists contain the same nodes, it is sufficient
+/// to move through the english list only. 
 void OM_LL_free_nodes_internal(CilkContext *const context){
-	int i = 0;
+    	/// Create tmp nodes
 	OM_Node  * node, *nextNode;
+	
+	/// Debug message
+	;//printf("DEBUG:LL free nodes\n");
 
-	printf("DEBUG:LL free nodes\n");
+	/// Assign node to head of english list
 	node = context->Cilk_global_state->englishOM_DS->head;
-
+	
+	/// Move through english, freeing each node. 
 	while(node != NULL){
 		nextNode = node->next_english;
 		Cilk_free(node);
@@ -2124,6 +2137,9 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 	}
 }
 
+
+/// Prints the linked list in english or hebrew ordering depending
+/// on the ID parameter passed in.
 void printList(OM_DS * list, const int ID) {
     OM_Node * n;
     if (list && list->head)	
@@ -2144,18 +2160,22 @@ void printList(OM_DS * list, const int ID) {
     printf("Tail\n");
 }
 
-//! frees node if OM_DS is not linked list
+/// Frees nodes of OM_DS
 void OM_free_nodes_internal(CilkContext *const context)
 {printf("DEBUG: OMDS free nodes -- NOT COMPLETED\n");}
 
 void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 #ifdef BATCHIFY_WORKING
-
+	/// Batchify insert
+	/// Create the insert record, which will be passed to the operation function
+	/// that we reference in Cilk_batchify(...,  &callback operation, ....);
 	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
 	ir->x =  x;
 	ir->y =  y;
 
+	/// Make call to batchify to assign this data structure opeartion
+	/// to be executed at another time.
 	Cilk_batchify(_cilk_ws, &insertPar, list, ir, sizeof(Node), NULL);
 #else
 	//Do insert here
@@ -2203,37 +2223,52 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 #endif
 }
 
-//! Calls proper free function based on DS
+/// Frees the OM_DS in the context and all of the nodes within.
 void OM_DS_free_and_free_nodes(CilkContext *const context){
-	//free nodes
 #ifdef OM_IS_LL
+    	/// Free nodes of linked list
 	OM_LL_free_nodes_internal(context);
 #else
+	/// Free nodes of OM_DS
 	OM_free_nodes_internal(context);
 #endif
-	//free ds
+	///Debug message
 	printf("Debug: free OMDS\n");
+
+	///Free the english and hebrew OM_DS
 	Cilk_free(context->Cilk_global_state->hebrewOM_DS);
 	Cilk_free(context->Cilk_global_state->englishOM_DS);
 
 }
 
-//! Simple append function for when OM_LL is defined
+/// This is called in the initialization of cilk
+/// Add the first node to the OM_DS 
 void OM_DS_add_first_node(void *ds, void * _x){
-	printf("Debug: appending node\n");
+    	/// Debug message
+	;//printf("Debug: appending node\n");
 #ifdef OM_IS_LL
-
+	/// Enter if ds and x are not NULL	
 	if (ds && _x){
 		OM_DS * om_ds = (OM_DS *)ds;
 		OM_Node * node = (OM_Node*)_x;
 		if (om_ds->size == 0)
 		{
+		    	/// Assign head and tail to new node
 			om_ds->tail = om_ds->head = node;
+			
+			/// Ensure node has no next
 			node->next_english = node->next_hebrew = NULL;
+
+			/// Assign unique node id
 			node->id =global_node_count++; 
+
+			/// Increment size of linked list
 			om_ds->size++;
 		}
-		else 	{ //if l.l. has nodes already
+		else 	{ 
+		    	/// Debug code
+		    	/// If linked list has nodes already, exit. Don't let this be called
+			/// incorrectly and let code continue
 			printf("List is non-empty, dont call add first node\n");
 			exit(0);
 		}
@@ -2245,20 +2280,28 @@ void OM_DS_add_first_node(void *ds, void * _x){
 	printf("Debug: Don't know how to append to OM_DS yet\n");
 #endif
 }
-void OM_DS_before_return_slow(){/*printf("Before return slow\n");*/}
-void OM_DS_before_return_fast(){/*printf("Before return fast\n");*/}
 
+/// Within the void *ds, depending on macros defined in main, determine the order
+/// of x and y. If x <= y, return true. Otherwie, return false.
+/// Note: the ID will determine which ordering to follow (english or hebrew)
 int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 #ifdef OM_IS_LL
-	// Really basic order function for ll
-	// Assumes both _x and _y are in the list
+    	///Temp node to hold current node
 	OM_Node * current;
+
+	/// Point tmp to head
 	current = ((OM_DS*)ds)->head;
+
+	/* Debug code to ensure correct calling of order function 
 	if (ID != HEBREW_ID && ID != ENGLISH_ID)	
 	{
 		printf("ID given to order is not valid\n");
 		exit(1);
 	}
+	*/
+	/// For a linked list, inc. the node pointer down the correct list.
+	/// If at any point current is x, we immediately exit true
+	/// If at any point current is y, we immediately exit false
 	do {
 		if (current == _y)
 			return 0;
@@ -2270,10 +2313,14 @@ int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 			current = current->next_hebrew;
 	} while( current != ((OM_DS*)ds)->tail);
 
-	printf("Debug: Neither node found in linked list. Returning false");
+	/// Debug code, to ensure we are not getting false or true by calling order
+	/// on incorrect nodes.	
+	printf("Debug: Neither node found in linked list. Error, exiting.");
+	exit(1);	
 	return 0;
 #else
 	printf("Debug: Don't know how to order with OM_DS yet\n");
+	exit(1);
 	return 0;
 #endif
 }
@@ -2319,6 +2366,7 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 
 	/// Asserts we have a valid (non-null) frame current node before we start inserting
 	CILK_ASSERT(ws, frame->current_node != NULL);
+
 	/* Debug messages
 	if (FAST_NOT_SLOW)	
 		printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
@@ -2343,15 +2391,18 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	/// If we had updates to post_sync_node, reset the frame's post_sync_node
 	if (post_sync_node) frame->post_sync_node = post_sync_node;
 
-	frame->current_node = cont_node;
-	frame->next_spawned_node = spawned_func_node;
-    
-	/*! update worker state*/
-	ws->current_node = frame->current_node;
+	/// Move the current node to the continuaion node
+	/// &
+	/// Update the worker state's current node so any calls to Race_detect_{read,write} have
+	/// the most current value.
+	frame->current_node = ws->current_node = cont_node;
 
+	/// Update the next spawned node so when the function is actually spawned and it looks to the 
+	/// frame above it on the stack (which is this frame) it can locate its current frame node.
+	frame->next_spawned_node = spawned_func_node;
 }
+
 /// After a sync in a slow clone, execute this function.
-///
 void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
@@ -2378,12 +2429,13 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 }
 
 
+/// After a sync in a fast clone, execute this function.
 void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
 	    printf("Debug: In batch node, no race detect needed");	
-	    return; //then in batcher
+	    return; 
 	}
 
 	/// For debug

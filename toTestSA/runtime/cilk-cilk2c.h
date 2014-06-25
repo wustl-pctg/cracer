@@ -123,14 +123,12 @@
      Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header)); \
      Cilk_cilk2c_before_return_fast(					  \
        _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));		  \
-     OM_DS_before_return_fast();\
 }
 
 #define CILK2C_BEFORE_RETURN_SLOW() {					  \
      Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header)); \
      Cilk_cilk2c_before_return_slow(					  \
        _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));		  \
-     OM_DS_before_return_slow();\
 }
 
 #define CILK2C_BEFORE_RETURN_INLET()

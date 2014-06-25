@@ -23,8 +23,11 @@
 #ifndef _CILK_LIB_H
 #define _CILK_LIB_H
 
+struct OM_Node_s;
+#include <OM_DS.h>
 #include <cilk.h>
 #include <RD_and_OM.h>
+
 
 FILE_IDENTITY (ident_cilk_lib_h,
 	       "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-lib.cilkh $ $LastChangedBy: bradley $ $Rev: 1699 $ $Date: 2004-10-22 22:22:25 -0400 (Fri, 22 Oct 2004) $");
@@ -143,9 +146,5 @@ extern void OM_DS_free_and_free_nodes(CilkContext *const context);
 extern void OM_DS_init(CilkContext *const context);
 
 extern void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame);
-
-cilk void hahaha(){
-	printf("haha\n");
-}
 
 #endif				/* _CILK_LIB_H */

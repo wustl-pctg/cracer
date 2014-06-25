@@ -94,26 +94,7 @@ struct cilk_alloca_header {
 
 /************************************/
 
-
-typedef struct OM_Node_s{
-	struct OM_Node_s *next_english, *next_hebrew;
-	int id; //needed?
-
-} OM_Node;
-
-typedef struct OM_DS_s {
-	OM_Node *head,*tail;
-	int size;
-
-} OM_DS;
-
-typedef struct {
-	OM_DS *ds;
-	OM_Node *x;
-	OM_Node *y;
-
-} InsertRecord;
-
+#include <OM_DS.h>
 
 /***********************************************************\
  * Hooks
