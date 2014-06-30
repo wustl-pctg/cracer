@@ -32,14 +32,15 @@ typedef struct test_struct_gen_s {
  * \brief Checks if all of the variables in the rd_ds-> and the test_struct_gen are the same
  */
 inline void  Check_test_struct_equal(void *rd_ds, test_struct_gen * s){
-
+/*
 	test_struct_gen tmp;
 //	printf("***ignore any race conditions on this line*****( doing memory checks: ");
 	/// Note: we may or may not get a race condition here, but were are just checking memory (after sync's anyways)
-	tmp = READ(rd_ds, test_struct_gen);
+	READ(rd_ds, tmp);
 
 	/// Check if the content of rd_ds->data match s (passed in param)
 	assert(memcmp((void *)&tmp, (void *)s, sizeof(test_struct_gen)) == MEMCMP_SAME);
+*/
 }
 
 
@@ -71,7 +72,7 @@ cilk void cilk_write_func(void *rd_ds, test_struct_gen * s, int * result){
 /// A spawned read helper function
 cilk void cilk_read_func(void *rd_ds, test_struct_gen * s, int * result){
 	/// Read from rd_ds and store in tmp rd_ds
-	*s = READ_b(rd_ds, test_struct_gen, result);
+	READ_b(rd_ds, s, result);
 
 	/// Compare to test_Struct passed in
 	Check_test_struct_equal(rd_ds, s);
@@ -113,7 +114,7 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
 	if (op2 == READ_ARG){
 
 		/// Read into tmp structure
-		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result2);
+		READ_b(rd_ds, &tmp_s, &race_detect_result2);
 	}
 	else	{
 		/// Write into tmp structure
@@ -193,7 +194,7 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 	if (op1 == READ_ARG){
 
 		/// Read from tmp structure
-		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
+		READ_b(rd_ds, &tmp_s, &race_detect_result);
 		printf("tmp_s: %p with i: %i and size: \n", &tmp_s, tmp_s.i);
 
 		/// Check test struct equal to passed in race detect data structure
@@ -220,7 +221,7 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 	if (op2 == READ_ARG){
 
 		/// Read from tmp structure
-		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result);
+		READ_b(rd_ds, &tmp_s, &race_detect_result);
 		printf("tmp_s: %p with i: %i and size: \n", &tmp_s, tmp_s.i );
 
 		/// Check test struct equal to passed in race detect data structure
@@ -278,7 +279,7 @@ cilk void spawn_rd_cousin_write(void *rd_ds, test_struct_gen * s, int * result){
 /// A spawned read helper function
 cilk void spawn_rd_cousin_read(void *rd_ds, test_struct_gen * s, int * result){
     /// Read from rd_ds and store in tmp rd_ds
-	*s = READ_b(rd_ds, test_struct_gen, result);
+    READ_b(rd_ds, s, result);
 
 	/// Compare to test_Struct passed in
 	Check_test_struct_equal(rd_ds, s);
@@ -402,12 +403,12 @@ cilk void rd_cousin_test(void ** parseqArr) {
 /// Functions used by rd_gparent_gchild_test
 cilk void cilk_write_func_nest(void *rd_ds, test_struct_gen *s, int * result){
 	spawn cilk_write_func(rd_ds, s, result);
-	sync;
+	//sync;
 }
 
 cilk void cilk_read_func_nest(void *rd_ds, test_struct_gen *s, int * result){
 	spawn cilk_read_func(rd_ds, s, result);
-	sync;
+	//sync;
 }
 
 cilk void gparent_gchild_spawned(void * rd_ds, const int op1, const int op2){
@@ -438,7 +439,7 @@ cilk void gparent_gchild_spawned(void * rd_ds, const int op1, const int op2){
 	/// Races possible
 	if (op2 == READ_ARG){
 		/// Read into tmp structure
-		tmp_s = READ_b(rd_ds,test_struct_gen, &race_detect_result2);
+		READ_b(rd_ds, &tmp_s, &race_detect_result2);
 	}
 	else	{
 		/// Write into tmp structure
@@ -447,6 +448,8 @@ cilk void gparent_gchild_spawned(void * rd_ds, const int op1, const int op2){
 
 	//Sync to end parallel threads
 	sync;
+
+	printf("RD1: %i, RD2: %i, \n", race_detect_result1, race_detect_result2);
 
 	/// Check if our race conditions were as expected
 	/// Note: This is overly specific, but it will catch errors in the
