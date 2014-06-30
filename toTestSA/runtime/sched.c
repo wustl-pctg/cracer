@@ -2832,7 +2832,7 @@ void Race_detect_read_b(CilkWorkerState * const ws,
 	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first read-node checked
-	if( (mem->left_w == NULL) && (mem->right_w == NULL) )
+	if( (mem->left_r == NULL) && (mem->right_r == NULL) )
 	{
 		printf("Debug: Initalizes l&r read ptrs\n");
 		//! Initalize ptrs for struct
@@ -2938,7 +2938,7 @@ void Race_detect_read(CilkWorkerState * const ws,
 	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first read-node checked
-	if( mem->left_r == NULL && mem->right_r == NULL )
+	if( (mem->left_r == NULL) && (mem->right_r == NULL) )
 	{
 		//! Initalize ptrs for struct
 		mem->left_r = mem->right_r = currentNode;
@@ -3258,7 +3258,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first write-node checked
-	if( mem->left_w == NULL && mem->right_w == NULL )
+	if( (mem->left_w == NULL) && (mem->right_w == NULL) )
 	{
 		//!Inialize ptrs for struct
 		mem->left_w = mem->right_w = currentNode;

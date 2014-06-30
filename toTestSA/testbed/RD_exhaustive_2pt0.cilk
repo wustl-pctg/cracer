@@ -17,7 +17,7 @@
  */
 typedef struct test_struct_gen_s {
 
-//	void * j;
+	void * j;
 
 	int  i;
 
