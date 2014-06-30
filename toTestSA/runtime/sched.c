@@ -2645,8 +2645,8 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	frame->next_spawned_node = spawned_func_node;
 
 	/// Used for debug
-	printList(WS_REF_ENG, ENGLISH_ID);
-	printList(WS_REF_HEB, HEBREW_ID);
+	;//printList(WS_REF_ENG, ENGLISH_ID);
+	;//printList(WS_REF_HEB, HEBREW_ID);
 
 
 }
