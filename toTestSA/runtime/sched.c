@@ -2170,7 +2170,7 @@ void OM_free_nodes_internal(CilkContext *const context)
 /**** START EXP SECTION ****/
 
 struct _cilk_insertPar_frame{CilkStackFrame header;
-struct{CilkWorkerState*ws;
+struct{
 void*dataStruct;
 void*data;
 size_t size;
@@ -2184,7 +2184,7 @@ OM_Node*y;
 int ID;
 }scope1;
 };
-struct _cilk_insertPar_args{CilkWorkerState*ws;
+struct _cilk_insertPar_args{
 void*dataStruct;
 void*data;
 size_t size;
@@ -2193,12 +2193,12 @@ void*result;
 static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insertPar_frame*_cilk_frame);
 static CilkProcInfo _cilk_insertPar_sig[]={{0,sizeof(struct _cilk_insertPar_frame),_cilk_insertPar_slow,0,0}};
 
-void insertPar (CilkWorkerState*const _cilk_ws,CilkWorkerState*const ws,void*dataStruct,void*data,size_t size,void*result){struct _cilk_insertPar_frame*_cilk_frame;
+void insertPar (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,size_t size,void*result){struct _cilk_insertPar_frame*_cilk_frame;
 { _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_insertPar_frame), _cilk_insertPar_sig);
  };
 { Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
  Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
- OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
+ ;//ignore OM_DS stuff OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
  };
 
 {
@@ -2288,9 +2288,9 @@ size_t size;
 void*result;
 { Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
  Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
- OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
+ ;// ignore order maintenance functions OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
  };
-switch (_cilk_frame->header.entry) {}ws=_cilk_frame->scope0.ws;
+switch (_cilk_frame->header.entry) {}
 dataStruct=_cilk_frame->scope0.dataStruct;
 data=_cilk_frame->scope0.data;
 size=_cilk_frame->scope0.size;
@@ -2384,13 +2384,12 @@ static void _cilk_insertPar_import(CilkWorkerState*const _cilk_ws,void*_cilk_pro
 
 {(void)_cilk_ws;
 (void)_cilk_procargs_v;
-insertPar(_cilk_ws,((struct _cilk_insertPar_args*)_cilk_procargs_v)->ws,((struct _cilk_insertPar_args*)_cilk_procargs_v)->dataStruct,((struct _cilk_insertPar_args*)_cilk_procargs_v)->data,((struct _cilk_insertPar_args*)_cilk_procargs_v)->size,((struct _cilk_insertPar_args*)_cilk_procargs_v)->result);
+insertPar(_cilk_ws,((struct _cilk_insertPar_args*)_cilk_procargs_v)->dataStruct,((struct _cilk_insertPar_args*)_cilk_procargs_v)->data,((struct _cilk_insertPar_args*)_cilk_procargs_v)->size,((struct _cilk_insertPar_args*)_cilk_procargs_v)->result);
 
 }
-void mt_insertPar(CilkContext*const context,CilkWorkerState*const ws,void*dataStruct,void*data,size_t size,void*result)
+void mt_insertPar(CilkContext*const context,void*dataStruct,void*data,size_t size,void*result)
 {struct _cilk_insertPar_args*_cilk_procargs;
 _cilk_procargs=(struct _cilk_insertPar_args*)Cilk_malloc_fixed(sizeof(struct _cilk_insertPar_args));
-_cilk_procargs->ws=ws;
 _cilk_procargs->dataStruct=dataStruct;
 _cilk_procargs->data=data;
 _cilk_procargs->size=size;
@@ -2421,6 +2420,7 @@ void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 	ir->y =  y;
 	ir->ID = ID;
 
+	;printf("Debug: INSERT:  x: %d , y: %d \n", x->id, y->id);
 	/// Make call to batchify to assign this data structure opeartion
 	/// to be executed at another time.
 	Cilk_batchify(ws, &insertPar, ds, ir, sizeof(InsertRecord), NULL);
@@ -2533,7 +2533,7 @@ void OM_DS_add_first_node(void *ds, void * _x){
 /// of x and y. If x <= y, return true. Otherwie, return false.
 /// Note: the ID will determine which ordering to follow (english or hebrew)
 int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
-#ifdef OM_IS_LL
+	#ifdef OM_IS_LL
 	///Temp node to hold current node
 	OM_Node * current;
 
@@ -2615,12 +2615,12 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	/// Asserts we have a valid (non-null) frame current node before we start inserting
 	CILK_ASSERT(ws, frame->current_node != NULL);
 
-	/* Debug messages
+	;//* Debug messages
 	   if (FAST_NOT_SLOW)
 	   printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
 	   else
 	   printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
-	*/
+	;//*/
 
 	/// Insert {current, spawned function, continuation node} into the english OM_DS
 	OM_DS_insert(ws, WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
@@ -2631,11 +2631,6 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	OM_DS_insert(ws, WS_REF_HEB, frame->current_node, cont_node, 			HEBREW_ID);
 	OM_DS_insert(ws, WS_REF_HEB, cont_node, spawned_func_node, 				HEBREW_ID);
 	if (post_sync_node) OM_DS_insert(ws, WS_REF_HEB, spawned_func_node, post_sync_node, HEBREW_ID);
-
-	/// Used for debug
-	;//printList(WS_REF_ENG, ENGLISH_ID);
-	;//printList(WS_REF_HEB, HEBREW_ID);
-
 	/// If we had updates to post_sync_node, reset the frame's post_sync_node
 	if (post_sync_node) frame->post_sync_node = post_sync_node;
 
@@ -2648,6 +2643,12 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	/// Update the next spawned node so when the function is actually spawned and it looks to the
 	/// frame above it on the stack (which is this frame) it can locate its current frame node.
 	frame->next_spawned_node = spawned_func_node;
+
+	/// Used for debug
+	printList(WS_REF_ENG, ENGLISH_ID);
+	printList(WS_REF_HEB, HEBREW_ID);
+
+
 }
 
 /// After a sync in a slow clone, execute this function.
@@ -2705,10 +2706,24 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 /// After a spawn is finished, update the worker state to match the frame
 inline void OM_DS_after_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
+    	/// Exit function immediately if a batch node
+	if  (ws->batch_id != 0)
+	{
+	//	    printf("Debug: In batch node, no race detect needed");
+	    return;
+	}
+	
     ws->current_node = frame->current_node;
 }
 /// After a spawn is finished, update the worker state to match the frame
 inline void OM_DS_after_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
+	/// Exit function immediately if a batch node
+	if  (ws->batch_id != 0)
+	{
+	//	    printf("Debug: In batch node, no race detect needed");
+	    return;
+	}
+	
     ws->current_node = frame->current_node;
 }
 

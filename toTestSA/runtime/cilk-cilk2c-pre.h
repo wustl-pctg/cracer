@@ -134,6 +134,7 @@ static inline void *Cilk_cilk2c_init_frame(CilkWorkerState *const ws,
   *t = (CilkStackFrame *) f;
 
   //added for ORDER MAINTENANCE for RACE DETECT
+  if (ws->batch_id == 0) /// TODO: do I need this?
   (*t)->current_node = ((CilkStackFrame *)(*(ws->current_cache->tail - 1)))->next_spawned_node;
 
   Cilk_membar_StoreStore();
