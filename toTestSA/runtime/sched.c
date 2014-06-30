@@ -2779,7 +2779,7 @@ void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 
 	//!Inialize known members
 	memPtr->size = size;
-	memPtr->data = Cilk_malloc(sizeof(size));
+	memPtr->data = Cilk_malloc(size);
 
 	//!Initialize the lock
 	RD_mutex_init(ws, memPtr);
