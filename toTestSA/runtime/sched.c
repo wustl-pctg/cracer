@@ -2101,8 +2101,8 @@ void OM_DS_init(CilkContext *const context){
 	/// Define CILK running parameters
 	/// -- use a linked list for the OM_DS
 #define OM_IS_LL
-    	//Batchify works
-	#define BATCHIFY_WORKING
+	//Batchify works
+#define BATCHIFY_WORKING
 
 	if (context->Cilk_global_state){
 		/// Debug message
@@ -2170,232 +2170,232 @@ void OM_free_nodes_internal(CilkContext *const context)
 /**** START EXP SECTION ****/
 
 struct _cilk_insertPar_frame{CilkStackFrame header;
-struct{
-void*dataStruct;
-void*data;
-size_t size;
-void*result;
-}scope0;
-struct{InsertRecord*irArray;
-OM_DS*ds;
-InsertRecord*ir;
-OM_Node*x;
-OM_Node*y;
-int ID;
-}scope1;
+	struct{
+		void*dataStruct;
+		void*data;
+		size_t size;
+		void*result;
+	}scope0;
+	struct{InsertRecord*irArray;
+		OM_DS*ds;
+		InsertRecord*ir;
+		OM_Node*x;
+		OM_Node*y;
+		int ID;
+	}scope1;
 };
 struct _cilk_insertPar_args{
-void*dataStruct;
-void*data;
-size_t size;
-void*result;
+	void*dataStruct;
+	void*data;
+	size_t size;
+	void*result;
 };
 static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insertPar_frame*_cilk_frame);
 static CilkProcInfo _cilk_insertPar_sig[]={{0,sizeof(struct _cilk_insertPar_frame),_cilk_insertPar_slow,0,0}};
 
 void insertPar (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,size_t size,void*result){struct _cilk_insertPar_frame*_cilk_frame;
-{ _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_insertPar_frame), _cilk_insertPar_sig);
- };
-{ Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
- ;//ignore OM_DS stuff OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
- };
+	{ _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_insertPar_frame), _cilk_insertPar_sig);
+	};
+	{ Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
+		Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
+		;//ignore OM_DS stuff OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
+	};
 
-{
- InsertRecord *irArray= (InsertRecord *)data;
+	{
+		InsertRecord *irArray= (InsertRecord *)data;
 
- OM_DS *ds= (OM_DS *) dataStruct;
-
-
-	int i = 0;
-for (; i < size ; i++)
-{
- InsertRecord *ir= &irArray[i];
-
- OM_Node *x= ir->x;
-OM_Node*y=ir->y;
-
- int ID= ir->ID;
+		OM_DS *ds= (OM_DS *) dataStruct;
 
 
+		int i = 0;
+		for (; i < size ; i++)
+		{
+			InsertRecord *ir= &irArray[i];
 
- if (!(x && y&& ds)) {
-  printf("Some nod,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
+			OM_Node *x= ir->x;
+			OM_Node*y=ir->y;
 
-  {{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
- };
-return;
-}
- };
+			int ID= ir->ID;
 
 
 
- switch (ID) {
- case 11:
+			if (!(x && y&& ds)) {
+				printf("Some nod,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
 
-  if (!(x->next_hebrew))
-   ds->tail = y;
-
-
-
-  y->next_hebrew = x->next_hebrew;
-
-
-  if (!(__sync_bool_compare_and_swap(&(x->next_hebrew),x->next_hebrew, y)))
-  {
-   printf("Exiting, atomic insert failed");
-
-   exit(0);
-
-  }
-  break;
-
- case 10:
-
-  if (!(x->next_english))
-   ds->tail = y;
+				{{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
+						Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+					};
+					return;
+				}
+			};
 
 
 
-  y->next_english = x->next_english;
+			switch (ID) {
+			case 11:
+
+				if (!(x->next_hebrew))
+					ds->tail = y;
 
 
-  if (!(__sync_bool_compare_and_swap(&(x->next_english),x->next_english, y)))
-  {
-   printf("Exiting, atomic insert failed");
 
-   exit(0);
+				y->next_hebrew = x->next_hebrew;
 
-  }
-  break;
 
- }
+				if (!(__sync_bool_compare_and_swap(&(x->next_hebrew),x->next_hebrew, y)))
+				{
+					printf("Exiting, atomic insert failed");
 
- ds->size++;
-	} //end for
+					exit(0);
 
-{{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
- };
-return;
-}}}
+				}
+				break;
+
+			case 10:
+
+				if (!(x->next_english))
+					ds->tail = y;
+
+
+
+				y->next_english = x->next_english;
+
+
+				if (!(__sync_bool_compare_and_swap(&(x->next_english),x->next_english, y)))
+				{
+					printf("Exiting, atomic insert failed");
+
+					exit(0);
+
+				}
+				break;
+
+			}
+
+			ds->size++;
+		} //end for
+
+		{{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
+				Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+			};
+			return;
+		}}}
 
 static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insertPar_frame*_cilk_frame){CilkWorkerState*ws;
-void*dataStruct;
-void*data;
-size_t size;
-void*result;
-{ Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
- ;// ignore order maintenance functions OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
- };
-switch (_cilk_frame->header.entry) {}
-dataStruct=_cilk_frame->scope0.dataStruct;
-data=_cilk_frame->scope0.data;
-size=_cilk_frame->scope0.size;
-result=_cilk_frame->scope0.result;
+	void*dataStruct;
+	void*data;
+	size_t size;
+	void*result;
+	{ Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
+		Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
+		;// ignore order maintenance functions OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
+	};
+	switch (_cilk_frame->header.entry) {}
+	dataStruct=_cilk_frame->scope0.dataStruct;
+	data=_cilk_frame->scope0.data;
+	size=_cilk_frame->scope0.size;
+	result=_cilk_frame->scope0.result;
 
-{
- InsertRecord *irArray= (InsertRecord *)data;
+	{
+		InsertRecord *irArray= (InsertRecord *)data;
 
- OM_DS *ds= (OM_DS *) dataStruct;
-	int i = 0;
-for (; i < size ; i++)
-{ //start for
- InsertRecord *ir= &irArray[i];
-
-
- OM_Node *x= ir->x;
-OM_Node*y=ir->y;
-
- int ID= ir->ID;
+		OM_DS *ds= (OM_DS *) dataStruct;
+		int i = 0;
+		for (; i < size ; i++)
+		{ //start for
+			InsertRecord *ir= &irArray[i];
 
 
+			OM_Node *x= ir->x;
+			OM_Node*y=ir->y;
 
- if (!(x && y&& ds)) {
-  printf("Some node or ds is null,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
-
-  {{ Cilk_set_result(_cilk_ws, (void *)0, 0);
- };
-{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
- };
-return;
-}
- };
+			int ID= ir->ID;
 
 
 
- switch (ID) {
- case 11:
+			if (!(x && y&& ds)) {
+				printf("Some node or ds is null,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
 
-  if (!(x->next_hebrew))
-   ds->tail = y;
-
-
-
-  y->next_hebrew = x->next_hebrew;
-
-
-  if (!(__sync_bool_compare_and_swap(&(x->next_hebrew),x->next_hebrew, y)))
-  {
-   printf("Exiting, atomic insert failed");
-
-   exit(0);
-
-  }
-  break;
-
- case 10:
-
-  if (!(x->next_english))
-   ds->tail = y;
+				{{ Cilk_set_result(_cilk_ws, (void *)0, 0);
+					};
+					{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
+						Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+					};
+					return;
+				}
+			};
 
 
 
-  y->next_english = x->next_english;
+			switch (ID) {
+			case 11:
+
+				if (!(x->next_hebrew))
+					ds->tail = y;
 
 
-  if (!(__sync_bool_compare_and_swap(&(x->next_english),x->next_english, y)))
-  {
-   printf("Exiting, atomic insert failed");
 
-   exit(0);
-
-  }
-  break;
-
- }
-
- ds->size++;
- } //end for
+				y->next_hebrew = x->next_hebrew;
 
 
-{{ Cilk_set_result(_cilk_ws, (void *)0, 0);
- };
-{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
- };
-return;
-}}}
+				if (!(__sync_bool_compare_and_swap(&(x->next_hebrew),x->next_hebrew, y)))
+				{
+					printf("Exiting, atomic insert failed");
+
+					exit(0);
+
+				}
+				break;
+
+			case 10:
+
+				if (!(x->next_english))
+					ds->tail = y;
+
+
+
+				y->next_english = x->next_english;
+
+
+				if (!(__sync_bool_compare_and_swap(&(x->next_english),x->next_english, y)))
+				{
+					printf("Exiting, atomic insert failed");
+
+					exit(0);
+
+				}
+				break;
+
+			}
+
+			ds->size++;
+		} //end for
+
+
+		{{ Cilk_set_result(_cilk_ws, (void *)0, 0);
+			};
+			{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
+				Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+			};
+			return;
+		}}}
 
 static void _cilk_insertPar_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v)
 
 {(void)_cilk_ws;
-(void)_cilk_procargs_v;
-insertPar(_cilk_ws,((struct _cilk_insertPar_args*)_cilk_procargs_v)->dataStruct,((struct _cilk_insertPar_args*)_cilk_procargs_v)->data,((struct _cilk_insertPar_args*)_cilk_procargs_v)->size,((struct _cilk_insertPar_args*)_cilk_procargs_v)->result);
+	(void)_cilk_procargs_v;
+	insertPar(_cilk_ws,((struct _cilk_insertPar_args*)_cilk_procargs_v)->dataStruct,((struct _cilk_insertPar_args*)_cilk_procargs_v)->data,((struct _cilk_insertPar_args*)_cilk_procargs_v)->size,((struct _cilk_insertPar_args*)_cilk_procargs_v)->result);
 
 }
 void mt_insertPar(CilkContext*const context,void*dataStruct,void*data,size_t size,void*result)
 {struct _cilk_insertPar_args*_cilk_procargs;
-_cilk_procargs=(struct _cilk_insertPar_args*)Cilk_malloc_fixed(sizeof(struct _cilk_insertPar_args));
-_cilk_procargs->dataStruct=dataStruct;
-_cilk_procargs->data=data;
-_cilk_procargs->size=size;
-_cilk_procargs->result=result;
-Cilk_start(context,_cilk_insertPar_import,_cilk_procargs,0);
-Cilk_free(_cilk_procargs);
+	_cilk_procargs=(struct _cilk_insertPar_args*)Cilk_malloc_fixed(sizeof(struct _cilk_insertPar_args));
+	_cilk_procargs->dataStruct=dataStruct;
+	_cilk_procargs->data=data;
+	_cilk_procargs->size=size;
+	_cilk_procargs->result=result;
+	Cilk_start(context,_cilk_insertPar_import,_cilk_procargs,0);
+	Cilk_free(_cilk_procargs);
 
 }
 /*** END EXP SECTION ****/
@@ -2533,7 +2533,7 @@ void OM_DS_add_first_node(void *ds, void * _x){
 /// of x and y. If x <= y, return true. Otherwie, return false.
 /// Note: the ID will determine which ordering to follow (english or hebrew)
 int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
-	#ifdef OM_IS_LL
+#ifdef OM_IS_LL
 	///Temp node to hold current node
 	OM_Node * current;
 
@@ -2577,7 +2577,7 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	//	    printf("Debug: In batch node, no race detect needed");
+		//	    printf("Debug: In batch node, no race detect needed");
 	    return;
 	}
 	/// Instantiate three new nodes
@@ -2616,10 +2616,10 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	CILK_ASSERT(ws, frame->current_node != NULL);
 
 	;//* Debug messages
-	   if (FAST_NOT_SLOW)
-	   printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
-	   else
-	   printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
+	if (FAST_NOT_SLOW)
+		printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
+	else
+		printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
 	;//*/
 
 	/// Insert {current, spawned function, continuation node} into the english OM_DS
@@ -2656,7 +2656,7 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	//	    printf("Debug: In batch node, no race detect needed");
+		//	    printf("Debug: In batch node, no race detect needed");
 	    return; //then in batcher
 	}
 
@@ -2683,7 +2683,7 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	//	    printf("Debug: In batch node, no race detect needed");
+		//	    printf("Debug: In batch node, no race detect needed");
 	    return;
 	}
 
@@ -2706,13 +2706,13 @@ void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 /// After a spawn is finished, update the worker state to match the frame
 inline void OM_DS_after_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
-    	/// Exit function immediately if a batch node
+	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	//	    printf("Debug: In batch node, no race detect needed");
+		//	    printf("Debug: In batch node, no race detect needed");
 	    return;
 	}
-	
+
     ws->current_node = frame->current_node;
 }
 /// After a spawn is finished, update the worker state to match the frame
@@ -2720,10 +2720,10 @@ inline void OM_DS_after_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *fr
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	//	    printf("Debug: In batch node, no race detect needed");
+		//	    printf("Debug: In batch node, no race detect needed");
 	    return;
 	}
-	
+
     ws->current_node = frame->current_node;
 }
 
@@ -2732,7 +2732,7 @@ void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	//    printf("Debug: In batch node, no race detect needed");
+		//    printf("Debug: In batch node, no race detect needed");
 	    return;
 	}
 
@@ -2811,11 +2811,12 @@ void RD_free(CilkWorkerState * const ws, void * mem)
   \param memPtr The memory address of the struct used in checking
   \return memory address of read location
 */
-void * Race_detect_read_b(CilkWorkerState * const ws,
-						  void * memPtr,
-						  const char * func_name,
-						  const int line_num,
-						  int * rd_result)
+void Race_detect_read_b(CilkWorkerState * const ws,
+						const void * memPtr,
+						void * holder,
+						const char * func_name,
+						const int line_num,
+						int * rd_result)
 {
 
 	//!Get struct
@@ -2825,14 +2826,15 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
 
 	//!Get lock
 	Cilk_mutex_wait(ws->context, ws,  &(mem->mutex) );
-	/*printf("Debug: Got lock - RD_read\n");*/
+	printf("Debug: Got lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first read-node checked
-	if( mem->left_w == NULL && mem->right_w == NULL )
+	if( (mem->left_w == NULL) && (mem->right_w == NULL) )
 	{
+		printf("Debug: Initalizes l&r read ptrs\n");
 		//! Initalize ptrs for struct
 		mem->left_r = mem->right_r = currentNode;
 	}
@@ -2888,25 +2890,27 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
 		*rd_result = 1;
 
 		//!Print that there's a race and continue
-		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
+		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
 	}
 	else
 		*rd_result = 0; //!< Make the bool 0
 
-
+	printf("Debug: Left_r: %i  right_r: %i and current: %i\n", mem->left_r->id, mem->right_r->id, currentNode->id);	
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
 		mem->left_r = currentNode;
 	if(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID))
 		mem->right_r = currentNode;
 
+   	//! Write the data into holder
+	memcpy(holder, mem->data, mem->size);
 
+	printf("Debug: About to release lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//!No race, release lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
 	/*printf("Debug: Release lock - RD-read\n");*/
 
-	//! Read the data
-	return mem->data;
+	return;
 
 }
 
@@ -2915,10 +2919,11 @@ void * Race_detect_read_b(CilkWorkerState * const ws,
   \param memPtr The memory address of the struct used in checking
   \return memory address of read location
 */
-void * Race_detect_read(CilkWorkerState * const ws,
-						void * memPtr,
-						const char * func_name,
-						const int line_num)
+void Race_detect_read(CilkWorkerState * const ws,
+					  const void * memPtr,
+					  void * holder,
+					  const char * func_name,
+					  const int line_num)
 {
 
 	//!Get struct
@@ -2928,8 +2933,7 @@ void * Race_detect_read(CilkWorkerState * const ws,
 
 	//!Get lock
 	Cilk_mutex_wait(ws->context, ws,  &(mem->mutex) );
-	/*printf("Debug: Got lock - RD_read\n");*/
-
+	printf("Debug: Got lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
 
@@ -2988,7 +2992,7 @@ void * Race_detect_read(CilkWorkerState * const ws,
  		)
 	{
 		//!Print that there's a race and continue
-		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
+		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
 	}
 
 	//! Update nodes (if necessary)
@@ -2997,12 +3001,15 @@ void * Race_detect_read(CilkWorkerState * const ws,
 	if(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID))
 		mem->right_r = currentNode;
 
+   	//! Write the data into holder
+	memcpy(holder, mem->data, mem->size);
+
+	printf("Debug: About to release lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//!No race, release lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
 	/*printf("Debug: Release lock - RD-read\n");*/
 
-	//! Read the data
-	return mem->data;
+	return;
 
 }
 
@@ -3027,14 +3034,16 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 	//!Get Lock
 	Cilk_mutex_wait(ws->context, ws, &(mem->mutex) );
 
+	printf("Debug: Got lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first write-node checked
-	if( mem->left_w == NULL && mem->right_w == NULL )
+	if( (mem->left_w == NULL) && (mem->right_w == NULL) )
 	{
+		printf("Debug: Initalizes l&r write ptrs\n");
 		//!Inialize ptrs for struct
-		mem->left_w = mem->right_w = currentNode;
+		mem->left_w = mem->right_w = currentNode;		
 
 		/*! ****Fuller Explanation of Race Detection Conditions Below****
 		 * In the event that the first write node is encounterd, races must be
@@ -3071,7 +3080,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 			)
 		{
 			//! Print the race
-			printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
+			printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
 
 			//!Make boolean true
 			*rd_result = 1;
@@ -3079,6 +3088,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 		   	//! Write the data
 			memcpy( mem->data, writeValue, mem->size);
 
+			printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 			//! Have to release lock
 			Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
@@ -3091,6 +3101,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 		   	//! Write the data
 			memcpy( mem->data, writeValue, mem->size);
 
+			printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 			//! Have to release lock
 			Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
@@ -3197,7 +3208,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 		)
 	{
 		//! Print the race
-		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
+		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
 
 		//!Make boolean true
 		*rd_result = 1;
@@ -3205,6 +3216,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 	else
 		*rd_result = 0; //!< Make bool 0
 
+	printf("Debug: Left_w: %i  right_w: %i and current: %i\n", mem->left_w->id, mem->right_w->id, currentNode->id);
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
 		mem->left_w = currentNode;
@@ -3215,6 +3227,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 	memcpy( mem->data, writeValue, mem->size);
 
 
+	printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//!Release Lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
@@ -3240,6 +3253,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	//!Get Lock
 	Cilk_mutex_wait(ws->context, ws, &(mem->mutex) );
 
+	printf("Debug: Got lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
 
@@ -3284,11 +3298,12 @@ void Race_detect_write(CilkWorkerState * const ws,
 			)
 		{
 			//! Print the race
-			printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
+			printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
 
 		   	//! Write the data
 			memcpy( mem->data, writeValue, mem->size);
 
+			printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 			//! Have to release lock
 			Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
@@ -3298,6 +3313,8 @@ void Race_detect_write(CilkWorkerState * const ws,
 		   	//! Write the data
 			memcpy( mem->data, writeValue, mem->size);
 
+
+			printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 			//! Have to release lock
 			Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
@@ -3404,7 +3421,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 		)
 	{
 		//! Print the race
-		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem->data, func_name, line_num);
+		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
 	}
 
 	//! Update nodes (if necessary)
@@ -3416,6 +3433,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	//! Write the data
 	memcpy( mem->data, writeValue, mem->size);
 
+	printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//!Release Lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
