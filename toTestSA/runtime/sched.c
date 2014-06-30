@@ -2102,7 +2102,7 @@ void OM_DS_init(CilkContext *const context){
 	/// -- use a linked list for the OM_DS
 #define OM_IS_LL
     	//Batchify works
-//#define BATCHIFY_WORKING
+	#define BATCHIFY_WORKING
 
 	if (context->Cilk_global_state){
 		/// Debug message
@@ -2166,68 +2166,250 @@ void printList(OM_DS * list, const int ID) {
 void OM_free_nodes_internal(CilkContext *const context)
 {printf("DEBUG: OMDS free nodes -- NOT COMPLETED\n");}
 
-/*!  single insert, called by insertPar */
-void atomicInsert(OM_DS * ds, InsertRecord *ir){
-	OM_Node *x = ir->x, *y = ir->y;
-	int ID = ir->ID;
 
-	//if x is null
-	if (!(x && y && ds) ){
-		printf("Some node or ds is null,\
-               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-			   x->id, x, y->id, y, ds->tail->id, ds->tail);
-		return;
-	}
-	/// Debug messages
-	;//printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
-	switch(ID){
-	case HEBREW_ID:
-		//if x->next is null, x  is tail
-		if (!(x->next_hebrew))
-			ds->tail = y;
+/**** START EXP SECTION ****/
 
-		//change next pointers
-		y->next_hebrew = x->next_hebrew;
+struct _cilk_insertPar_frame{CilkStackFrame header;
+struct{CilkWorkerState*ws;
+void*dataStruct;
+void*data;
+size_t size;
+void*result;
+}scope0;
+struct{InsertRecord*irArray;
+OM_DS*ds;
+InsertRecord*ir;
+OM_Node*x;
+OM_Node*y;
+int ID;
+}scope1;
+};
+struct _cilk_insertPar_args{CilkWorkerState*ws;
+void*dataStruct;
+void*data;
+size_t size;
+void*result;
+};
+static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insertPar_frame*_cilk_frame);
+static CilkProcInfo _cilk_insertPar_sig[]={{0,sizeof(struct _cilk_insertPar_frame),_cilk_insertPar_slow,0,0}};
 
-		if(!(__sync_bool_compare_and_swap(&(x->next_hebrew), x->next_hebrew, y)))
-		{
-			printf("Exiting, atomic insert failed");
-			exit(0);
-		}
-		break;
-	case ENGLISH_ID:
-		//if x->next is null, x  is tail
-		if (!(x->next_english))
-			ds->tail = y;
+void insertPar (CilkWorkerState*const _cilk_ws,CilkWorkerState*const ws,void*dataStruct,void*data,size_t size,void*result){struct _cilk_insertPar_frame*_cilk_frame;
+{ _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_insertPar_frame), _cilk_insertPar_sig);
+ };
+{ Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
+ OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
+ };
 
-		//change next pointers
-		y->next_english = x->next_english;
-
-		if(!(__sync_bool_compare_and_swap(&(x->next_english), x->next_english, y)))
-		{
-			printf("Exiting, atomic insert failed");
-			exit(0);
-		}
-		break;
-	}
-
-	ds->size++;
-
-}
-
-
-/*! parallel version of insert */
-void insertPar(CilkWorkerState *const ws, void *dataStruct, void *data, size_t size, void *result)
 {
-	InsertRecord * irArray = (InsertRecord *)data;
-	OM_DS * list = (OM_DS *) dataStruct;
+ InsertRecord *irArray= (InsertRecord *)data;
 
-	int i;
-	for (i = 0; i<size; i++)
-	{
-		atomicInsert(list, &irArray[i]);
-	}
+ OM_DS *ds= (OM_DS *) dataStruct;
+
+
+	int i = 0;
+for (; i < size ; i++)
+{
+ InsertRecord *ir= &irArray[i];
+
+ OM_Node *x= ir->x;
+OM_Node*y=ir->y;
+
+ int ID= ir->ID;
+
+
+
+ if (!(x && y&& ds)) {
+  printf("Some nod,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
+
+  {{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+ };
+return;
 }
+ };
+
+
+
+ switch (ID) {
+ case 11:
+
+  if (!(x->next_hebrew))
+   ds->tail = y;
+
+
+
+  y->next_hebrew = x->next_hebrew;
+
+
+  if (!(__sync_bool_compare_and_swap(&(x->next_hebrew),x->next_hebrew, y)))
+  {
+   printf("Exiting, atomic insert failed");
+
+   exit(0);
+
+  }
+  break;
+
+ case 10:
+
+  if (!(x->next_english))
+   ds->tail = y;
+
+
+
+  y->next_english = x->next_english;
+
+
+  if (!(__sync_bool_compare_and_swap(&(x->next_english),x->next_english, y)))
+  {
+   printf("Exiting, atomic insert failed");
+
+   exit(0);
+
+  }
+  break;
+
+ }
+
+ ds->size++;
+	} //end for
+
+{{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+ };
+return;
+}}}
+
+static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insertPar_frame*_cilk_frame){CilkWorkerState*ws;
+void*dataStruct;
+void*data;
+size_t size;
+void*result;
+{ Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
+ OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
+ };
+switch (_cilk_frame->header.entry) {}ws=_cilk_frame->scope0.ws;
+dataStruct=_cilk_frame->scope0.dataStruct;
+data=_cilk_frame->scope0.data;
+size=_cilk_frame->scope0.size;
+result=_cilk_frame->scope0.result;
+
+{
+ InsertRecord *irArray= (InsertRecord *)data;
+
+ OM_DS *ds= (OM_DS *) dataStruct;
+	int i = 0;
+for (; i < size ; i++)
+{ //start for
+ InsertRecord *ir= &irArray[i];
+
+
+ OM_Node *x= ir->x;
+OM_Node*y=ir->y;
+
+ int ID= ir->ID;
+
+
+
+ if (!(x && y&& ds)) {
+  printf("Some node or ds is null,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
+
+  {{ Cilk_set_result(_cilk_ws, (void *)0, 0);
+ };
+{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+ };
+return;
+}
+ };
+
+
+
+ switch (ID) {
+ case 11:
+
+  if (!(x->next_hebrew))
+   ds->tail = y;
+
+
+
+  y->next_hebrew = x->next_hebrew;
+
+
+  if (!(__sync_bool_compare_and_swap(&(x->next_hebrew),x->next_hebrew, y)))
+  {
+   printf("Exiting, atomic insert failed");
+
+   exit(0);
+
+  }
+  break;
+
+ case 10:
+
+  if (!(x->next_english))
+   ds->tail = y;
+
+
+
+  y->next_english = x->next_english;
+
+
+  if (!(__sync_bool_compare_and_swap(&(x->next_english),x->next_english, y)))
+  {
+   printf("Exiting, atomic insert failed");
+
+   exit(0);
+
+  }
+  break;
+
+ }
+
+ ds->size++;
+ } //end for
+
+
+{{ Cilk_set_result(_cilk_ws, (void *)0, 0);
+ };
+{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+ };
+return;
+}}}
+
+static void _cilk_insertPar_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v)
+
+{(void)_cilk_ws;
+(void)_cilk_procargs_v;
+insertPar(_cilk_ws,((struct _cilk_insertPar_args*)_cilk_procargs_v)->ws,((struct _cilk_insertPar_args*)_cilk_procargs_v)->dataStruct,((struct _cilk_insertPar_args*)_cilk_procargs_v)->data,((struct _cilk_insertPar_args*)_cilk_procargs_v)->size,((struct _cilk_insertPar_args*)_cilk_procargs_v)->result);
+
+}
+void mt_insertPar(CilkContext*const context,CilkWorkerState*const ws,void*dataStruct,void*data,size_t size,void*result)
+{struct _cilk_insertPar_args*_cilk_procargs;
+_cilk_procargs=(struct _cilk_insertPar_args*)Cilk_malloc_fixed(sizeof(struct _cilk_insertPar_args));
+_cilk_procargs->ws=ws;
+_cilk_procargs->dataStruct=dataStruct;
+_cilk_procargs->data=data;
+_cilk_procargs->size=size;
+_cilk_procargs->result=result;
+Cilk_start(context,_cilk_insertPar_import,_cilk_procargs,0);
+Cilk_free(_cilk_procargs);
+
+}
+/*** END EXP SECTION ****/
+
+
+
+
+
+
+
+
+
+
 void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 #ifdef BATCHIFY_WORKING
