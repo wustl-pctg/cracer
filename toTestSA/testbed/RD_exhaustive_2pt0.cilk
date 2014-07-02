@@ -25,7 +25,7 @@ typedef struct test_struct_gen_s {
 
 	float f;
 
-//	size_t size;
+	size_t size;
 } test_struct_gen;
 
 /**\fn Check_test_struct_equal
@@ -124,9 +124,8 @@ cilk void parent_child_spawned(void * rd_ds, const int op1, const int op2, const
 	//Sync to end parallel threads
 	if (par_flag == PARALLEL)
 		sync;
-	printf("RD1: %i, RD2: %i, (RD1 ^ RD2): %i\n",
-		   race_detect_result1, race_detect_result2,
-		   (race_detect_result1 ^ race_detect_result2));
+	;//printf("RD1: %i, RD2: %i, (RD1 ^ RD2): %i\n", race_detect_result1, race_detect_result2, (race_detect_result1 ^ race_detect_result2));
+
 	/// Check if our race conditions were as expected
 	/// Note: This is overly specific, but it will catch errors in the
 	/// 	  test itself if the op1/op2 are passed incorrectly
@@ -186,7 +185,7 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 
 	/// Give struct and union random variables and allocate memory to members
 	Assign_struct_random_vars(&tmp_s);
-	printf("tmp_s: %p with i: %i and size: \n", &tmp_s, tmp_s.i);
+	;//printf("tmp_s: %p with i: %i and size: \n", &tmp_s, tmp_s.i);
 
 	/// Execute first operation
 	/// No races expected
@@ -195,7 +194,7 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 
 		/// Read from tmp structure
 		READ_b(rd_ds, &tmp_s, &race_detect_result);
-		printf("tmp_s: %p with i: %i and size: \n", &tmp_s, tmp_s.i);
+		;//printf("tmp_s: %p with i: %i and size: \n", &tmp_s, tmp_s.i);
 
 		/// Check test struct equal to passed in race detect data structure
 		Check_test_struct_equal(rd_ds, &tmp_s);
@@ -222,7 +221,7 @@ cilk void seq_same_func_spawned(void * rd_ds, const int op1, const int op2 ){
 
 		/// Read from tmp structure
 		READ_b(rd_ds, &tmp_s, &race_detect_result);
-		printf("tmp_s: %p with i: %i and size: \n", &tmp_s, tmp_s.i );
+		;//printf("tmp_s: %p with i: %i and size: \n", &tmp_s, tmp_s.i );
 
 		/// Check test struct equal to passed in race detect data structure
 		Check_test_struct_equal(rd_ds, &tmp_s);
@@ -307,7 +306,7 @@ cilk void cousin_sequential(const int op1, const int op2, void * mem_ptr,
 	} sync;
 
 	/// Confirm no race was found
-	printf("race_detected1: %i ************************************\n", race_detected1);
+	;//printf("race_detected1: %i ************************************\n", race_detected1);
 	assert(race_detected1 == 0);
 	assert(race_detected2 == 0);
 }
@@ -449,7 +448,7 @@ cilk void gparent_gchild_spawned(void * rd_ds, const int op1, const int op2){
 	//Sync to end parallel threads
 	sync;
 
-	printf("RD1: %i, RD2: %i, \n", race_detect_result1, race_detect_result2);
+	;//printf("RD1: %i, RD2: %i, \n", race_detect_result1, race_detect_result2);
 
 	/// Check if our race conditions were as expected
 	/// Note: This is overly specific, but it will catch errors in the
@@ -562,7 +561,7 @@ cilk int main(int argv, char* argc){
 	spawn rd_cousin_test(parseqArr);
 	sync;
 
-	printf("Test completed fully as expected. No errors [before the frees...]\n");
+	;//printf("Test completed fully as expected. No errors [before the frees...]\n");
 
 	/// Free all race detect data structures
 	RD_free(_cilk_ws, seq_r_r);

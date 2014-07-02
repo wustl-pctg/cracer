@@ -2420,7 +2420,7 @@ void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 	ir->y =  y;
 	ir->ID = ID;
 
-	;printf("Debug: INSERT:  x: %d , y: %d \n", x->id, y->id);
+	;//printf("Debug: INSERT:  x: %d , y: %d \n", x->id, y->id);
 	/// Make call to batchify to assign this data structure opeartion
 	/// to be executed at another time.
 	Cilk_batchify(ws, &insertPar, ds, ir, sizeof(InsertRecord), NULL);
@@ -2435,7 +2435,7 @@ void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 		return;
 	}
 	/// Debug messages
-	;printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
+	;//printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
 	switch(ID){
 	case HEBREW_ID:
 		//if x->next is null, x  is tail
@@ -2615,12 +2615,12 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	/// Asserts we have a valid (non-null) frame current node before we start inserting
 	CILK_ASSERT(ws, frame->current_node != NULL);
 
-	;//* Debug messages
-	if (FAST_NOT_SLOW)
+	;/* Debug messages
+	if (FAST_NOT_SLOW)//TODO
 		printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
 	else
 		printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
-	;//*/
+ 	;*/
 
 	/// Insert {current, spawned function, continuation node} into the english OM_DS
 	OM_DS_insert(ws, WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
@@ -2826,7 +2826,7 @@ void Race_detect_read_b(CilkWorkerState * const ws,
 
 	//!Get lock
 	Cilk_mutex_wait(ws->context, ws,  &(mem->mutex) );
-	printf("Debug: Got lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	;//printf("Debug: Got lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
@@ -2834,7 +2834,7 @@ void Race_detect_read_b(CilkWorkerState * const ws,
 	//! This is only true when it is the first read-node checked
 	if( (mem->left_r == NULL) && (mem->right_r == NULL) )
 	{
-		printf("Debug: Initalizes l&r read ptrs\n");
+		;//printf("Debug: Initalizes l&r read ptrs\n");
 		//! Initalize ptrs for struct
 		mem->left_r = mem->right_r = currentNode;
 	}
@@ -2895,7 +2895,7 @@ void Race_detect_read_b(CilkWorkerState * const ws,
 	else
 		*rd_result = 0; //!< Make the bool 0
 
-	printf("Debug: Left_r: %i  right_r: %i and current: %i\n", mem->left_r->id, mem->right_r->id, currentNode->id);	
+	;//printf("Debug: Left_r: %i  right_r: %i and current: %i\n", mem->left_r->id, mem->right_r->id, currentNode->id);
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
 		mem->left_r = currentNode;
@@ -2905,10 +2905,9 @@ void Race_detect_read_b(CilkWorkerState * const ws,
    	//! Write the data into holder
 	memcpy(holder, mem->data, mem->size);
 
-	printf("Debug: About to release lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	;//printf("Debug: About to release lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//!No race, release lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
-	/*printf("Debug: Release lock - RD-read\n");*/
 
 	return;
 
@@ -2933,7 +2932,8 @@ void Race_detect_read(CilkWorkerState * const ws,
 
 	//!Get lock
 	Cilk_mutex_wait(ws->context, ws,  &(mem->mutex) );
-	printf("Debug: Got lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	;//printf("Debug: Got lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
 
@@ -3004,10 +3004,9 @@ void Race_detect_read(CilkWorkerState * const ws,
    	//! Write the data into holder
 	memcpy(holder, mem->data, mem->size);
 
-	printf("Debug: About to release lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	;//printf("Debug: About to release lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//!No race, release lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
-	/*printf("Debug: Release lock - RD-read\n");*/
 
 	return;
 
@@ -3034,16 +3033,17 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 	//!Get Lock
 	Cilk_mutex_wait(ws->context, ws, &(mem->mutex) );
 
-	printf("Debug: Got lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	;//printf("Debug: Got lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
 
 	//! This is only true when it is the first write-node checked
 	if( (mem->left_w == NULL) && (mem->right_w == NULL) )
 	{
-		printf("Debug: Initalizes l&r write ptrs\n");
+		;//printf("Debug: Initalizes l&r write ptrs\n");
+
 		//!Inialize ptrs for struct
-		mem->left_w = mem->right_w = currentNode;		
+		mem->left_w = mem->right_w = currentNode;
 
 		/*! ****Fuller Explanation of Race Detection Conditions Below****
 		 * In the event that the first write node is encounterd, races must be
@@ -3088,7 +3088,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 		   	//! Write the data
 			memcpy( mem->data, writeValue, mem->size);
 
-			printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+			;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 			//! Have to release lock
 			Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
@@ -3101,7 +3101,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 		   	//! Write the data
 			memcpy( mem->data, writeValue, mem->size);
 
-			printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+			;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 			//! Have to release lock
 			Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
@@ -3216,7 +3216,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 	else
 		*rd_result = 0; //!< Make bool 0
 
-	printf("Debug: Left_w: %i  right_w: %i and current: %i\n", mem->left_w->id, mem->right_w->id, currentNode->id);
+	;//printf("Debug: Left_w: %i  right_w: %i and current: %i\n", mem->left_w->id, mem->right_w->id, currentNode->id);
 	//! Update nodes (if necessary)
 	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
 		mem->left_w = currentNode;
@@ -3227,7 +3227,7 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 	memcpy( mem->data, writeValue, mem->size);
 
 
-	printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//!Release Lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
@@ -3253,7 +3253,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	//!Get Lock
 	Cilk_mutex_wait(ws->context, ws, &(mem->mutex) );
 
-	printf("Debug: Got lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	;//printf("Debug: Got lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//! Retrieve currentNode from workerstate
 	OM_Node * currentNode = ws->current_node;
 
@@ -3303,7 +3303,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 		   	//! Write the data
 			memcpy( mem->data, writeValue, mem->size);
 
-			printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+			;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 			//! Have to release lock
 			Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
@@ -3314,7 +3314,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 			memcpy( mem->data, writeValue, mem->size);
 
 
-			printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+			;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 			//! Have to release lock
 			Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
@@ -3433,7 +3433,7 @@ void Race_detect_write(CilkWorkerState * const ws,
 	//! Write the data
 	memcpy( mem->data, writeValue, mem->size);
 
-	printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
 	//!Release Lock
 	Cilk_mutex_signal(ws->context, &(mem->mutex) );
 
