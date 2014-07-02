@@ -1,29 +1,32 @@
 #include "OM_sublist.h"
 
-
-
 /// Allocate memory and set variables
 void OM_DS_init(OM_DS * list){;
+
+
+	unsigned int INT_BIT_SIZE =  (unsigned int) (sizeof(void*) * 8);
+	unsigned int MAX_NUMBER = (1 << INT_BIT_SIZE) -1;
 	
 	list = (OM_DS* )malloc(sizeof(OM_DS));
 	list->head = (OM_Node*)malloc(sizeof(OM_Node));
 	list->tail = (OM_Node*)malloc(sizeof(OM_Node));
 
 	// Set up list
-	list->head->next_e = list->head->next_h = tail;
-	list->tail->prev_e = list->tail->prev_h = head;
+	list->head->next_e = list->head->next_h = list->tail;
+	list->tail->prev_e = list->tail->prev_h = list->head;
+
 	list->size = list->Reorder_flag = 0;
 
 	// Set up nodes
 	list->head->tag_e = list->head->tag_h = 0;
-	list->tail->tag_e = list->tail->tag_h = UINT_MAX;
+	list->tail->tag_e = list->tail->tag_h = MAX_NUMBER;
 
 }
 
 /// Frees the nodes of the linked list
 /// Since both linked lists contain the same nodes, it is sufficient
 /// to move through the english list only.
-void free_and_free_nodes(OM_DS * list){
+void OM_free_and_free_nodes(OM_DS * list){
 
 	/// Create tmp nodes
 	OM_Node  * node, *nextNode;
@@ -33,7 +36,7 @@ void free_and_free_nodes(OM_DS * list){
 
 	/// Move through english, freeing each node.
 	while(node != list->tail){
-		nextNode = node->next_english;
+		nextNode = node->next_e;
 		free(node);
 		node = nextNode;
 	}
@@ -58,12 +61,12 @@ void printList(OM_DS * list, const int ID) {
 
     while (n != NULL){
 		if( ID == HEBREW_ID ) {
-			printf("%d->", n->tag_h);
-        	n = n->next_hebrew;
+			printf("%d (%i)->", n->id, n->tag_h);
+        	n = n->next_h;
 		}
 		else {
-			printf("%d->", n->tag_e);
-			n = n->next_english;
+			printf("%d (%i)->", n->id, n->tag_e);
+			n = n->next_e;
 		}
     }
     printf("Tail\n");
@@ -72,6 +75,7 @@ void printList(OM_DS * list, const int ID) {
 
 void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
+	unsigned int INT_BIT_SIZE =  (unsigned int) (sizeof(void*) * 8);
 
 	//if x is null
 	if (!(x && y && ds) ){
@@ -164,7 +168,7 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 	}
 
-	if( !(ds.size < INT_BIT_SIZE/2) )
+	if( !(ds->size < INT_BIT_SIZE/2) )
 		ds->Reorder_flag = 1;
 
 	ds->size++;
@@ -182,16 +186,22 @@ void OM_DS_add_first_node(void *ds, void * _x){
 		if (om_ds->size == 0)
 		{
 			/// Change head->next to be this node
-			list->head->next_e = list->head->next_h = node;
+			om_ds->head->next_e = om_ds->head->next_h = node;
+
+			/// Change node->prev to be the head
+			node->prev_e = node->prev_h = om_ds->head;
 			
+			/// Change node->next to be tail
+			node->next_e = node->next_h = om_ds->tail;
+
 			/// Change tail->prev to be this node
-			list->tail->prev_e = list->tail->prev_h = head;
+			om_ds->tail->prev_e = om_ds->tail->prev_h = node;
 
 			/// Assign unique node id
-			node->id =global_node_count++;
+//			node->id =global_node_count++;
 
 			/// Assign tag
-			node->tag_e = node->tag_h = UINT_MAX / 2;
+			node->tag_e = node->tag_h = om_ds->tail->tag_h/2;
 
 			/// Increment size of linked list
 			om_ds->size++;
@@ -215,12 +225,23 @@ void OM_DS_add_first_node(void *ds, void * _x){
 /// Note: the ID will determine which ordering to follow (english or hebrew)
 int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 
+	OM_Node * x, * y;
+
+	if( !(_x && _y) ) {
+
+		printf("Debug: Order - one of the nodes null\n");
+		exit(10);
+	}
+	
+	x = (OM_Node*) _x;
+	y = (OM_Node*) _y;
+
 	switch(ID){
 	case HEBREW_ID:
-		_x->tag_h > _y->tag_h ? return 0 : return 1;
+		if(x->tag_h > y->tag_h) return 0; else return 1;
 
 	case ENGLISH_ID:
-		_x->tag_e > _y->tag_e ? return 0 : return 1;
+		if(x->tag_e > y->tag_e) return 0; else return 1;
 	}
 	printf("Debug: something went wrong in OM_DS_order\n");
 	return 0;

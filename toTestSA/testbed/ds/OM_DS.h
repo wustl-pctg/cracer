@@ -3,7 +3,7 @@
 
 typedef struct OM_Node_s{
 	struct OM_Node_s *next_e, *next_h;
-	struct OM_Nods_s *prev_e, *prev_h;
+	struct OM_Node_s *prev_e, *prev_h;
 	int id;
 	unsigned int tag_e, tag_h;
 

@@ -5,12 +5,14 @@
 #include <stdio.h>
 #include <limits.h>
 #include "OM_DS.h"
+#include "power.h"
 
-#define INT_BIT_SIZE 64
+#define HEBREW_ID 10
+#define ENGLISH_ID 11
 
 void OM_DS_init();
 
-void free_and_free_nodes(OM_DS *);
+void OM_free_and_free_nodes(OM_DS *);
 
 void printList(OM_DS *, const int);
 
