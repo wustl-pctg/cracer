@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <limits.h>
 #include <math.h>
+#include <assert.h>
 #include "OM_DS.h"
 #include "OM_DS_bender.h"
 #include "OM_sublist.h"
-
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  tag_range_relabel
@@ -200,10 +200,8 @@ Top_List * init_top_list ()
 
 	/// Assign appropriate vals to head and tail node tags
 	list->head->tag_e = list->head->tag_h = 0;
-	list->tail->tag_e = list->tail->tag_h = MY_INT_MAX;
+	list->tail->tag_e = list->tail->tag_h = UINT_MAX;
 
-	/// Max unsigned int divided by 2
-	list->tail_tag_div_by_2		=	list->tail->tag >> 1;
 
 
 	/// Assign correct vals to head and tail pointers
@@ -220,14 +218,19 @@ Top_List * init_top_list ()
 
 void Top_List_free_and_free_nodes ( Top_List * list )
 {
+	/// Keep track pf current and next node
 	OM_DS * current = list->head, *next = NULL;
 
 	do {
+		/// Assign next pointer
 		next = current->next_e;
+
+		/// Free current sublist
 		free_and_free_nodes(current);
 	}
 	while (next != NULL);
 
+	/// Free this list
 	free(list);
 	return ;
 }		/* -----  end of function Free_and_free_nodes  ----- */
@@ -236,8 +239,7 @@ int main ( int argc, char *argv[] )
 	Top_List *list =  init_top_list();
 
 
-	Free_and_free_nodes(elist);
-	Free_and_free_nodes(hlist);
+	Top_List_free_and_free_nodes(list);
 
 	return EXIT_SUCCESS;
 }				/* ----------  end of function main  ---------- */

@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
-#include <OM_DS.h>
+#include "OM_DS.h"
 
-#define INT_BIT_SIZE(64)
+#define INT_BIT_SIZE 64
 
 void OM_DS_init();
 
