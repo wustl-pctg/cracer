@@ -2,23 +2,9 @@
 #include <stdio.h>
 #include <limits.h>
 #include <math.h>
-typedef struct Sub_List_s{
-	struct Sub_List_s *enext,*hnext, *eprev, *hprev;
-	unsigned int tag;
-
-}Sub_List;
-
-/// Implementation of Bender's order maintenance data structure.
-/// This is the top tier of the list
-typedef struct Top_List_s{
-
-	Sub_List *head, *tail; /// TODO: change to OM_DS of the sublist
-	const int ID; /// English or Hebrew: do i need this?
-	int size;
-	float overflow_threshold; /// T in the bender paper
-	/// TODO: precompute values of 1 / (T^i)  for much needed values of i
-} Top_List;
-
+#include "OM_DS.h"
+#include "OM_DS_bender.h"
+#include "OM_sublist.h"
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -26,27 +12,26 @@ typedef struct Top_List_s{
  *  Description:  Relabels the range of nodes from x to y
  * =====================================================================================
  */
-	void
-tag_range_relabel (Top_List *list, Sub_List *x, Sub_list *y, const int ID )
+void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
 {
 	switch ( ID ) {
 		case ENGLISH_ID:
 			while (x != y){
-				/// insert x->next after x but with y->etag as the end tag
-			insert_top_list(list, x, x->enext, ENGLISH_ID, y->etag);
+				/// insert x->next after x but with y->tag_e as the end tag
+			insert_top_list(list, x, x->next_e, ENGLISH_ID, y->tag_e);
 
 			/// Move along x pointer
-			x = x->enext;
+			x = x->next_e;
 			}
 			break;
 
 		case HEBREW_ID:	
 			while (x != y){
-				/// insert x->next after x but with y->etag as the end tag
-			insert_top_list(list, x, x->hnext, HEBREW_ID, y->htag);
+				/// insert x->next after x but with y->tag_e as the end tag
+			insert_top_list(list, x, x->next_h, HEBREW_ID, y->tag_h);
 
 			/// Move along x pointer
-			x = x->hnext;
+			x = x->next_h;
 			}
 	
 			break;
@@ -59,31 +44,30 @@ tag_range_relabel (Top_List *list, Sub_List *x, Sub_list *y, const int ID )
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  top_list_rebalance(Top_List * list, Sub_List *pivot, const int ID)
+ *         Name:  top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
  *  Description:  Rebalance list according to Bender's algorithm around pivot
  * =====================================================================================
  */
-void
-top_list_rebalance(Top_List * list, Sub_List *pivot, const int ID)
+void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 {
-	Sub_List *lList, *rList;
+	OM_DS *lList, *rList;
 	float i, overflow_density;
 	switch ( ID ) {
 		case ENGLISH_ID:	
 			/// Assign initial values to left and right nodes in list (head and tail of sublist)
-			lList = pivot->eprev;
-			rList = pivot->enext;
+			lList = pivot->prev_e;
+			rList = pivot->next_e;
 			i = log2f(rList - lList);
 			overflow_density = pow(list->overflow_threshold, -1 * i); 
 
 			/// We assume l/rList are not NULL since the list will have at least 3 elements
 			while ((lList != list->head ) || (rList != list->tail) ||
 					/// Check if range is in overflow
-					(overflow_density > overflow_threshold))
+					(overflow_density > list->overflow_threshold))
 			{
 				/// Move overflow list head and tail outwards
-				lList = pivot->eprev;
-				rList = pivot->enext;
+				lList = pivot->prev_e;
+				rList = pivot->next_e;
 
 				/// Calculate overflow_density
 				i = log2f(rList - lList);
@@ -96,19 +80,19 @@ top_list_rebalance(Top_List * list, Sub_List *pivot, const int ID)
 
 		case HEBREW_ID:	
 			/// Assign initial values to left and right nodes in list (head and tail of sublist)
-			lList = pivot->hprev;
-			rList = pivot->hnext;
+			lList = pivot->prev_h;
+			rList = pivot->next_h;
 			i = log2f(rList - lList);
 			overflow_density = pow(list->overflow_threshold, -1 * i); 
 
 			/// We assume l/rList are not NULL since the list will have at least 3 elements
 			while ((lList != list->head ) || (rList != list->tail) ||
 					/// Check if range is in overflow
-					(overflow_density > overflow_threshold))
+					(overflow_density > list->overflow_threshold))
 			{
 				/// Move overflow list head and tail outwards
-				lList = pivot->hprev;
-				rList = pivot->hnext;
+				lList = pivot->prev_h;
+				rList = pivot->next_h;
 
 				/// Calculate overflow_density
 				i = log2f(rList - lList);
@@ -123,15 +107,15 @@ top_list_rebalance(Top_List * list, Sub_List *pivot, const int ID)
 	}				/* -----  end switch  ----- */
 	
 	return ;
-}		/* -----  end of function top_list_rebalance(Top_List * list, Sub_List *pivot, const int ID)  ----- */
+}		/* -----  end of function top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  insert_top_list(Top_List * list, Sub_List * x, Sub_List *y)
+ *         Name:  insert_top_list(Top_List * list, OM_DS * x, OM_DS *y)
  *  Description:  Insert x after y in the top list
  * =====================================================================================
  */
-void insert_top_list(Top_List * list, Sub_List * x, Sub_List *y, const int ID, unsigned int end_tag)
+void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigned int end_tag)
 {
 	///Debug: Double check that all vals are not null
 	assert(y != NULL && x != NULL && list != NULL);
@@ -139,38 +123,38 @@ void insert_top_list(Top_List * list, Sub_List * x, Sub_List *y, const int ID, u
 
 	switch ( ID ) {
 		case ENGLISH_ID:	
-			/// Check if new tag overlaps with x->enext
+			/// Check if new tag overlaps with x->next_e
 
-			if (x->enext->etag  - x->etag == 1) {
+			if (x->next_e->tag_e  - x->tag_e == 1) {
 				top_list_rebalance(list, x, ID);
 			}
 
 			/// Assign new tag, list will be balanced 
-			y->etag = (end_tag >> 1) + (x->etag >> 1);
+			y->tag_e = (end_tag >> 1) + (x->tag_e >> 1);
 				
 			/// Reassign  prev/next pointers
 			/// TODO : (fix) ignoring need for atomic inserts as of
-			y->eprev = x;
-			y->enext  = x->enext;
-			x->enext = y;
+			y->prev_e = x;
+			y->next_e  = x->next_e;
+			x->next_e = y;
 
 			break;
 
 		case HEBREW_ID:		
-			/// Check if new tag overlaps with x->hnext
+			/// Check if new tag overlaps with x->next_h
 
-			if (x->enext->htag  - x->htag == 1) {
+			if (x->next_e->tag_h  - x->tag_h == 1) {
 				top_list_rebalance(list, x, ID);
 			}
 			
 			/// Assign new tag, list will be balanced 
-			y->etag = (end_tag >> 1) + (x->etag >> 1);
+			y->tag_e = (end_tag >> 1) + (x->tag_e >> 1);
 				
 			/// Reassign  prev/next pointers
 			/// TODO : (fix) ignoring need for atomic inserts as of
-			y->hprev = x;
-			y->hnext  = x->hnext;
-			x->hnext = y;
+			y->prev_h = x;
+			y->next_h  = x->next_h;
+			x->next_h = y;
 
 
 			break;
@@ -189,9 +173,9 @@ void insert_top_list(Top_List * list, Sub_List * x, Sub_List *y, const int ID, u
  *  Description:  Appends the sublist passed into this function to the top list
  * =====================================================================================
  */
-void append_first_list (Top_List * list, Sub_List * first_sub_list, const int ID){
+void append_first_list (Top_List * list, OM_DS * first_sub_list, const int ID){
 
-	insert_top_list(list, list->head, first_sub_list, ID, list->tail->etag);
+	insert_top_list(list, list->head, first_sub_list, ID, list->tail->tag_e);
 }		/* -----  end of function append_first_list ---- */
 /* 
  * ===  FUNCTION  ======================================================================
@@ -200,8 +184,7 @@ void append_first_list (Top_List * list, Sub_List * first_sub_list, const int ID
  *  			
  * =====================================================================================
  */
-Top_List *
-init_top_list ()
+Top_List * init_top_list ()
 {
 	/// Malloc data for all necessary nodes and for the list itself
 	Top_List * list = malloc(sizeof(*list));
@@ -216,33 +199,32 @@ init_top_list ()
 	list->overflow_threshold 	=	1.30; 
 
 	/// Assign appropriate vals to head and tail node tags
-	list->head->etag = list->head->htag = 0;
-	list->tail->etag = list->tail->htag = MY_INT_MAX;
+	list->head->tag_e = list->head->tag_h = 0;
+	list->tail->tag_e = list->tail->tag_h = MY_INT_MAX;
 
 	/// Max unsigned int divided by 2
 	list->tail_tag_div_by_2		=	list->tail->tag >> 1;
 
 
 	/// Assign correct vals to head and tail pointers
-	list->head->hprev = list->head->eprev = list->tail->hnext = list->tail->enext = NULL;
+	list->head->prev_h = list->head->prev_e = list->tail->next_h = list->tail->next_e = NULL;
 
 	/// Prev node fro tail is head
-	list->tail->eprev = list->tail->hprev = list->head;
+	list->tail->prev_e = list->tail->prev_h = list->head;
 
 	/// Next node for head is tail
-	list->head->enext = list->head->hnext = list->tail;
+	list->head->next_e = list->head->next_h = list->tail;
 
 	return list;
 }		/* -----  end of function init_top_list  ----- */
 
-	void
-Free_and_free_nodes ( Top_List * list )
+void Top_List_free_and_free_nodes ( Top_List * list )
 {
-	Sub_List * current = list->head, *next = NULL;
+	OM_DS * current = list->head, *next = NULL;
 
 	do {
-		next = current->enext;
-		free(current);
+		next = current->next_e;
+		free_and_free_nodes(current);
 	}
 	while (next != NULL);
 
