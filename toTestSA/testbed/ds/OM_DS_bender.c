@@ -11,20 +11,20 @@
 void print_top_list(Top_List *list){
 
 	OM_DS * current_e = list->head, *current_h = list->head;
-	printf("English ID#%u{tag : %u}->", current_e->id, current_e->tag_e);
+	printf("English ID#%u{tag : %lu}->", current_e->id, current_e->tag_e);
 
 	while(current_e != NULL)
 	{
-		printf("ID#%u{tag : %u}->", current_e->id, current_e->tag_e);
+		printf("ID#%u{tag : %lu}->", current_e->id, current_e->tag_e);
 		current_e = current_e->next_e;
 	}
 	printf("Tail\n");
 
-	printf("Hebrew ID#%u{tag : %u}->", current_h->id, current_h->tag_h);
+	printf("Hebrew ID#%u{tag : %lu}->", current_h->id, current_h->tag_h);
 
 	while(current_h != NULL)
 	{
-		printf("ID#%u{tag : %u}->", current_h->id, current_h->tag_h);
+		printf("ID#%u{tag : %lu}->", current_h->id, current_h->tag_h);
 		current_h = current_h->next_h;
 	}
 	printf("Tail\n");
@@ -79,57 +79,49 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
  *  Description:  Rebalance list according to Bender's algorithm around pivot
  * =====================================================================================
  */
-void top_list_rebalance(Top_List * list, OM_DS *pivot,  const int ID)
+void top_list_rebalance(Top_List * list, OM_DS *pivot_l,OM_DS *pivot_r,  const int ID)
 {
-	OM_DS *lList = pivot, *rList = pivot;
+	OM_DS *lList = pivot_l, *rList = pivot_r;
 	float i, overflow_density;
 	switch ( ID ) {
 		case ENGLISH_ID:	
-			/// Assign initial values to left and right nodes in list (head and tail of sublist)
-			lList = pivot->prev_e;
-			rList = pivot->next_e;
-			i = log2f(rList->tag_e - lList->tag_e);
-			overflow_density = pow(list->overflow_threshold, -1 * i); 
-
 			/// We assume l/rList are not NULL since the list will have at least 3 elements
-			while ((lList != list->head ) && (rList != list->tail) &&
-					/// Check if range is in overflow
-					(overflow_density > list->overflow_threshold))
+			do		/// Check if range is in overflow
 			{
-				/// Move overflow list head and tail outwards
-				lList = lList->prev_h;
-				rList = rList->next_h;
+				/// Move overflow list head and tail outward
+				if (lList->prev_e)
+				lList = lList->prev_e;
+				if (rList->next_e)
+				rList = rList->next_e;
 
 				/// Calculate overflow_density
 				i = log2f(rList->tag_e - lList->tag_e);
 				overflow_density = pow(list->overflow_threshold, -1 * i); 
 			}
+			while (overflow_density > list->overflow_threshold);
+
+
 			/// rebalance subsection of top_list
 			tag_range_relabel(list, lList, rList, ENGLISH_ID);
 			
 			break;
 
 		case HEBREW_ID:	
-			/// Assign initial values to left and right nodes in list (head and tail of sublist)
-			lList = pivot->prev_h;
-			rList = pivot->next_h;
-			i = log2f(rList->tag_h - lList->tag_h);
-			overflow_density = pow(list->overflow_threshold, -1 * i); 
-
-			/// We assume l/rList are not NULL since the list will have at least 3 elements
-			while ((lList != list->head ) && (rList == list->tail) &&
-					/// Check if range is in overflow
-					(overflow_density > list->overflow_threshold))
+				/// We assume l/rList are not NULL since the list will have at least 3 elements
+			do		/// Check if range is in overflow
 			{
-				/// Move overflow list head and tail outwards
+				/// Move overflow list head and tail outward
+				if (lList->prev_h)
 				lList = lList->prev_h;
+				if (rList->next_h)
 				rList = rList->next_h;
 
 				/// Calculate overflow_density
 				i = log2f(rList->tag_h - lList->tag_h);
 				overflow_density = pow(list->overflow_threshold, -1 * i); 
 			}
-			/// rebalance subsection of top_list
+			while (overflow_density > list->overflow_threshold);
+			
 			tag_range_relabel(list, lList, rList, HEBREW_ID);
 			
 			break;
@@ -153,8 +145,8 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int IS_
 
 	switch ( ID ) {
 		case ENGLISH_ID:	
-				y->tag_e = (x->next_e->tag_e + x->tag_e) >> 1;
-/* y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));*/
+				//y->tag_e = (x->next_e->tag_e + (x->tag_e)) >> 1;
+			 y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));
 			/// Assign new tag, list will be balanced 
 
 			if (!IS_RELABELING){
@@ -171,13 +163,13 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int IS_
 
 			/// if there is no space in between (i.e. indexes differ by one)
 			if ((y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))
-				top_list_rebalance(list, x, ID);
+				top_list_rebalance(list, x,y, ID);
 
 			break;
 
 		case HEBREW_ID:		
 			/// Assign new tag, list will be balanced 
-			y->tag_h = (x->next_h->tag_h + x->tag_h) >> 1;
+			 y->tag_h = ((x->next_h->tag_h >> 1) + (x->tag_h >> 1));
 
 
 			if (!IS_RELABELING){
@@ -195,7 +187,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int IS_
 
 			/// if there is no space in between (i.e. indexes differ by one)
 			if ((y->tag_h == x->tag_h) ||  ( y->tag_h == y->next_h->tag_h ))
-				top_list_rebalance(list, x , ID);
+				top_list_rebalance(list, x , y, ID);
 
 			/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
 			(list->size)++;
@@ -238,7 +230,7 @@ Top_List * init_top_list ()
 
 	/// Assign T (in bender's paper), which governs how dense the list can be 
 	/// before rebalancing. As of now, we just pick an arbitrary val in [1,2]
-	list->overflow_threshold 	=	1.3; 
+	list->overflow_threshold 	=	1.2; 
 
 	/// Assign appropriate vals to head and tail node tags
 	list->head->tag_e = list->head->tag_h = 0;
@@ -291,7 +283,7 @@ int main ( int argc, char *argv[] )
 	for (i = 0; i < num_inserts; i++ )
 	{
 		arrayToInsert[i] = (OM_DS *)malloc(sizeof(OM_DS));
-	arrayToInsert[i]->id = i;
+		arrayToInsert[i]->id = i;
 
 	}
 
@@ -299,12 +291,12 @@ int main ( int argc, char *argv[] )
 
 	append_first_list(list, arrayToInsert[0], ENGLISH_ID);
 	append_first_list(list, arrayToInsert[0], HEBREW_ID);
-//	print_top_list(list);
+	//print_top_list(list);
 
 	for (i = 1; i < num_inserts; i++)
 	{
-		insert_top_list(list, arrayToInsert[i -1 ], arrayToInsert[i], ENGLISH_ID, 0);
-		insert_top_list(list, arrayToInsert[i -1 ], arrayToInsert[i], HEBREW_ID, 0);
+		insert_top_list(list, list->head , arrayToInsert[i ], ENGLISH_ID, 0);
+		insert_top_list(list, list->head, arrayToInsert[i], HEBREW_ID, 0);
 		//print_top_list(list);
 	}
 
