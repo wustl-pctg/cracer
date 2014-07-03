@@ -78,15 +78,15 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
  *  Description:  Rebalance list according to Bender's algorithm around pivot
  * =====================================================================================
  */
-void top_list_rebalance(Top_List * list, OM_DS *pivot_l, OM_DS *pivot_r, const int ID)
+void top_list_rebalance(Top_List * list, OM_DS *pivot,  const int ID)
 {
-	OM_DS *lList = pivot_l, *rList = pivot_r;
+	OM_DS *lList = pivot, *rList = pivot;
 	float i, overflow_density;
 	switch ( ID ) {
 		case ENGLISH_ID:	
 			/// Assign initial values to left and right nodes in list (head and tail of sublist)
-			lList = pivot_l->prev_e;
-			rList = pivot_r->next_e;
+			lList = pivot->prev_e;
+			rList = pivot->next_e;
 			i = log2f(rList->tag_e - lList->tag_e);
 			overflow_density = pow(list->overflow_threshold, -1 * i); 
 
@@ -96,8 +96,8 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot_l, OM_DS *pivot_r, const i
 					(overflow_density > list->overflow_threshold))
 			{
 				/// Move overflow list head and tail outwards
-				lList = pivot_l->prev_e;
-				rList = pivot_r->next_e;
+				lList = lList->prev_h;
+				rList = rList->next_h;
 
 				/// Calculate overflow_density
 				i = log2f(rList->tag_e - lList->tag_e);
@@ -110,8 +110,8 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot_l, OM_DS *pivot_r, const i
 
 		case HEBREW_ID:	
 			/// Assign initial values to left and right nodes in list (head and tail of sublist)
-			lList = pivot_l->prev_h;
-			rList = pivot_r->next_h;
+			lList = pivot->prev_h;
+			rList = pivot->next_h;
 			i = log2f(rList->tag_h - lList->tag_h);
 			overflow_density = pow(list->overflow_threshold, -1 * i); 
 
@@ -121,8 +121,8 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot_l, OM_DS *pivot_r, const i
 					(overflow_density > list->overflow_threshold))
 			{
 				/// Move overflow list head and tail outwards
-				lList = pivot_l->prev_h;
-				rList = pivot_r->next_h;
+				lList = lList->prev_h;
+				rList = rList->next_h;
 
 				/// Calculate overflow_density
 				i = log2f(rList->tag_h - lList->tag_h);
@@ -154,12 +154,11 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 	switch ( ID ) {
 		case ENGLISH_ID:	
 			/// Assign new tag, list will be balanced 
-			y->tag_e = (x->next_e->tag_e >> 1) + (x->tag_e >> 1);
-		
+			y->tag_e = ((x->next_e->tag_e + x->tag_e )>> 1);
 
 			/// if there is no space in between (i.e. indexes differ by one)
-			if ((y->tag_e - x->tag_e <= 1))
-				top_list_rebalance(list, x, x->next_e, ID);
+			if ((y->tag_e == x->tag_e) ||  (x->next_e->tag_e - y->tag_e <= 1))
+				top_list_rebalance(list, x, ID);
 
 			/// Reassign  prev/next pointers
 			/// TODO : (fix) ignoring need for atomic inserts as of
@@ -176,11 +175,12 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 		case HEBREW_ID:		
 
 			/// Assign new tag, list will be balanced 
-			y->tag_h = (x->next_h->tag_h >> 1) + (x->tag_h >> 1);
+			y->tag_h = (x->next_h->tag_h >> 1);
+			y->tag_h += (x->tag_h >> 1);
 
 			/// if there is no space in between (i.e. indexes differ by one)
-			if ((y->tag_h - x->tag_h == 1) )
-				top_list_rebalance(list, x, x->next_h, ID);
+			if ((y->tag_h == x->tag_h) ||  (x->next_h->tag_h - y->tag_h <= 1))
+				top_list_rebalance(list, x , ID);
 
 
 
@@ -280,7 +280,7 @@ void Top_List_free_and_free_nodes ( Top_List * list )
 int main ( int argc, char *argv[] )
 {
 	Top_List *list =  init_top_list();
-	int num_inserts = 35, i = 0;
+	int num_inserts = 39, i = 0;
 
 	OM_DS ** arrayToInsert = malloc(sizeof(OM_DS * ) * num_inserts);
 

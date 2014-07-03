@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include "OM_DS.h"
-#include "power.h"
+//#include "power.h"
 
 #define HEBREW_ID 10
 #define ENGLISH_ID 11

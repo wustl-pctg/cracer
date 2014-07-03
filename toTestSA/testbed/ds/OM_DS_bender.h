@@ -19,8 +19,6 @@
  */
 
 #include "OM_DS.h"
-#define ENGLISH_ID	10
-#define HEBREW_ID	11
 /// Implementation of Bender's order maintenance data structure.
 /// This is the top tier of the list
 typedef struct Top_List_s{
@@ -36,7 +34,7 @@ typedef struct Top_List_s{
 
 /// Function forward declarations
 void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID );
-void top_list_rebalance(Top_List * list,OM_DS *pivot_l ,OM_DS *pivot_r, const int ID);
+void top_list_rebalance(Top_List * list,OM_DS *pivot ,const int ID);
 void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigned int end_tag);
 void append_first_list (Top_List * list, OM_DS * first_sub_list, const int ID);
 Top_List * init_top_list ();
