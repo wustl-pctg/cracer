@@ -35,7 +35,7 @@ typedef struct Top_List_s{
 /// Function forward declarations
 void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID );
 void top_list_rebalance(Top_List * list,OM_DS *pivot ,const int ID);
-void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigned int end_tag);
+void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int IS_RELABELING);
 void append_first_list (Top_List * list, OM_DS * first_sub_list, const int ID);
 Top_List * init_top_list ();
 void Top_List_free_and_free_nodes ( Top_List * list );

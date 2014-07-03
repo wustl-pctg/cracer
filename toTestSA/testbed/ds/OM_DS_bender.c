@@ -45,7 +45,7 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
 		
 			while (x != y && x != list->tail){
 				/// insert x->next after x but with y->tag_e as the end tag
-				insert_top_list(list, x, x->next_e, ENGLISH_ID, y->tag_e);
+				insert_top_list(list, x, x->next_e, ENGLISH_ID, 1);
 
 				/// Move along x pointer
 				x = x->next_e;
@@ -55,7 +55,7 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
 		case HEBREW_ID:	
 			while (x != y && x != list->tail){
 				/// insert x->next after x but with y->tag_e as the end tag
-				insert_top_list(list, x, x->next_h, HEBREW_ID, y->tag_h);
+				insert_top_list(list, x, x->next_h, HEBREW_ID, 1);
 
 				/// Dont update the size of the list (since we are relabeling)
 				(list->size)--;
@@ -145,53 +145,59 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot,  const int ID)
  *  Description:  Insert x after y in the top list
  * =====================================================================================
  */
-void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigned int end_tag)
+void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int IS_RELABELING)
 {
 	///Debug: Double check that all vals are not null
 	assert(y != NULL && x != NULL && list != NULL);
-
+	unsigned long int U;
 
 	switch ( ID ) {
 		case ENGLISH_ID:	
+			/* y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));*/
 			/// Assign new tag, list will be balanced 
-			y->tag_e = ((x->next_e->tag_e + x->tag_e )>> 1);
+			U = x->next_e->tag_e + x->tag_e;
+			y->tag_e = U >> 1;
+
+			if (!IS_RELABELING){
+
+				/// Reassign  prev/next pointers
+				/// TODO : (fix) ignoring need for atomic inserts as of
+				y->prev_e = x;
+				y->next_e  = x->next_e;
+				x->next_e = y;
+
+				/// Update the next node after y's prev_e reference (change it to y)
+				y->next_e->prev_e = y;
+			}
 
 			/// if there is no space in between (i.e. indexes differ by one)
-			if ((y->tag_e == x->tag_e) ||  (x->next_e->tag_e - y->tag_e <= 1))
+			if ((y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))
 				top_list_rebalance(list, x, ID);
-
-			/// Reassign  prev/next pointers
-			/// TODO : (fix) ignoring need for atomic inserts as of
-			y->prev_e = x;
-			y->next_e  = x->next_e;
-			x->next_e = y;
-
-			/// Update the next node after y's prev_e reference (change it to y)
-			y->next_e->prev_e = y;
-			
 
 			break;
 
 		case HEBREW_ID:		
-
 			/// Assign new tag, list will be balanced 
-			y->tag_h = (x->next_h->tag_h >> 1);
-			y->tag_h += (x->tag_h >> 1);
+			 U = x->next_h->tag_h + x->tag_h;
+			y->tag_h = U >> 1;
+
+
+			if (!IS_RELABELING){
+
+
+				/// Reassign  prev/next pointers
+				/// TODO : (fix) ignoring need for atomic inserts as of
+				y->prev_h = x;
+				y->next_h  = x->next_h;
+				x->next_h = y;
+				
+				/// Update the next node after y's prev_h reference (change it to y)
+				y->next_h->prev_h = y;
+			}
 
 			/// if there is no space in between (i.e. indexes differ by one)
-			if ((y->tag_h == x->tag_h) ||  (x->next_h->tag_h - y->tag_h <= 1))
+			if ((y->tag_h == x->tag_h) ||  ( y->tag_h == y->next_h->tag_h ))
 				top_list_rebalance(list, x , ID);
-
-
-
-			/// Reassign  prev/next pointers
-			/// TODO : (fix) ignoring need for atomic inserts as of
-			y->prev_h = x;
-			y->next_h  = x->next_h;
-			x->next_h = y;
-			
-			/// Update the next node after y's prev_h reference (change it to y)
-			y->next_h->prev_h = y;
 
 			/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
 			(list->size)++;
@@ -213,7 +219,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
  */
 void append_first_list (Top_List * list, OM_DS * first_sub_list, const int ID){
 
-	insert_top_list(list, list->head, first_sub_list, ID, list->tail->tag_e);
+	insert_top_list(list, list->head, first_sub_list, ID, 0);
 }		/* -----  end of function append_first_list ---- */
 /* 
  * ===  FUNCTION  ======================================================================
@@ -238,7 +244,7 @@ Top_List * init_top_list ()
 
 	/// Assign appropriate vals to head and tail node tags
 	list->head->tag_e = list->head->tag_h = 0;
-	list->tail->tag_e = list->tail->tag_h = UINT_MAX;
+	list->tail->tag_e = list->tail->tag_h = ~0; //UINT_MAX;
 
 
 
@@ -280,7 +286,7 @@ void Top_List_free_and_free_nodes ( Top_List * list )
 int main ( int argc, char *argv[] )
 {
 	Top_List *list =  init_top_list();
-	int num_inserts = 39, i = 0;
+	int num_inserts = 1000, i = 0;
 
 	OM_DS ** arrayToInsert = malloc(sizeof(OM_DS * ) * num_inserts);
 
@@ -298,8 +304,8 @@ int main ( int argc, char *argv[] )
 
 	for (i = 1; i < num_inserts; i++)
 	{
-		insert_top_list(list, arrayToInsert[i -1 ], arrayToInsert[i], ENGLISH_ID, list->tail->tag_e);
-		insert_top_list(list, arrayToInsert[i -1 ], arrayToInsert[i], HEBREW_ID, list->tail->tag_h);
+		insert_top_list(list, arrayToInsert[i -1 ], arrayToInsert[i], ENGLISH_ID, 0);
+		insert_top_list(list, arrayToInsert[i -1 ], arrayToInsert[i], HEBREW_ID, 0);
 
 		print_top_list(list);
 	}
