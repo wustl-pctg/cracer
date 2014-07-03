@@ -17,7 +17,7 @@ typedef struct OM_DS_s {
 	struct OM_DS_s *prev_e, *prev_h;
 	int id;
 
-	unsigned int tag_e, tag_h;
+	unsigned long int tag_e, tag_h;
 
 
 } OM_DS;

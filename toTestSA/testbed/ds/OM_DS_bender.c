@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <time.h>
 #include <stdio.h>
 #include <limits.h>
 #include <math.h>
@@ -149,14 +150,12 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int IS_
 {
 	///Debug: Double check that all vals are not null
 	assert(y != NULL && x != NULL && list != NULL);
-	unsigned long int U;
 
 	switch ( ID ) {
 		case ENGLISH_ID:	
-			/* y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));*/
+				y->tag_e = (x->next_e->tag_e + x->tag_e) >> 1;
+/* y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));*/
 			/// Assign new tag, list will be balanced 
-			U = x->next_e->tag_e + x->tag_e;
-			y->tag_e = U >> 1;
 
 			if (!IS_RELABELING){
 
@@ -178,8 +177,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int IS_
 
 		case HEBREW_ID:		
 			/// Assign new tag, list will be balanced 
-			 U = x->next_h->tag_h + x->tag_h;
-			y->tag_h = U >> 1;
+			y->tag_h = (x->next_h->tag_h + x->tag_h) >> 1;
 
 
 			if (!IS_RELABELING){
@@ -240,11 +238,11 @@ Top_List * init_top_list ()
 
 	/// Assign T (in bender's paper), which governs how dense the list can be 
 	/// before rebalancing. As of now, we just pick an arbitrary val in [1,2]
-	list->overflow_threshold 	=	1.30; 
+	list->overflow_threshold 	=	1.3; 
 
 	/// Assign appropriate vals to head and tail node tags
 	list->head->tag_e = list->head->tag_h = 0;
-	list->tail->tag_e = list->tail->tag_h = ~0; //UINT_MAX;
+	list->tail->tag_e = list->tail->tag_h = ~0;
 
 
 
@@ -271,7 +269,7 @@ void Top_List_free_and_free_nodes ( Top_List * list )
 
 		/// Free current sublist
 		// TODO: free_and_free_nodes(current);
-		printf("Debug: Free nodes currently does not call the OM_DS routine\n");
+		//printf("Debug: Free nodes currently does not call the OM_DS routine\n");
 		free(current);
 
 		/// Move current along
@@ -286,7 +284,7 @@ void Top_List_free_and_free_nodes ( Top_List * list )
 int main ( int argc, char *argv[] )
 {
 	Top_List *list =  init_top_list();
-	int num_inserts = 1000, i = 0;
+	int num_inserts = atoi(argv[1]), i = 0;
 
 	OM_DS ** arrayToInsert = malloc(sizeof(OM_DS * ) * num_inserts);
 
@@ -297,19 +295,22 @@ int main ( int argc, char *argv[] )
 
 	}
 
-	
+	clock_t start = clock();
+
 	append_first_list(list, arrayToInsert[0], ENGLISH_ID);
 	append_first_list(list, arrayToInsert[0], HEBREW_ID);
-	print_top_list(list);
+//	print_top_list(list);
 
 	for (i = 1; i < num_inserts; i++)
 	{
 		insert_top_list(list, arrayToInsert[i -1 ], arrayToInsert[i], ENGLISH_ID, 0);
 		insert_top_list(list, arrayToInsert[i -1 ], arrayToInsert[i], HEBREW_ID, 0);
-
-		print_top_list(list);
+		//print_top_list(list);
 	}
 
+
+	printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
+	
 	Top_List_free_and_free_nodes(list);
 	free(arrayToInsert);
 
