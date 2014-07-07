@@ -382,6 +382,7 @@ void Top_List_free_and_free_nodes ( Top_List * list )
 	free(list);
 	return ;
 }		/* -----  end of function Free_and_free_nodes  ----- */
+/*
 int main ( int argc, char *argv[] )
 {
 	Top_List *list =  init_top_list();
@@ -405,10 +406,10 @@ int main ( int argc, char *argv[] )
 
 	for (i = 1; i < num_inserts; i++)
 	{
-		/* Test : all inserted at beginning
-		insert_top_list(list, list->head , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
-		insert_top_list(list, list->head, arrayToInsert[i], HEBREW_ID, 0, NULL);
-		*/
+		/// Test : all inserted at beginnin
+		///insert_top_list(list, list->head , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
+		///insert_top_list(list, list->head, arrayToInsert[i], HEBREW_ID, 0, NULL);
+		/// /
 
 		int j = rand() % i;
 
@@ -428,4 +429,6 @@ int main ( int argc, char *argv[] )
 	free(arrayToInsert);
 
 	return EXIT_SUCCESS;
-}				/* ----------  end of function main  ---------- */
+}			//	 ----------  end of function main  ---------- //
+
+*/

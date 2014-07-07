@@ -89,126 +89,48 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
 	current_e = current_h = blist->head;
 
-	/// ===== ENGLISH Case =====
-	/// First find middle
-	while(temp_e < blist->size_e/2 ) {
-		current_e = current_e->next_e;
-		++temp_e;
-	}	
-
-	/// This is the procedure:
-	/// === update to_add tail ptrs ===
-	/// to_add->tail->prev_e = blist->tail->prev_e
-	/// blist->tail->prev_e->next_e = to_add->tail
-	/// === update blist tail ptrs ===
-	/// blist->tail->prev_e = current_e->prev_e
-	/// current_e->prev_e->next_e = blist->tail
-	/// === update to_add head ptrs ===
-	/// to_add->head->next_e = current_e
-	/// current_e->prev_e = to_add->head
-	
-	/// to_add->tail->prev_e = blist->tail->prev_e
-	if(!(__sync_bool_compare_and_swap(&(to_add->tail->prev_e), to_add->tail->prev_e, blist->tail->prev_e)))
+	if ( blist->size_e != 0)
 	{
-		printf("Exiting, atomic insert (to_add tail, blist tail prev e)failed");
-		exit(0);
+
+		/// ===== ENGLISH Case =====
+		/// First find middle
+		while(temp_e < blist->size_e/2 ) {
+			current_e = current_e->next_e;
+			++temp_e;
+		}	
+
+		/// This is the procedure:
+		/// === update to_add tail ptrs ===
+		to_add->tail->prev_e = blist->tail->prev_e
+		blist->tail->prev_e->next_e = to_add->tail
+		// === update blist tail ptrs ===
+		blist->tail->prev_e = current_e->prev_e
+		current_e->prev_e->next_e = blist->tail
+		/// === update to_add head ptrs ===
+		to_add->head->next_e = current_e
+		current_e->prev_e = to_add->head
 	}
+	if (blist->size_h != 0){
 
-	/// blist->tail->prev_e->next_e = to_add->tail
-	if(!(__sync_bool_compare_and_swap(&(blist->tail->prev_e->next_e), blist->tail->prev_e->next_e, to_add->tail)))
-	{
-		printf("Exiting, atomic insert (blist tail prev next, toadd tail e)failed");
-		exit(0);
-	}
+		/// ===== Hebrew Case =====
+		/// First find middle
+		while(temp_h < blist->size_h/2 ) {
+			current_h = current_h->next_h;
+			++temp_h;
+		}	
 
-	/// blist->tail->prev_e = current_e->prev_e
-	if(!(__sync_bool_compare_and_swap(&(blist->tail->prev_e), blist->tail->prev_e, current_e->prev_e)))
-	{
-		printf("Exiting, atomic insert (blist tailprev, currprev e )failed");
-		exit(0);
-	}
-
-	/// current_e->prev_e->next_e = blist->tail
-	if(!(__sync_bool_compare_and_swap(&(current_e->prev_e->next_e), current_e->prev_e->next_e, blist->tail)))
-	{
-		printf("Exiting, atomic insert (curr prev next, blist tail e)failed");
-		exit(0);
+		/// This is the procedure:
+		/// === update to_add tail ptrs ===
+		to_add->tail->prev_h = blist->tail->prev_h
+		blist->tail->prev_h->next_h = to_add->tail
+		/// === update blist tail ptrs ===
+		blist->tail->prev_h = current_h->prev_h
+		current_h->prev_h->next_h = blist->tail
+		/// === update to_add head ptrs ===
+		to_add->head->next_h = current_h
+		current_h->prev_h = to_add->head
 	}
 
-	/// to_add->head->next_e = current_e
-	if(!(__sync_bool_compare_and_swap(&(to_add->head->next_e), to_add->head->next_e, current_e)))
-	{
-		printf("Exiting, atomic insert (toadd head next, curr e)failed");
-		exit(0);
-	}
-		
-	/// current_e->prev_e = to_add->head
-	if(!(__sync_bool_compare_and_swap(&(current_e->prev_e), current_e->prev_e, to_add->head)))
-	{
-		printf("Exiting, atomic insert (curr prev, toadd head e)failed");
-		exit(0);
-	}
-	
-	/// ===== Hebrew Case =====
-	/// First find middle
-	while(temp_h < blist->size_h/2 ) {
-		current_h = current_h->next_h;
-		++temp_h;
-	}	
-
-	/// This is the procedure:
-	/// === update to_add tail ptrs ===
-	/// to_add->tail->prev_h = blist->tail->prev_h
-	/// blist->tail->prev_h->next_h = to_add->tail
-	/// === update blist tail ptrs ===
-	/// blist->tail->prev_h = current_h->prev_h
-	/// current_h->prev_h->next_h = blist->tail
-	/// === update to_add head ptrs ===
-	/// to_add->head->next_h = current_h
-	/// current_h->prev_h = to_add->head
-	
-	/// to_add->tail->prev_h = blist->tail->prev_h
-	if(!(__sync_bool_compare_and_swap(&(to_add->tail->prev_h), to_add->tail->prev_h, blist->tail->prev_h)))
-	{
-		printf("Exiting, atomic insert (to_add tail, blist tail prev e)failed");
-		exit(0);
-	}
-
-	/// blist->tail->prev_h->next_h = to_add->tail
-	if(!(__sync_bool_compare_and_swap(&(blist->tail->prev_h->next_h), blist->tail->prev_h->next_h, to_add->tail)))
-	{
-		printf("Exiting, atomic insert (blist tail prev next, toadd tail e)failed");
-		exit(0);
-	}
-
-	/// blist->tail->prev_h = current_h->prev_h
-	if(!(__sync_bool_compare_and_swap(&(blist->tail->prev_h), blist->tail->prev_h, current_h->prev_h)))
-	{
-		printf("Exiting, atomic insert (blist tailprev, currprev e )failed");
-		exit(0);
-	}
-
-	/// current_h->prev_h->next_h = blist->tail
-	if(!(__sync_bool_compare_and_swap(&(current_h->prev_h->next_h), current_h->prev_h->next_h, blist->tail)))
-	{
-		printf("Exiting, atomic insert (curr prev next, blist tail e)failed");
-		exit(0);
-	}
-
-	/// to_add->head->next_h = current_h
-	if(!(__sync_bool_compare_and_swap(&(to_add->head->next_h), to_add->head->next_h, current_h)))
-	{
-		printf("Exiting, atomic insert (toadd head next, curr e)failed");
-		exit(0);
-	}
-		
-	/// current_h->prev_h = to_add->head
-	if(!(__sync_bool_compare_and_swap(&(current_h->prev_h), current_h->prev_h, to_add->head)))
-	{
-		printf("Exiting, atomic insert (curr prev, toadd head e)failed");
-		exit(0);
-	}
-	
 	temp1_h = temp_h;
 	temp1_e = temp_e;
 
