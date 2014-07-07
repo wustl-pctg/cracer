@@ -43,7 +43,7 @@ void Insert_h_test(OM_DS * list, OM_Node * x, OM_Node * y) {
 	OM_DS_insert(list, x, y, HEBREW_ID);
 	assert( x->next_h == y);
 	assert( (OM_Node*)y->prev_h == (OM_Node*) x);
-	printf("Insert: x->tag_h: %u and y->tag_h: %u\n", x->tag_h, y->tag_h);
+	;//printf("Insert: x->tag_h: %u and y->tag_h: %u\n", x->tag_h, y->tag_h);
 }
 
 void Insert_e_test(OM_DS * list, OM_Node * x, OM_Node * y) {
@@ -51,7 +51,7 @@ void Insert_e_test(OM_DS * list, OM_Node * x, OM_Node * y) {
 	OM_DS_insert(list, x, y, ENGLISH_ID);
 	assert( x->next_e == y);
 	assert( (OM_Node*)y->prev_e == (OM_Node*) x);
-	printf("Insert: x->tag_e: %u and y->tag_e: %u\n", x->tag_h, y->tag_h);
+	;//printf("Insert: x->tag_e: %u and y->tag_e: %u\n", x->tag_h, y->tag_h);
 }
 
 
@@ -65,10 +65,10 @@ int main(int argc, char * argv[]) {
 	int *test;
 
 	MAX_NUMBER = ~0;
-	printf("Max # in main: %u\n", MAX_NUMBER);
+	;//printf("Max # in main: %u\n", MAX_NUMBER);
 
-	test = MAL_test(test);
-	printf("test is: %i \n", *test);
+	;//test = MAL_test(test);
+	;//printf("test is: %i \n", *test);
 	
 	list = (OM_DS*)Initialize_test(list);
 
@@ -104,11 +104,11 @@ int main(int argc, char * argv[]) {
 	Insert_e_test(list, five , six );
 
 
-	printf("H: 1-2-3-4-5-6\n");
-	printf("E: 1-5-6-3-2-4\n");
+	;//printf("H: 1-2-3-4-5-6\n");
+	;//printf("E: 1-5-6-3-2-4\n");
 
-	printList(list, HEBREW_ID);
-	printList(list, ENGLISH_ID);
+	;//printList(list, HEBREW_ID);
+	;//printList(list, ENGLISH_ID);
 
 	OM_free_and_free_nodes(list);
 

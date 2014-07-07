@@ -1,10 +1,14 @@
 #include "OM_sublist.h"
+#include "OM_DS_bender.h"
+
 
 /// Allocate memory and set variables
-void * OM_DS_init(OM_DS * list){
+void * OM_DS_init(){
+
+	OM_DS * list;
 
 	MAX_NUMBER = ~0;
-	printf("Max # in init: %u\n", MAX_NUMBER);
+	;//printf("Max # in init: %u\n", MAX_NUMBER);
 
 	list = (OM_DS*)malloc(sizeof(OM_DS));
 	list->head = (OM_Node*)malloc(sizeof(OM_Node));
@@ -19,7 +23,7 @@ void * OM_DS_init(OM_DS * list){
 	// Set up nodes
 	list->head->tag_e = list->head->tag_h = 0;
 	list->tail->tag_e = list->tail->tag_h = MAX_NUMBER;
-	printf("Debug: list->tail->tag_e & id: %u & %i\n", list->tail->tag_e, list->tail->id);
+	;//printf("Debug: list->tail->tag_e & id: %u & %i\n", list->tail->tag_e, list->tail->id);
 	
 	return list;
 }
@@ -73,10 +77,186 @@ void printList(OM_DS * list, const int ID) {
     printf("Tail\n");
 }
 
+void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
-void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
+	OM_Node * current_e, * current_h;
+	int temp_e = 0, temp_h = 0;
 
-	unsigned int INT_BIT_SIZE =  32;
+	/// New list to be inserted on top
+	OM_DS * to_add = OM_DS_init();
+
+	INT_BIT_SIZE =  32;
+
+	current_e = current_h = blist->head;
+
+	/// ===== ENGLISH Case =====
+	/// First find middle
+	do {
+		current_e = current_e->next_e;
+		++temp_e;
+	} while(temp_e < blist->size/2 );
+	
+	/// This is the procedure:
+	/// === update to_add tail ptrs ===
+	/// to_add->tail->prev_e = blist->tail->prev_e
+	/// blist->tail->prev_e->next_e = to_add->tail
+	/// === update blist tail ptrs ===
+	/// blist->tail->prev_e = current_e->prev_e
+	/// current_e->prev_e->next_e = blist->tail
+	/// === update to_add head ptrs ===
+	/// to_add->head->next_e = current_e
+	/// current_e->prev_e = to_add->head
+	
+
+	/// to_add->tail->prev_e = blist->tail->prev_e
+	if(!(__sync_bool_compare_and_swap(&(to_add->tail->prev_e), to_add->tail->prev_e, blist->tail->prev_e)))
+	{
+		printf("Exiting, atomic insert (to_add tail, blist tail prev e)failed");
+		exit(0);
+	}
+
+	/// blist->tail->prev_e->next_e = to_add->tail
+	if(!(__sync_bool_compare_and_swap(&(blist->tail->prev_e->next_e), blist->tail->prev_e->next_e, to_add->tail)))
+	{
+		printf("Exiting, atomic insert (blist tail prev next, toadd tail e)failed");
+		exit(0);
+	}
+
+	/// blist->tail->prev_e = current_e->prev_e
+	if(!(__sync_bool_compare_and_swap(&(blist->tail->prev_e), blist->tail->prev_e, current_e->prev_e)))
+	{
+		printf("Exiting, atomic insert (blist tailprev, currprev e )failed");
+		exit(0);
+	}
+
+	/// current_e->prev_e->next_e = blist->tail
+	if(!(__sync_bool_compare_and_swap(&(current_e->prev_e->next_e), current_e->prev_e->next_e, blist->tail)))
+	{
+		printf("Exiting, atomic insert (curr prev next, blist tail e)failed");
+		exit(0);
+	}
+
+	/// to_add->head->next_e = current_e
+	if(!(__sync_bool_compare_and_swap(&(to_add->head->next_e), to_add->head->next_e, current_e)))
+	{
+		printf("Exiting, atomic insert (toadd head next, curr e)failed");
+		exit(0);
+	}
+		
+	/// current_e->prev_e = to_add->head
+	if(!(__sync_bool_compare_and_swap(&(current_e->prev_e), current_e->prev_e, to_add->head)))
+	{
+		printf("Exiting, atomic insert (curr prev, toadd head e)failed");
+		exit(0);
+	}
+	
+	/// Insert into top list for english
+	insert_top_list(tlist, blist, to_add, ENGLISH_ID, 0);
+
+
+	/// ===== Hebrew Case =====
+	/// First find middle
+	do {
+		current_h = current_h->next_h;
+		++temp_h;
+	} while(temp_h < blist->size/2 );
+	
+	/// This is the procedure:
+	/// === update to_add tail ptrs ===
+	/// to_add->tail->prev_h = blist->tail->prev_h
+	/// blist->tail->prev_h->next_h = to_add->tail
+	/// === update blist tail ptrs ===
+	/// blist->tail->prev_h = current_h->prev_h
+	/// current_h->prev_h->next_h = blist->tail
+	/// === update to_add head ptrs ===
+	/// to_add->head->next_h = current_h
+	/// current_h->prev_h = to_add->head
+	
+
+	/// to_add->tail->prev_h = blist->tail->prev_h
+	if(!(__sync_bool_compare_and_swap(&(to_add->tail->prev_h), to_add->tail->prev_h, blist->tail->prev_h)))
+	{
+		printf("Exiting, atomic insert (to_add tail, blist tail prev e)failed");
+		exit(0);
+	}
+
+	/// blist->tail->prev_h->next_h = to_add->tail
+	if(!(__sync_bool_compare_and_swap(&(blist->tail->prev_h->next_h), blist->tail->prev_h->next_h, to_add->tail)))
+	{
+		printf("Exiting, atomic insert (blist tail prev next, toadd tail e)failed");
+		exit(0);
+	}
+
+	/// blist->tail->prev_h = current_h->prev_h
+	if(!(__sync_bool_compare_and_swap(&(blist->tail->prev_h), blist->tail->prev_h, current_h->prev_h)))
+	{
+		printf("Exiting, atomic insert (blist tailprev, currprev e )failed");
+		exit(0);
+	}
+
+	/// current_h->prev_h->next_h = blist->tail
+	if(!(__sync_bool_compare_and_swap(&(current_h->prev_h->next_h), current_h->prev_h->next_h, blist->tail)))
+	{
+		printf("Exiting, atomic insert (curr prev next, blist tail e)failed");
+		exit(0);
+	}
+
+	/// to_add->head->next_h = current_h
+	if(!(__sync_bool_compare_and_swap(&(to_add->head->next_h), to_add->head->next_h, current_h)))
+	{
+		printf("Exiting, atomic insert (toadd head next, curr e)failed");
+		exit(0);
+	}
+		
+	/// current_h->prev_h = to_add->head
+	if(!(__sync_bool_compare_and_swap(&(current_h->prev_h), current_h->prev_h, to_add->head)))
+	{
+		printf("Exiting, atomic insert (curr prev, toadd head e)failed");
+		exit(0);
+	}
+	
+	/// Update sizes (utilize temp variables in a general way here)
+	temp_h = blist->size;
+	blist->size = temp_e;
+	to_add->size = temp_h - temp_e;
+	
+	/// Update flags based on size
+	blist->size < (INT_BIT_SIZE >> 1) ? \
+		blist->Reorder_flag = 0: blist->Reorder_flag = 1;
+	to_add->size < (INT_BIT_SIZE >> 1) ? \
+		to_add->Reorder_flag = 0: to_add->Reorder_flag = 1;
+
+	/// Insert into top list for hebrew
+	insert_top_list(tlist, blist, to_add, HEBREW_ID, 0);
+
+	/// Insert into top lsit for english
+	insert_top_list(tlist, blist, to_add, ENGLISH_ID, 0);
+}
+
+void Rebalance_bottom_lists(Top_List * list) {
+
+	OM_DS * current_e, * current_h;
+	current_e = current_h = list->head;
+
+	while(current_e != list->tail) {
+		if(current_e->Reorder_flag == 1)
+			Split_and_add_to_top(list, current_e);
+		current_e = current_e->next_e;
+	}
+
+	while(current_h != list->tail) {
+		if(current_h->Reorder_flag == 1)
+			Split_and_add_to_top(list, current_h);
+		current_h = current_h->next_h;
+	}
+
+}
+
+
+
+int OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
+
+	INT_BIT_SIZE =  32;
 
 	//if x is null
 	if (!(x && y && ds) ){
@@ -175,6 +355,10 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 		ds->Reorder_flag = 1;
 
 	ds->size++;
+
+	if(ds->size == INT_BIT_SIZE)
+		return 1; ///< Needs to be split
+	return 0; ///< Doesn't needs immediately split
 
 }
 

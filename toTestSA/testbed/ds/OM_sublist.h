@@ -18,7 +18,11 @@ void OM_free_and_free_nodes(OM_DS *);
 
 void printList(OM_DS *, const int);
 
-void OM_DS_insert(OM_DS *, OM_Node *, OM_Node*, const int);
+void Split_and_add_to_top(Top_List * tlist, OM_DS * blist);
+
+void Rebalance_bottom_lists(Top_List * list);
+
+int OM_DS_insert(OM_DS *, OM_Node *, OM_Node*, const int);
 
 void OM_DS_add_first_node(void*, void*);
 
