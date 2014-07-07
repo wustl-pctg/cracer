@@ -9,6 +9,7 @@
 
 #define HEBREW_ID 10
 #define ENGLISH_ID 11
+unsigned int MAX_NUMBER;
 
 void OM_DS_init();
 

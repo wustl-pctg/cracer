@@ -1,13 +1,11 @@
 #include "OM_sublist.h"
 
 /// Allocate memory and set variables
-void OM_DS_init(OM_DS * list){;
+void OM_DS_init(OM_DS * list){
 
-
-	unsigned int INT_BIT_SIZE =  (unsigned int) (sizeof(void*) * 8);
-	unsigned int MAX_NUMBER = (1 << INT_BIT_SIZE) -1;
+	MAX_NUMBER = ~0;
 	
-	list = (OM_DS* )malloc(sizeof(OM_DS));
+	list = (OM_DS*)malloc(sizeof(OM_DS));
 	list->head = (OM_Node*)malloc(sizeof(OM_Node));
 	list->tail = (OM_Node*)malloc(sizeof(OM_Node));
 
@@ -88,6 +86,7 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 	switch(ID){
 	case HEBREW_ID:
 		
+		/// This is the procedure:
 		/// y->next = x->next_h
 		/// x->next_h->prev_h = y
 		/// x->next_h = y
@@ -128,6 +127,7 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 	case ENGLISH_ID:
 
+		/// This is the procedure:
 		/// y->next = x->next_e
 		/// x->next_e->prev_e = y
 		/// x->next_e = y
