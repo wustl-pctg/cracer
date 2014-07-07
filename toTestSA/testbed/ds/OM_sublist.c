@@ -2,6 +2,7 @@
 #include "OM_DS_bender.h"
 
 
+
 /// Allocate memory and set variables
 void * OM_DS_init(){
 
@@ -77,13 +78,15 @@ void printList(OM_DS * list, const int ID) {
     printf("Tail\n");
 }
 
+/// Function that splits a sublist in half and adds second
+/// half to top list as a new sublist
 void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
 	OM_Node * current_e, * current_h;
 	int temp_e = 0, temp_h = 0;
 
 	/// New list to be inserted on top
-	OM_DS * to_add = OM_DS_init();
+	OM_DS * to_add = (OM_DS*)OM_DS_init();
 
 	INT_BIT_SIZE =  32;
 
@@ -91,11 +94,11 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
 	/// ===== ENGLISH Case =====
 	/// First find middle
-	do {
+	while(temp_e < blist->size/2 ) {
 		current_e = current_e->next_e;
 		++temp_e;
-	} while(temp_e < blist->size/2 );
-	
+	}	
+
 	/// This is the procedure:
 	/// === update to_add tail ptrs ===
 	/// to_add->tail->prev_e = blist->tail->prev_e
@@ -107,7 +110,6 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 	/// to_add->head->next_e = current_e
 	/// current_e->prev_e = to_add->head
 	
-
 	/// to_add->tail->prev_e = blist->tail->prev_e
 	if(!(__sync_bool_compare_and_swap(&(to_add->tail->prev_e), to_add->tail->prev_e, blist->tail->prev_e)))
 	{
@@ -156,11 +158,11 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
 	/// ===== Hebrew Case =====
 	/// First find middle
-	do {
+	while(temp_h < blist->size/2 ) {
 		current_h = current_h->next_h;
 		++temp_h;
-	} while(temp_h < blist->size/2 );
-	
+	}	
+
 	/// This is the procedure:
 	/// === update to_add tail ptrs ===
 	/// to_add->tail->prev_h = blist->tail->prev_h
@@ -172,7 +174,6 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 	/// to_add->head->next_h = current_h
 	/// current_h->prev_h = to_add->head
 	
-
 	/// to_add->tail->prev_h = blist->tail->prev_h
 	if(!(__sync_bool_compare_and_swap(&(to_add->tail->prev_h), to_add->tail->prev_h, blist->tail->prev_h)))
 	{
@@ -216,9 +217,9 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 	}
 	
 	/// Update sizes (utilize temp variables in a general way here)
-	temp_h = blist->size;
-	blist->size = temp_e;
-	to_add->size = temp_h - temp_e;
+	temp_h = blist->size; // blist->size is what it used to be
+	blist->size = temp_e; // temp_e is still half blist->size originally
+	to_add->size = temp_h - temp_e; // the difference will either be the same or one greater
 	
 	/// Update flags based on size
 	blist->size < (INT_BIT_SIZE >> 1) ? \
@@ -233,27 +234,31 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 	insert_top_list(tlist, blist, to_add, ENGLISH_ID, 0);
 }
 
+/// Iterate through the top list to find sublists needing reordered
 void Rebalance_bottom_lists(Top_List * list) {
 
+	/// The iterators
 	OM_DS * current_e, * current_h;
 	current_e = current_h = list->head;
 
+	/// English
 	while(current_e != list->tail) {
-		if(current_e->Reorder_flag == 1)
+		if(current_e->Reorder_flag == 1) ///< If 1, then needs split
 			Split_and_add_to_top(list, current_e);
 		current_e = current_e->next_e;
 	}
 
+	/// Hebrew
 	while(current_h != list->tail) {
-		if(current_h->Reorder_flag == 1)
+		if(current_h->Reorder_flag == 1) ///< If 1, then needs split
 			Split_and_add_to_top(list, current_h);
 		current_h = current_h->next_h;
 	}
 
 }
 
-
-
+/// Insert y after x into appropriate list based on ID
+/// Returns 1 if full and needs reorderd immediately and 0 otherwise
 int OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 	INT_BIT_SIZE =  32;
