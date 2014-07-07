@@ -46,7 +46,7 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
 		
 			while (x != y && x != list->tail){
 				/// insert x->next after x but with y->tag_e as the end tag
-				insert_top_list(list, x, x->next_e, ENGLISH_ID, 1);
+				insert_top_list(list, x, x->next_e, ENGLISH_ID, y->tag_e);
 
 				/// Move along x pointer
 				x = x->next_e;
@@ -56,10 +56,7 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
 		case HEBREW_ID:	
 			while (x != y && x != list->tail){
 				/// insert x->next after x but with y->tag_e as the end tag
-				insert_top_list(list, x, x->next_h, HEBREW_ID, 1);
-
-				/// Dont update the size of the list (since we are relabeling)
-				(list->size)--;
+				insert_top_list(list, x, x->next_h, HEBREW_ID, y->tag_h);
 
 				/// Move along x pointer
 				x = x->next_h;
@@ -79,26 +76,35 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
  *  Description:  Rebalance list according to Bender's algorithm around pivot
  * =====================================================================================
  */
-void top_list_rebalance(Top_List * list, OM_DS *pivot_l,OM_DS *pivot_r,  const int ID)
+void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 {
-	OM_DS *lList = pivot_l, *rList = pivot_r;
-	float i, overflow_density;
+	OM_DS *lList = pivot, *rList = pivot;
+	float i, overflow_density, overflow_threshold;
+	long enclosing_tag_range, num_elements_in_sublist = 1;
+
 	switch ( ID ) {
 		case ENGLISH_ID:	
 			/// We assume l/rList are not NULL since the list will have at least 3 elements
 			do		/// Check if range is in overflow
 			{
 				/// Move overflow list head and tail outward
-				if (lList->prev_e)
-				lList = lList->prev_e;
-				if (rList->next_e)
-				rList = rList->next_e;
-
+				if (lList->prev_e){
+					num_elements_in_sublist++;
+					lList = lList->prev_e;
+				}
+				if (rList->next_e){
+					num_elements_in_sublist++;
+					rList = rList->next_e;
+				}
 				/// Calculate overflow_density
-				i = log2f(rList->tag_e - lList->tag_e);
-				overflow_density = pow(list->overflow_threshold, -1 * i); 
+				enclosing_tag_range = rList->tag_e - lList->tag_e;
+
+				i = log2f(enclosing_tag_range);
+				overflow_threshold = pow(list->overflow_constant, -1 * i); 
+
+				overflow_density = (num_elements_in_sublist/ (float)enclosing_tag_range ) ;
 			}
-			while (overflow_density > list->overflow_threshold);
+			while ( enclosing_tag_range == 0 || overflow_density > overflow_threshold);
 
 
 			/// rebalance subsection of top_list
@@ -107,20 +113,26 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot_l,OM_DS *pivot_r,  const i
 			break;
 
 		case HEBREW_ID:	
-				/// We assume l/rList are not NULL since the list will have at least 3 elements
+			/// We assume l/rList are not NULL since the list will have at least 3 elements
 			do		/// Check if range is in overflow
 			{
 				/// Move overflow list head and tail outward
-				if (lList->prev_h)
-				lList = lList->prev_h;
-				if (rList->next_h)
-				rList = rList->next_h;
-
+				if (lList->prev_h){
+					num_elements_in_sublist++;
+					lList = lList->prev_h;
+				}
+				if (rList->next_h){
+					num_elements_in_sublist++;
+					rList = rList->next_h;
+				}
 				/// Calculate overflow_density
-				i = log2f(rList->tag_h - lList->tag_h);
-				overflow_density = pow(list->overflow_threshold, -1 * i); 
+				enclosing_tag_range = rList->tag_h - lList->tag_h;
+
+				i = log2f(enclosing_tag_range);
+				overflow_threshold = pow(list->overflow_constant, -1 * i); 
+				overflow_density = (num_elements_in_sublist/ (float)enclosing_tag_range ) ;
 			}
-			while (overflow_density > list->overflow_threshold);
+			while (enclosing_tag_range == 0 || overflow_density > overflow_threshold);
 			
 			tag_range_relabel(list, lList, rList, HEBREW_ID);
 			
@@ -138,66 +150,79 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot_l,OM_DS *pivot_r,  const i
  *  Description:  Insert x after y in the top list
  * =====================================================================================
  */
-void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int IS_RELABELING)
+void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int RELABELING_END_TAG)
 {
 	///Debug: Double check that all vals are not null
 	assert(y != NULL && x != NULL && list != NULL);
 
 	switch ( ID ) {
-		case ENGLISH_ID:	
-				//y->tag_e = (x->next_e->tag_e + (x->tag_e)) >> 1;
-			 y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));
-			 //change if both are odd (i.e. roundup) 
-			 if ( (y->tag_e & x->tag_e & 0x1 == 0x1))
-			 	 y->tag_e++;
+		case ENGLISH_ID:
+			if (RELABELING_END_TAG != 0)
+			{
+				y->tag_e = (RELABELING_END_TAG >> 1) + (x->tag_e >> 1);
 
-			/// Assign new tag, list will be balanced 
+				if (y->tag_e == x->tag_e || y->tag_e == RELABELING_END_TAG)
+				{
+					/// We have an issue, collision during rebalancing
+					printf("We have an issue: collision during reabalance");
+					exit(1); 
+				}
 
-			if (!IS_RELABELING){
-
+			}
+			else //We are inserting a new element into the list
+			{
+				y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));
+			
+				
 				/// Reassign  prev/next pointers
-				/// TODO : (fix) ignoring need for atomic inserts as of
 				y->prev_e = x;
 				y->next_e  = x->next_e;
 				x->next_e = y;
 
 				/// Update the next node after y's prev_e reference (change it to y)
 				y->next_e->prev_e = y;
+	
+				if ((y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))
+					top_list_rebalance(list, x, ID);
+		
 			}
-
-			/// if there is no space in between (i.e. indexes differ by one)
-			if ((y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))
-				top_list_rebalance(list, x,y, ID);
-
 			break;
-
+			
 		case HEBREW_ID:		
-			/// Assign new tag, list will be balanced 
-			 y->tag_h = ((x->next_h->tag_h >> 1) + (x->tag_h >> 1));
-			 //change if both are odd (i.e. roundup) 
-			 if ( (y->tag_h & x->tag_h & 0x1 == 0x1))
-			 	 y->tag_h++;
+			if (RELABELING_END_TAG != 0)
+			{
+				y->tag_h = (RELABELING_END_TAG >> 1) + (x->tag_h >> 1);
 
-			if (!IS_RELABELING){
+				if (y->tag_h == x->tag_h || y->tag_h == RELABELING_END_TAG)
+				{
+					/// We have an issue, collision during rebalancing
+					printf("We have an issue: collision during reabalance");
+					exit(1); 
+				}
 
+			}
+			else //We are inserting a new element into the list
+			{
+				y->tag_h = ((x->next_h->tag_h >> 1) + (x->tag_h >> 1));
+				y->tag_h = y->tag_h;
 
 				/// Reassign  prev/next pointers
-				/// TODO : (fix) ignoring need for atomic inserts as of
 				y->prev_h = x;
 				y->next_h  = x->next_h;
 				x->next_h = y;
-				
+
 				/// Update the next node after y's prev_h reference (change it to y)
 				y->next_h->prev_h = y;
+	
+				if ((y->tag_h == x->tag_h) ||  ( y->tag_h == y->next_h->tag_h ))
+					top_list_rebalance(list, x, ID);
+		
+	
+				/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
+				(list->size)++;
 			}
-
-			/// if there is no space in between (i.e. indexes differ by one)
-			if ((y->tag_h == x->tag_h) ||  ( y->tag_h == y->next_h->tag_h ))
-				top_list_rebalance(list, x , y, ID);
-
-			/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
-			(list->size)++;
 			break;
+			
 
 		default:	
 			break;
@@ -236,7 +261,7 @@ Top_List * init_top_list ()
 
 	/// Assign T (in bender's paper), which governs how dense the list can be 
 	/// before rebalancing. As of now, we just pick an arbitrary val in [1,2]
-	list->overflow_threshold 	=	1.2; 
+	list->overflow_constant 	=	1.2; 
 
 	/// Assign appropriate vals to head and tail node tags
 	list->head->tag_e = list->head->tag_h = 0;

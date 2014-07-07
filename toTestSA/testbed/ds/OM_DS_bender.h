@@ -26,7 +26,7 @@ typedef struct Top_List_s{
 	OM_DS *head, *tail; /// TODO: change to OM_DS of the sublist
 	const int ID; /// English or Hebrew: do i need this?
 	int size;
-	float overflow_threshold; /// T in the bender paper
+	float overflow_constant; /// T in the bender paper
 	/// TODO: precompute values of 1 / (T^i)  for much needed values of i
 } Top_List;
 
@@ -34,7 +34,7 @@ typedef struct Top_List_s{
 
 /// Function forward declarations
 void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID );
-void top_list_rebalance(Top_List * list,OM_DS *pivot_l,OM_DS *pivot_r ,const int ID);
+void top_list_rebalance(Top_List * list,OM_DS *pivot ,const int ID);
 void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int IS_RELABELING);
 void append_first_list (Top_List * list, OM_DS * first_sub_list, const int ID);
 Top_List * init_top_list ();
