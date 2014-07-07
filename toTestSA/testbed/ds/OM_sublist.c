@@ -79,7 +79,7 @@ void printList(OM_DS * list, const int ID) {
 /// half to top list as a new sublist
 void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
-	OM_Node * current_e, * current_h;
+	OM_Node * current_e, * current_h, * current1_e, * current1_h;
 	int temp_e = 0, temp_h = 0, temp1_e = 0, temp1_h = 0;
 
 	/// New list to be inserted on top
@@ -237,6 +237,31 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 	if(to_add->size_h < (INT_BIT_SIZE >> 1) )
 		to_add->Reorder_flag_h = 0;
 	else to_add->Reorder_flag_h = 1;
+
+	/// Iterate through each list updating list pointer
+	current_e = current_h = blist->head;
+	current1_e = current1_h = to_add->head;
+	while(current_e != blist->tail) {
+		current_e->ds = blist;
+		current_e = current_e->next_e;
+	}
+	blist->tail->ds = blist;
+
+	while(current_h != blist->tail) {
+		current_h->ds = blist;
+		current_h = current_h->next_h;
+	}
+
+	while(current1_e != to_add->tail) {
+		current1_e->ds = to_add;
+		current1_e = current1_e->next_e;
+	}
+	to_add->tail->ds = to_add;
+
+	while(current1_h != to_add->tail) {
+		current1_h->ds = to_add;
+		current1_h = current1_h->next_h;
+	}
 
 	/// Insert into top list for hebrew
 	insert_top_list(tlist, blist, to_add, HEBREW_ID, 0, NULL);
@@ -423,6 +448,9 @@ void OM_DS_add_first_node(void *ds, void * _x){
 			/// Increment size of linked list
 			om_ds->size_e++;
 			om_ds->size_h++;
+
+			/// Assign node to this ds
+			node->ds = om_ds;
 		}
 		else 	{
 			/// Debug code
