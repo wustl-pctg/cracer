@@ -405,8 +405,16 @@ int main ( int argc, char *argv[] )
 
 	for (i = 1; i < num_inserts; i++)
 	{
+		/* Test : all inserted at beginning
 		insert_top_list(list, list->head , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
 		insert_top_list(list, list->head, arrayToInsert[i], HEBREW_ID, 0, NULL);
+		*/
+
+		int j = rand() % i;
+
+		insert_top_list(list, arrayToInsert[j] , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
+		insert_top_list(list, arrayToInsert[j], arrayToInsert[i], HEBREW_ID, 0, NULL);
+
 		//print_top_list(list);
 		check_correctness(list);
 	}
