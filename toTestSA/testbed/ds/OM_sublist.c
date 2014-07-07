@@ -16,7 +16,7 @@ void * OM_DS_init(){
 	list->head->next_e = list->head->next_h = list->tail;
 	list->tail->prev_e = list->tail->prev_h = list->head;
 
-	list->size = list->Reorder_flag = 0;
+	list->size_e = list->size_h = list->Reorder_flag_h = list->Reorder_flag_e = 0;
 
 	// Set up nodes
 	list->head->tag_e = list->head->tag_h = 0;
@@ -80,7 +80,7 @@ void printList(OM_DS * list, const int ID) {
 void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
 	OM_Node * current_e, * current_h;
-	int temp_e = 0, temp_h = 0;
+	int temp_e = 0, temp_h = 0, temp1_e = 0, temp1_h = 0;
 
 	/// New list to be inserted on top
 	OM_DS * to_add = (OM_DS*)OM_DS_init();
@@ -91,7 +91,7 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
 	/// ===== ENGLISH Case =====
 	/// First find middle
-	while(temp_e < blist->size/2 ) {
+	while(temp_e < blist->size_e/2 ) {
 		current_e = current_e->next_e;
 		++temp_e;
 	}	
@@ -151,7 +151,7 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 	
 	/// ===== Hebrew Case =====
 	/// First find middle
-	while(temp_h < blist->size/2 ) {
+	while(temp_h < blist->size_h/2 ) {
 		current_h = current_h->next_h;
 		++temp_h;
 	}	
@@ -209,18 +209,34 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 		exit(0);
 	}
 	
+	temp1_h = temp_h;
+	temp1_e = temp_e;
+
 	/// Update sizes (utilize temp variables in a general way here)
-	temp_h = blist->size; // blist->size is what it used to be
-	blist->size = temp_e; // temp_e is still half blist->size originally
-	to_add->size = temp_h - temp_e; // the difference will either be the same or one greater
+	temp_e = blist->size_e; // blist->size is what it used to be
+	blist->size_e = temp1_e; // temp_e is still half blist->size originally
+	to_add->size_e = temp_e - temp1_e; // the difference will either be the same or one greater
+
+	/// Update sizes (utilize temp variables in a general way here)
+	temp_h = blist->size_h; // blist->size is what it used to be
+	blist->size_h = temp1_h; // temp_e is still half blist->size originally
+	to_add->size_h = temp_h - temp1_h; // the difference will either be the same or one greater
 	
 	/// Update flags based on size
-	if(blist->size < (INT_BIT_SIZE >> 1) )
-		blist->Reorder_flag = 0;
-	else blist->Reorder_flag = 1;
-	if(to_add->size < (INT_BIT_SIZE >> 1) )
-		to_add->Reorder_flag = 0;
-	else to_add->Reorder_flag = 1;
+	if(blist->size_e < (INT_BIT_SIZE >> 1) )
+		blist->Reorder_flag_e = 0;
+	else blist->Reorder_flag_e = 1;
+	if(to_add->size_e < (INT_BIT_SIZE >> 1) )
+		to_add->Reorder_flag_e = 0;
+	else to_add->Reorder_flag_e = 1;
+
+	/// Update flags based on size
+	if(blist->size_h < (INT_BIT_SIZE >> 1) )
+		blist->Reorder_flag_h = 0;
+	else blist->Reorder_flag_h = 1;
+	if(to_add->size_h < (INT_BIT_SIZE >> 1) )
+		to_add->Reorder_flag_h = 0;
+	else to_add->Reorder_flag_h = 1;
 
 	/// Insert into top list for hebrew
 	insert_top_list(tlist, blist, to_add, HEBREW_ID, 0, NULL);
@@ -238,14 +254,14 @@ void Rebalance_bottom_lists(Top_List * list) {
 
 	/// English
 	while(current_e != list->tail) {
-		if(current_e->Reorder_flag == 1) ///< If 1, then needs split
+		if(current_e->Reorder_flag_e == 1) ///< If 1, then needs split
 			Split_and_add_to_top(list, current_e);
 		current_e = current_e->next_e;
 	}
 
 	/// Hebrew
 	while(current_h != list->tail) {
-		if(current_h->Reorder_flag == 1) ///< If 1, then needs split
+		if(current_h->Reorder_flag_h == 1) ///< If 1, then needs split
 			Split_and_add_to_top(list, current_h);
 		current_h = current_h->next_h;
 	}
@@ -254,7 +270,13 @@ void Rebalance_bottom_lists(Top_List * list) {
 
 /// Insert y after x into appropriate list based on ID
 /// Returns 1 if full and needs reorderd immediately and 0 otherwise
-int OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
+int OM_DS_insert(OM_Node * x, OM_Node * y, const int ID){
+
+	/// Retrieve the data structure known node
+	OM_DS * ds = x->ds;
+	
+	/// Update the ds y is in 
+	y->ds = ds;
 
 	INT_BIT_SIZE =  32;
 
@@ -306,6 +328,15 @@ int OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 		/// Assign y's tag
 		y->tag_h = (y->next_h->tag_h + y->prev_h->tag_h) / 2;
 
+		if( !(ds->size_h < (INT_BIT_SIZE >> 1) ) )
+			ds->Reorder_flag_h = 1;
+
+		ds->size_h++;
+
+		if(ds->size_h == INT_BIT_SIZE)
+			return 1; ///< Needs to be split
+		return 0; ///< Doesn't needs immediately split
+
 		break;
 
 	case ENGLISH_ID:
@@ -347,18 +378,17 @@ int OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 		/// Assign y's tag
 		y->tag_e = (y->next_e->tag_e + y->prev_e->tag_e) / 2;
 
-		break;
+		if( !(ds->size_e < (INT_BIT_SIZE >> 1) ) )
+			ds->Reorder_flag_e = 1;
+
+		ds->size_e++;
+
+		if(ds->size_e == INT_BIT_SIZE)
+			return 1; ///< Needs to be split
+		return 0; ///< Doesn't needs immediately split
 
 	}
 
-	if( !(ds->size < (INT_BIT_SIZE >> 1) ) )
-		ds->Reorder_flag = 1;
-
-	ds->size++;
-
-	if(ds->size == INT_BIT_SIZE)
-		return 1; ///< Needs to be split
-	return 0; ///< Doesn't needs immediately split
 
 }
 
@@ -370,7 +400,7 @@ void OM_DS_add_first_node(void *ds, void * _x){
 	if (ds && _x){
 		OM_DS * om_ds = (OM_DS *)ds;
 		OM_Node * node = (OM_Node*)_x;
-		if (om_ds->size == 0)
+		if (om_ds->size_e == 0 && om_ds->size_h == 0)
 		{
 			/// Change head->next to be this node
 			om_ds->head->next_e = om_ds->head->next_h = node;
@@ -391,7 +421,8 @@ void OM_DS_add_first_node(void *ds, void * _x){
 			node->tag_e = node->tag_h = (om_ds->tail->tag_h >> 1);
 
 			/// Increment size of linked list
-			om_ds->size++;
+			om_ds->size_e++;
+			om_ds->size_h++;
 		}
 		else 	{
 			/// Debug code
