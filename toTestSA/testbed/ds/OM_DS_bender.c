@@ -214,7 +214,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 				{
 					/// We have an issue, collision during rebalancing
 
-					printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_e, y->tag_e);
+					//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_e, y->tag_e);
 					*collision_detected = 1;
 
 					//top_list_rebalance(list, y, ID);	
@@ -263,7 +263,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 				if (y->tag_h == x->tag_h || y->tag_h == RELABELING_END_TAG)
 				{
 					/// We have an issue, collision during rebalancing
-					printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_h, y->tag_h);
+					//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_h, y->tag_h);
 					*collision_detected = 1;
 					//top_list_rebalance(list, y, ID);	
 				}
@@ -401,7 +401,7 @@ int main ( int argc, char *argv[] )
 	append_first_list(list, arrayToInsert[0], ENGLISH_ID);
 	append_first_list(list, arrayToInsert[0], HEBREW_ID);
 	//print_top_list(list);
-	check_correctness(list);
+	//check_correctness(list);
 
 	for (i = 1; i < num_inserts; i++)
 	{
@@ -416,14 +416,14 @@ int main ( int argc, char *argv[] )
 		insert_top_list(list, arrayToInsert[j], arrayToInsert[i], HEBREW_ID, 0, NULL);
 
 		//print_top_list(list);
-		check_correctness(list);
+		// check_correctness(list);
 	}
 
 
 	printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
-		check_correctness(list);
-	print_top_list(list);
+	check_correctness(list);
+	//print_top_list(list);
 	Top_List_free_and_free_nodes(list);
 	free(arrayToInsert);
 
