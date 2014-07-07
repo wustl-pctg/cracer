@@ -1,10 +1,11 @@
 #include "OM_sublist.h"
 
 /// Allocate memory and set variables
-void OM_DS_init(OM_DS * list){
+void * OM_DS_init(OM_DS * list){
 
 	MAX_NUMBER = ~0;
-	
+	printf("Max # in init: %u\n", MAX_NUMBER);
+
 	list = (OM_DS*)malloc(sizeof(OM_DS));
 	list->head = (OM_Node*)malloc(sizeof(OM_Node));
 	list->tail = (OM_Node*)malloc(sizeof(OM_Node));
@@ -18,7 +19,9 @@ void OM_DS_init(OM_DS * list){
 	// Set up nodes
 	list->head->tag_e = list->head->tag_h = 0;
 	list->tail->tag_e = list->tail->tag_h = MAX_NUMBER;
-
+	printf("Debug: list->tail->tag_e & id: %u & %i\n", list->tail->tag_e, list->tail->id);
+	
+	return list;
 }
 
 /// Frees the nodes of the linked list
@@ -59,11 +62,11 @@ void printList(OM_DS * list, const int ID) {
 
     while (n != NULL){
 		if( ID == HEBREW_ID ) {
-			printf("%d (%i)->", n->id, n->tag_h);
+			printf("%d (%u)->", n->id, n->tag_h);
         	n = n->next_h;
 		}
 		else {
-			printf("%d (%i)->", n->id, n->tag_e);
+			printf("%d (%u)->", n->id, n->tag_e);
 			n = n->next_e;
 		}
     }
@@ -73,7 +76,7 @@ void printList(OM_DS * list, const int ID) {
 
 void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
-	unsigned int INT_BIT_SIZE =  (unsigned int) (sizeof(void*) * 8);
+	unsigned int INT_BIT_SIZE =  32;
 
 	//if x is null
 	if (!(x && y && ds) ){
@@ -168,7 +171,7 @@ void OM_DS_insert(OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 	}
 
-	if( !(ds->size < INT_BIT_SIZE/2) )
+	if( !(ds->size < (INT_BIT_SIZE >> 1) ) )
 		ds->Reorder_flag = 1;
 
 	ds->size++;
@@ -201,7 +204,7 @@ void OM_DS_add_first_node(void *ds, void * _x){
 //			node->id =global_node_count++;
 
 			/// Assign tag
-			node->tag_e = node->tag_h = om_ds->tail->tag_h/2;
+			node->tag_e = node->tag_h = (om_ds->tail->tag_h >> 1);
 
 			/// Increment size of linked list
 			om_ds->size++;

@@ -7,21 +7,23 @@
 #include "ds/OM_sublist.h"
 
 
-void MAL_test(int * intptr) {
+int * MAL_test(int * intptr) {
 
 	intptr = (int*)malloc(sizeof(int));
 	if (intptr == NULL)
 		exit(10);
 	*intptr = 3;
+	return intptr;
 }
 
-void Initialize_test(OM_DS * list) {
+void * Initialize_test(OM_DS * list) {
 
-	OM_DS_init(list);
+	list = (OM_DS*)OM_DS_init(list);
 	assert( list->head != list->tail );
 	assert( list->head->next_e == list->tail );
 	assert( list->head->tag_h == 0 );
 	assert( list->tail->tag_h == MAX_NUMBER );
+	return list;
 	
 }
 
@@ -41,7 +43,7 @@ void Insert_h_test(OM_DS * list, OM_Node * x, OM_Node * y) {
 	OM_DS_insert(list, x, y, HEBREW_ID);
 	assert( x->next_h == y);
 	assert( (OM_Node*)y->prev_h == (OM_Node*) x);
-	printf("Insert: x->tag_h: %i and y->tag_h: %i\n", x->tag_h, y->tag_h);
+	printf("Insert: x->tag_h: %u and y->tag_h: %u\n", x->tag_h, y->tag_h);
 }
 
 void Insert_e_test(OM_DS * list, OM_Node * x, OM_Node * y) {
@@ -49,7 +51,7 @@ void Insert_e_test(OM_DS * list, OM_Node * x, OM_Node * y) {
 	OM_DS_insert(list, x, y, ENGLISH_ID);
 	assert( x->next_e == y);
 	assert( (OM_Node*)y->prev_e == (OM_Node*) x);
-	printf("Insert: x->tag_e: %i and y->tag_e: %i\n", x->tag_h, y->tag_h);
+	printf("Insert: x->tag_e: %u and y->tag_e: %u\n", x->tag_h, y->tag_h);
 }
 
 
@@ -63,11 +65,12 @@ int main(int argc, char * argv[]) {
 	int *test;
 
 	MAX_NUMBER = ~0;
+	printf("Max # in main: %u\n", MAX_NUMBER);
 
-	MAL_test(test);
+	test = MAL_test(test);
 	printf("test is: %i \n", *test);
 	
-	Initialize_test(list);
+	list = (OM_DS*)Initialize_test(list);
 
 	one = (OM_Node *)malloc(sizeof(OM_Node));
 	two = (OM_Node *)malloc(sizeof(OM_Node));
@@ -75,6 +78,13 @@ int main(int argc, char * argv[]) {
 	four = (OM_Node *)malloc(sizeof(OM_Node));
 	five = (OM_Node *)malloc(sizeof(OM_Node));
 	six = (OM_Node *)malloc(sizeof(OM_Node));
+
+	one->id = 1;
+	two->id = 2;
+	three->id = 3;
+	four->id = 4;
+	five->id = 5;
+	six->id = 6;
 
 	Firstnode_test(list, one);
 

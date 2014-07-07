@@ -10,8 +10,9 @@
 #define HEBREW_ID 10
 #define ENGLISH_ID 11
 unsigned int MAX_NUMBER;
+unsigned int INT_BIT_SIZE;
 
-void OM_DS_init();
+void * OM_DS_init();
 
 void OM_free_and_free_nodes(OM_DS *);
 
