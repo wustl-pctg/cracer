@@ -147,6 +147,10 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int IS_
 		case ENGLISH_ID:	
 				//y->tag_e = (x->next_e->tag_e + (x->tag_e)) >> 1;
 			 y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));
+			 //change if both are odd (i.e. roundup) 
+			 if ( (y->tag_e & x->tag_e & 0x1 == 0x1))
+			 	 y->tag_e++;
+
 			/// Assign new tag, list will be balanced 
 
 			if (!IS_RELABELING){
@@ -170,7 +174,9 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int IS_
 		case HEBREW_ID:		
 			/// Assign new tag, list will be balanced 
 			 y->tag_h = ((x->next_h->tag_h >> 1) + (x->tag_h >> 1));
-
+			 //change if both are odd (i.e. roundup) 
+			 if ( (y->tag_h & x->tag_h & 0x1 == 0x1))
+			 	 y->tag_h++;
 
 			if (!IS_RELABELING){
 
