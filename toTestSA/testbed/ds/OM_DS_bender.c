@@ -339,7 +339,7 @@ Top_List * init_top_list ()
 
 	/// Assign T (in bender's paper), which governs how dense the list can be 
 	/// before rebalancing. As of now, we just pick an arbitrary val in [1,2]
-	list->overflow_constant 	=	1.3; 
+	list->overflow_constant 	=	1.7; 
 
 	/// Assign appropriate vals to head and tail node tags
 	list->head->tag_e = list->head->tag_h = 0;

@@ -223,10 +223,10 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 	else to_add->Reorder_flag = 1;
 
 	/// Insert into top list for hebrew
-	insert_top_list(tlist, blist, to_add, HEBREW_ID, 0);
+	insert_top_list(tlist, blist, to_add, HEBREW_ID, 0, NULL);
 
 	/// Insert into top lsit for english
-	insert_top_list(tlist, blist, to_add, ENGLISH_ID, 0);
+	insert_top_list(tlist, blist, to_add, ENGLISH_ID, 0, NULL);
 }
 
 /// Iterate through the top list to find sublists needing reordered
