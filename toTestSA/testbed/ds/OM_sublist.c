@@ -1,7 +1,4 @@
 #include "OM_sublist.h"
-#include "OM_DS_bender.h"
-
-
 
 /// Allocate memory and set variables
 void * OM_DS_init(){
@@ -152,10 +149,6 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 		exit(0);
 	}
 	
-	/// Insert into top list for english
-	insert_top_list(tlist, blist, to_add, ENGLISH_ID, 0);
-
-
 	/// ===== Hebrew Case =====
 	/// First find middle
 	while(temp_h < blist->size/2 ) {
@@ -222,10 +215,12 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 	to_add->size = temp_h - temp_e; // the difference will either be the same or one greater
 	
 	/// Update flags based on size
-	blist->size < (INT_BIT_SIZE >> 1) ? \
-		blist->Reorder_flag = 0: blist->Reorder_flag = 1;
-	to_add->size < (INT_BIT_SIZE >> 1) ? \
-		to_add->Reorder_flag = 0: to_add->Reorder_flag = 1;
+	if(blist->size < (INT_BIT_SIZE >> 1) )
+		blist->Reorder_flag = 0;
+	else blist->Reorder_flag = 1;
+	if(to_add->size < (INT_BIT_SIZE >> 1) )
+		to_add->Reorder_flag = 0;
+	else to_add->Reorder_flag = 1;
 
 	/// Insert into top list for hebrew
 	insert_top_list(tlist, blist, to_add, HEBREW_ID, 0);
