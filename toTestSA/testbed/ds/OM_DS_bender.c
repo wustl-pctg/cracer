@@ -44,7 +44,7 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
 	switch ( ID ) {
 		case ENGLISH_ID:
 		
-			while (x != y && x != list->tail){
+			while (x->next_e != y && x != list->tail){
 				/// insert x->next after x but with y->tag_e as the end tag
 				insert_top_list(list, x, x->next_e, ENGLISH_ID, y->tag_e);
 
@@ -54,7 +54,7 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
 			break;
 
 		case HEBREW_ID:	
-			while (x != y && x != list->tail){
+			while (x->next_h != y && x != list->tail){
 				/// insert x->next after x but with y->tag_e as the end tag
 				insert_top_list(list, x, x->next_h, HEBREW_ID, y->tag_h);
 
@@ -160,18 +160,26 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int REL
 			if (RELABELING_END_TAG != 0)
 			{
 				y->tag_e = (RELABELING_END_TAG >> 1) + (x->tag_e >> 1);
+				/// correct for adding two odd numbers
+				if (RELABELING_END_TAG & x->tag_e & 0x1 == 0x1)
+					y->tag_e++;
 
 				if (y->tag_e == x->tag_e || y->tag_e == RELABELING_END_TAG)
 				{
 					/// We have an issue, collision during rebalancing
-					printf("We have an issue: collision during reabalance");
-					exit(1); 
+
+					printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_e, y->tag_e);
+					top_list_rebalance(list, y, ID);	
+					 
 				}
 
 			}
 			else //We are inserting a new element into the list
 			{
 				y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));
+				/// correct for adding two odd numbers
+				if (x->next_e->tag_h & x->tag_e & 0x1 == 0x1)
+					y->tag_e++;
 			
 				
 				/// Reassign  prev/next pointers
@@ -183,7 +191,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int REL
 				y->next_e->prev_e = y;
 	
 				if ((y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))
-					top_list_rebalance(list, x, ID);
+					top_list_rebalance(list, y, ID);
 		
 			}
 			break;
@@ -192,19 +200,25 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int REL
 			if (RELABELING_END_TAG != 0)
 			{
 				y->tag_h = (RELABELING_END_TAG >> 1) + (x->tag_h >> 1);
+				/// correct for adding two odd numbers
+				if (RELABELING_END_TAG & x->tag_h & 0x1 == 0x1)
+					y->tag_h++;
 
 				if (y->tag_h == x->tag_h || y->tag_h == RELABELING_END_TAG)
 				{
 					/// We have an issue, collision during rebalancing
-					printf("We have an issue: collision during reabalance");
-					exit(1); 
+					printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_h, y->tag_h);
+					top_list_rebalance(list, y, ID);	
 				}
 
 			}
 			else //We are inserting a new element into the list
 			{
 				y->tag_h = ((x->next_h->tag_h >> 1) + (x->tag_h >> 1));
-				y->tag_h = y->tag_h;
+				/// correct for adding two odd numbers
+				if (x->next_h->tag_h & x->tag_h & 0x1 == 0x1)
+					y->tag_h++;
+
 
 				/// Reassign  prev/next pointers
 				y->prev_h = x;
@@ -215,7 +229,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, int REL
 				y->next_h->prev_h = y;
 	
 				if ((y->tag_h == x->tag_h) ||  ( y->tag_h == y->next_h->tag_h ))
-					top_list_rebalance(list, x, ID);
+					top_list_rebalance(list, y, ID);
 		
 	
 				/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
@@ -328,12 +342,12 @@ int main ( int argc, char *argv[] )
 	{
 		insert_top_list(list, list->head , arrayToInsert[i ], ENGLISH_ID, 0);
 		insert_top_list(list, list->head, arrayToInsert[i], HEBREW_ID, 0);
-		//print_top_list(list);
 	}
 
 
 	printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
+	print_top_list(list);
 	Top_List_free_and_free_nodes(list);
 	free(arrayToInsert);
 
