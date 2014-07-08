@@ -101,15 +101,52 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
 		/// This is the procedure:
 		/// === update to_add tail ptrs ===
-		to_add->tail->prev_e = blist->tail->prev_e
-		blist->tail->prev_e->next_e = to_add->tail
+		to_add->tail->prev_e = blist->tail->prev_e;
+		blist->tail->prev_e->next_e = to_add->tail;
 		// === update blist tail ptrs ===
-		blist->tail->prev_e = current_e->prev_e
-		current_e->prev_e->next_e = blist->tail
+		blist->tail->prev_e = current_e->prev_e;
+		current_e->prev_e->next_e = blist->tail;
 		/// === update to_add head ptrs ===
-		to_add->head->next_e = current_e
-		current_e->prev_e = to_add->head
-	}
+		to_add->head->next_e = current_e;
+		current_e->prev_e = to_add->head;
+
+		/// Second tmp 
+		temp1_e = temp_e;
+
+		/// Update sizes (utilize temp variables in a general way here)
+		temp_e = blist->size_e; // blist->size is what it used to be
+		blist->size_e = temp1_e; // temp_e is still half blist->size originally
+		to_add->size_e = temp_e - temp1_e; // the difference will either be the same or one greater
+
+	
+		/// Update flags based on size
+		if(blist->size_e < (INT_BIT_SIZE >> 1) )
+			blist->Reorder_flag_e = 0;
+		else blist->Reorder_flag_e = 1;
+		if(to_add->size_e < (INT_BIT_SIZE >> 1) )
+			to_add->Reorder_flag_e = 0;
+		else to_add->Reorder_flag_e = 1;
+
+
+		current_e = blist->head; 
+		current1_e = to_add->head;
+
+		/// Update ds reference in first half of list
+		while(current_e != blist->tail) {
+			current_e->ds = blist;
+			current_e = current_e->next_e;
+		}
+		blist->tail->ds = blist;
+
+		/// Update ds references in second half of list
+		while(current1_e != to_add->tail) {
+			current1_e->ds = to_add;
+			current1_e = current1_e->next_e;
+		}
+		to_add->tail->ds = to_add;
+
+	}/// End english
+
 	if (blist->size_h != 0){
 
 		/// ===== Hebrew Case =====
@@ -121,72 +158,51 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
 		/// This is the procedure:
 		/// === update to_add tail ptrs ===
-		to_add->tail->prev_h = blist->tail->prev_h
-		blist->tail->prev_h->next_h = to_add->tail
+		to_add->tail->prev_h = blist->tail->prev_h;
+		blist->tail->prev_h->next_h = to_add->tail;
 		/// === update blist tail ptrs ===
-		blist->tail->prev_h = current_h->prev_h
-		current_h->prev_h->next_h = blist->tail
+		blist->tail->prev_h = current_h->prev_h;
+		current_h->prev_h->next_h = blist->tail;
 		/// === update to_add head ptrs ===
-		to_add->head->next_h = current_h
-		current_h->prev_h = to_add->head
+		to_add->head->next_h = current_h;
+		current_h->prev_h = to_add->head;
+
+		temp1_h = temp_h;
+		/// Update sizes (utilize temp variables in a general way here)
+		temp_h = blist->size_h; // blist->size is what it used to be
+		blist->size_h = temp1_h; // temp_e is still half blist->size originally
+		to_add->size_h = temp_h - temp1_h; // the difference will either be the same or one greater
+		/// Update flags based on size
+		if(blist->size_h < (INT_BIT_SIZE >> 1) )
+			blist->Reorder_flag_h = 0;
+		else blist->Reorder_flag_h = 1;
+		if(to_add->size_h < (INT_BIT_SIZE >> 1) )
+			to_add->Reorder_flag_h = 0;
+		else to_add->Reorder_flag_h = 1;
+
+		/// Iterate through each list updating list pointer
+		current_h = blist->head;
+		
+		current1_h = to_add->head;
+
+
+		while(current_h != blist->tail) {
+			current_h->ds = blist;
+			current_h = current_h->next_h;
+		}
+		blist->tail->ds = blist;
+
+		while(current1_h != to_add->tail) {
+			current1_h->ds = to_add;
+			current1_h = current1_h->next_h;
+		}
+		to_add->tail->ds = to_add;
+
+
 	}
 
-	temp1_h = temp_h;
-	temp1_e = temp_e;
-
-	/// Update sizes (utilize temp variables in a general way here)
-	temp_e = blist->size_e; // blist->size is what it used to be
-	blist->size_e = temp1_e; // temp_e is still half blist->size originally
-	to_add->size_e = temp_e - temp1_e; // the difference will either be the same or one greater
-
-	/// Update sizes (utilize temp variables in a general way here)
-	temp_h = blist->size_h; // blist->size is what it used to be
-	blist->size_h = temp1_h; // temp_e is still half blist->size originally
-	to_add->size_h = temp_h - temp1_h; // the difference will either be the same or one greater
-	
-	/// Update flags based on size
-	if(blist->size_e < (INT_BIT_SIZE >> 1) )
-		blist->Reorder_flag_e = 0;
-	else blist->Reorder_flag_e = 1;
-	if(to_add->size_e < (INT_BIT_SIZE >> 1) )
-		to_add->Reorder_flag_e = 0;
-	else to_add->Reorder_flag_e = 1;
-
-	/// Update flags based on size
-	if(blist->size_h < (INT_BIT_SIZE >> 1) )
-		blist->Reorder_flag_h = 0;
-	else blist->Reorder_flag_h = 1;
-	if(to_add->size_h < (INT_BIT_SIZE >> 1) )
-		to_add->Reorder_flag_h = 0;
-	else to_add->Reorder_flag_h = 1;
-
-	/// Iterate through each list updating list pointer
-	current_e = current_h = blist->head;
-	current1_e = current1_h = to_add->head;
-	while(current_e != blist->tail) {
-		current_e->ds = blist;
-		current_e = current_e->next_e;
-	}
-	blist->tail->ds = blist;
-
-	while(current_h != blist->tail) {
-		current_h->ds = blist;
-		current_h = current_h->next_h;
-	}
-
-	while(current1_e != to_add->tail) {
-		current1_e->ds = to_add;
-		current1_e = current1_e->next_e;
-	}
-	to_add->tail->ds = to_add;
-
-	while(current1_h != to_add->tail) {
-		current1_h->ds = to_add;
-		current1_h = current1_h->next_h;
-	}
-
-	/// Insert into top list for hebrew
-	insert_top_list(tlist, blist, to_add, HEBREW_ID, 0, NULL);
+		/// Insert into top list for hebrew
+	//insert_top_list(tlist, blist, to_add, HEBREW_ID, 0, NULL);
 
 	/// Insert into top lsit for english
 	insert_top_list(tlist, blist, to_add, ENGLISH_ID, 0, NULL);

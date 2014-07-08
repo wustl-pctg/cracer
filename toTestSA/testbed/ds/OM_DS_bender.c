@@ -126,7 +126,7 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 	OM_DS *lList = pivot, *rList = pivot;
 	float overflow_density, overflow_threshold;
 	long enclosing_tag_range, num_elements_in_sublist = 1;
-	int i;
+	unsigned long i;
 
 	switch ( ID ) {
 		case ENGLISH_ID:	
@@ -339,7 +339,7 @@ Top_List * init_top_list ()
 
 	/// Assign T (in bender's paper), which governs how dense the list can be 
 	/// before rebalancing. As of now, we just pick an arbitrary val in [1,2]
-	list->overflow_constant 	=	1.7; 
+	list->overflow_constant 	=	1.3; 
 
 	/// Assign appropriate vals to head and tail node tags
 	list->head->tag_e = list->head->tag_h = 0;
