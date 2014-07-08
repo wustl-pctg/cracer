@@ -12,7 +12,7 @@
 unsigned int MAX_NUMBER;
 unsigned int INT_BIT_SIZE;
 
-void * OM_DS_init();
+OM_DS * OM_DS_init();
 
 void OM_free_and_free_nodes(OM_DS *);
 
@@ -24,7 +24,7 @@ void Rebalance_bottom_lists(Top_List * list);
 
 int OM_DS_insert(OM_Node *, OM_Node*, const int);
 
-void OM_DS_add_first_node(void*, void*);
+void OM_DS_add_first_node(void*, void*, const int ID);
 
 int OM_DS_order(void*, void*, void*, const int);
 

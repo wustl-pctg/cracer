@@ -8,7 +8,7 @@ typedef struct OM_Node_s{
 	struct OM_Node_s *prev_e, *prev_h;
 	int id;
 	unsigned int tag_e, tag_h;
-	struct OM_DS_s * ds;
+	struct OM_DS_s * ds_h, * ds_e;
 
 } OM_Node;
 

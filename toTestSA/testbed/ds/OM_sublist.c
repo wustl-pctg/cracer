@@ -2,7 +2,7 @@
 #include "OM_sublist.h"
 
 /// Allocate memory and set variables
-void * OM_DS_init(){
+OM_DS * OM_DS_init(){
 
 	OM_DS * list;
 
@@ -81,135 +81,124 @@ void printList(OM_DS * list, const int ID) {
 void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
 	OM_Node * current_e, * current_h, * current1_e, * current1_h;
-	int temp_e = 0, temp_h = 0, temp1_e = 0, temp1_h = 0;
+	int temp_e = 0, temp_h = 0;
 
 	/// New list to be inserted on top
-	OM_DS * to_add = (OM_DS*)OM_DS_init();
+	OM_DS * to_add = OM_DS_init();
 
 	INT_BIT_SIZE =  32;
 
 	current_e = current_h = blist->head;
 
-	if ( blist->size_e != 0)
-	{
+	/// English
+	if ( blist->size_e > 1) {
 
-		/// ===== ENGLISH Case =====
-		/// First find middle
+		/// Iterate until middle
 		while(temp_e < blist->size_e/2 ) {
 			current_e = current_e->next_e;
 			++temp_e;
-		}	
+		}
 
-		/// This is the procedure:
-		/// === update to_add tail ptrs ===
-		to_add->tail->prev_e = blist->tail->prev_e;
-		blist->tail->prev_e->next_e = to_add->tail;
-		// === update blist tail ptrs ===
-		blist->tail->prev_e = current_e->prev_e;
-		current_e->prev_e->next_e = blist->tail;
-		/// === update to_add head ptrs ===
-		to_add->head->next_e = current_e;
-		current_e->prev_e = to_add->head;
+		/// Hold current1_e as the middle
+		current1_e = current_e;
 
-		/// Second tmp 
-		temp1_e = temp_e;
+		/// Take middle+1 and put it in new ds
+		current_e = current_e->next_e;
+		OM_DS_add_first_node(to_add, current_e, ENGLISH_ID);
 
-		/// Update sizes (utilize temp variables in a general way here)
-		temp_e = blist->size_e; // blist->size is what it used to be
-		blist->size_e = temp1_e; // temp_e is still half blist->size originally
-		to_add->size_e = temp_e - temp1_e; // the difference will either be the same or one greater
+		/// Insert rest of second half into new ds
+		current_e = current_e->next_e;
+		while(current_e != blist->tail) {
+			OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
+			current_e = current_e->next_e;
+		}
 
-	
+		/// Do some maintenence on the original ds
+		/// in preparation to reinsert nodes
+		current_e = blist->head->next_e;
+		blist->head->next_e = blist->tail;
+		blist->tail->prev_e = blist->head;
+		blist->size_e = 0;
+
+		/// Add "first" node
+		om_DS_add_first_node(blist, current_e, ENGLISH_ID);
+		current_e = current_e->next;
+
+		/// Reinsert until middle
+		while(current_e != current1_e->next_e) {
+			OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
+			current_e = current_e->next_e;
+		}
+
 		/// Update flags based on size
 		if(blist->size_e < (INT_BIT_SIZE >> 1) )
 			blist->Reorder_flag_e = 0;
 		else blist->Reorder_flag_e = 1;
+
 		if(to_add->size_e < (INT_BIT_SIZE >> 1) )
 			to_add->Reorder_flag_e = 0;
 		else to_add->Reorder_flag_e = 1;
 
+		
+	}
 
-		current_e = blist->head; 
-		current1_e = to_add->head;
+	/// Hebrew
+	if ( blist->size_h > 1) {
 
-		/// Update ds reference in first half of list
-		while(current_e != blist->tail) {
-			current_e->ds = blist;
-			current_e = current_e->next_e;
-		}
-		blist->tail->ds = blist;
-
-		/// Update ds references in second half of list
-		while(current1_e != to_add->tail) {
-			current1_e->ds = to_add;
-			current1_e = current1_e->next_e;
-		}
-		to_add->tail->ds = to_add;
-
-	}/// End english
-
-	if (blist->size_h != 0){
-
-		/// ===== Hebrew Case =====
-		/// First find middle
+		/// Iterate until middle
 		while(temp_h < blist->size_h/2 ) {
 			current_h = current_h->next_h;
 			++temp_h;
-		}	
+		}
 
-		/// This is the procedure:
-		/// === update to_add tail ptrs ===
-		to_add->tail->prev_h = blist->tail->prev_h;
-		blist->tail->prev_h->next_h = to_add->tail;
-		/// === update blist tail ptrs ===
-		blist->tail->prev_h = current_h->prev_h;
-		current_h->prev_h->next_h = blist->tail;
-		/// === update to_add head ptrs ===
-		to_add->head->next_h = current_h;
-		current_h->prev_h = to_add->head;
+		/// Hold current1_h as the middle
+		current1_h = current_h;
 
-		temp1_h = temp_h;
-		/// Update sizes (utilize temp variables in a general way here)
-		temp_h = blist->size_h; // blist->size is what it used to be
-		blist->size_h = temp1_h; // temp_e is still half blist->size originally
-		to_add->size_h = temp_h - temp1_h; // the difference will either be the same or one greater
+		/// Take middle+1 and put it in new ds
+		current_h = current_h->next_h;
+		OM_DS_add_first_node(to_add, current_h, HEBREW_ID);
+
+		/// Insert rest of second half into new ds
+		current_h = current_h->next_h;
+		while(current_h != blist->tail) {
+			OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
+			current_h = current_h->next_h;
+		}
+
+		/// Do some maintenence on the original ds
+		/// in preparation to reinsert nodes
+		current_h = blist->head->next_h;
+		blist->head->next_h = blist->tail;
+		blist->tail->prev_h = blist->head;
+		blist->size_h = 0;
+
+		/// Add "first" node
+		om_DS_add_first_node(blist, current_h, HEBREW_ID);
+		current_h = current_h->next;
+
+		/// Reinsert until middle
+		while(current_h != current1_h->next_h) {
+			OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
+			current_h = current_h->next_h;
+		}
+
 		/// Update flags based on size
 		if(blist->size_h < (INT_BIT_SIZE >> 1) )
 			blist->Reorder_flag_h = 0;
 		else blist->Reorder_flag_h = 1;
+
 		if(to_add->size_h < (INT_BIT_SIZE >> 1) )
 			to_add->Reorder_flag_h = 0;
 		else to_add->Reorder_flag_h = 1;
-
-		/// Iterate through each list updating list pointer
-		current_h = blist->head;
 		
-		current1_h = to_add->head;
-
-
-		while(current_h != blist->tail) {
-			current_h->ds = blist;
-			current_h = current_h->next_h;
-		}
-		blist->tail->ds = blist;
-
-		while(current1_h != to_add->tail) {
-			current1_h->ds = to_add;
-			current1_h = current1_h->next_h;
-		}
-		to_add->tail->ds = to_add;
-
-
 	}
-
-	/// Insert into top list for hebrew
-	//insert_top_list(tlist, blist, to_add, HEBREW_ID, 0, NULL);
 
 	/// Insert into top lsit for english
 	insert_top_list(tlist, blist, to_add, ENGLISH_ID, 0, NULL);
 
 	/// Check if correct for the sake of being thorough
 	check_sub_correctness(tlist);
+
 }
 
 /// Iterate through the top list to find sublists needing reordered
@@ -241,58 +230,31 @@ void Rebalance_bottom_lists(Top_List * list) {
 /// Returns 1 if full and needs reorderd immediately and 0 otherwise
 int OM_DS_insert(OM_Node * x, OM_Node * y, const int ID){
 
-	/// Retrieve the data structure known node
-	OM_DS * ds = x->ds;
-	
-	/// Update the ds y is in 
-	y->ds = ds;
-
 	INT_BIT_SIZE =  32;
-
-	//if x is null
-	if (!(x && y && ds) ){
-		printf("Some node or ds is null,\
-               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-			   x->id, x, y->id, y, ds->tail->id, ds->tail);
-		return;
-	}
 
 	switch(ID){
 	case HEBREW_ID:
+
+		/// Retrieve the data structure known node
+		OM_DS * ds = x->ds_h;
+	
+		/// Update the ds y is in 
+		y->ds_h = ds;
+
+		//if x is null
+		if (!(x && y && ds) ){
+			printf("Some node or ds is null,\
+               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+				   x->id, x, y->id, y, ds->tail->id, ds->tail);
+			return;
+		}
+
 		
 		/// This is the procedure:
-		/// y->next = x->next_h
-		/// x->next_h->prev_h = y
-		/// x->next_h = y
-		/// y->prev_h = x
-		
-		// y->next = x->next_h
-		if(!(__sync_bool_compare_and_swap(&(y->next_h), y->next_h, x->next_h)))
-		{
-			printf("Exiting, atomic insert (heb, next2)failed");
-			exit(0);
-		}
-
-		// x->next_h->prev_h = y
-		if(!(__sync_bool_compare_and_swap(&(x->next_h->prev_h), x->next_h->prev_h, y)))
-		{
-			printf("Exiting, atomic insert (heb, prev2)failed");
-			exit(0);
-		}
-
-		// x->next_h = y
-		if(!(__sync_bool_compare_and_swap(&(x->next_h), x->next_h, y)))
-		{
-			printf("Exiting, atomic insert (heb, next)failed");
-			exit(0);
-		}
-
-		// y->prev_h = x
-		if(!(__sync_bool_compare_and_swap(&(y->prev_h), y->prev_h, x)))
-		{
-			printf("Exiting, atomic insert (heb, prev)failed");
-			exit(0);
-		}
+		y->next = x->next_h;
+		x->next_h->prev_h = y;
+		x->next_h = y;
+		y->prev_h = x;
 		
 		/// Assign y's tag
 		y->tag_h = ((y->next_h->tag_h >> 1) + (y->prev_h->tag_h >> 1));
@@ -311,45 +273,31 @@ int OM_DS_insert(OM_Node * x, OM_Node * y, const int ID){
 
 	case ENGLISH_ID:
 
+		/// Retrieve the data structure known node
+		OM_DS * ds = x->ds_e;
+	
+		/// Update the ds y is in 
+		y->ds_e = ds;
+
+		//if x is null
+		if (!(x && y && ds) ){
+			printf("Some node or ds is null,\
+               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+				   x->id, x, y->id, y, ds->tail->id, ds->tail);
+			return;
+		}
+
 		/// This is the procedure:
-		/// y->next = x->next_e
-		/// x->next_e->prev_e = y
-		/// x->next_e = y
-		/// y->prev_e = x
+		y->next = x->next_e
+			x->next_e->prev_e = y
+			x->next_e = y
+			y->prev_e = x
 		
-		// y->next = x->next_e
-		if(!(__sync_bool_compare_and_swap(&(y->next_e), y->next_e, x->next_e)))
-		{
-			printf("Exiting, atomic insert (eng, next2)failed");
-			exit(0);
-		}
-
-		// x->next_e->prev_e = y
-		if(!(__sync_bool_compare_and_swap(&(x->next_e->prev_e), x->next_e->prev_e, y)))
-		{
-			printf("Exiting, atomic insert (eng, prev)failed");
-			exit(0);
-		}
-
-		// x->next_e = y
-		if(!(__sync_bool_compare_and_swap(&(x->next_e), x->next_e, y)))
-		{
-			printf("Exiting, atomic insert (eng, next)failed");
-			exit(0);
-		}
-		
-		// y->prev_e = x
-		if(!(__sync_bool_compare_and_swap(&(y->prev_e), y->prev_e, x)))
-		{
-			printf("Exiting, atomic insert (eng, prev)failed");
-			exit(0);
-		}
-
-		/// Assign y's tag
-		y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
+			/// Assign y's tag
+			y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
 
 		if( !(ds->size_e < (INT_BIT_SIZE >> 1) ) )
-			ds->Reorder_flag_e = 1;
+			n			ds->Reorder_flag_e = 1;
 
 		ds->size_e++;
 
@@ -364,46 +312,91 @@ int OM_DS_insert(OM_Node * x, OM_Node * y, const int ID){
 
 /// This is called in the initialization of cilk
 /// Add the first node to the OM_DS
-void OM_DS_add_first_node(void *ds, void * _x){
+void OM_DS_add_first_node(void *ds, void * _x, const int ID){
 
 	/// Enter if ds and x are not NULL
 	if (ds && _x){
 		OM_DS * om_ds = (OM_DS *)ds;
 		OM_Node * node = (OM_Node*)_x;
-		if (om_ds->size_e == 0 && om_ds->size_h == 0)
-		{
-			/// Change head->next to be this node
-			om_ds->head->next_e = om_ds->head->next_h = node;
 
-			/// Change node->prev to be the head
-			node->prev_e = node->prev_h = om_ds->head;
+		switch(ID) {
+
+		case ENGLISH_ID:
+
+			if (om_ds->size_e == 0)
+			{
+				/// Change head->next to be this node
+				om_ds->head->next_e node;
+
+				/// Change node->prev to be the head
+				node->prev_e = om_ds->head;
 			
-			/// Change node->next to be tail
-			node->next_e = node->next_h = om_ds->tail;
+				/// Change node->next to be tail
+				node->next_e = om_ds->tail;
 
-			/// Change tail->prev to be this node
-			om_ds->tail->prev_e = om_ds->tail->prev_h = node;
+				/// Change tail->prev to be this node
+				om_ds->tail->prev_e = node;
 
-			/// Assign unique node id
+				/// Assign unique node id
 //			node->id =global_node_count++;
 
-			/// Assign tag
-			node->tag_e = node->tag_h = (om_ds->tail->tag_h >> 1);
+				/// Assign tag
+				node->tag_e = (om_ds->tail->tag_e >> 1);
 
-			/// Increment size of linked list
-			om_ds->size_e++;
-			om_ds->size_h++;
+				/// Increment size of linked list
+				om_ds->size_e++;
 
-			/// Assign node to this ds
-			node->ds = om_ds;
+				/// Assign node to this ds
+				node->ds_e = om_ds;
+			}
+			else 	{
+				/// Debug code
+				/// If linked list has nodes already, exit. Don't let this be called
+				/// incorrectly and let code continue
+				printf("List is non-empty, dont call add first node\n");
+				exit(0);
+			}
+			break;
+		
+		case HEBREW_ID:
+
+			if (om_ds->size_h == 0)
+			{
+				/// Change head->next to be this node
+				om_ds->head->next_h node;
+
+				/// Change node->prev to be the head
+				node->prev_h = om_ds->head;
+			
+				/// Change node->next to be tail
+				node->next_h = om_ds->tail;
+
+				/// Change tail->prev to be this node
+				om_ds->tail->prev_h = node;
+
+				/// Assign unique node id
+//			node->id =global_node_count++;
+
+				/// Assign tag
+				node->tag_h = (om_ds->tail->tag_h >> 1);
+
+				/// Increment size of linked list
+				om_ds->size_h++;
+
+				/// Assign node to this ds
+				node->ds_h = om_ds;
+			}
+			else 	{
+				/// Debug code
+				/// If linked list has nodes already, exit. Don't let this be called
+				/// incorrectly and let code continue
+				printf("List is non-empty, dont call add first node\n");
+				exit(0);
+			}
+			break;
+
 		}
-		else 	{
-			/// Debug code
-			/// If linked list has nodes already, exit. Don't let this be called
-			/// incorrectly and let code continue
-			printf("List is non-empty, dont call add first node\n");
-			exit(0);
-		}
+
 	}
 	else {
 		printf("Debug: appending null node or to null ds\n");
@@ -411,6 +404,7 @@ void OM_DS_add_first_node(void *ds, void * _x){
 
 }
 
+////TODO: fix this
 /// Within the void *ds, depending on macros defined in main, determine the order
 /// of x and y. If x <= y, return true. Otherwie, return false.
 /// Note: the ID will determine which ordering to follow (english or hebrew)
