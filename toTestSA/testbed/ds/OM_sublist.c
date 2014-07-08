@@ -193,7 +193,7 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 		
 	}
 
-	/// Insert into top lsit for english
+	/// Insert into top list
 	insert_top_list(tlist, blist, to_add, ENGLISH_ID, 0, NULL);
 
 	/// Check if correct for the sake of being thorough
