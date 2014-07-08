@@ -121,8 +121,8 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 		blist->size_e = 0;
 
 		/// Add "first" node
-		om_DS_add_first_node(blist, current_e, ENGLISH_ID);
-		current_e = current_e->next;
+		OM_DS_add_first_node(blist, current_e, ENGLISH_ID);
+		current_e = current_e->next_e;
 
 		/// Reinsert until middle
 		while(current_e != current1_e->next_e) {
@@ -173,8 +173,8 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 		blist->size_h = 0;
 
 		/// Add "first" node
-		om_DS_add_first_node(blist, current_h, HEBREW_ID);
-		current_h = current_h->next;
+		OM_DS_add_first_node(blist, current_h, HEBREW_ID);
+		current_h = current_h->next_h;
 
 		/// Reinsert until middle
 		while(current_h != current1_h->next_h) {
@@ -230,13 +230,15 @@ void Rebalance_bottom_lists(Top_List * list) {
 /// Returns 1 if full and needs reorderd immediately and 0 otherwise
 int OM_DS_insert(OM_Node * x, OM_Node * y, const int ID){
 
+	OM_DS * ds;
+
 	INT_BIT_SIZE =  32;
 
 	switch(ID){
 	case HEBREW_ID:
 
 		/// Retrieve the data structure known node
-		OM_DS * ds = x->ds_h;
+		ds = x->ds_h;
 	
 		/// Update the ds y is in 
 		y->ds_h = ds;
@@ -274,7 +276,7 @@ int OM_DS_insert(OM_Node * x, OM_Node * y, const int ID){
 	case ENGLISH_ID:
 
 		/// Retrieve the data structure known node
-		OM_DS * ds = x->ds_e;
+		ds = x->ds_e;
 	
 		/// Update the ds y is in 
 		y->ds_e = ds;
@@ -326,7 +328,7 @@ void OM_DS_add_first_node(void *ds, void * _x, const int ID){
 			if (om_ds->size_e == 0)
 			{
 				/// Change head->next to be this node
-				om_ds->head->next_e node;
+				om_ds->head->next_e = node;
 
 				/// Change node->prev to be the head
 				node->prev_e = om_ds->head;
@@ -363,7 +365,7 @@ void OM_DS_add_first_node(void *ds, void * _x, const int ID){
 			if (om_ds->size_h == 0)
 			{
 				/// Change head->next to be this node
-				om_ds->head->next_h node;
+				om_ds->head->next_h = node;
 
 				/// Change node->prev to be the head
 				node->prev_h = om_ds->head;

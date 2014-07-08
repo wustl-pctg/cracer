@@ -40,7 +40,8 @@ int main ( int argc, char *argv[] )
 	
 	append_first_list(list, firstOM_DS, ENGLISH_ID);
 
-	OM_DS_add_first_node(firstOM_DS, nodeArray[0]);
+	OM_DS_add_first_node(firstOM_DS, nodeArray[0], ENGLISH_ID);
+	OM_DS_add_first_node(firstOM_DS, nodeArray[0], HEBREW_ID);
 
 
 	i = 1;
@@ -50,7 +51,7 @@ int main ( int argc, char *argv[] )
 		 {
 		 	printf("TEST: splitting and adding to top at test index %i\n", i);
 
-		 	Split_and_add_to_top(list, nodeArray[i]->ds);
+		 	Split_and_add_to_top(list, nodeArray[i]->ds_e);
 			Rebalance_bottom_lists(list);
 		 }
 
@@ -58,7 +59,7 @@ int main ( int argc, char *argv[] )
 		{
 			printf("TEST: splitting and adding to top at test index %i\n", i);
 
-			Split_and_add_to_top(list, nodeArray[i]->ds);
+			Split_and_add_to_top(list, nodeArray[i]->ds_e);
 			Rebalance_bottom_lists(list);
 		
 		}
