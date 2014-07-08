@@ -64,17 +64,16 @@ void check_correctness (Top_List * list){
  *  Description:  Relabels the range of nodes from x to y
  * =====================================================================================
  */
-void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
+void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID, unsigned long tag_spacing )
 {
 	int collision_detected = 0, first_collision_flag = 0;
 	OM_DS * tmp;
-
 	switch ( ID ) {
 		case ENGLISH_ID:
 		
 			while (x->next_e != y && x != list->tail){
 				/// insert x->next after x but with y->tag_e as the end tag
-				insert_top_list(list, x, x->next_e, ENGLISH_ID, y->tag_e, &collision_detected);
+				insert_top_list(list, x, x->next_e, ENGLISH_ID, tag_spacing, &collision_detected);
 
 				if (!first_collision_flag && collision_detected)
 				{
@@ -125,7 +124,7 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 {
 	OM_DS *lList = pivot, *rList = pivot;
 	double overflow_density, overflow_threshold;
-	long enclosing_tag_range, num_elements_in_sublist = 1;
+	unsigned long enclosing_tag_range, num_elements_in_sublist = 2;
 	double i = -1;
 
 	switch ( ID ) {
@@ -153,36 +152,12 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 			while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && (lList != list->head || rList != list->tail));
 			printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
 			/// rebalance subsection of top_list
-			tag_range_relabel(list, lList, rList, ENGLISH_ID);
-			
-			break;
+			long t =  (unsigned long)((enclosing_tag_range - 1 ) / (num_elements_in_sublist)) ;
+			assert(t>0);
+			tag_range_relabel(list, lList, rList, ENGLISH_ID, t );
 
-		case HEBREW_ID:	
-			/// We assume l/rList are not NULL since the list will have at least 3 elements
-			do		/// Check if range is in overflow
-			{
-				/// Move overflow list head and tail outward
-				if (lList->prev_h){
-					num_elements_in_sublist++;
-					lList = lList->prev_h;
-				}
-				if (rList->next_h){
-					num_elements_in_sublist++;
-					rList = rList->next_h;
-				}
-				/// Calculate overflow_density
-				enclosing_tag_range = rList->tag_h - lList->tag_h;
-
-				i = ceil( log2f(enclosing_tag_range) );
-				overflow_threshold = pow(list->overflow_constant, -1 * i); 
-				overflow_density = (num_elements_in_sublist/ (float)enclosing_tag_range ) ;
-			}
-			while (enclosing_tag_range == 0 || overflow_density > overflow_threshold);
-			
-			tag_range_relabel(list, lList, rList, HEBREW_ID);
-			
 			break;
-		default:	
+				default:	
 			break;
 	}				/* -----  end switch  ----- */
 	
@@ -195,21 +170,22 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
  *  Description:  Insert x after y in the top list
  * =====================================================================================
  */
-void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigned long RELABELING_END_TAG, int * collision_detected)
+void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigned long TAG_SPACING_RELABEL, int * collision_detected)
 {
 	///Debug: Double check that all vals are not null
 	assert(y != NULL && x != NULL && list != NULL);
 
 	switch ( ID ) {
 		case ENGLISH_ID:
-			if (RELABELING_END_TAG != 0)
+			if (TAG_SPACING_RELABEL != 0)
 			{
-				y->tag_e = (RELABELING_END_TAG >> 2) + 3*(x->tag_e >> 2);
+				y->tag_e = x->tag_e + TAG_SPACING_RELABEL;
+				//				y->tag_e = (TAG_SPACING_RELABEL >> 1) + (x->tag_e >> 1);
 				/// correct for adding two odd numbers
-				if (RELABELING_END_TAG & x->tag_e & 0x1 == 0x1)
-					y->tag_e++;
+//				if (TAG_SPACING_RELABEL & x->tag_e & 0x1 == 0x1)
+//					y->tag_e++;
+				if (y->tag_e == x->tag_e || y->tag_e == TAG_SPACING_RELABEL)
 
-				if (y->tag_e == x->tag_e || y->tag_e == RELABELING_END_TAG)
 				{
 					/// We have an issue, collision during rebalancing
 
@@ -250,14 +226,14 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 			break;
 			
 		case HEBREW_ID:		
-			if (RELABELING_END_TAG != 0)
+			if (TAG_SPACING_RELABEL != 0)
 			{
-				y->tag_h = (RELABELING_END_TAG >> 1) + (x->tag_h >> 1);
+				y->tag_h = (TAG_SPACING_RELABEL >> 1) + (x->tag_h >> 1);
 				/// correct for adding two odd numbers
-				if (RELABELING_END_TAG & x->tag_h & 0x1 == 0x1)
+				if (TAG_SPACING_RELABEL & x->tag_h & 0x1 == 0x1)
 					y->tag_h++;
 
-				if (y->tag_h == x->tag_h || y->tag_h == RELABELING_END_TAG)
+				if (y->tag_h == x->tag_h || y->tag_h == TAG_SPACING_RELABEL)
 				{
 					/// We have an issue, collision during rebalancing
 					//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_h, y->tag_h);
@@ -379,6 +355,7 @@ void Top_List_free_and_free_nodes ( Top_List * list )
 	free(list);
 	return ;
 }		/* -----  end of function Free_and_free_nodes  ----- */
+
 /*
 int main ( int argc, char *argv[] )
 {
@@ -397,24 +374,24 @@ int main ( int argc, char *argv[] )
 	clock_t start = clock();
 
 	append_first_list(list, arrayToInsert[0], ENGLISH_ID);
-	append_first_list(list, arrayToInsert[0], HEBREW_ID);
+	//append_first_list(list, arrayToInsert[0], HEBREW_ID);
 	//print_top_list(list);
 	//check_correctness(list);
 
 	for (i = 1; i < num_inserts; i++)
 	{
 		/// Test : all inserted at beginnin
-		///insert_top_list(list, list->head , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
-		///insert_top_list(list, list->head, arrayToInsert[i], HEBREW_ID, 0, NULL);
+		insert_top_list(list, arrayToInsert[i-1], arrayToInsert[i ], ENGLISH_ID, 0, NULL);
+		//insert_top_list(list, list->head, arrayToInsert[i], HEBREW_ID, 0, NULL);
 		/// /
-
+/*
 		int j = rand() % i;
 
 		insert_top_list(list, arrayToInsert[j] , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
 		insert_top_list(list, arrayToInsert[j], arrayToInsert[i], HEBREW_ID, 0, NULL);
-
-		//print_top_list(list);
-		// check_correctness(list);
+*/
+		print_top_list(list);
+		check_correctness(list);
 	}
 
 

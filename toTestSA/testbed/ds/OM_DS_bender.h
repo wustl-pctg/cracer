@@ -33,7 +33,7 @@ typedef struct Top_List_s{
 
 
 /// Function forward declarations
-void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID );
+void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID, unsigned long tag_spacing );
 void top_list_rebalance(Top_List * list,OM_DS *pivot ,const int ID);
 void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigned long int RELABELING_END_TAG, int * collision_detection );
 void append_first_list (Top_List * list, OM_DS * first_sub_list, const int ID);
