@@ -64,10 +64,9 @@ int main ( int argc, char *argv[] )
 		}
 		printf("Check for correctness..");
 		check_correctness(list);
-		printf("..done\n");
+		print_top_list(list);
+		printf("..done %d\n", i);
 	}
-	print_top_list(list);
-	check_correctness(list);
 	return EXIT_SUCCESS;
 }				/* ----------  end of function main  ---------- */
 
