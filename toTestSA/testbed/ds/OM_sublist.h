@@ -28,6 +28,6 @@ void OM_DS_add_first_node(void*, void*);
 
 int OM_DS_order(void*, void*, void*, const int);
 
-
+void check_sub_correctness(Top_list * list);
 
 #endif
