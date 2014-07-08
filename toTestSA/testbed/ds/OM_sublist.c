@@ -431,3 +431,43 @@ int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 	printf("Debug: something went wrong in OM_DS_order\n");
 	return 0;
 }
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  check_sub_correctness
+ *  Description:  Checks the list so each node's tag is less than the next node
+ * =====================================================================================
+ */
+void check_sub_correctness (Top_List * list){
+	OM_DS * current = list->head;
+	OM_Node * cur_node;
+
+	while (current != list->tail){
+
+		cur_node = current->head;
+		while(cur_node != current->tail) {
+			
+			assert(cur_node->tag_e < cur_node->next_e->tag_e);
+			cur_node = cur_node->next_e;
+		}
+
+		current = current->next_e;
+
+	}
+
+	current = list->head;
+
+	while (current != list->tail){
+
+		cur_node = current->head;
+		while(cur_node != current->tail) {
+			
+			assert(cur_node->tag_h < cur_node->next_h->tag_h);
+			cur_node = cur_node->next_h;
+		}
+
+		current = current->next_h;
+	}
+
+}
+
