@@ -59,7 +59,7 @@ int main ( int argc, char *argv[] )
 		{
 			printf("TEST: splitting and adding to top at test index %i\n", i);
 
-			Split_and_add_to_top(list, nodeArray[i]->ds_e);
+			Split_and_add_to_top(list, nodeArray[i]->ds_h);
 			Rebalance_bottom_lists(list);
 		
 		}

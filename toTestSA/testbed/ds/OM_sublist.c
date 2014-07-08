@@ -80,7 +80,7 @@ void printList(OM_DS * list, const int ID) {
 /// half to top list as a new sublist
 void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
-	OM_Node * current_e, * current_h, * current1_e, * current1_h;
+	OM_Node * current_e, * current_h, * middle_e, * middle_h, *iter_node;
 	int temp_e = 0, temp_h = 0;
 
 	/// New list to be inserted on top
@@ -99,18 +99,22 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 			++temp_e;
 		}
 
-		/// Hold current1_e as the middle
-		current1_e = current_e;
+		/// Hold middle_e as the middle
+		middle_e = current_e;
 
 		/// Take middle+1 and put it in new ds
 		current_e = current_e->next_e;
+		iter_node = current_e->next_e;
+		/// Insert first node
 		OM_DS_add_first_node(to_add, current_e, ENGLISH_ID);
 
 		/// Insert rest of second half into new ds
-		current_e = current_e->next_e;
-		while(current_e != blist->tail) {
+		while(iter_node != blist->tail) {
+			/// Update iteration node (tmp) and the current node
+			current_e = iter_node;
+			iter_node = iter_node->next_e;
+
 			OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
-			current_e = current_e->next_e;
 		}
 
 		/// Do some maintenence on the original ds
@@ -125,10 +129,11 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 		current_e = current_e->next_e;
 
 		/// Reinsert until middle
-		while(current_e != current1_e->next_e) {
+		while(current_e != middle_e) {
 			OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
 			current_e = current_e->next_e;
 		}
+		OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
 
 		/// Update flags based on size
 		if(blist->size_e < (INT_BIT_SIZE >> 1) )
@@ -150,20 +155,25 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 			current_h = current_h->next_h;
 			++temp_h;
 		}
-
-		/// Hold current1_h as the middle
-		current1_h = current_h;
+		
+		/// Hold middle_h as the middle
+		middle_h = current_h;
 
 		/// Take middle+1 and put it in new ds
 		current_h = current_h->next_h;
-		OM_DS_add_first_node(to_add, current_h, HEBREW_ID);
+		iter_node = current_h->next_h;
+		/// Insert first node
+		OM_DS_add_first_node(to_add, current_h, ENGLISH_ID);
 
 		/// Insert rest of second half into new ds
-		current_h = current_h->next_h;
-		while(current_h != blist->tail) {
-			OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
-			current_h = current_h->next_h;
+		while(iter_node != blist->tail) {
+			/// Update iteration node (tmp) and the current node
+			current_h = iter_node;
+			iter_node = iter_node->next_h;
+
+			OM_DS_insert(current_h->prev_h, current_h, ENGLISH_ID);
 		}
+
 
 		/// Do some maintenence on the original ds
 		/// in preparation to reinsert nodes
@@ -174,13 +184,14 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 
 		/// Add "first" node
 		OM_DS_add_first_node(blist, current_h, HEBREW_ID);
-		current_h = current_h->next_h;
 
 		/// Reinsert until middle
-		while(current_h != current1_h->next_h) {
-			OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
+		while(current_h != middle_h) {
+			OM_DS_insert(current_h, current_h->next_h, HEBREW_ID);
 			current_h = current_h->next_h;
 		}
+		/// Insert old middle into the end of the first list
+		OM_DS_insert(middle_h->prev_h, middle_h, HEBREW_ID);
 
 		/// Update flags based on size
 		if(blist->size_h < (INT_BIT_SIZE >> 1) )
@@ -248,7 +259,7 @@ int OM_DS_insert(OM_Node * x, OM_Node * y, const int ID){
 			printf("Some node or ds is null,\
                skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
 				   x->id, x, y->id, y, ds->tail->id, ds->tail);
-			return;
+			return 0 ;
 		}
 
 		
@@ -286,7 +297,7 @@ int OM_DS_insert(OM_Node * x, OM_Node * y, const int ID){
 			printf("Some node or ds is null,\
                skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
 				   x->id, x, y->id, y, ds->tail->id, ds->tail);
-			return;
+			return 1;
 		}
 
 		/// This is the procedure:
@@ -308,7 +319,7 @@ int OM_DS_insert(OM_Node * x, OM_Node * y, const int ID){
 		return 0; ///< Doesn't needs immediately split
 
 	}
-
+	return 100;
 
 }
 

@@ -150,7 +150,7 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 				overflow_density = (num_elements_in_sublist/ (double)enclosing_tag_range ) ;
 			}
 			while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && (lList != list->head || rList != list->tail));
-			printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
+			//printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
 			/// rebalance subsection of top_list
 			long t =  (unsigned long)((enclosing_tag_range - 1 ) / (num_elements_in_sublist)) ;
 			assert(t>0);
@@ -363,32 +363,35 @@ int main ( int argc, char *argv[] )
 	int num_inserts = atoi(argv[1]), i = 0;
 
 	OM_DS ** arrayToInsert = malloc(sizeof(OM_DS * ) * num_inserts);
-
 	for (i = 0; i < num_inserts; i++ )
 	{
 		arrayToInsert[i] = (OM_DS *)malloc(sizeof(OM_DS));
 		arrayToInsert[i]->id = i;
 
 	}
-
 	clock_t start = clock();
-
+	if
+	{
+		
+		printf ( "Hello my name is alex.\n" );
+	}
 	append_first_list(list, arrayToInsert[0], ENGLISH_ID);
-	//append_first_list(list, arrayToInsert[0], HEBREW_ID);
-	//print_top_list(list);
-	//check_correctness(list);
+	append_first_list(list, arrayToInsert[0], HEBREW_ID);
+	print_top_list(list);
+	check_correctness(list);
 
 	for (i = 1; i < num_inserts; i++)
 	{
-		/// Test : all inserted at beginnin
-		//insert_top_list(list, arrayToInsert[i-1], arrayToInsert[i ], ENGLISH_ID, 0, NULL);
-		insert_top_list(list, list->head, arrayToInsert[i],ENGLISH_ID, 0, NULL);
-		/// /
-		//int j = rand() % i;
+[>
+ *        //Test : all inserted at beginnin
+ *        insert_top_list(list, arrayToInsert[i-1], arrayToInsert[i ], ENGLISH_ID, 0, NULL);
+ *        insert_top_list(list, list->head, arrayToInsert[i],ENGLISH_ID, 0, NULL);
+ *        int j = rand() % i;
+ *
+ <]
+		insert_top_list(list, arrayToInsert[j] , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
 
-		//insert_top_list(list, arrayToInsert[j] , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
-		//insert_top_list(list, arrayToInsert[j], arrayToInsert[i], HEBREW_ID, 0, NULL);
-		//print_top_list(list);
+		print_top_list(list);
 		check_correctness(list);
 	}
 
@@ -396,11 +399,11 @@ int main ( int argc, char *argv[] )
 	printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
 	check_correctness(list);
-	//print_top_list(list);
+	print_top_list(list);
 	Top_List_free_and_free_nodes(list);
 	free(arrayToInsert);
 
 	return EXIT_SUCCESS;
-}			//	 ----------  end of function main  ---------- //
+}				 ----------  end of function main  ---------- //
 
 */
