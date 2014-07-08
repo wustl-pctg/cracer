@@ -381,14 +381,14 @@ int main ( int argc, char *argv[] )
 	for (i = 1; i < num_inserts; i++)
 	{
 		/// Test : all inserted at beginnin
-		insert_top_list(list, arrayToInsert[i-1], arrayToInsert[i ], ENGLISH_ID, 0, NULL);
-		//insert_top_list(list, list->head, arrayToInsert[i], HEBREW_ID, 0, NULL);
+		//insert_top_list(list, arrayToInsert[i-1], arrayToInsert[i ], ENGLISH_ID, 0, NULL);
+		insert_top_list(list, list->head, arrayToInsert[i],ENGLISH_ID, 0, NULL);
 		/// /
-		int j = rand() % i;
+		//int j = rand() % i;
 
-		insert_top_list(list, arrayToInsert[j] , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
-		insert_top_list(list, arrayToInsert[j], arrayToInsert[i], HEBREW_ID, 0, NULL);
-		print_top_list(list);
+		//insert_top_list(list, arrayToInsert[j] , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
+		//insert_top_list(list, arrayToInsert[j], arrayToInsert[i], HEBREW_ID, 0, NULL);
+		//print_top_list(list);
 		check_correctness(list);
 	}
 
@@ -403,4 +403,4 @@ int main ( int argc, char *argv[] )
 	return EXIT_SUCCESS;
 }			//	 ----------  end of function main  ---------- //
 
-	*/
+*/
