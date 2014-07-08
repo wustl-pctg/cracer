@@ -20,14 +20,14 @@ void print_top_list(Top_List *list){
 	}
 	printf("Tail\n\n\n");
 /*
-  printf("Hebrew HEAD%u{%lu}->", current_h->id, current_h->tag_h);
+	printf("Hebrew HEAD%u{%lu}->", current_h->id, current_h->tag_h);
 
-  while(current_h != NULL)
-  {
-  printf("ID#%u{%lu}->", current_h->id, current_h->tag_h);
-  current_h = current_h->next_h;
-  }
-  printf("Tail\n");
+	while(current_h != NULL)
+	{
+		printf("ID#%u{%lu}->", current_h->id, current_h->tag_h);
+		current_h = current_h->next_h;
+	}
+	printf("Tail\n");
 */
 
 
@@ -69,47 +69,47 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID, unsign
 	int collision_detected = 0, first_collision_flag = 0;
 	OM_DS * tmp;
 	switch ( ID ) {
-	case ENGLISH_ID:
+		case ENGLISH_ID:
 		
 			while (x->next_e != y && x != list->tail){
 				/// insert x->next after x but with y->tag_e as the end tag
 				insert_top_list(list, x, x->next_e, ENGLISH_ID, tag_spacing, &collision_detected);
 
-			if (!first_collision_flag && collision_detected)
-			{
-				first_collision_flag = 1;
-				tmp = x->next_e;
+				if (!first_collision_flag && collision_detected)
+				{
+					first_collision_flag = 1;
+					tmp = x->next_e;
+				}
+				/// Move along x pointer
+				x = x->next_e;
+
 			}
-			/// Move along x pointer
-			x = x->next_e;
+			if (collision_detected)///just trying rebalacing from the end
+				top_list_rebalance(list, y,ID);
 
-		}
-		if (collision_detected)///just trying rebalacing from the end
-			top_list_rebalance(list, y,ID);
+			break;
 
-		break;
+		case HEBREW_ID:	
 
-	case HEBREW_ID:	
+			while (x->next_h != y && x != list->tail){
+				/// insert x->next after x but with y->tag_h as the end tag
+				insert_top_list(list, x, x->next_h, HEBREW_ID, y->tag_h, &collision_detected);
 
-		while (x->next_h != y && x != list->tail){
-			/// insert x->next after x but with y->tag_h as the end tag
-			insert_top_list(list, x, x->next_h, HEBREW_ID, y->tag_h, &collision_detected);
+				if (!first_collision_flag && collision_detected)
+				{
+					first_collision_flag = 1;
+					tmp = x->next_h;
+				}
+				/// Move along x pointer
+				x = x->next_h;
 
-			if (!first_collision_flag && collision_detected)
-			{
-				first_collision_flag = 1;
-				tmp = x->next_h;
 			}
-			/// Move along x pointer
-			x = x->next_h;
+			if (collision_detected)
+				top_list_rebalance(list, tmp, ID);
+			break;
 
-		}
-		if (collision_detected)
-			top_list_rebalance(list, tmp, ID);
-		break;
-
-	default:	
-		break;
+		default:	
+			break;
 	}				/* -----  end switch  ----- */
 	return ;
 }		/* -----  end of function tag_range_relabel  ----- */
@@ -128,24 +128,24 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 	double i = -1;
 
 	switch ( ID ) {
-	case ENGLISH_ID:	
-		/// We assume l/rList are not NULL since the list will have at least 3 elements
-		do	/// Check if range is in overflow
-		{
-			/// Move overflow list head and tail outward
-			if (lList->prev_e){
-				num_elements_in_sublist++;
-				lList = lList->prev_e;
-			}
-			if (rList->next_e){
-				num_elements_in_sublist++;
-				rList = rList->next_e;
-			}
-			/// Calculate overflow_density
-			enclosing_tag_range = rList->tag_e - lList->tag_e;
+		case ENGLISH_ID:	
+				/// We assume l/rList are not NULL since the list will have at least 3 elements
+			do	/// Check if range is in overflow
+			{
+				/// Move overflow list head and tail outward
+				if (lList->prev_e){
+					num_elements_in_sublist++;
+					lList = lList->prev_e;
+				}
+				if (rList->next_e){
+					num_elements_in_sublist++;
+					rList = rList->next_e;
+				}
+				/// Calculate overflow_density
+				enclosing_tag_range = rList->tag_e - lList->tag_e;
 
-			i = ceil( log2((double)enclosing_tag_range) );
-			overflow_threshold = pow(list->overflow_constant, -1.0 * i); 
+				i = ceil( log2((double)enclosing_tag_range) );
+				overflow_threshold = pow(list->overflow_constant, -1.0 * i); 
 
 				overflow_density = (num_elements_in_sublist/ (double)enclosing_tag_range ) ;
 			}
@@ -189,38 +189,41 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 				{
 					/// We have an issue, collision during rebalancing
 
-				//top_list_rebalance(list, y, ID);	
-					 
-			}
+					//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_e, y->tag_e);
+					*collision_detected = 1;
 
-		}
-		else //We are inserting a new element into the list
-		{
-			y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));
-			/// correct for adding two odd numbers
-			if (x->next_e->tag_h & x->tag_e & 0x1 == 0x1)
-				y->tag_e++;
-			
-			/*if ( (y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))*/
-			if (x->next_e->tag_e - x->tag_e <= 1)
+					//top_list_rebalance(list, y, ID);	
+					 
+				}
+
+			}
+			else //We are inserting a new element into the list
 			{
-				top_list_rebalance(list, x, ID);
-				/// Dont assign pointers, call insert again to put y after x
-				insert_top_list(list, x, y, ID, 0 , NULL);
-			}
-			else{
-				/// Reassign  prev/next pointers
-				y->prev_e = x;
-				y->next_e  = x->next_e;
-				x->next_e = y;
-				/// Update the next node after y's prev_e reference (change it to y)
-				y->next_e->prev_e = y;
-			}
+				y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));
+				/// correct for adding two odd numbers
+				if (x->next_e->tag_h & x->tag_e & 0x1 == 0x1)
+					y->tag_e++;
+			
+								/*if ( (y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))*/
+				if (x->next_e->tag_e - x->tag_e <= 1)
+				  {
+					top_list_rebalance(list, x, ID);
+					/// Dont assign pointers, call insert again to put y after x
+					insert_top_list(list, x, y, ID, 0 , NULL);
+				}
+				else{
+					/// Reassign  prev/next pointers
+					y->prev_e = x;
+					y->next_e  = x->next_e;
+					x->next_e = y;
+					/// Update the next node after y's prev_e reference (change it to y)
+					y->next_e->prev_e = y;
+				}
 					
-			/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
-			(list->size)++;
-		}
-		break;
+				/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
+				(list->size)++;
+			}
+			break;
 			
 		case HEBREW_ID:		
 			if (TAG_SPACING_RELABEL != 0)
@@ -248,14 +251,14 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 			
 				
 
-			/*if ( (y->tag_h == x->tag_h) ||  ( y->tag_h == y->next_h->tag_h ))*/
-			if (x->next_h->tag_h - x->tag_h <= 1)
-			{
-				top_list_rebalance(list, x, ID);
-				/// Dont assign pointers, call insert again to put y after x
-				insert_top_list(list, x, y, ID, 0 , NULL);
-			}
-			else {
+				/*if ( (y->tag_h == x->tag_h) ||  ( y->tag_h == y->next_h->tag_h ))*/
+				if (x->next_h->tag_h - x->tag_h <= 1)
+				{
+					top_list_rebalance(list, x, ID);
+					/// Dont assign pointers, call insert again to put y after x
+					insert_top_list(list, x, y, ID, 0 , NULL);
+				}
+				else {
 				/// Reassign  prev/next pointers
 				y->prev_h = x;
 				y->next_h  = x->next_h;
@@ -264,16 +267,16 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 				/// Update the next node after y's prev_h reference (change it to y)
 				y->next_h->prev_h = y;
 /// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
-				(list->size)++;
+(list->size)++;
+
+				}
 
 			}
-
-		}
-		break;
+			break;
 			
 
-	default:	
-		break;
+		default:	
+			break;
 	}				/* -----  end switch  ----- */
 
 	return ;
@@ -354,21 +357,21 @@ void Top_List_free_and_free_nodes ( Top_List * list )
 }		/* -----  end of function Free_and_free_nodes  ----- */
 
 /*
-  int main ( int argc, char *argv[] )
-  {
-  Top_List *list =  init_top_list();
-  int num_inserts = atoi(argv[1]), i = 0;
+int main ( int argc, char *argv[] )
+{
+	Top_List *list =  init_top_list();
+	int num_inserts = atoi(argv[1]), i = 0;
 
-  OM_DS ** arrayToInsert = malloc(sizeof(OM_DS * ) * num_inserts);
+	OM_DS ** arrayToInsert = malloc(sizeof(OM_DS * ) * num_inserts);
 
-  for (i = 0; i < num_inserts; i++ )
-  {
-  arrayToInsert[i] = (OM_DS *)malloc(sizeof(OM_DS));
-  arrayToInsert[i]->id = i;
+	for (i = 0; i < num_inserts; i++ )
+	{
+		arrayToInsert[i] = (OM_DS *)malloc(sizeof(OM_DS));
+		arrayToInsert[i]->id = i;
 
-  }
+	}
 
-  clock_t start = clock();
+	clock_t start = clock();
 
 	append_first_list(list, arrayToInsert[0], ENGLISH_ID);
 	//append_first_list(list, arrayToInsert[0], HEBREW_ID);
@@ -381,23 +384,23 @@ void Top_List_free_and_free_nodes ( Top_List * list )
 		insert_top_list(list, arrayToInsert[i-1], arrayToInsert[i ], ENGLISH_ID, 0, NULL);
 		//insert_top_list(list, list->head, arrayToInsert[i], HEBREW_ID, 0, NULL);
 		/// /
-  int j = rand() % i;
+		int j = rand() % i;
 
-  insert_top_list(list, arrayToInsert[j] , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
-  insert_top_list(list, arrayToInsert[j], arrayToInsert[i], HEBREW_ID, 0, NULL);
+		insert_top_list(list, arrayToInsert[j] , arrayToInsert[i ], ENGLISH_ID, 0, NULL);
+		insert_top_list(list, arrayToInsert[j], arrayToInsert[i], HEBREW_ID, 0, NULL);
 		print_top_list(list);
 		check_correctness(list);
 	}
 
 
-  printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
+	printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
-  check_correctness(list);
-  //print_top_list(list);
-  Top_List_free_and_free_nodes(list);
-  free(arrayToInsert);
+	check_correctness(list);
+	//print_top_list(list);
+	Top_List_free_and_free_nodes(list);
+	free(arrayToInsert);
 
-  return EXIT_SUCCESS;
-  }			//	 ----------  end of function main  ---------- //
+	return EXIT_SUCCESS;
+}			//	 ----------  end of function main  ---------- //
 
 	*/

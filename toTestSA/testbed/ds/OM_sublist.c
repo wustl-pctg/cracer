@@ -1,5 +1,6 @@
 #include "OM_sublist.h"
 
+#include	<assert.h>
 /// Allocate memory and set variables
 void * OM_DS_init(){
 
