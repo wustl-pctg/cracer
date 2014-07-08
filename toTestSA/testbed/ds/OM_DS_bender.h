@@ -26,7 +26,7 @@ typedef struct Top_List_s{
 	OM_DS *head, *tail; /// TODO: change to OM_DS of the sublist
 	const int ID; /// English or Hebrew: do i need this?
 	int size;
-	float overflow_constant; /// T in the bender paper
+	double overflow_constant; /// T in the bender paper
 	/// TODO: precompute values of 1 / (T^i)  for much needed values of i
 } Top_List;
 

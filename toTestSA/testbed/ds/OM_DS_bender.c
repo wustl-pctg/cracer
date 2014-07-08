@@ -11,15 +11,15 @@
 void print_top_list(Top_List *list){
 
 	OM_DS * current_e = list->head, *current_h = list->head;
-	printf("English HEAD%u{ %lu}->", current_e->id, current_e->tag_e);
+	printf("HEAD%u{ %lu}->", current_e->id, current_e->tag_e);
 
 	while(current_e != NULL)
 	{
-		printf("ID#%u{%lu}->", current_e->id, current_e->tag_e);
+		printf("#%u{%lu}->", current_e->id, current_e->tag_e);
 		current_e = current_e->next_e;
 	}
 	printf("Tail\n\n\n");
-
+/*
 	printf("Hebrew HEAD%u{%lu}->", current_h->id, current_h->tag_h);
 
 	while(current_h != NULL)
@@ -28,7 +28,7 @@ void print_top_list(Top_List *list){
 		current_h = current_h->next_h;
 	}
 	printf("Tail\n");
-
+*/
 
 
 }
@@ -85,8 +85,8 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
 				x = x->next_e;
 
 			}
-			if (collision_detected)
-				top_list_rebalance(list, tmp,ID);
+			if (collision_detected)///just trying rebalacing from the end
+				top_list_rebalance(list, y,ID);
 
 			break;
 
@@ -124,14 +124,14 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID )
 void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 {
 	OM_DS *lList = pivot, *rList = pivot;
-	float overflow_density, overflow_threshold;
+	double overflow_density, overflow_threshold;
 	long enclosing_tag_range, num_elements_in_sublist = 1;
-	unsigned long i;
+	double i = -1;
 
 	switch ( ID ) {
 		case ENGLISH_ID:	
-			/// We assume l/rList are not NULL since the list will have at least 3 elements
-			do		/// Check if range is in overflow
+				/// We assume l/rList are not NULL since the list will have at least 3 elements
+			do	/// Check if range is in overflow
 			{
 				/// Move overflow list head and tail outward
 				if (lList->prev_e){
@@ -145,14 +145,13 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 				/// Calculate overflow_density
 				enclosing_tag_range = rList->tag_e - lList->tag_e;
 
-				i = ceil( log2f(enclosing_tag_range) );
-				overflow_threshold = pow(list->overflow_constant, -1 * i); 
+				i = ceil( log2((double)enclosing_tag_range) );
+				overflow_threshold = pow(list->overflow_constant, -1.0 * i); 
 
-				overflow_density = (num_elements_in_sublist/ (float)enclosing_tag_range ) ;
+				overflow_density = (num_elements_in_sublist/ (double)enclosing_tag_range ) ;
 			}
 			while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && (lList != list->head || rList != list->tail));
-
-
+			printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
 			/// rebalance subsection of top_list
 			tag_range_relabel(list, lList, rList, ENGLISH_ID);
 			
@@ -205,7 +204,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 		case ENGLISH_ID:
 			if (RELABELING_END_TAG != 0)
 			{
-				y->tag_e = (RELABELING_END_TAG >> 1) + (x->tag_e >> 1);
+				y->tag_e = (RELABELING_END_TAG >> 2) + 3*(x->tag_e >> 2);
 				/// correct for adding two odd numbers
 				if (RELABELING_END_TAG & x->tag_e & 0x1 == 0x1)
 					y->tag_e++;
@@ -229,9 +228,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 				if (x->next_e->tag_h & x->tag_e & 0x1 == 0x1)
 					y->tag_e++;
 			
-				
-
-				/*if ( (y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))*/
+								/*if ( (y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))*/
 				if (x->next_e->tag_e - x->tag_e <= 1)
 				  {
 					top_list_rebalance(list, x, ID);
@@ -239,16 +236,16 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 					insert_top_list(list, x, y, ID, 0 , NULL);
 				}
 				else{
-
 					/// Reassign  prev/next pointers
 					y->prev_e = x;
 					y->next_e  = x->next_e;
 					x->next_e = y;
-
 					/// Update the next node after y's prev_e reference (change it to y)
 					y->next_e->prev_e = y;
 				}
 					
+				/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
+				(list->size)++;
 			}
 			break;
 			
@@ -293,9 +290,9 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 
 				/// Update the next node after y's prev_h reference (change it to y)
 				y->next_h->prev_h = y;
+/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
+(list->size)++;
 
-				/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
-				(list->size)++;
 				}
 
 			}
@@ -339,7 +336,7 @@ Top_List * init_top_list ()
 
 	/// Assign T (in bender's paper), which governs how dense the list can be 
 	/// before rebalancing. As of now, we just pick an arbitrary val in [1,2]
-	list->overflow_constant 	=	1.3; 
+	list->overflow_constant 	=	1.3;
 
 	/// Assign appropriate vals to head and tail node tags
 	list->head->tag_e = list->head->tag_h = 0;
