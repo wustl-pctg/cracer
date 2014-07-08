@@ -251,7 +251,7 @@ int OM_DS_insert(OM_Node * x, OM_Node * y, const int ID){
 
 		
 		/// This is the procedure:
-		y->next = x->next_h;
+		y->next_h = x->next_h;
 		x->next_h->prev_h = y;
 		x->next_h = y;
 		y->prev_h = x;
@@ -288,16 +288,16 @@ int OM_DS_insert(OM_Node * x, OM_Node * y, const int ID){
 		}
 
 		/// This is the procedure:
-		y->next = x->next_e
-			x->next_e->prev_e = y
-			x->next_e = y
-			y->prev_e = x
+		y->next_e = x->next_e;
+		x->next_e->prev_e = y;
+		x->next_e = y;
+		y->prev_e = x;
 		
-			/// Assign y's tag
-			y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
+		/// Assign y's tag
+		y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
 
 		if( !(ds->size_e < (INT_BIT_SIZE >> 1) ) )
-			n			ds->Reorder_flag_e = 1;
+	  		ds->Reorder_flag_e = 1;
 
 		ds->size_e++;
 
