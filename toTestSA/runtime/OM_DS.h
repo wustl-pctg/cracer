@@ -30,7 +30,7 @@ typedef struct OM_Node_s{
 
 } OM_Node;
 
-typedef struct Bottom_List__s {
+typedef struct Bottom_List_s {
 	OM_Node *head,*tail;
 	int size_e, size_h;
 	int Reorder_flag_e, Reorder_flag_h;
