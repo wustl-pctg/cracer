@@ -2153,6 +2153,45 @@ Bottom_List * Init_bottom_list ()
 	return list;
 
 }
+/// Rebalances the list according to Bender's algorithm around pivot
+void top_list_rebalance(Top_List * list, Bottom_List *pivot)
+{
+	Bottom_List *lList = pivot, *rList = pivot;
+	double overflow_density, overflow_threshold;
+	unsigned long enclosing_tag_range, num_elements_in_sublist = 2;
+	double i = -1;
+
+	/// We assume l/rList are not NULL since the list will have at least 3 elements
+	do	/// Check if range is in overflow
+	{
+		/// Move overflow list head and tail outward
+		if (lList->prev){
+			num_elements_in_sublist++;
+			lList = lList->prev;
+		}
+		if (rList->next){
+			num_elements_in_sublist++;
+			rList = rList->next;
+		}
+		/// Calculate overflow_density
+		enclosing_tag_range = rList->tag - lList->tag;
+
+		i = ceil( log2((double)enclosing_tag_range) );
+		overflow_threshold = pow(list->overflow_constant, -1.0 * i); 
+
+		overflow_density = (num_elements_in_sublist/ (double)enclosing_tag_range ) ;
+	}
+	while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && (lList != list->head || rList != list->tail));
+	//printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
+	/// rebalance subsection of top_list
+	long t =  (unsigned long)((enclosing_tag_range - 1 ) / (num_elements_in_sublist)) ;
+	/// Do we need this? assert(t>0);
+	tag_range_relabel(list, lList, rList, t );
+
+	return;
+}		/* -----  end of function top_list_rebalance(Top_List * list, Bottom_List *pivot)  ----- */
+
+
 
 /// Inserts a Bottom_List into a Top_List
 /// Bottom_List y is inserted after Bottom_List x in Top_List list
@@ -2570,7 +2609,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 	/// New list to be inserted on top
 	Bottom_List * to_add = Init_bottom_list();
 
-	INT_BIT_SIZE =  32;
+	int INT_BIT_SIZE =  32;
 
 	current_e = current_h = blist->head;
 
@@ -2747,45 +2786,6 @@ void tag_range_relabel (Top_List *list, Bottom_List *x, Bottom_List *y, unsigned
 
 	return ;
 }		/* -----  end of function tag_range_relabel  ----- */
-
-/// Rebalances the list according to Bender's algorithm around pivot
-void top_list_rebalance(Top_List * list, Bottom_List *pivot)
-{
-	Bottom_List *lList = pivot, *rList = pivot;
-	double overflow_density, overflow_threshold;
-	unsigned long enclosing_tag_range, num_elements_in_sublist = 2;
-	double i = -1;
-
-	/// We assume l/rList are not NULL since the list will have at least 3 elements
-	do	/// Check if range is in overflow
-	{
-		/// Move overflow list head and tail outward
-		if (lList->prev){
-			num_elements_in_sublist++;
-			lList = lList->prev;
-		}
-		if (rList->next){
-			num_elements_in_sublist++;
-			rList = rList->next;
-		}
-		/// Calculate overflow_density
-		enclosing_tag_range = rList->tag - lList->tag;
-
-		i = ceil( log2((double)enclosing_tag_range) );
-		overflow_threshold = pow(list->overflow_constant, -1.0 * i); 
-
-		overflow_density = (num_elements_in_sublist/ (double)enclosing_tag_range ) ;
-	}
-	while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && (lList != list->head || rList != list->tail));
-	//printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
-	/// rebalance subsection of top_list
-	long t =  (unsigned long)((enclosing_tag_range - 1 ) / (num_elements_in_sublist)) ;
-	/// Do we need this? assert(t>0);
-	tag_range_relabel(list, lList, rList, t );
-
-	return;
-}		/* -----  end of function top_list_rebalance(Top_List * list, Bottom_List *pivot)  ----- */
-
 
 #ifdef OM_IS_LL
 void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
