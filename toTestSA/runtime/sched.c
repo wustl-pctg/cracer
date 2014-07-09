@@ -2248,6 +2248,139 @@ void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, unsigned 
 	return ;
 }
 
+#ifdef OM_IS_LL
+/// This is called in the initialization of cilk
+/// Add the first node to the OM_DS
+void OM_DS_add_first_node(void *ds, void * _x){
+/// Debug message
+;//printf("Debug: appending node\n");
+
+/// Enter if ds and x are not NULL
+if (ds && _x){
+Bottom_List * om_ds = (Bottom_List *)ds;
+OM_Node * node = (OM_Node*)_x;
+if (om_ds->size == 0)
+{
+/// Assign head and tail to new node
+om_ds->tail = om_ds->head = node;
+
+/// Ensure node has no next
+node->next_english = node->next_hebrew = NULL;
+
+/// Assign unique node id
+node->id =global_node_count++;
+
+/// Increment size of linked list
+om_ds->size++;
+}
+else 	{
+/// Debug code
+/// If linked list has nodes already, exit. Don't let this be called
+/// incorrectly and let code continue
+printf("List is non-empty, dont call add first node\n");
+exit(0);
+}
+}
+else {
+printf("Debug: appending null node or to null ds\n");
+}
+}
+
+
+#elif defined OM_IS_BENDER
+/// This is called in the initialization of cilk
+/// Add the first node to the OM_DS
+void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
+
+	/// Debug message
+	;//printf("Debug: appending node\n");
+
+	/// Enter if ds and x are not NULL
+	if (ds && _x){
+		Bottom_List * om_ds = (Bottom_List *)ds;
+		OM_Node * node = (OM_Node*)_x;
+
+		switch(ID) {
+
+		case ENGLISH_ID:
+
+			if (om_ds->size_e == 0) {
+
+				/// Change head->next to be this node
+				om_ds->head->next_e = node;
+
+				/// Change node->prev to be the head
+				node->prev_e = om_ds->head;
+
+				/// Change node->next to be tail
+				node->next_e = om_ds->tail;
+
+				/// Change tail->prev to be this node
+				om_ds->tail->prev_e = node;
+
+				/// Assign unique node id
+				node->id =global_node_count++;
+
+				/// Assign tag
+				node->tag_e = (om_ds->tail->tag_e >> 1);
+
+				/// Increment size of linked list
+				om_ds->size_e++;
+
+				/// Assign node to this ds
+				node->ds_e = om_ds;
+			}
+			else {
+				/// Debug code
+				/// If linked list has nodes already, exit. Don't let this be called
+				/// incorrectly and let code continue
+				printf("List is non-empty, dont call add first node\n");
+				exit(0);
+			}
+			break;
+
+		case HEBREW_ID:
+
+			if (om_ds->size_h == 0) {
+				/// Change head->next to be this node
+				om_ds->head->next_h = node;
+
+				/// Change node->prev to be the head
+				node->prev_h = om_ds->head;
+
+				/// Change node->next to be tail
+				node->next_h = om_ds->tail;
+
+				/// Change tail->prev to be this node
+				om_ds->tail->prev_h = node;
+
+				/// Assign unique node id
+				node->id =global_node_count++;
+
+				/// Assign tag
+				node->tag_h = (om_ds->tail->tag_h >> 1);
+
+				/// Increment size of linked list
+				om_ds->size_h++;
+
+				/// Assign node to this ds
+				node->ds_h = om_ds;
+			}
+			else 	{
+				/// Debug code
+				/// If linked list has nodes already, exit. Don't let this be called
+				/// incorrectly and let code continue
+				printf("List is non-empty, dont call add first node\n");
+				exit(0);
+			}
+			break;
+		}
+	}
+	else
+		printf("Debug: appending null node or to null ds\n");
+}
+#endif
+
 /// Allocate memory and set variables
 void OM_DS_init(CilkContext *const context){
 	Bottom_List * bottom_list;
@@ -2940,138 +3073,6 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 }
 #endif
 
-#ifdef OM_IS_LL
-/// This is called in the initialization of cilk
-/// Add the first node to the OM_DS
-void OM_DS_add_first_node(void *ds, void * _x){
-/// Debug message
-;//printf("Debug: appending node\n");
-
-/// Enter if ds and x are not NULL
-if (ds && _x){
-Bottom_List * om_ds = (Bottom_List *)ds;
-OM_Node * node = (OM_Node*)_x;
-if (om_ds->size == 0)
-{
-/// Assign head and tail to new node
-om_ds->tail = om_ds->head = node;
-
-/// Ensure node has no next
-node->next_english = node->next_hebrew = NULL;
-
-/// Assign unique node id
-node->id =global_node_count++;
-
-/// Increment size of linked list
-om_ds->size++;
-}
-else 	{
-/// Debug code
-/// If linked list has nodes already, exit. Don't let this be called
-/// incorrectly and let code continue
-printf("List is non-empty, dont call add first node\n");
-exit(0);
-}
-}
-else {
-printf("Debug: appending null node or to null ds\n");
-}
-}
-
-
-#elif defined OM_IS_BENDER
-/// This is called in the initialization of cilk
-/// Add the first node to the OM_DS
-void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
-
-	/// Debug message
-	;//printf("Debug: appending node\n");
-
-	/// Enter if ds and x are not NULL
-	if (ds && _x){
-		Bottom_List * om_ds = (Bottom_List *)ds;
-		OM_Node * node = (OM_Node*)_x;
-
-		switch(ID) {
-
-		case ENGLISH_ID:
-
-			if (om_ds->size_e == 0) {
-
-				/// Change head->next to be this node
-				om_ds->head->next_e = node;
-
-				/// Change node->prev to be the head
-				node->prev_e = om_ds->head;
-
-				/// Change node->next to be tail
-				node->next_e = om_ds->tail;
-
-				/// Change tail->prev to be this node
-				om_ds->tail->prev_e = node;
-
-				/// Assign unique node id
-				node->id =global_node_count++;
-
-				/// Assign tag
-				node->tag_e = (om_ds->tail->tag_e >> 1);
-
-				/// Increment size of linked list
-				om_ds->size_e++;
-
-				/// Assign node to this ds
-				node->ds_e = om_ds;
-			}
-			else {
-				/// Debug code
-				/// If linked list has nodes already, exit. Don't let this be called
-				/// incorrectly and let code continue
-				printf("List is non-empty, dont call add first node\n");
-				exit(0);
-			}
-			break;
-
-		case HEBREW_ID:
-
-			if (om_ds->size_h == 0) {
-				/// Change head->next to be this node
-				om_ds->head->next_h = node;
-
-				/// Change node->prev to be the head
-				node->prev_h = om_ds->head;
-
-				/// Change node->next to be tail
-				node->next_h = om_ds->tail;
-
-				/// Change tail->prev to be this node
-				om_ds->tail->prev_h = node;
-
-				/// Assign unique node id
-				node->id =global_node_count++;
-
-				/// Assign tag
-				node->tag_h = (om_ds->tail->tag_h >> 1);
-
-				/// Increment size of linked list
-				om_ds->size_h++;
-
-				/// Assign node to this ds
-				node->ds_h = om_ds;
-			}
-			else 	{
-				/// Debug code
-				/// If linked list has nodes already, exit. Don't let this be called
-				/// incorrectly and let code continue
-				printf("List is non-empty, dont call add first node\n");
-				exit(0);
-			}
-			break;
-		}
-	}
-	else
-		printf("Debug: appending null node or to null ds\n");
-}
-#endif
 
 /// Within the void *ds, depending on macros defined in main, determine the order
 /// of x and y. If x <= y, return true. Otherwise, return false.
