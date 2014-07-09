@@ -21,7 +21,7 @@
 #include	"OM_DS.h"
 #include	"OM_DS_bender.h"
 #include	"OM_sublist.h"
-
+#include	<time.h>
 int main ( int argc, char *argv[] )
 {
 	int num_nodes = atoi(argv[1]);
@@ -37,7 +37,9 @@ int main ( int argc, char *argv[] )
 		nodeArray[i]->id = i;
 		
 	}
+	clock_t start = clock();
 	
+
 	append_first_list(list, firstOM_DS, ENGLISH_ID);
 
 	OM_DS_add_first_node(firstOM_DS, nodeArray[0], ENGLISH_ID);
@@ -49,7 +51,7 @@ int main ( int argc, char *argv[] )
 	{
 		 if (OM_DS_insert(nodeArray[i - 1], nodeArray[i], ENGLISH_ID))
 		 {
-		 	printf("TEST: splitting and adding to top at test index %i\n", i);
+			 /*printf("TEST: splitting and adding to top at test index %i\n", i);*/
 
 		 	Split_and_add_to_top(list, nodeArray[i]->ds_e);
 			Rebalance_bottom_lists(list);
@@ -57,17 +59,21 @@ int main ( int argc, char *argv[] )
 
 		if (OM_DS_insert(nodeArray[i - 1], nodeArray[i], HEBREW_ID))
 		{
-			printf("TEST: splitting and adding to top at test index %i\n", i);
+			/*printf("TEST: splitting and adding to top at test index %i\n", i);*/
 
 			Split_and_add_to_top(list, nodeArray[i]->ds_h);
 			Rebalance_bottom_lists(list);
 		
 		}
-		printf("Check for correctness..");
-		check_correctness(list);
-		print_top_list(list);
-		printf("..done %d\n", i);
+		/*printf("Check for correctness..");*/
+		/*printf("..done %d\n", i);*/
 	}
+
+	printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
+	
+		check_correctness(list);
+		check_sub_correctness(list);
+		/*print_top_list(list);*/
 	return EXIT_SUCCESS;
 }				/* ----------  end of function main  ---------- */
 

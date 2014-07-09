@@ -216,7 +216,7 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 	insert_top_list(tlist, blist, to_add, ENGLISH_ID, 0, NULL);
 
 	/// Check if correct for the sake of being thorough
-	check_sub_correctness(tlist);
+	;//check_sub_correctness(tlist);
 
 }
 
@@ -233,7 +233,7 @@ void Rebalance_bottom_lists(Top_List * list) {
 			Split_and_add_to_top(list, current_e);
 		current_e = current_e->next_e;
 	}
-	check_sub_correctness(list);
+	;//next_echeck_sub_correctness(list);
 
 	/// Hebrew
 	while(current_h != list->tail) {
@@ -241,7 +241,7 @@ void Rebalance_bottom_lists(Top_List * list) {
 			Split_and_add_to_top(list, current_h);
 		current_h = current_h->next_h;
 	}
-	check_sub_correctness(list);
+	;//check_sub_correctness(list);
 	
 }
 
