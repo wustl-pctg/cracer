@@ -2239,6 +2239,7 @@ void OM_DS_init(CilkContext *const context){
 	}
 }
 
+
 /// Frees the nodes of the linked list
 /// Since both linked lists contain the same nodes, it is sufficient
 /// to move through the english list only.
@@ -2261,9 +2262,9 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 
 	/// If LL, then top list will have head & tail bot_lists as well as 
 	/// the one functioning linked list
-	Cilk_free(context->Cilk_global_state_OM_DS->head);
-	Cilk_free(context->Cilk_global_state_OM_DS->head->next);
-	Cilk_free(context->Cilk_global_state_OM_DS->tail);
+	Cilk_free(context->Cilk_global_state->OM_DS->head);
+	Cilk_free(context->Cilk_global_state->OM_DS->head->next);
+	Cilk_free(context->Cilk_global_state->OM_DS->tail);
 
 }
 
