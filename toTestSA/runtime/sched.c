@@ -2074,7 +2074,8 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 #define WS_REF_DS context->Cilk_global_state->OM_DS
 #define ENGLISH_ID 10
 #define HEBREW_ID 11
-unsigned int MAX_NUMBER;
+unsigned int MAX_NUMBER = ~0;
+unsigned int INT_BIT_SIZE = 32;
 
 
 //! Race_Detect Struct
@@ -2132,7 +2133,7 @@ Bottom_List * Init_bottom_list ()
 {
 	Bottom_List * list;
 
-	MAX_NUMBER = ~0;
+	//MAX_NUMBER = ~0;
 	;//printf("Max # in init: %u\n", MAX_NUMBER);
 
 	list = Cilk_malloc(sizeof(*list));
@@ -2742,7 +2743,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 	/// New list to be inserted on top
 	Bottom_List * to_add = Init_bottom_list();
 
-	int INT_BIT_SIZE =  32;
+	//INT_BIT_SIZE =  32;
 
 	current_e = current_h = blist->head;
 
@@ -2990,7 +2991,7 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 
 	Bottom_List * ds;
 
-	INT_BIT_SIZE =  32;
+	//INT_BIT_SIZE =  32;
 
 	switch(ID){
 	case HEBREW_ID:
