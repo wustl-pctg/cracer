@@ -2180,7 +2180,7 @@ void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, unsigned 
 	}
 	else //We are inserting a new element into the list
 	{
-		y->tag  = ((x->next ->tag  >> 1) + (x->tag  >> 1));
+		y->tag  = ((x->next->tag  >> 1) + (x->tag  >> 1));
 
 		/// correct for adding two odd numbers
 		if (x->next ->tag_h & x->tag  & 0x1 == 0x1)
@@ -2189,7 +2189,7 @@ void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, unsigned 
 		/*if ( (y->tag  == x->tag ) ||  ( y->tag  == y->next ->tag  ))*/
 		if (x->next ->tag  - x->tag  <= 1)
 		{
-			top_list_rebalance(list, x, ID);
+			top_list_rebalance(list, x);
 			/// Dont assign pointers, call insert again to put y after x
 			Insert_top_list(list, x, y, 0 , NULL);
 		}
@@ -2768,49 +2768,42 @@ void tag_range_relabel (Top_List *list, Bottom_List *x, Bottom_List *y, const in
 }		/* -----  end of function tag_range_relabel  ----- */
 
 /// Rebalances the list according to Bender's algorithm around pivot
-void top_list_rebalance(Top_List * list, Bottom_List *pivot, const int ID)
+void top_list_rebalance(Top_List * list, Bottom_List *pivot)
 {
 	Bottom_List *lList = pivot, *rList = pivot;
 	double overflow_density, overflow_threshold;
 	unsigned long enclosing_tag_range, num_elements_in_sublist = 2;
 	double i = -1;
 
-	switch ( ID ) {
-		case ENGLISH_ID:	
-				/// We assume l/rList are not NULL since the list will have at least 3 elements
-			do	/// Check if range is in overflow
-			{
-				/// Move overflow list head and tail outward
-				if (lList->prev_e){
-					num_elements_in_sublist++;
-					lList = lList->prev_e;
-				}
-				if (rList->next_e){
-					num_elements_in_sublist++;
-					rList = rList->next_e;
-				}
-				/// Calculate overflow_density
-				enclosing_tag_range = rList->tag_e - lList->tag_e;
+	/// We assume l/rList are not NULL since the list will have at least 3 elements
+	do	/// Check if range is in overflow
+	{
+		/// Move overflow list head and tail outward
+		if (lList->prev){
+			num_elements_in_sublist++;
+			lList = lList->prev;
+		}
+		if (rList->next){
+			num_elements_in_sublist++;
+			rList = rList->next;
+		}
+		/// Calculate overflow_density
+		enclosing_tag_range = rList->tag - lList->tag;
 
-				i = ceil( log2((double)enclosing_tag_range) );
-				overflow_threshold = pow(list->overflow_constant, -1.0 * i); 
+		i = ceil( log2((double)enclosing_tag_range) );
+		overflow_threshold = pow(list->overflow_constant, -1.0 * i); 
 
-				overflow_density = (num_elements_in_sublist/ (double)enclosing_tag_range ) ;
-			}
-			while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && (lList != list->head || rList != list->tail));
-			//printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
-			/// rebalance subsection of top_list
-			long t =  (unsigned long)((enclosing_tag_range - 1 ) / (num_elements_in_sublist)) ;
-			assert(t>0);
-			tag_range_relabel(list, lList, rList, ENGLISH_ID, t );
+		overflow_density = (num_elements_in_sublist/ (double)enclosing_tag_range ) ;
+	}
+	while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && (lList != list->head || rList != list->tail));
+	//printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
+	/// rebalance subsection of top_list
+	long t =  (unsigned long)((enclosing_tag_range - 1 ) / (num_elements_in_sublist)) ;
+	/// Do we need this? assert(t>0);
+	tag_range_relabel(list, lList, rList, ENGLISH_ID, t );
 
-			break;
-				default:	
-			break;
-	}				/* -----  end switch  ----- */
-	
-	return ;
-}		/* -----  end of function top_list_rebalance(Top_List * list, Bottom_List *pivot, const int ID)  ----- */
+	return;
+}		/* -----  end of function top_list_rebalance(Top_List * list, Bottom_List *pivot)  ----- */
 
 
 #ifdef OM_IS_LL
