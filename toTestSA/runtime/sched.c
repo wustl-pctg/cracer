@@ -2717,53 +2717,26 @@ void Rebalance_bottom_lists(Top_List * list) {
 }
 
 /// Relabels the range of nodes from x to y
-void tag_range_relabel (Top_List *list, Bottom_List *x, Bottom_List *y, const int ID, unsigned long tag_spacing )
+void tag_range_relabel (Top_List *list, Bottom_List *x, Bottom_List *y, unsigned long tag_spacing )
 {
 	int collision_detected = 0, first_collision_flag = 0;
 	Bottom_List * tmp;
-	switch ( ID ) {
-		case ENGLISH_ID:
-		
-			while (x->next_e != y && x != list->tail){
-				/// insert x->next after x but with y->tag_e as the end tag
-				Insert_top_list(list, x, x->next_e, tag_spacing, &collision_detected);
+	while (x->next_e != y && x != list->tail){
+		/// insert x->next after x but with y->tag_e as the end tag
+		Insert_top_list(list, x, x->next_e, tag_spacing, &collision_detected);
 
-				if (!first_collision_flag && collision_detected)
-				{
-					first_collision_flag = 1;
-					tmp = x->next_e;
-				}
-				/// Move along x pointer
-				x = x->next_e;
+		if (!first_collision_flag && collision_detected)
+		{
+			first_collision_flag = 1;
+			tmp = x->next_e;
+		}
+		/// Move along x pointer
+		x = x->next_e;
 
-			}
-			if (collision_detected)///just trying rebalacing from the end
-				top_list_rebalance(list, y,ID);
+	}
+	if (collision_detected)///just trying rebalacing from the end
+		top_list_rebalance(list, y);
 
-			break;
-
-		case HEBREW_ID:	
-
-			while (x->next_h != y && x != list->tail){
-				/// insert x->next after x but with y->tag_h as the end tag
-				Insert_top_list(list, x, x->next_h, y->tag_h, &collision_detected);
-
-				if (!first_collision_flag && collision_detected)
-				{
-					first_collision_flag = 1;
-					tmp = x->next_h;
-				}
-				/// Move along x pointer
-				x = x->next_h;
-
-			}
-			if (collision_detected)
-				top_list_rebalance(list, tmp, ID);
-			break;
-
-		default:	
-			break;
-	}				/* -----  end switch  ----- */
 	return ;
 }		/* -----  end of function tag_range_relabel  ----- */
 
@@ -2800,7 +2773,7 @@ void top_list_rebalance(Top_List * list, Bottom_List *pivot)
 	/// rebalance subsection of top_list
 	long t =  (unsigned long)((enclosing_tag_range - 1 ) / (num_elements_in_sublist)) ;
 	/// Do we need this? assert(t>0);
-	tag_range_relabel(list, lList, rList, ENGLISH_ID, t );
+	tag_range_relabel(list, lList, rList, t );
 
 	return;
 }		/* -----  end of function top_list_rebalance(Top_List * list, Bottom_List *pivot)  ----- */
