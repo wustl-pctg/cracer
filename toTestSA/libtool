@@ -85,7 +85,7 @@ AR_FLAGS="cru"
 LTCC="gcc"
 
 # LTCC compiler flags.
-LTCFLAGS="-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L"
+LTCFLAGS="-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L -lm"
 
 # A language-specific compiler.
 CC="gcc"
@@ -7264,7 +7264,7 @@ AR_FLAGS="cru"
 LTCC="gcc"
 
 # LTCC compiler flags.
-LTCFLAGS="-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L"
+LTCFLAGS="-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L -lm"
 
 # A language-specific compiler.
 CC="g++"

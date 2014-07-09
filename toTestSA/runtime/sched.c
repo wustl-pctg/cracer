@@ -31,6 +31,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <RD_and_OM.h>
+#include <assert.h>
 
 #define BATCH_ASSERT(args...) CILK_ASSERT(args)
 
@@ -2249,49 +2250,44 @@ void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, unsigned 
 	return ;
 }
 
-#ifdef OM_IS_LL
-/// This is called in the initialization of cilk
-/// Add the first node to the OM_DS
-void OM_DS_add_first_node(void *ds, void * _x){
-/// Debug message
-;//printf("Debug: appending node\n");
-
-/// Enter if ds and x are not NULL
-if (ds && _x){
-Bottom_List * om_ds = (Bottom_List *)ds;
-OM_Node * node = (OM_Node*)_x;
-if (om_ds->size == 0)
-{
-/// Assign head and tail to new node
-om_ds->tail = om_ds->head = node;
-
-/// Ensure node has no next
-node->next_english = node->next_hebrew = NULL;
-
-/// Assign unique node id
-node->id =global_node_count++;
-
-/// Increment size of linked list
-om_ds->size++;
-}
-else 	{
-/// Debug code
-/// If linked list has nodes already, exit. Don't let this be called
-/// incorrectly and let code continue
-printf("List is non-empty, dont call add first node\n");
-exit(0);
-}
-}
-else {
-printf("Debug: appending null node or to null ds\n");
-}
-}
-
-
-#elif defined OM_IS_BENDER
 /// This is called in the initialization of cilk
 /// Add the first node to the OM_DS
 void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
+#ifdef OM_IS_LL
+	/// Debug message
+	;//printf("Debug: appending node\n");
+
+	/// Enter if ds and x are not NULL
+	if (ds && _x){
+		Bottom_List * om_ds = (Bottom_List *)ds;
+		OM_Node * node = (OM_Node*)_x;
+		if (om_ds->size == 0)
+		{
+			/// Assign head and tail to new node
+			om_ds->tail = om_ds->head = node;
+
+			/// Ensure node has no next
+			node->next_e = node->next_h = NULL;
+
+			/// Assign unique node id
+			node->id =global_node_count++;
+
+			/// Increment size of linked list
+			om_ds->size++;
+		}
+		else 	{
+			/// Debug code
+			/// If linked list has nodes already, exit. Don't let this be called
+			/// incorrectly and let code continue
+			printf("List is non-empty, dont call add first node\n");
+			exit(0);
+		}
+	}
+	else {
+		printf("Debug: appending null node or to null ds\n");
+	}
+
+#elif defined OM_IS_BENDER
 
 	/// Debug message
 	;//printf("Debug: appending node\n");
@@ -2379,8 +2375,9 @@ void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
 	}
 	else
 		printf("Debug: appending null node or to null ds\n");
-}
 #endif
+}
+
 
 /// Allocate memory and set variables
 void OM_DS_init(CilkContext *const context){
@@ -2389,11 +2386,11 @@ void OM_DS_init(CilkContext *const context){
 	/// Define CILK running parameters
 
 	/// Various OM_DS Macros
-//#define OM_IS_LL
-#define OM_IS_BENDER
+#define OM_IS_LL
+//#define OM_IS_BENDER
 
 	// If Batchify works
-#define BATCHIFY_WORKING
+//#define BATCHIFY_WORKING
 
 	if (context->Cilk_global_state){
 		/// Debug message
@@ -2551,12 +2548,12 @@ void insertPar (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,size_t 
 			switch (ID) {
 			case HEBREW_ID:
 
-				if (!(x->next_hebrew))
+				if (!(x->next_h))
 					ds->tail = y;
 
-				y->next_hebrew = x->next_hebrew;
+				y->next_h = x->next_h;
 
-				if (!(__sync_bool_compare_and_swap(&(x->next_hebrew),x->next_hebrew, y)))
+				if (!(__sync_bool_compare_and_swap(&(x->next_h),x->next_h, y)))
 				{
 					printf("Exiting, atomic insert failed");
 
@@ -2567,12 +2564,12 @@ void insertPar (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,size_t 
 
 			case ENGLISH_ID:
 
-				if (!(x->next_english))
+				if (!(x->next_e))
 					ds->tail = y;
 
-				y->next_english = x->next_english;
+				y->next_e = x->next_e;
 
-				if (!(__sync_bool_compare_and_swap(&(x->next_english),x->next_english, y)))
+				if (!(__sync_bool_compare_and_swap(&(x->next_e),x->next_e, y)))
 				{
 					printf("Exiting, atomic insert failed");
 					exit(0);
@@ -2632,12 +2629,12 @@ static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_ins
 			switch (ID) {
 			case HEBREW_ID:
 
-				if (!(x->next_hebrew))
+				if (!(x->next_h))
 					ds->tail = y;
 
-				y->next_hebrew = x->next_hebrew;
+				y->next_h = x->next_h;
 
-				if (!(__sync_bool_compare_and_swap(&(x->next_hebrew),x->next_hebrew, y)))
+				if (!(__sync_bool_compare_and_swap(&(x->next_h),x->next_h, y)))
 				{
 					printf("Exiting, atomic insert failed");
 					exit(0);
@@ -2646,12 +2643,12 @@ static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_ins
 
 			case ENGLISH_ID:
 
-				if (!(x->next_english))
+				if (!(x->next_e))
 					ds->tail = y;
 
-				y->next_english = x->next_english;
+				y->next_e = x->next_e;
 
-				if (!(__sync_bool_compare_and_swap(&(x->next_english),x->next_english, y)))
+				if (!(__sync_bool_compare_and_swap(&(x->next_e),x->next_e, y)))
 				{
 					printf("Exiting, atomic insert failed");
 					exit(0);
@@ -2732,197 +2729,14 @@ void print_top_list(Top_List *list){
 
 }
 
-
-/// Function that splits a sublist in half and adds second
-/// half to top list as a new sublist
-void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
-
-	OM_Node * current_e, * current_h, * middle_e, * middle_h, *iter_node;
-	int temp_e = 0, temp_h = 0;
-
-	/// New list to be inserted on top
-	Bottom_List * to_add = Init_bottom_list();
-
-	//INT_BIT_SIZE =  32;
-
-	current_e = current_h = blist->head;
-
-	/// English
-	if ( blist->size_e > 1 && blist->Reorder_flag_e == 1) {
-
-		/// Iterate until middle
-		while(temp_e < blist->size_e/2 ) {
-			current_e = current_e->next_e;
-			++temp_e;
-		}
-
-		/// Hold middle_e as the middle
-		middle_e = current_e;
-
-		/// Take middle+1 and put it in new ds
-		current_e = current_e->next_e;
-		iter_node = current_e->next_e;
-		/// Insert first node
-		OM_DS_add_first_node(to_add, current_e, ENGLISH_ID);
-
-		/// Insert rest of second half into new ds
-		while(iter_node != blist->tail) {
-			/// Update iteration node (tmp) and the current node
-			current_e = iter_node;
-			iter_node = iter_node->next_e;
-
-			OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
-		}
-
-		/// Do some maintenence on the original ds
-		/// in preparation to reinsert nodes
-		current_e = blist->head->next_e;
-		blist->head->next_e = blist->tail;
-		blist->tail->prev_e = blist->head;
-		blist->size_e = 0;
-
-		/// Add "first" node
-		iter_node = current_e->next_e;
-
-		OM_DS_add_first_node(blist, current_e, ENGLISH_ID);
-
-		/// Reinsert until middle
-		while(iter_node != middle_e) {
-			current_e = iter_node;
-			iter_node = iter_node->next_e;
-
-			OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
-		}
-		current_e = iter_node;/// i.e. the middle_e node
-		OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
-
-		/// Update flags based on size
-		if(blist->size_e < (INT_BIT_SIZE >> 1) )
-			blist->Reorder_flag_e = 0;
-		else blist->Reorder_flag_e = 1;
-
-		if(to_add->size_e < (INT_BIT_SIZE >> 1) )
-			to_add->Reorder_flag_e = 0;
-		else to_add->Reorder_flag_e = 1;
-	}
-
-	/// Hebrew
-	if ( blist->size_h > 1 && blist->Reorder_flag_h == 1) {
-
-		/// Iterate until middle
-		while(temp_h < blist->size_h/2 ) {
-			current_h = current_h->next_h;
-			++temp_h;
-		}
-
-		/// Hold middle_h as the middle
-		middle_h = current_h;
-
-		/// Take middle+1 and put it in new ds
-		current_h = current_h->next_h;
-		iter_node = current_h->next_h;
-		/// Insert first node
-		OM_DS_add_first_node(to_add, current_h, HEBREW_ID);
-
-		/// Insert rest of second half into new ds
-		while(iter_node != blist->tail) {
-			/// Update iteration node (tmp) and the current node
-			current_h = iter_node;
-			iter_node = iter_node->next_h;
-
-			OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
-		}
-
-		/// Do some maintenence on the original ds
-		/// in preparation to reinsert nodes
-		current_h = blist->head->next_h;
-		blist->head->next_h = blist->tail;
-		blist->tail->prev_h = blist->head;
-		blist->size_h = 0;
-
-		/// Add "first" node
-		iter_node = current_h->next_h;
-
-		OM_DS_add_first_node(blist, current_h, HEBREW_ID);
-
-		/// Reinsert until middle
-		while(iter_node != middle_h) {
-			current_h = iter_node;
-			iter_node = iter_node->next_h;
-
-			OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
-		}
-		current_h = iter_node;/// i.e. the middle_h node
-		OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
-
-		/// Update flags based on size
-		if(blist->size_h < (INT_BIT_SIZE >> 1) )
-			blist->Reorder_flag_h = 0;
-		else blist->Reorder_flag_h = 1;
-
-		if(to_add->size_h < (INT_BIT_SIZE >> 1) )
-			to_add->Reorder_flag_h = 0;
-		else to_add->Reorder_flag_h = 1;
-
-		
-	}
-	
-	/// Insert into top list
-	Insert_top_list(tlist, blist, to_add, 0, NULL);
-}
-
-/// Iterate through the top list to find sublists needing reordered
-void Rebalance_bottom_lists(Top_List * list) {
-
-	/// The iterators
-	Bottom_List * current_e, * current_h;
-	current_e = current_h = list->head;
-
-	/// NOTE: Only eng/heb distinction for the flags, not top_list splits
-
-	/// English
-	while(current_e != list->tail) {
-		if(current_e->Reorder_flag_e == 1) ///< If 1, then needs split
-			Split_and_add_to_top(list, current_e);
-		current_e = current_e->next;
-	}
-
-	/// Hebrew
-	while(current_h != list->tail) {
-		if(current_h->Reorder_flag_h == 1) ///< If 1, then needs split
-			Split_and_add_to_top(list, current_h);
-		current_h = current_h->next;
-	}
-
-	
-}
-
-/// Relabels the range of nodes from x to y
-void tag_range_relabel (Top_List *list, Bottom_List *x, Bottom_List *y, unsigned long tag_spacing )
-{
-	int collision_detected = 0, first_collision_flag = 0;
-	Bottom_List * tmp;
-	while (x->next != y && x != list->tail){
-		/// insert x->next after x but with y->tag as the end tag
-		Insert_top_list(list, x, x->next, tag_spacing, &collision_detected);
-
-		if (!first_collision_flag && collision_detected)
-		{
-			first_collision_flag = 1;
-			tmp = x->next;
-		}
-		/// Move along x pointer
-		x = x->next;
-
-	}
-	if (collision_detected)///just trying rebalacing from the end
-		top_list_rebalance(list, y);
-
-	return ;
-}		/* -----  end of function tag_range_relabel  ----- */
-
 #ifdef OM_IS_LL
-void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
+void OM_DS_insert(CilkWorkerState *const ws,/* Bottom_List *ds,*/ OM_Node * x, OM_Node * y, const int ID){
+
+	Bottom_List * ds;
+	if (ID == HEBREW_ID)
+		ds = x->ds_h;
+	else
+		ds = x->ds_e;
 
 #ifdef BATCHIFY_WORKING
 	/// Batchify insert
@@ -2941,46 +2755,51 @@ void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 	//Do insert here
 
 	//if x is null
-	if (!(x && y && ds) ){
+	if (!(x && y) ){
 		printf("Some node or ds is null,\
-               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-			   x->id, x, y->id, y, ds->tail->id, ds->tail);
+               skipping insert; x(%d): %p y(%d):%p\n",
+			   x->id, x, y->id, y);
 		return;
 	}
 	/// Debug messages
-	;//printf("Debug: INSERT: ds:%p , x: %d , y: %d \n", ds, x->id, y->id);
+	;//printf("Debug: INSERT: , x: %d , y: %d \n", x->id, y->id);
 	switch(ID){
 	case HEBREW_ID:
 		//if x->next is null, x  is tail
-		if (!(x->next_hebrew))
+		if (!(x->next_h))
 			ds->tail = y;
 
 		//change next pointers
-		y->next_hebrew = x->next_hebrew;
+		y->next_h = x->next_h;
 
-		if(!(__sync_bool_compare_and_swap(&(x->next_hebrew), x->next_hebrew, y)))
+		if(!(__sync_bool_compare_and_swap(&(x->next_h), x->next_h, y)))
 		{
 			printf("Exiting, atomic insert failed");
 			exit(0);
 		}
+
+		ds->size_h++;
+
 		break;
 	case ENGLISH_ID:
 		//if x->next is null, x  is tail
-		if (!(x->next_english))
+		if (!(x->next_e))
 			ds->tail = y;
 
 		//change next pointers
-		y->next_english = x->next_english;
+		y->next_e = x->next_e;
 
-		if(!(__sync_bool_compare_and_swap(&(x->next_english), x->next_english, y)))
+		if(!(__sync_bool_compare_and_swap(&(x->next_e), x->next_e, y)))
 		{
 			printf("Exiting, atomic insert failed");
 			exit(0);
 		}
+
+		ds->size_e++;
+
 		break;
 	}
 
-	ds->size++;
 #endif
 }
 
@@ -3075,24 +2894,217 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 #endif
 
 
+/// Function that splits a sublist in half and adds second
+/// half to top list as a new sublist
+void Split_and_add_to_top(CilkWorkerState *const ws, Top_List * tlist, Bottom_List * blist) {
+
+	OM_Node * current_e, * current_h, * middle_e, * middle_h, *iter_node;
+	int temp_e = 0, temp_h = 0;
+
+	/// New list to be inserted on top
+	Bottom_List * to_add = Init_bottom_list();
+
+	//INT_BIT_SIZE =  32;
+
+	current_e = current_h = blist->head;
+
+	/// English
+	if ( blist->size_e > 1 && blist->Reorder_flag_e == 1) {
+
+		/// Iterate until middle
+		while(temp_e < blist->size_e/2 ) {
+			current_e = current_e->next_e;
+			++temp_e;
+		}
+
+		/// Hold middle_e as the middle
+		middle_e = current_e;
+
+		/// Take middle+1 and put it in new ds
+		current_e = current_e->next_e;
+		iter_node = current_e->next_e;
+		/// Insert first node
+		OM_DS_add_first_node(to_add, current_e, ENGLISH_ID);
+
+		/// Insert rest of second half into new ds
+		while(iter_node != blist->tail) {
+			/// Update iteration node (tmp) and the current node
+			current_e = iter_node;
+			iter_node = iter_node->next_e;
+
+			OM_DS_insert(ws, current_e->prev_e, current_e, ENGLISH_ID);
+		}
+
+		/// Do some maintenence on the original ds
+		/// in preparation to reinsert nodes
+		current_e = blist->head->next_e;
+		blist->head->next_e = blist->tail;
+		blist->tail->prev_e = blist->head;
+		blist->size_e = 0;
+
+		/// Add "first" node
+		iter_node = current_e->next_e;
+
+		OM_DS_add_first_node(blist, current_e, ENGLISH_ID);
+
+		/// Reinsert until middle
+		while(iter_node != middle_e) {
+			current_e = iter_node;
+			iter_node = iter_node->next_e;
+
+			OM_DS_insert(ws, current_e->prev_e, current_e, ENGLISH_ID);
+		}
+		current_e = iter_node;/// i.e. the middle_e node
+		OM_DS_insert(ws, current_e->prev_e, current_e, ENGLISH_ID);
+
+		/// Update flags based on size
+		if(blist->size_e < (INT_BIT_SIZE >> 1) )
+			blist->Reorder_flag_e = 0;
+		else blist->Reorder_flag_e = 1;
+
+		if(to_add->size_e < (INT_BIT_SIZE >> 1) )
+			to_add->Reorder_flag_e = 0;
+		else to_add->Reorder_flag_e = 1;
+	}
+
+	/// Hebrew
+	if ( blist->size_h > 1 && blist->Reorder_flag_h == 1) {
+
+		/// Iterate until middle
+		while(temp_h < blist->size_h/2 ) {
+			current_h = current_h->next_h;
+			++temp_h;
+		}
+
+		/// Hold middle_h as the middle
+		middle_h = current_h;
+
+		/// Take middle+1 and put it in new ds
+		current_h = current_h->next_h;
+		iter_node = current_h->next_h;
+		/// Insert first node
+		OM_DS_add_first_node(to_add, current_h, HEBREW_ID);
+
+		/// Insert rest of second half into new ds
+		while(iter_node != blist->tail) {
+			/// Update iteration node (tmp) and the current node
+			current_h = iter_node;
+			iter_node = iter_node->next_h;
+
+			OM_DS_insert(ws, current_h->prev_h, current_h, HEBREW_ID);
+		}
+
+		/// Do some maintenence on the original ds
+		/// in preparation to reinsert nodes
+		current_h = blist->head->next_h;
+		blist->head->next_h = blist->tail;
+		blist->tail->prev_h = blist->head;
+		blist->size_h = 0;
+
+		/// Add "first" node
+		iter_node = current_h->next_h;
+
+		OM_DS_add_first_node(blist, current_h, HEBREW_ID);
+
+		/// Reinsert until middle
+		while(iter_node != middle_h) {
+			current_h = iter_node;
+			iter_node = iter_node->next_h;
+
+			OM_DS_insert(ws, current_h->prev_h, current_h, HEBREW_ID);
+		}
+		current_h = iter_node;/// i.e. the middle_h node
+		OM_DS_insert(ws, current_h->prev_h, current_h, HEBREW_ID);
+
+		/// Update flags based on size
+		if(blist->size_h < (INT_BIT_SIZE >> 1) )
+			blist->Reorder_flag_h = 0;
+		else blist->Reorder_flag_h = 1;
+
+		if(to_add->size_h < (INT_BIT_SIZE >> 1) )
+			to_add->Reorder_flag_h = 0;
+		else to_add->Reorder_flag_h = 1;
+
+		
+	}
+	
+	/// Insert into top list
+	Insert_top_list(tlist, blist, to_add, 0, NULL);
+}
+
+/// Iterate through the top list to find sublists needing reordered
+void Rebalance_bottom_lists(CilkWorkerState *const ws, Top_List * list) {
+
+	/// The iterators
+	Bottom_List * current_e, * current_h;
+	current_e = current_h = list->head;
+
+	/// NOTE: Only eng/heb distinction for the flags, not top_list splits
+
+	/// English
+	while(current_e != list->tail) {
+		if(current_e->Reorder_flag_e == 1) ///< If 1, then needs split
+			Split_and_add_to_top(ws, list, current_e);
+		current_e = current_e->next;
+	}
+
+	/// Hebrew
+	while(current_h != list->tail) {
+		if(current_h->Reorder_flag_h == 1) ///< If 1, then needs split
+			Split_and_add_to_top(ws, list, current_h);
+		current_h = current_h->next;
+	}
+
+	
+}
+
+/// Relabels the range of nodes from x to y
+void tag_range_relabel (Top_List *list, Bottom_List *x, Bottom_List *y, unsigned long tag_spacing )
+{
+	int collision_detected = 0, first_collision_flag = 0;
+	Bottom_List * tmp;
+	while (x->next != y && x != list->tail){
+		/// insert x->next after x but with y->tag as the end tag
+		Insert_top_list(list, x, x->next, tag_spacing, &collision_detected);
+
+		if (!first_collision_flag && collision_detected)
+		{
+			first_collision_flag = 1;
+			tmp = x->next;
+		}
+		/// Move along x pointer
+		x = x->next;
+
+	}
+	if (collision_detected)///just trying rebalacing from the end
+		top_list_rebalance(list, y);
+
+	return ;
+}		/* -----  end of function tag_range_relabel  ----- */
+
+
 /// Within the void *ds, depending on macros defined in main, determine the order
 /// of x and y. If x <= y, return true. Otherwise, return false.
 /// Note: the ID will determine which ordering to follow (english or hebrew)
 int OM_DS_order(/*void *ds, if OM_IS_LL*/ void * _x, void * _y, const int ID){
 #ifdef OM_IS_LL
+
+	/// To retrieve Bottom_List
+	Bottom_List * ds;
+
 	///Temp node to hold current node
-	OM_Node * current;
+	OM_Node * current, * x;
 
-	/// Point tmp to head
-	current = ((Bottom_List*)ds)->head;
+	x = (OM_Node*) _x;
 
-/* Debug code to ensure correct calling of order function
-   if (ID != HEBREW_ID && ID != ENGLISH_ID)
-   {
-   printf("ID given to order is not valid\n");
-   exit(1);
-   }
-*/
+	if (ID == HEBREW_ID)
+		ds = x->ds_h;
+	else
+		ds = x->ds_e;
+
+    /// Point tmp to head
+	current = ds->head;
+
 	/// For a linked list, inc. the node pointer down the correct list.
 	/// If at any point current is x, we immediately exit true
 	/// If at any point current is y, we immediately exit false
@@ -3105,7 +3117,7 @@ int OM_DS_order(/*void *ds, if OM_IS_LL*/ void * _x, void * _y, const int ID){
 			current = current->next_e;
 		else if (ID == HEBREW_ID)
 			current = current->next_h;
-	} while( current != ((Bottom_List*)ds)->tail);
+	} while( current != ds->tail);
 
 	/// Debug code, to ensure we are not getting false or true by calling order
 	/// on incorrect nodes.
