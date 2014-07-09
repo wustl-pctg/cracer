@@ -2099,9 +2099,9 @@ struct RD_Memory_Struct_s {
 Top_List * Init_top_list ()
 {
 	/// Malloc data for all necessary nodes and for the list itself
-	Top_List * list = malloc(sizeof(*list));
-	list->head = malloc(sizeof(* (list->head)));
-	list->tail = malloc(sizeof(* (list->tail)));
+	Top_List * list = Cilk_malloc(sizeof(*list));
+	list->head = Cilk_malloc(sizeof(* (list->head)));
+	list->tail = Cilk_malloc(sizeof(* (list->tail)));
 
 	/// Assign appropriate vals to list
 	list->size  				= 	0;
@@ -2134,9 +2134,9 @@ Bottom_List * Init_bottom_list ()
 	MAX_NUMBER = ~0;
 	;//printf("Max # in init: %u\n", MAX_NUMBER);
 
-	list = malloc(sizeof(*list));
-	list->head = malloc(sizeof(* (list->head)));
-	list->tail = malloc(sizeof(* (list->tail)));
+	list = Cilk_malloc(sizeof(*list));
+	list->head = Cilk_malloc(sizeof(* (list->head)));
+	list->tail = Cilk_malloc(sizeof(* (list->tail)));
 
 	// Set up list
 	list->head->next_e = list->head->next_h = list->tail;
@@ -2510,7 +2510,6 @@ void mt_insertPar(CilkContext*const context,void*dataStruct,void*data,size_t siz
 /*** END EXP SECTION ****/
 
 
-
 /// Prints the bottom List
 void printList(Bottom_List * list, const int ID) {
     OM_Node * n;
@@ -2786,7 +2785,7 @@ void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 	/// Batchify insert
 	/// Create the insert record, which will be passed to the operation function
 	/// that we reference in Cilk_batchify(...,  &callback operation, ....);
-	InsertRecord * ir = (InsertRecord * ) malloc(sizeof(InsertRecord));
+	InsertRecord * ir = (InsertRecord * ) Cilk_malloc(sizeof(InsertRecord));
 	ir->x =  x;
 	ir->y =  y;
 	ir->ID = ID;
