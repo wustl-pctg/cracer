@@ -2068,7 +2068,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 
 /*!
 *****************************************
-* Order Maintenance for race detection *
+* Order Maintenance functions for race detection *
 ****************************************/
 
 #define WS_REF_ENG ws->context->Cilk_global_state->englishOM_DS
@@ -2096,13 +2096,7 @@ struct RD_Memory_Struct_s {
 
 };
 
-/*! 
- * ===  FUNCTION  ======================================================================
- *         Name:  init_top_list
- *  Description:  allocates memory and initializes all values for top list.
- *  			
- * =====================================================================================
- */
+/// Initializes the paramers of a top list
 Top_List * Init_top_list ()
 {
 	/// Malloc data for all necessary nodes and for the list itself
@@ -2133,13 +2127,7 @@ Top_List * Init_top_list ()
 	return list;
 }		/* -----  end of function init_top_list  ----- */
 
-/*! 
- * ===  FUNCTION  ======================================================================
- *         Name:  Init_bottom_list
- *  Description:  allocates memory and initializes all values for bottom list.
- *  			
- * =====================================================================================
- */
+/// Initializes the parameters of a bottom list
 Bottom_List * Init_bottom_list ()
 {
 	Bottom_List * list;
@@ -2166,101 +2154,98 @@ Bottom_List * Init_bottom_list ()
 
 }		/* -----  end of function init_top_list  ----- */
 
-/* 
- * ===  FUNCTION  ======================================================================
- *         Name:  Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y)
- *  Description:  Insert x after y in the top list
- * =====================================================================================
- */
+/// Inserts a Bottom_List into a Top_List
+/// Bottom_List y is inserted after Bottom_List x in Top_List list
+/// param ID the Eng or Heb structure
 void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, const int ID, unsigned long TAG_SPACING_RELABEL, int * collision_detected)
 {
 	///Debug: Double check that all vals are not null
 	assert(y != NULL && x != NULL && list != NULL);
 
 	switch ( ID ) {
-		case ENGLISH_ID:
-			if (TAG_SPACING_RELABEL != 0)
-			{
-				y->tag_e = x->tag_e + TAG_SPACING_RELABEL;
-				//				y->tag_e = (TAG_SPACING_RELABEL >> 1) + (x->tag_e >> 1);
-				/// correct for adding two odd numbers
+	case ENGLISH_ID:
+		if (TAG_SPACING_RELABEL != 0)
+		{
+			y->tag_e = x->tag_e + TAG_SPACING_RELABEL;
+			//				y->tag_e = (TAG_SPACING_RELABEL >> 1) + (x->tag_e >> 1);
+			/// correct for adding two odd numbers
 //				if (TAG_SPACING_RELABEL & x->tag_e & 0x1 == 0x1)
 //					y->tag_e++;
-				if (y->tag_e == x->tag_e || y->tag_e == TAG_SPACING_RELABEL)
+			if (y->tag_e == x->tag_e || y->tag_e == TAG_SPACING_RELABEL)
 
-				{
-					/// We have an issue, collision during rebalancing
+			{
+				/// We have an issue, collision during rebalancing
 
-					//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_e, y->tag_e);
-					*collision_detected = 1;
+				//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_e, y->tag_e);
+				*collision_detected = 1;
 
-					//top_list_rebalance(list, y, ID);	
+				//top_list_rebalance(list, y, ID);	
 					 
-				}
-
 			}
-			else //We are inserting a new element into the list
-			{
-				y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));
-				/// correct for adding two odd numbers
-				if (x->next_e->tag_h & x->tag_e & 0x1 == 0x1)
-					y->tag_e++;
+
+		}
+		else //We are inserting a new element into the list
+		{
+			y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));
+			/// correct for adding two odd numbers
+			if (x->next_e->tag_h & x->tag_e & 0x1 == 0x1)
+				y->tag_e++;
 			
-								/*if ( (y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))*/
-				if (x->next_e->tag_e - x->tag_e <= 1)
-				  {
-					top_list_rebalance(list, x, ID);
-					/// Dont assign pointers, call insert again to put y after x
-					insert_top_list(list, x, y, ID, 0 , NULL);
-				}
-				else{
-					/// Reassign  prev/next pointers
-					y->prev_e = x;
-					y->next_e  = x->next_e;
-					x->next_e = y;
-					/// Update the next node after y's prev_e reference (change it to y)
-					y->next_e->prev_e = y;
-				}
+			/*if ( (y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))*/
+			if (x->next_e->tag_e - x->tag_e <= 1)
+			{
+				top_list_rebalance(list, x, ID);
+				/// Dont assign pointers, call insert again to put y after x
+				insert_top_list(list, x, y, ID, 0 , NULL);
+			}
+			else{
+				/// Reassign  prev/next pointers
+				y->prev_e = x;
+				y->next_e  = x->next_e;
+				x->next_e = y;
+				/// Update the next node after y's prev_e reference (change it to y)
+				y->next_e->prev_e = y;
+			}
 					
-				/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
-				(list->size)++;
-			}
-			break;
+			/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
+			(list->size)++;
+		}
+		break;
 			
-		case HEBREW_ID:		
-			if (TAG_SPACING_RELABEL != 0)
+	case HEBREW_ID:		
+		if (TAG_SPACING_RELABEL != 0)
+		{
+			y->tag_h = (TAG_SPACING_RELABEL >> 1) + (x->tag_h >> 1);
+			/// correct for adding two odd numbers
+			if (TAG_SPACING_RELABEL & x->tag_h & 0x1 == 0x1)
+				y->tag_h++;
+
+			if (y->tag_h == x->tag_h || y->tag_h == TAG_SPACING_RELABEL)
 			{
-				y->tag_h = (TAG_SPACING_RELABEL >> 1) + (x->tag_h >> 1);
-				/// correct for adding two odd numbers
-				if (TAG_SPACING_RELABEL & x->tag_h & 0x1 == 0x1)
-					y->tag_h++;
-
-				if (y->tag_h == x->tag_h || y->tag_h == TAG_SPACING_RELABEL)
-				{
-					/// We have an issue, collision during rebalancing
-					//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_h, y->tag_h);
-					*collision_detected = 1;
-					//top_list_rebalance(list, y, ID);	
-				}
-
+				/// We have an issue, collision during rebalancing
+				//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_h, y->tag_h);
+				*collision_detected = 1;
+				//top_list_rebalance(list, y, ID);	
 			}
-			else //We are inserting a new element into the list
-			{
-				y->tag_h = ((x->next_h->tag_h >> 1) + (x->tag_h >> 1));
-				/// correct for adding two odd numbers
-				if (x->next_h->tag_h & x->tag_h & 0x1 == 0x1)
-					y->tag_h++;
+
+		}
+		else //We are inserting a new element into the list
+		{
+			y->tag_h = ((x->next_h->tag_h >> 1) + (x->tag_h >> 1));
+			/// correct for adding two odd numbers
+			if (x->next_h->tag_h & x->tag_h & 0x1 == 0x1)
+				y->tag_h++;
 			
 				
 
-				/*if ( (y->tag_h == x->tag_h) ||  ( y->tag_h == y->next_h->tag_h ))*/
-				if (x->next_h->tag_h - x->tag_h <= 1)
-				{
-					top_list_rebalance(list, x, ID);
-					/// Dont assign pointers, call insert again to put y after x
-					insert_top_list(list, x, y, ID, 0 , NULL);
-				}
-				else {
+			/*if ( (y->tag_h == x->tag_h) ||  ( y->tag_h == y->next_h->tag_h ))*/
+			if (x->next_h->tag_h - x->tag_h <= 1)
+			{
+				top_list_rebalance(list, x, ID);
+				/// Dont assign pointers, call insert again to put y after x
+				insert_top_list(list, x, y, ID, 0 , NULL);
+			}
+			else {
 				/// Reassign  prev/next pointers
 				y->prev_h = x;
 				y->next_h  = x->next_h;
@@ -2269,16 +2254,16 @@ void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, const int
 				/// Update the next node after y's prev_h reference (change it to y)
 				y->next_h->prev_h = y;
 /// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
-(list->size)++;
-
-				}
+				(list->size)++;
 
 			}
-			break;
+
+		}
+		break;
 			
 
-		default:	
-			break;
+	default:	
+		break;
 	}				/* -----  end switch  ----- */
 
 	return ;
@@ -2309,8 +2294,12 @@ void OM_DS_init(CilkContext *const context){
 		bottom_list = Init_bottom_list();
 
 		/// Add first node to top_list for eng & heb
-		Insert_top_list(context->Cilk_global_state->OM_DS, context->Cilk_global_state->OM_DS->head, bottom_list, ENGLISH_ID, 0, NULL);		
-		Insert_top_list(context->Cilk_global_state->OM_DS, context->Cilk_global_state->OM_DS->head, bottom_list, HEBREW_ID, 0, NULL);		
+		Insert_top_list(context->Cilk_global_state->OM_DS,
+						context->Cilk_global_state->OM_DS->head,
+						bottom_list, ENGLISH_ID, 0, NULL);		
+		Insert_top_list(context->Cilk_global_state->OM_DS,
+						context->Cilk_global_state->OM_DS->head,
+						bottom_list, HEBREW_ID, 0, NULL);		
 	}
 }
 
@@ -2858,6 +2847,11 @@ int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 #endif
 }
 
+
+
+/*!******************************************************************************
+ ******************** OM_DS Functions that are Runtime Specific *****************
+ ********************************************************************************/
 void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const int FAST_NOT_SLOW){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
@@ -2901,11 +2895,11 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	CILK_ASSERT(ws, frame->current_node != NULL);
 
 	;/* Debug messages
-	if (FAST_NOT_SLOW)//TODO
+		if (FAST_NOT_SLOW)//TODO
 		printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
-	else
+		else
 		printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
- 	;*/
+		;*/
 
 	/// Insert {current, spawned function, continuation node} into the english OM_DS
 	OM_DS_insert(ws, WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
