@@ -2386,8 +2386,8 @@ void OM_DS_init(CilkContext *const context){
 	/// Define CILK running parameters
 
 	/// Various OM_DS Macros
-#define OM_IS_LL
-//#define OM_IS_BENDER
+//#define OM_IS_LL
+#define OM_IS_BENDER
 
 	// If Batchify works
 //#define BATCHIFY_WORKING
