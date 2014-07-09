@@ -49,7 +49,7 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-		j = rand() % i;
+		j = (rand() % (1 + (i>>2)) ) + (i >> 1);
 		if (OM_DS_insert(nodeArray[j], nodeArray[i], ENGLISH_ID))
 		 {
 			 /*printf("TEST: splitting and adding to top at test index %i\n", i);*/
