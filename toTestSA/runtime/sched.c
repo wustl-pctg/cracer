@@ -2071,9 +2071,10 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 * Order Maintenance functions for race detection *
 **************************************************/
 
-/*#define WS_REF_DS->context->Cilk_global_state->OM_DS*/
+#define WS_REF_DS context->Cilk_global_state->OM_DS
 #define ENGLISH_ID 10
 #define HEBREW_ID 11
+unsigned int MAX_NUMBER;
 
 
 //! Race_Detect Struct
@@ -2111,17 +2112,17 @@ Top_List * Init_top_list ()
 	list->overflow_constant 	=	1.3;
 
 	/// Assign appropriate vals to head and tail node tags
-	list->head->tag_e = list->head->tag_h = 0;
-	list->tail->tag_e = list->tail->tag_h = ~0;
+	list->head->tag = 0;
+	list->tail->tag = ~0;
 
 	/// Assign correct vals to head and tail pointers
-	list->head->prev_h = list->head->prev_e = list->tail->next_h = list->tail->next_e = NULL;
+	list->head->prev =  list->tail->next = NULL;
 
-	/// Prev node fro tail is head
-	list->tail->prev_e = list->tail->prev_h = list->head;
+	/// Prev node for tail is head
+	list->tail->prev = list->head;
 
 	/// Next node for head is tail
-	list->head->next_e = list->head->next_h = list->tail;
+	list->head->next = list->tail;
 
 	return list;
 }	
@@ -2163,12 +2164,12 @@ void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, unsigned 
 
 	if (TAG_SPACING_RELABEL != 0)
 	{
-		y->tag  = x->tag  + TAG_SPACING_RELABEL;
-		//				y->tag  = (TAG_SPACING_RELABEL >> 1) + (x->tag  >> 1);
+		y->tag = x->tag + TAG_SPACING_RELABEL;
+		//				y->tag = (TAG_SPACING_RELABEL >> 1) + (x->tag >> 1);
 		/// correct for adding two odd numbers
-//				if (TAG_SPACING_RELABEL & x->tag  & 0x1 == 0x1)
-//					y->tag ++;
-		if (y->tag  == x->tag  || y->tag  == TAG_SPACING_RELABEL)
+//				if (TAG_SPACING_RELABEL & x->tag & 0x1 == 0x1)
+//					y->tag++;
+		if (y->tag == x->tag || y->tag == TAG_SPACING_RELABEL)
 		{
 			/// We have an issue, collision during rebalancing
 
@@ -2180,14 +2181,14 @@ void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, unsigned 
 	}
 	else //We are inserting a new element into the list
 	{
-		y->tag  = ((x->next->tag  >> 1) + (x->tag  >> 1));
+		y->tag = ((x->next->tag >> 1) + (x->tag >> 1));
 
 		/// correct for adding two odd numbers
-		if (x->next ->tag_h & x->tag  & 0x1 == 0x1)
-			y->tag ++;
+		if (x->next->tag & x->tag & 0x1 == 0x1)
+			y->tag++;
 
 		/*if ( (y->tag  == x->tag ) ||  ( y->tag  == y->next ->tag  ))*/
-		if (x->next ->tag  - x->tag  <= 1)
+		if (x->next->tag - x->tag <= 1)
 		{
 			top_list_rebalance(list, x);
 			/// Dont assign pointers, call insert again to put y after x
@@ -2195,11 +2196,11 @@ void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, unsigned 
 		}
 		else{
 			/// Reassign  prev/next pointers
-			y->prev  = x;
-			y->next   = x->next ;
-			x->next  = y;
+			y->prev = x;
+			y->next = x->next;
+			x->next = y;
 			/// Update the next node after y's prev  reference (change it to y)
-			y->next ->prev  = y;
+			y->next->prev = y;
 		}
 
 		/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
@@ -2249,7 +2250,7 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 	;//printf("DEBUG:LL free nodes\n");
 
 	/// Assign node to head of english list
-	node = context->Cilk_global_state->OM_DS->head;
+	node = context->Cilk_global_state->OM_DS->head->next->head;
 
 	/// Move through only Bottom_List, freeing each node.
 	while(node != NULL){
@@ -2257,6 +2258,12 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 		Cilk_free(node);
 		node = nextNode;
 	}
+
+	/// If LL, then top list will have head & tail bot_lists as well as 
+	/// the one functioning linked list
+	Cilk_free(context->Cilk_global_state_OM_DS->head);
+	Cilk_free(context->Cilk_global_state_OM_DS->head->next);
+	Cilk_free(context->Cilk_global_state_OM_DS->tail);
 
 }
 
@@ -2296,7 +2303,7 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 #ifdef OM_IS_LL
 	/// Free nodes of linked list
 	OM_LL_free_nodes_internal(context);
-#elif OM_IS_BENDER
+#elif defined OM_IS_BENDER
 	/// Free nodes of OM_DS
 	OM_free_nodes_internal(context);
 #else 
@@ -2841,7 +2848,7 @@ void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 #endif
 }
 
-#elif OM_IS_BENDER
+#elif defined OM_IS_BENDER
 /// Insert y after x into appropriate list based on ID
 /// Returns 1 if full and needs reorderd immediately and 0 otherwise
 int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int ID){
@@ -2970,7 +2977,7 @@ printf("Debug: appending null node or to null ds\n");
 }
 
 
-#elif OM_IS_BENDER
+#elif defined OM_IS_BENDER
 /// This is called in the initialization of cilk
 /// Add the first node to the OM_DS
 void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
@@ -3102,7 +3109,7 @@ int OM_DS_order(/*void *ds, if OM_IS_LL*/ void * _x, void * _y, const int ID){
 	exit(1);
 	return 0;
 
-#elif OM_IS_BENDER
+#elif defined OM_IS_BENDER
 	/// First check to see if the Top_List tags are ordered
 	/// If they're not, then the nodes are in the same sub_list
 	/// and it suffices to check their tags against another
@@ -3453,7 +3460,7 @@ void Race_detect_read_b(CilkWorkerState * const ws,
 			&&
 			(
 				//(1)
-				(OM_DS_order(/*WS_REF_DS*/, currentNode, mem->left_w, ENGLISH_ID) &&
+				(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_w, ENGLISH_ID) &&
 				 OM_DS_order(/*WS_REF_DS,*/ mem->left_w, currentNode, HEBREW_ID))
 				||  //(2)
 				(OM_DS_order(/*WS_REF_DS,*/ mem->left_w, currentNode, ENGLISH_ID) &&
