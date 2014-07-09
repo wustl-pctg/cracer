@@ -34,8 +34,8 @@ typedef struct Bottom_List__s {
 	OM_Node *head,*tail;
 	int size_e, size_h;
 	int Reorder_flag_e, Reorder_flag_h;
-	struct Bottom_List_s *next_e, *next_h;
-	struct Bottom_List_s *prev_e, *prev_h;
+	struct Bottom_List_s *next;
+	struct Bottom_List_s *prev;
 	int id;
 
 	unsigned long int tag_e, tag_h;

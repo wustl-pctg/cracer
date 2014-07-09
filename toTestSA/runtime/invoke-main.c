@@ -103,8 +103,11 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 	{
 		OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
 		main_node->id = 1;
-		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->om_ds->head->next_e, main_node, ENGLISH_ID);
-		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->om_ds->head->next_e, main_node, HEBREW_ID);
+		/// Add the main node to the first sublist
+		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->om_ds->head->next, main_node, ENGLISH_ID);
+		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->om_ds->head->next, main_node, HEBREW_ID);
+
+
 		/// Set first spawned flag of the header frame
 		_cilk_frame->header.first_spawn_flag = 0;
 	}
