@@ -8,6 +8,7 @@
 #define ENGLISH_ID 10
 #define HEBREW_ID 11
 
+/*! Forward declarations of our race_detection objects */
 struct RD_Memory_Struct_s;
 
 typedef struct RD_Memory_Struct_s RD_Memory_Struct;
