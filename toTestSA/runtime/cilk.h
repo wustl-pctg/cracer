@@ -573,7 +573,6 @@ typedef struct {
 	//  CILK_CACHE_LINE_PAD;
 } Batch;
 
-
 typedef void (*CilkBatchSeqOperation)(Batch* pending,
                                       void *data_struct, void *data,
 									  size_t num_elem, void *result);

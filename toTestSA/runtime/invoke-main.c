@@ -70,9 +70,10 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
   void *args;
 
   CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at the end of the func.*/
-
+	
+  	#ifdef OM_IS_LL
   /// If starting a slow main function and size of the OM_DS
-	if (_cilk_ws->context->Cilk_global_state->englishOM_DS->size == 0 || _cilk_ws->context->Cilk_global_state->hebrewOM_DS->size == 0)
+	if (_cilk_ws->context->Cilk_global_state->top_list->size == 0 || _cilk_ws->context->Cilk_global_state->hebrewOM_DS->size == 0)
 	{
 	    	/// Create and allocate mem for main node
 		OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
@@ -96,6 +97,24 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 
 	/// Set the current node equal the first node 
 	_cilk_frame->header.current_node = _cilk_ws->context->Cilk_global_state->englishOM_DS->head;
+	#elif OM_IS_BENDER
+	//Using the order maintenance data struct defined by Bender
+	if (_cilk_ws->context->Cilk_global_state->om_ds->size == 1)
+	{
+		OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
+		main_node->id = 1;
+		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->om_ds->head->next_e, main_node, ENGLISH_ID);
+		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->om_ds->head->next_e, main_node, HEBREW_ID);
+		/// Set first spawned flag of the header frame
+		_cilk_frame->header.first_spawn_flag = 0;
+	}
+	else{
+	 
+		printf ( "Error occured when adding first OM_Node \n" );
+		exit(10);
+	}
+
+	#endif
 
 	/// Update the worker state to match the frame
 	ws->current_node = _cilk_frame->header.current_node;

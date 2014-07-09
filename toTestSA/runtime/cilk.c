@@ -274,6 +274,7 @@ static void Cilk_global_init(CilkContext *const context)
 
   /*! order maintenance for race detection */
   OM_DS_init(context);
+
   /*  ==== TODO: add race-detect ptr list for (de)allocation  ===== */
 
   /* debug module */
