@@ -88,6 +88,10 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 		/// Reset first spawn flag of the fram in the invoke main slow frame
 		_cilk_frame->header.first_spawn_flag = 0;
 
+		/// Set the current node equal the first node 
+		/*_cilk_frame->header.current_node = _cilk_ws->context->Cilk_global_state->englishOM_DS->head;*/
+		_cilk_frame->header.current_node = main_node;
+		
 		/// Debug messages
 		;//printf("\nDebug: Created main node and added to eng/heb.\n");
 	}
@@ -95,8 +99,7 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 	/// Debug message	
 	    ;//printf("Nonempty OM_DS's, this is not the first invocation of slow main,dont create new nodes.\n");
 
-	/// Set the current node equal the first node 
-	_cilk_frame->header.current_node = _cilk_ws->context->Cilk_global_state->englishOM_DS->head;
+
 	#elif OM_IS_BENDER
 	//Using the order maintenance data struct defined by Bender
 	if (_cilk_ws->context->Cilk_global_state->om_ds->size == 1)
@@ -110,12 +113,16 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 
 		/// Set first spawned flag of the header frame
 		_cilk_frame->header.first_spawn_flag = 0;
+
+		/// Set the current frame node equal to the node just created
+		_cilk_frame->header.current_node = main_node;
 	}
 	else{
 	 
 		printf ( "Error occured when adding first OM_Node \n" );
 		exit(10);
 	}
+
 
 	#endif
 
