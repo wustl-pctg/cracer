@@ -2727,17 +2727,17 @@ void tag_range_relabel (Top_List *list, Bottom_List *x, Bottom_List *y, unsigned
 {
 	int collision_detected = 0, first_collision_flag = 0;
 	Bottom_List * tmp;
-	while (x->next_e != y && x != list->tail){
-		/// insert x->next after x but with y->tag_e as the end tag
-		Insert_top_list(list, x, x->next_e, tag_spacing, &collision_detected);
+	while (x->next != y && x != list->tail){
+		/// insert x->next after x but with y->tag as the end tag
+		Insert_top_list(list, x, x->next, tag_spacing, &collision_detected);
 
 		if (!first_collision_flag && collision_detected)
 		{
 			first_collision_flag = 1;
-			tmp = x->next_e;
+			tmp = x->next;
 		}
 		/// Move along x pointer
-		x = x->next_e;
+		x = x->next;
 
 	}
 	if (collision_detected)///just trying rebalacing from the end
