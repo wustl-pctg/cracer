@@ -2319,7 +2319,7 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 
 
 /**** START EXP SECTION ****/
-
+/*
 struct _cilk_insertPar_frame{CilkStackFrame header;
 	struct{
 		void*dataStruct;
@@ -2514,6 +2514,7 @@ void mt_insertPar(CilkContext*const context,void*dataStruct,void*data,size_t siz
 	Cilk_free(_cilk_procargs);
 
 }
+*/
 /*** END EXP SECTION ****/
 
 
