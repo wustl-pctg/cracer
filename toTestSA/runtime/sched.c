@@ -2096,11 +2096,205 @@ struct RD_Memory_Struct_s {
 
 };
 
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  init_top_list
+ *  Description:  allocates memory and initializes all values for top list.
+ *  			
+ * =====================================================================================
+ */
+Top_List * Init_top_list ()
+{
+	/// Malloc data for all necessary nodes and for the list itself
+	Top_List * list = malloc(sizeof(*list));
+	list->head = malloc(sizeof(* (list->head)));
+	list->tail = malloc(sizeof(* (list->tail)));
+
+	/// Assign appropriate vals to list
+	list->size  				= 	0;
+
+	/// Assign T (in bender's paper), which governs how dense the list can be 
+	/// before rebalancing. As of now, we just pick an arbitrary val in [1,2]
+	list->overflow_constant 	=	1.3;
+
+	/// Assign appropriate vals to head and tail node tags
+	list->head->tag_e = list->head->tag_h = 0;
+	list->tail->tag_e = list->tail->tag_h = ~0;
+
+	/// Assign correct vals to head and tail pointers
+	list->head->prev_h = list->head->prev_e = list->tail->next_h = list->tail->next_e = NULL;
+
+	/// Prev node fro tail is head
+	list->tail->prev_e = list->tail->prev_h = list->head;
+
+	/// Next node for head is tail
+	list->head->next_e = list->head->next_h = list->tail;
+
+	return list;
+}		/* -----  end of function init_top_list  ----- */
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  Init_bottom_list
+ *  Description:  allocates memory and initializes all values for bottom list.
+ *  			
+ * =====================================================================================
+ */
+Bottom_List * Init_bottom_list ()
+{
+	Bottom_List * list;
+
+	MAX_NUMBER = ~0;
+	;//printf("Max # in init: %u\n", MAX_NUMBER);
+
+	list = malloc(sizeof(*list));
+	list->head = malloc(sizeof(* (list->head)));
+	list->tail = malloc(sizeof(* (list->tail)));
+
+	// Set up list
+	list->head->next_e = list->head->next_h = list->tail;
+	list->tail->prev_e = list->tail->prev_h = list->head;
+
+	list->size_e = list->size_h = list->Reorder_flag_h = list->Reorder_flag_e = 0;
+
+	// Set up nodes
+	list->head->tag_e = list->head->tag_h = 0;
+	list->tail->tag_e = list->tail->tag_h = MAX_NUMBER;
+	;//printf("Debug: list->tail->tag_e & id: %u & %i\n", list->tail->tag_e, list->tail->id);
+	
+	return list;
+
+}		/* -----  end of function init_top_list  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y)
+ *  Description:  Insert x after y in the top list
+ * =====================================================================================
+ */
+void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, const int ID, unsigned long TAG_SPACING_RELABEL, int * collision_detected)
+{
+	///Debug: Double check that all vals are not null
+	assert(y != NULL && x != NULL && list != NULL);
+
+	switch ( ID ) {
+		case ENGLISH_ID:
+			if (TAG_SPACING_RELABEL != 0)
+			{
+				y->tag_e = x->tag_e + TAG_SPACING_RELABEL;
+				//				y->tag_e = (TAG_SPACING_RELABEL >> 1) + (x->tag_e >> 1);
+				/// correct for adding two odd numbers
+//				if (TAG_SPACING_RELABEL & x->tag_e & 0x1 == 0x1)
+//					y->tag_e++;
+				if (y->tag_e == x->tag_e || y->tag_e == TAG_SPACING_RELABEL)
+
+				{
+					/// We have an issue, collision during rebalancing
+
+					//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_e, y->tag_e);
+					*collision_detected = 1;
+
+					//top_list_rebalance(list, y, ID);	
+					 
+				}
+
+			}
+			else //We are inserting a new element into the list
+			{
+				y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));
+				/// correct for adding two odd numbers
+				if (x->next_e->tag_h & x->tag_e & 0x1 == 0x1)
+					y->tag_e++;
+			
+								/*if ( (y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))*/
+				if (x->next_e->tag_e - x->tag_e <= 1)
+				  {
+					top_list_rebalance(list, x, ID);
+					/// Dont assign pointers, call insert again to put y after x
+					insert_top_list(list, x, y, ID, 0 , NULL);
+				}
+				else{
+					/// Reassign  prev/next pointers
+					y->prev_e = x;
+					y->next_e  = x->next_e;
+					x->next_e = y;
+					/// Update the next node after y's prev_e reference (change it to y)
+					y->next_e->prev_e = y;
+				}
+					
+				/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
+				(list->size)++;
+			}
+			break;
+			
+		case HEBREW_ID:		
+			if (TAG_SPACING_RELABEL != 0)
+			{
+				y->tag_h = (TAG_SPACING_RELABEL >> 1) + (x->tag_h >> 1);
+				/// correct for adding two odd numbers
+				if (TAG_SPACING_RELABEL & x->tag_h & 0x1 == 0x1)
+					y->tag_h++;
+
+				if (y->tag_h == x->tag_h || y->tag_h == TAG_SPACING_RELABEL)
+				{
+					/// We have an issue, collision during rebalancing
+					//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_h, y->tag_h);
+					*collision_detected = 1;
+					//top_list_rebalance(list, y, ID);	
+				}
+
+			}
+			else //We are inserting a new element into the list
+			{
+				y->tag_h = ((x->next_h->tag_h >> 1) + (x->tag_h >> 1));
+				/// correct for adding two odd numbers
+				if (x->next_h->tag_h & x->tag_h & 0x1 == 0x1)
+					y->tag_h++;
+			
+				
+
+				/*if ( (y->tag_h == x->tag_h) ||  ( y->tag_h == y->next_h->tag_h ))*/
+				if (x->next_h->tag_h - x->tag_h <= 1)
+				{
+					top_list_rebalance(list, x, ID);
+					/// Dont assign pointers, call insert again to put y after x
+					insert_top_list(list, x, y, ID, 0 , NULL);
+				}
+				else {
+				/// Reassign  prev/next pointers
+				y->prev_h = x;
+				y->next_h  = x->next_h;
+				x->next_h = y;
+
+				/// Update the next node after y's prev_h reference (change it to y)
+				y->next_h->prev_h = y;
+/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
+(list->size)++;
+
+				}
+
+			}
+			break;
+			
+
+		default:	
+			break;
+	}				/* -----  end switch  ----- */
+
+	return ;
+
+}		/* -----  end of function insert_top_list  ----- */
+
 /// Allocate memory and set variables
 void OM_DS_init(CilkContext *const context){
+	Bottom_List * bottom_list;
+
 	/// Define CILK running parameters
-	/// -- use a linked list for the OM_DS
-#define OM_IS_LL
+
+	/// Various OM_DS Macros
+//#define OM_IS_LL
+#define OM_IS_BENDER
+
 	//Batchify works
 #define BATCHIFY_WORKING
 
@@ -2108,13 +2302,15 @@ void OM_DS_init(CilkContext *const context){
 		/// Debug message
 		;//printf("Debug: OM_DS_init\n");
 
-		/// Allocate heap memory for both lists
-		context->Cilk_global_state->hebrewOM_DS = (OM_DS* )Cilk_malloc(sizeof(OM_DS));
-		context->Cilk_global_state->englishOM_DS = (OM_DS *) Cilk_malloc(sizeof(OM_DS));
+		/// Allocate heap memory for top list
+		context->Cilk_global_state->OM_DS = Init_top_list();
 
-		/// Reset size of both lists to 0
-		context->Cilk_global_state->hebrewOM_DS->size = 0;
-		context->Cilk_global_state->englishOM_DS->size= 0;
+		/// Make an initial bottom list for the top_list
+		bottom_list = Init_bottom_list();
+
+		/// Add first node to top_list for eng & heb
+		Insert_top_list(context->Cilk_global_state->OM_DS, context->Cilk_global_state->OM_DS->head, bottom_list, ENGLISH_ID, 0, NULL);		
+		Insert_top_list(context->Cilk_global_state->OM_DS, context->Cilk_global_state->OM_DS->head, bottom_list, HEBREW_ID, 0, NULL);		
 	}
 }
 

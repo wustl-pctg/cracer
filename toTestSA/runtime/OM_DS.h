@@ -19,29 +19,29 @@
 #ifndef _OM_DS_H
 #define _OM_DS_H
 
-struct OM_DS_s;
+struct Bottom_List_s;
 
 typedef struct OM_Node_s{
 	struct OM_Node_s *next_e, *next_h;
 	struct OM_Node_s *prev_e, *prev_h;
 	int id;
 	unsigned int tag_e, tag_h;
-	struct OM_DS_s * ds_h, * ds_e;
+	struct Bottom_List_s * ds_h, * ds_e;
 
 } OM_Node;
 
-typedef struct OM_DS_s {
+typedef struct Bottom_List__s {
 	OM_Node *head,*tail;
 	int size_e, size_h;
 	int Reorder_flag_e, Reorder_flag_h;
-	struct OM_DS_s *next_e, *next_h;
-	struct OM_DS_s *prev_e, *prev_h;
+	struct Bottom_List_s *next_e, *next_h;
+	struct Bottom_List_s *prev_e, *prev_h;
 	int id;
 
 	unsigned long int tag_e, tag_h;
 
 
-} OM_DS;
+} Bottom_List;
 
 typedef struct InsertRecord_s{
 	OM_DS *ds;
@@ -50,6 +50,16 @@ typedef struct InsertRecord_s{
 	int ID;
 
 } InsertRecord;
+
+typedef struct Top_List_s{
+
+	Bottom_List *head, *tail; 
+	const int ID; /// English or Hebrew: do i need this?
+	int size;
+	double overflow_constant; /// T in the bender paper
+	/// TODO: precompute values of 1 / (T^i)  for much needed values of i
+} Top_List;
+
 
 #endif
 

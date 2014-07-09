@@ -293,6 +293,7 @@ void append_first_list (Top_List * list, OM_DS * first_sub_list, const int ID){
 
 	insert_top_list(list, list->head, first_sub_list, ID, 0, NULL);
 }		/* -----  end of function append_first_list ---- */
+
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  init_top_list
@@ -308,7 +309,7 @@ Top_List * init_top_list ()
 	list->tail = malloc(sizeof(* (list->tail)));
 
 	/// Assign appropriate vals to list
-	list->size  				= 	2;
+	list->size  				= 	0;
 
 	/// Assign T (in bender's paper), which governs how dense the list can be 
 	/// before rebalancing. As of now, we just pick an arbitrary val in [1,2]

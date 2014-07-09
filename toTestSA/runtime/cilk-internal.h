@@ -222,7 +222,7 @@ struct CilkGlobalState_s{
 	//	CILK_CACHE_LINE_PAD;
 	/* End BATCHER */
 	/*! Order maintenance for race detect*/
-	OM_DS *englishOM_DS, *hebrewOM_DS;
+	Top_List * OM_DS;
 
 	/*End order maintenance*/
 
