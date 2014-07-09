@@ -428,7 +428,7 @@ void OM_DS_add_first_node(void *ds, void * _x, const int ID){
 ////TODO: fix this
 /// Within the void *ds, depending on macros defined in main, determine the order
 /// of x and y. If x <= y, return true. Otherwie, return false.
-/// Note: the ID will determine which ordering to follow (english or hebrew)
+n/// Note: the ID will determine which ordering to follow (english or hebrew)
 int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 
 	OM_Node * x, * y;
