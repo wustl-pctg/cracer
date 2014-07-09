@@ -2428,7 +2428,7 @@ void insertPar (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,size_t 
 
 
 			switch (ID) {
-			case 11:
+			case HEBREW_ID:
 
 				if (!(x->next_hebrew))
 					ds->tail = y;
@@ -2447,7 +2447,7 @@ void insertPar (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,size_t 
 				}
 				break;
 
-			case 10:
+			case ENGLISH_ID:
 
 				if (!(x->next_english))
 					ds->tail = y;
@@ -2524,7 +2524,7 @@ static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_ins
 
 
 			switch (ID) {
-			case 11:
+			case HEBREW_ID:
 
 				if (!(x->next_hebrew))
 					ds->tail = y;
@@ -2543,7 +2543,7 @@ static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_ins
 				}
 				break;
 
-			case 10:
+			case ENGLISH_ID:
 
 				if (!(x->next_english))
 					ds->tail = y;
@@ -2720,8 +2720,97 @@ void OM_DS_add_first_node(void *ds, void * _x){
 	else {
 		printf("Debug: appending null node or to null ds\n");
 	}
-#else
-	printf("Debug: Don't know how to append to OM_DS yet\n");
+#elif OM_IS_BENDER
+
+	/// Enter if ds and x are not NULL
+	if (ds && _x){
+		Sub_List * om_ds = (Sub_List *)ds;
+		OM_Node * node = (OM_Node*)_x;
+
+		switch(ID) {
+
+		case ENGLISH_ID:
+
+			if (om_ds->size_e == 0)
+			{
+				/// Change head->next to be this node
+				om_ds->head->next_e = node;
+
+				/// Change node->prev to be the head
+				node->prev_e = om_ds->head;
+			
+				/// Change node->next to be tail
+				node->next_e = om_ds->tail;
+
+				/// Change tail->prev to be this node
+				om_ds->tail->prev_e = node;
+
+				/// Assign unique node id
+//			node->id =global_node_count++;
+
+				/// Assign tag
+				node->tag_e = (om_ds->tail->tag_e >> 1);
+
+				/// Increment size of linked list
+				om_ds->size_e++;
+
+				/// Assign node to this ds
+				node->ds_e = om_ds;
+			}
+			else 	{
+				/// Debug code
+				/// If linked list has nodes already, exit. Don't let this be called
+				/// incorrectly and let code continue
+				printf("List is non-empty, dont call add first node\n");
+				exit(0);
+			}
+			break;
+		
+		case HEBREW_ID:
+
+			if (om_ds->size_h == 0)
+			{
+				/// Change head->next to be this node
+				om_ds->head->next_h = node;
+
+				/// Change node->prev to be the head
+				node->prev_h = om_ds->head;
+			
+				/// Change node->next to be tail
+				node->next_h = om_ds->tail;
+
+				/// Change tail->prev to be this node
+				om_ds->tail->prev_h = node;
+
+				/// Assign unique node id
+//			node->id =global_node_count++;
+
+				/// Assign tag
+				node->tag_h = (om_ds->tail->tag_h >> 1);
+
+				/// Increment size of linked list
+				om_ds->size_h++;
+
+				/// Assign node to this ds
+				node->ds_h = om_ds;
+			}
+			else 	{
+				/// Debug code
+				/// If linked list has nodes already, exit. Don't let this be called
+				/// incorrectly and let code continue
+				printf("List is non-empty, dont call add first node\n");
+				exit(0);
+			}
+			break;
+
+		}
+
+	}
+	else {
+		printf("Debug: appending null node or to null ds\n");
+	}
+
+
 #endif
 }
 
