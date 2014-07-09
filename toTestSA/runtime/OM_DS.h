@@ -38,7 +38,7 @@ typedef struct Bottom_List__s {
 	struct Bottom_List_s *prev;
 	int id;
 
-	unsigned long int tag_e, tag_h;
+	unsigned long int tag;
 
 
 } Bottom_List;

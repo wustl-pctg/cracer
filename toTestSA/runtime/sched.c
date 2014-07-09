@@ -2071,8 +2071,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 * Order Maintenance functions for race detection *
 **************************************************/
 
-#define WS_REF_ENG ws->context->Cilk_global_state->englishOM_DS
-#define WS_REF_HEB ws->context->Cilk_global_state->hebrewOM_DS
+#define WS_REF_DS->context->Cilk_global_state->OM_DS
 #define ENGLISH_ID 10
 #define HEBREW_ID 11
 
@@ -2125,7 +2124,7 @@ Top_List * Init_top_list ()
 	list->head->next_e = list->head->next_h = list->tail;
 
 	return list;
-}		/* -----  end of function init_top_list  ----- */
+}	
 
 /// Initializes the parameters of a bottom list
 Bottom_List * Init_bottom_list ()
@@ -2152,115 +2151,62 @@ Bottom_List * Init_bottom_list ()
 
 	return list;
 
-}		/* -----  end of function init_top_list  ----- */
+}
 
 /// Inserts a Bottom_List into a Top_List
 /// Bottom_List y is inserted after Bottom_List x in Top_List list
 /// param ID the Eng or Heb structure
-void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, const int ID, unsigned long TAG_SPACING_RELABEL, int * collision_detected)
+void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, unsigned long TAG_SPACING_RELABEL, int * collision_detected)
 {
 	///Debug: Double check that all vals are not null
 	assert(y != NULL && x != NULL && list != NULL);
 
-	switch ( ID ) {
-	case ENGLISH_ID:
-		if (TAG_SPACING_RELABEL != 0)
+	if (TAG_SPACING_RELABEL != 0)
+	{
+		y->tag  = x->tag  + TAG_SPACING_RELABEL;
+		//				y->tag  = (TAG_SPACING_RELABEL >> 1) + (x->tag  >> 1);
+		/// correct for adding two odd numbers
+//				if (TAG_SPACING_RELABEL & x->tag  & 0x1 == 0x1)
+//					y->tag ++;
+		if (y->tag  == x->tag  || y->tag  == TAG_SPACING_RELABEL)
 		{
-			y->tag_e = x->tag_e + TAG_SPACING_RELABEL;
-			//				y->tag_e = (TAG_SPACING_RELABEL >> 1) + (x->tag_e >> 1);
-			/// correct for adding two odd numbers
-//				if (TAG_SPACING_RELABEL & x->tag_e & 0x1 == 0x1)
-//					y->tag_e++;
-			if (y->tag_e == x->tag_e || y->tag_e == TAG_SPACING_RELABEL)
+			/// We have an issue, collision during rebalancing
 
-			{
-				/// We have an issue, collision during rebalancing
+			//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag , y->tag );
+			*collision_detected = 1;
 
-				//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_e, y->tag_e);
-				*collision_detected = 1;
-
-				//top_list_rebalance(list, y, ID);
-			}
+			//top_list_rebalance(list, y, ID);
 		}
-		else //We are inserting a new element into the list
+	}
+	else //We are inserting a new element into the list
+	{
+		y->tag  = ((x->next ->tag  >> 1) + (x->tag  >> 1));
+
+		/// correct for adding two odd numbers
+		if (x->next ->tag_h & x->tag  & 0x1 == 0x1)
+			y->tag ++;
+
+		/*if ( (y->tag  == x->tag ) ||  ( y->tag  == y->next ->tag  ))*/
+		if (x->next ->tag  - x->tag  <= 1)
 		{
-			y->tag_e = ((x->next_e->tag_e >> 1) + (x->tag_e >> 1));
-			/// correct for adding two odd numbers
-			if (x->next_e->tag_h & x->tag_e & 0x1 == 0x1)
-				y->tag_e++;
-
-			/*if ( (y->tag_e == x->tag_e) ||  ( y->tag_e == y->next_e->tag_e ))*/
-			if (x->next_e->tag_e - x->tag_e <= 1)
-			{
-				top_list_rebalance(list, x, ID);
-				/// Dont assign pointers, call insert again to put y after x
-				insert_top_list(list, x, y, ID, 0 , NULL);
-			}
-			else{
-				/// Reassign  prev/next pointers
-				y->prev_e = x;
-				y->next_e  = x->next_e;
-				x->next_e = y;
-				/// Update the next node after y's prev_e reference (change it to y)
-				y->next_e->prev_e = y;
-			}
-
-			/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
-			(list->size)++;
+			top_list_rebalance(list, x, ID);
+			/// Dont assign pointers, call insert again to put y after x
+			Insert_top_list(list, x, y, 0 , NULL);
 		}
-		break;
-
-	case HEBREW_ID:
-		if (TAG_SPACING_RELABEL != 0)
-		{
-			y->tag_h = (TAG_SPACING_RELABEL >> 1) + (x->tag_h >> 1);
-			/// correct for adding two odd numbers
-			if (TAG_SPACING_RELABEL & x->tag_h & 0x1 == 0x1)
-				y->tag_h++;
-
-			if (y->tag_h == x->tag_h || y->tag_h == TAG_SPACING_RELABEL)
-			{
-				/// We have an issue, collision during rebalancing
-				//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_h, y->tag_h);
-				*collision_detected = 1;
-				//top_list_rebalance(list, y, ID);
-			}
-
+		else{
+			/// Reassign  prev/next pointers
+			y->prev  = x;
+			y->next   = x->next ;
+			x->next  = y;
+			/// Update the next node after y's prev  reference (change it to y)
+			y->next ->prev  = y;
 		}
-		else //We are inserting a new element into the list
-		{
-			y->tag_h = ((x->next_h->tag_h >> 1) + (x->tag_h >> 1));
-			/// correct for adding two odd numbers
-			if (x->next_h->tag_h & x->tag_h & 0x1 == 0x1)
-				y->tag_h++;
 
-
-
-			/*if ( (y->tag_h == x->tag_h) ||  ( y->tag_h == y->next_h->tag_h ))*/
-			if (x->next_h->tag_h - x->tag_h <= 1)
-			{
-				top_list_rebalance(list, x, ID);
-				/// Dont assign pointers, call insert again to put y after x
-				insert_top_list(list, x, y, ID, 0 , NULL);
-			}
-			else {
-				/// Reassign  prev/next pointers
-				y->prev_h = x;
-				y->next_h  = x->next_h;
-				x->next_h = y;
-
-				/// Update the next node after y's prev_h reference (change it to y)
-				y->next_h->prev_h = y;
-/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
-				(list->size)++;
-			}
-		}
-		break;
-	default:
-		break;
-	}				/* -----  end switch  ----- */
+		/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
+		(list->size)++;
+	}
 	return ;
-}		/* -----  end of function insert_top_list  ----- */
+}
 
 /// Allocate memory and set variables
 void OM_DS_init(CilkContext *const context){
@@ -2272,7 +2218,7 @@ void OM_DS_init(CilkContext *const context){
 //#define OM_IS_LL
 #define OM_IS_BENDER
 
-	//Batchify works
+	// If Batchify works
 #define BATCHIFY_WORKING
 
 	if (context->Cilk_global_state){
@@ -2288,10 +2234,7 @@ void OM_DS_init(CilkContext *const context){
 		/// Add first node to top_list for eng & heb
 		Insert_top_list(context->Cilk_global_state->OM_DS,
 						context->Cilk_global_state->OM_DS->head,
-						bottom_list, ENGLISH_ID, 0, NULL);
-		Insert_top_list(context->Cilk_global_state->OM_DS,
-						context->Cilk_global_state->OM_DS->head,
-						bottom_list, HEBREW_ID, 0, NULL);
+						bottom_list, 0, NULL);
 	}
 }
 
@@ -2306,20 +2249,66 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 	;//printf("DEBUG:LL free nodes\n");
 
 	/// Assign node to head of english list
-	node = context->Cilk_global_state->englishOM_DS->head;
+	node = context->Cilk_global_state->OM_DS->head;
 
-	/// Move through english, freeing each node.
+	/// Move through only Bottom_List, freeing each node.
 	while(node != NULL){
-		nextNode = node->next_english;
+		nextNode = node->next_e;
 		Cilk_free(node);
 		node = nextNode;
 	}
+
 }
 
 
 /// Frees nodes of OM_DS
-void OM_free_nodes_internal(CilkContext *const context)
-{printf("DEBUG: OMDS free nodes -- NOT COMPLETED\n");}
+void OM_free_nodes_internal(CilkContext *const context) {
+
+	Top_List * top = context->Cilk_global_state->OM_DS; //!< Is freed in function that calls this
+	Bottom_List * current = top->head, * next;
+	OM_Node * node, * nextNode;
+
+	/// Iterate through the Bottom_Lists
+	while(current != top->tail) {
+
+		next = current->next;
+
+		/// Iterate through Nodes in Bottom_Lists
+		node = current->head;
+		while(node != current->tail){
+			nextNode = node->next_e;
+			Cilk_free(node); //!< Free the node
+			node = nextNode;
+		}
+		Cilk_free(node); //!< Free tail node
+	
+		Cilk_free(current); //!< Free the Bot_list
+		current = next;
+	}
+	Cilk_free(current); //!< Free the tail Bot_list
+
+}
+
+
+
+/// Frees the OM_DS in the context and all of the nodes within.
+void OM_DS_free_and_free_nodes(CilkContext *const context){
+#ifdef OM_IS_LL
+	/// Free nodes of linked list
+	OM_LL_free_nodes_internal(context);
+#elif OM_IS_BENDER
+	/// Free nodes of OM_DS
+	OM_free_nodes_internal(context);
+#else 
+	printf("No ds defined so failure to free.\n");
+	exit(10);
+#endif
+	///Debug message
+	;//printf("Debug: free OMDS\n");
+
+	/// Finally, free the Top_List
+	Cilk_free(context->Cilk_global_state->OM_DS);
+}
 
 
 /**** START EXP SECTION ****/
@@ -2522,8 +2511,7 @@ void mt_insertPar(CilkContext*const context,void*dataStruct,void*data,size_t siz
 
 
 
-/// Prints the linked list in english or hebrew ordering depending
-/// on the ID parameter passed in.
+/// Prints the bottom List
 void printList(Bottom_List * list, const int ID) {
     OM_Node * n;
     if (list && list->head)
@@ -2531,26 +2519,301 @@ void printList(Bottom_List * list, const int ID) {
     else
 		exit(10);
 	if( ID == HEBREW_ID)
-		printf("Hebrew : Head->");
+		printf("Hebrew format: ==ID(tag)->== Head:");
 	else
-		printf(" English: Head->");
+		printf("English format: ==ID(tag)->== Head:");
 
     while (n != NULL){
-		printf("%d->", n->id);
-		if (ID == HEBREW_ID)
-        	n = n->next_hebrew;
-		else	n = n->next_english;
+		if (ID == HEBREW_ID) {
+			printf("%d(%ul)->", n->id, n->tag_h);
+        	n = n->next_h;
+		}
+		else {
+			printf("%d(%ul)->", n->id, n->tag_e);
+			n = n->next_e;
+		}
     }
     printf("Tail\n");
 }
 
+/// Prints the Top List
+void print_top_list(Top_List *list){
+
+	Bottom_List * current = list->head;
+	printf("HEAD%u{ %lu}->", current->id, current->tag);
+
+	while(current != NULL)
+	{
+		printf("#%u{%lu}->", current->id, current->tag);
+		current = current->next;
+	}
+	printf("Tail\n\n\n");
+
+}
 
 
+/// Function that splits a sublist in half and adds second
+/// half to top list as a new sublist
+void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
+
+	OM_Node * current_e, * current_h, * middle_e, * middle_h, *iter_node;
+	int temp_e = 0, temp_h = 0;
+
+	/// New list to be inserted on top
+	Bottom_List * to_add = Init_bottom_list();
+
+	INT_BIT_SIZE =  32;
+
+	current_e = current_h = blist->head;
+
+	/// English
+	if ( blist->size_e > 1 && blist->Reorder_flag_e == 1) {
+
+		/// Iterate until middle
+		while(temp_e < blist->size_e/2 ) {
+			current_e = current_e->next_e;
+			++temp_e;
+		}
+
+		/// Hold middle_e as the middle
+		middle_e = current_e;
+
+		/// Take middle+1 and put it in new ds
+		current_e = current_e->next_e;
+		iter_node = current_e->next_e;
+		/// Insert first node
+		OM_DS_add_first_node(to_add, current_e, ENGLISH_ID);
+
+		/// Insert rest of second half into new ds
+		while(iter_node != blist->tail) {
+			/// Update iteration node (tmp) and the current node
+			current_e = iter_node;
+			iter_node = iter_node->next_e;
+
+			OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
+		}
+
+		/// Do some maintenence on the original ds
+		/// in preparation to reinsert nodes
+		current_e = blist->head->next_e;
+		blist->head->next_e = blist->tail;
+		blist->tail->prev_e = blist->head;
+		blist->size_e = 0;
+
+		/// Add "first" node
+		iter_node = current_e->next_e;
+
+		OM_DS_add_first_node(blist, current_e, ENGLISH_ID);
+
+		/// Reinsert until middle
+		while(iter_node != middle_e) {
+			current_e = iter_node;
+			iter_node = iter_node->next_e;
+
+			OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
+		}
+		current_e = iter_node;/// i.e. the middle_e node
+		OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
+
+		/// Update flags based on size
+		if(blist->size_e < (INT_BIT_SIZE >> 1) )
+			blist->Reorder_flag_e = 0;
+		else blist->Reorder_flag_e = 1;
+
+		if(to_add->size_e < (INT_BIT_SIZE >> 1) )
+			to_add->Reorder_flag_e = 0;
+		else to_add->Reorder_flag_e = 1;
+	}
+
+	/// Hebrew
+	if ( blist->size_h > 1 && blist->Reorder_flag_h == 1) {
+
+		/// Iterate until middle
+		while(temp_h < blist->size_h/2 ) {
+			current_h = current_h->next_h;
+			++temp_h;
+		}
+
+		/// Hold middle_h as the middle
+		middle_h = current_h;
+
+		/// Take middle+1 and put it in new ds
+		current_h = current_h->next_h;
+		iter_node = current_h->next_h;
+		/// Insert first node
+		OM_DS_add_first_node(to_add, current_h, HEBREW_ID);
+
+		/// Insert rest of second half into new ds
+		while(iter_node != blist->tail) {
+			/// Update iteration node (tmp) and the current node
+			current_h = iter_node;
+			iter_node = iter_node->next_h;
+
+			OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
+		}
+
+		/// Do some maintenence on the original ds
+		/// in preparation to reinsert nodes
+		current_h = blist->head->next_h;
+		blist->head->next_h = blist->tail;
+		blist->tail->prev_h = blist->head;
+		blist->size_h = 0;
+
+		/// Add "first" node
+		iter_node = current_h->next_h;
+
+		OM_DS_add_first_node(blist, current_h, HEBREW_ID);
+
+		/// Reinsert until middle
+		while(iter_node != middle_h) {
+			current_h = iter_node;
+			iter_node = iter_node->next_h;
+
+			OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
+		}
+		current_h = iter_node;/// i.e. the middle_h node
+		OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
+
+		/// Update flags based on size
+		if(blist->size_h < (INT_BIT_SIZE >> 1) )
+			blist->Reorder_flag_h = 0;
+		else blist->Reorder_flag_h = 1;
+
+		if(to_add->size_h < (INT_BIT_SIZE >> 1) )
+			to_add->Reorder_flag_h = 0;
+		else to_add->Reorder_flag_h = 1;
+
+		
+	}
+	
+	/// Insert into top list
+	Insert_top_list(tlist, blist, to_add, 0, NULL);
+}
+
+/// Iterate through the top list to find sublists needing reordered
+void Rebalance_bottom_lists(Top_List * list) {
+
+	/// The iterators
+	Bottom_List * current_e, * current_h;
+	current_e = current_h = list->head;
+
+	/// NOTE: Only eng/heb distinction for the flags, not top_list splits
+
+	/// English
+	while(current_e != list->tail) {
+		if(current_e->Reorder_flag_e == 1) ///< If 1, then needs split
+			Split_and_add_to_top(list, current_e);
+		current_e = current_e->next;
+	}
+
+	/// Hebrew
+	while(current_h != list->tail) {
+		if(current_h->Reorder_flag_h == 1) ///< If 1, then needs split
+			Split_and_add_to_top(list, current_h);
+		current_h = current_h->next;
+	}
+
+	
+}
+
+/// Relabels the range of nodes from x to y
+void tag_range_relabel (Top_List *list, Bottom_List *x, Bottom_List *y, const int ID, unsigned long tag_spacing )
+{
+	int collision_detected = 0, first_collision_flag = 0;
+	Bottom_List * tmp;
+	switch ( ID ) {
+		case ENGLISH_ID:
+		
+			while (x->next_e != y && x != list->tail){
+				/// insert x->next after x but with y->tag_e as the end tag
+				Insert_top_list(list, x, x->next_e, tag_spacing, &collision_detected);
+
+				if (!first_collision_flag && collision_detected)
+				{
+					first_collision_flag = 1;
+					tmp = x->next_e;
+				}
+				/// Move along x pointer
+				x = x->next_e;
+
+			}
+			if (collision_detected)///just trying rebalacing from the end
+				top_list_rebalance(list, y,ID);
+
+			break;
+
+		case HEBREW_ID:	
+
+			while (x->next_h != y && x != list->tail){
+				/// insert x->next after x but with y->tag_h as the end tag
+				Insert_top_list(list, x, x->next_h, y->tag_h, &collision_detected);
+
+				if (!first_collision_flag && collision_detected)
+				{
+					first_collision_flag = 1;
+					tmp = x->next_h;
+				}
+				/// Move along x pointer
+				x = x->next_h;
+
+			}
+			if (collision_detected)
+				top_list_rebalance(list, tmp, ID);
+			break;
+
+		default:	
+			break;
+	}				/* -----  end switch  ----- */
+	return ;
+}		/* -----  end of function tag_range_relabel  ----- */
+
+/// Rebalances the list according to Bender's algorithm around pivot
+void top_list_rebalance(Top_List * list, Bottom_List *pivot, const int ID)
+{
+	Bottom_List *lList = pivot, *rList = pivot;
+	double overflow_density, overflow_threshold;
+	unsigned long enclosing_tag_range, num_elements_in_sublist = 2;
+	double i = -1;
+
+	switch ( ID ) {
+		case ENGLISH_ID:	
+				/// We assume l/rList are not NULL since the list will have at least 3 elements
+			do	/// Check if range is in overflow
+			{
+				/// Move overflow list head and tail outward
+				if (lList->prev_e){
+					num_elements_in_sublist++;
+					lList = lList->prev_e;
+				}
+				if (rList->next_e){
+					num_elements_in_sublist++;
+					rList = rList->next_e;
+				}
+				/// Calculate overflow_density
+				enclosing_tag_range = rList->tag_e - lList->tag_e;
+
+				i = ceil( log2((double)enclosing_tag_range) );
+				overflow_threshold = pow(list->overflow_constant, -1.0 * i); 
+
+				overflow_density = (num_elements_in_sublist/ (double)enclosing_tag_range ) ;
+			}
+			while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && (lList != list->head || rList != list->tail));
+			//printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
+			/// rebalance subsection of top_list
+			long t =  (unsigned long)((enclosing_tag_range - 1 ) / (num_elements_in_sublist)) ;
+			assert(t>0);
+			tag_range_relabel(list, lList, rList, ENGLISH_ID, t );
+
+			break;
+				default:	
+			break;
+	}				/* -----  end switch  ----- */
+	
+	return ;
+}		/* -----  end of function top_list_rebalance(Top_List * list, Bottom_List *pivot, const int ID)  ----- */
 
 
-
-
-
+#ifdef OM_IS_LL
 void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y, const int ID){
 
 #ifdef BATCHIFY_WORKING
@@ -2613,26 +2876,97 @@ void OM_DS_insert(CilkWorkerState *const ws, OM_DS *ds, OM_Node * x, OM_Node * y
 #endif
 }
 
-/// Frees the OM_DS in the context and all of the nodes within.
-void OM_DS_free_and_free_nodes(CilkContext *const context){
-#ifdef OM_IS_LL
-	/// Free nodes of linked list
-	OM_LL_free_nodes_internal(context);
-#else
-	/// Free nodes of OM_DS
-	OM_free_nodes_internal(context);
-#endif
-	///Debug message
-	;//printf("Debug: free OMDS\n");
+#elif OM_IS_BENDER
+/// Insert y after x into appropriate list based on ID
+/// Returns 1 if full and needs reorderd immediately and 0 otherwise
+int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int ID){
 
-	///Free the english and hebrew OM_DS
-	Cilk_free(context->Cilk_global_state->hebrewOM_DS);
-	Cilk_free(context->Cilk_global_state->englishOM_DS);
+	Bottom_List * ds;
+
+	INT_BIT_SIZE =  32;
+
+	switch(ID){
+	case HEBREW_ID:
+
+		/// Retrieve the data structure known node
+		ds = x->ds_h;
+	
+		/// Update the ds y is in 
+		y->ds_h = ds;
+
+		//if x is null
+		if (!(x && y && ds) ){
+			printf("Some node or ds is null,\
+               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+				   x->id, x, y->id, y, ds->tail->id, ds->tail);
+			return 0 ;
+		}
+
+		
+		/// This is the procedure:
+		y->next_h = x->next_h;
+		x->next_h->prev_h = y;
+		x->next_h = y;
+		y->prev_h = x;
+		
+		/// Assign y's tag
+		y->tag_h = ((y->next_h->tag_h >> 1) + (y->prev_h->tag_h >> 1));
+		
+
+		if( !(ds->size_h < (INT_BIT_SIZE >> 1) ) )
+			ds->Reorder_flag_h = 1;
+
+		ds->size_h++;
+
+		if(ds->size_h == INT_BIT_SIZE)
+			return 1; ///< Needs to be split
+		return 0; ///< Doesn't needs immediately split
+
+		break;
+
+	case ENGLISH_ID:
+
+		/// Retrieve the data structure known node
+		ds = x->ds_e;
+	
+		/// Update the ds y is in 
+		y->ds_e = ds;
+
+		//if x is null
+		if (!(x && y && ds) ){
+			printf("Some node or ds is null,\
+               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+				   x->id, x, y->id, y, ds->tail->id, ds->tail);
+			return 1;
+		}
+
+		/// This is the procedure:
+		y->next_e = x->next_e;
+		x->next_e->prev_e = y;
+		x->next_e = y;
+		y->prev_e = x;
+		
+		/// Assign y's tag
+		y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
+
+		if( !(ds->size_e < (INT_BIT_SIZE >> 1) ) )
+	  		ds->Reorder_flag_e = 1;
+
+		ds->size_e++;
+
+		if(ds->size_e == INT_BIT_SIZE)
+			return 1; ///< Needs to be split
+		return 0; ///< Doesn't needs immediately split
+
+	}
+
+	/// Specific number for checks
+	return 100;
 
 }
+#endif
 
-
-/* LINKED LIST APPEND VERSION - HAD TROUBLE WITH MACROS WORKING *******************
+#ifdef OM_IS_LL
 /// This is called in the initialization of cilk
 /// Add the first node to the OM_DS
 void OM_DS_add_first_node(void *ds, void * _x){
@@ -2670,8 +3004,8 @@ printf("Debug: appending null node or to null ds\n");
 }
 }
 
-*/
 
+#elif OM_IS_BENDER
 /// This is called in the initialization of cilk
 /// Add the first node to the OM_DS
 void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
@@ -2763,6 +3097,7 @@ void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
 	else
 		printf("Debug: appending null node or to null ds\n");
 }
+#endif
 
 /// Within the void *ds, depending on macros defined in main, determine the order
 /// of x and y. If x <= y, return true. Otherwise, return false.
@@ -2791,9 +3126,9 @@ int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
 		else if (current == _x)
 			return 1;
 		else if (ID == ENGLISH_ID)
-			current = current->next_english;
+			current = current->next_e;
 		else if (ID == HEBREW_ID)
-			current = current->next_hebrew;
+			current = current->next_h;
 	} while( current != ((Bottom_List*)ds)->tail);
 
 	/// Debug code, to ensure we are not getting false or true by calling order
@@ -2912,14 +3247,14 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 		;*/
 
 /// Insert {current, spawned function, continuation node} into the english OM_DS
-	OM_DS_insert(ws, WS_REF_ENG, frame->current_node, spawned_func_node, 	ENGLISH_ID);
-	OM_DS_insert(ws, WS_REF_ENG, spawned_func_node, cont_node, 			ENGLISH_ID);
-	if (post_sync_node) OM_DS_insert(ws, WS_REF_ENG, cont_node, post_sync_node,	ENGLISH_ID);
+	OM_DS_insert(ws, WS_REF_DS, frame->current_node, spawned_func_node, 	ENGLISH_ID);
+	OM_DS_insert(ws, WS_REF_DS, spawned_func_node, cont_node, 			ENGLISH_ID);
+	if (post_sync_node) OM_DS_insert(ws, WS_REF_DS, cont_node, post_sync_node,	ENGLISH_ID);
 
 /// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-	OM_DS_insert(ws, WS_REF_HEB, frame->current_node, cont_node, 			HEBREW_ID);
-	OM_DS_insert(ws, WS_REF_HEB, cont_node, spawned_func_node, 				HEBREW_ID);
-	if (post_sync_node) OM_DS_insert(ws, WS_REF_HEB, spawned_func_node, post_sync_node, HEBREW_ID);
+	OM_DS_insert(ws, WS_REF_DS, frame->current_node, cont_node, 			HEBREW_ID);
+	OM_DS_insert(ws, WS_REF_DS, cont_node, spawned_func_node, 				HEBREW_ID);
+	if (post_sync_node) OM_DS_insert(ws, WS_REF_DS, spawned_func_node, post_sync_node, HEBREW_ID);
 /// If we had updates to post_sync_node, reset the frame's post_sync_node
 	if (post_sync_node) frame->post_sync_node = post_sync_node;
 
@@ -2934,8 +3269,8 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	frame->next_spawned_node = spawned_func_node;
 
 /// Used for debug
-	;//printList(WS_REF_ENG, ENGLISH_ID);
-	;//printList(WS_REF_HEB, HEBREW_ID);
+	;//printList(WS_REF_DS, ENGLISH_ID);
+	;//printList(WS_REF_DS, HEBREW_ID);
 
 
 }
@@ -3153,11 +3488,11 @@ void Race_detect_read_b(CilkWorkerState * const ws,
 			&&
 			(
 				//(1)
-				(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
+				(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_DS, mem->left_w, currentNode, HEBREW_ID))
 				||  //(2)
-				(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
+				(OM_DS_order(WS_REF_DS, mem->left_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_DS, currentNode, mem->left_w, HEBREW_ID))
 				)
 			)
 		||
@@ -3166,11 +3501,11 @@ void Race_detect_read_b(CilkWorkerState * const ws,
 			&&
 			(
 				//(3)
-				(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
+				(OM_DS_order(WS_REF_DS, currentNode, mem->right_w, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_DS, mem->right_w, currentNode, HEBREW_ID))
 				||  //(4)
-				(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+				(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_DS, currentNode, mem->right_w, HEBREW_ID))
 				)
 			)
 		)
@@ -3186,9 +3521,9 @@ void Race_detect_read_b(CilkWorkerState * const ws,
 
 	;//printf("Debug: Left_r: %i  right_r: %i and current: %i\n", mem->left_r->id, mem->right_r->id, currentNode->id);
 	//! Update nodes (if necessary)
-	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
+	if(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID))
 		mem->left_r = currentNode;
-	if(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID))
+	if(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID))
 		mem->right_r = currentNode;
 
 	//! Write the data into holder
@@ -3258,11 +3593,11 @@ void Race_detect_read(CilkWorkerState * const ws,
 			&&
 			(
 				//(1)
-				(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
+				(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_DS, mem->left_w, currentNode, HEBREW_ID))
 				||  //(2)
-				(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
+				(OM_DS_order(WS_REF_DS, mem->left_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_DS, currentNode, mem->left_w, HEBREW_ID))
 				)
 			)
 		||
@@ -3271,11 +3606,11 @@ void Race_detect_read(CilkWorkerState * const ws,
 			&&
 			(
 				//(3)
-				(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
+				(OM_DS_order(WS_REF_DS, currentNode, mem->right_w, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_DS, mem->right_w, currentNode, HEBREW_ID))
 				||  //(4)
-				(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+				(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(WS_REF_DS, currentNode, mem->right_w, HEBREW_ID))
 				)
 			)
 		)
@@ -3285,9 +3620,9 @@ void Race_detect_read(CilkWorkerState * const ws,
 	}
 
 	//! Update nodes (if necessary)
-	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID))
+	if(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID))
 		mem->left_r = currentNode;
-	if(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID))
+	if(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID))
 		mem->right_r = currentNode;
 
 	//! Write the data into holder
@@ -3346,11 +3681,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(5)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->left_r, currentNode, HEBREW_ID))
 					||  //(6)
-					(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->left_r, HEBREW_ID))
 					)
 				)
 			||
@@ -3359,11 +3694,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(7)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->right_r, currentNode, HEBREW_ID))
 					||  //(8)
-					(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->right_r, HEBREW_ID))
 					)
 				)
 			)
@@ -3442,11 +3777,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(1)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->left_w, currentNode, HEBREW_ID))
 					||  //(2)
-					(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->left_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->left_w, HEBREW_ID))
 					)
 				)
 			||
@@ -3455,11 +3790,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(3)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->right_w, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->right_w, currentNode, HEBREW_ID))
 					||  //(4)
-					(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->right_w, HEBREW_ID))
 					)
 				)
 			)
@@ -3473,11 +3808,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(5)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->left_r, currentNode, HEBREW_ID))
 					||  //(6)
-					(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->left_r, HEBREW_ID))
 					)
 				)
 			||
@@ -3486,11 +3821,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(7)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->right_r, currentNode, HEBREW_ID))
 					||  //(8)
-					(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->right_r, HEBREW_ID))
 					)
 				)
 			)
@@ -3507,9 +3842,9 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 
 	;//printf("Debug: Left_w: %i  right_w: %i and current: %i\n", mem->left_w->id, mem->right_w->id, currentNode->id);
 	//! Update nodes (if necessary)
-	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
+	if(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID))
 		mem->left_w = currentNode;
-	if(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID))
+	if(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID))
 		mem->right_w = currentNode;
 
 	//! Write the data
@@ -3564,11 +3899,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(5)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->left_r, currentNode, HEBREW_ID))
 					||  //(6)
-					(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->left_r, HEBREW_ID))
 					)
 				)
 			||
@@ -3577,11 +3912,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(7)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->right_r, currentNode, HEBREW_ID))
 					||  //(8)
-					(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->right_r, HEBREW_ID))
 					)
 				)
 			)
@@ -3655,11 +3990,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(1)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->left_w, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->left_w, currentNode, HEBREW_ID))
 					||  //(2)
-					(OM_DS_order(WS_REF_ENG, mem->left_w, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_w, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->left_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->left_w, HEBREW_ID))
 					)
 				)
 			||
@@ -3668,11 +4003,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(3)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_w, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->right_w, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->right_w, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->right_w, currentNode, HEBREW_ID))
 					||  //(4)
-					(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_w, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->right_w, HEBREW_ID))
 					)
 				)
 			)
@@ -3686,11 +4021,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(5)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->left_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->left_r, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->left_r, currentNode, HEBREW_ID))
 					||  //(6)
-					(OM_DS_order(WS_REF_ENG, mem->left_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->left_r, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->left_r, HEBREW_ID))
 					)
 				)
 			||
@@ -3699,11 +4034,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(7)
-					(OM_DS_order(WS_REF_ENG, currentNode, mem->right_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, mem->right_r, currentNode, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, mem->right_r, currentNode, HEBREW_ID))
 					||  //(8)
-					(OM_DS_order(WS_REF_ENG, mem->right_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_HEB, currentNode, mem->right_r, HEBREW_ID))
+					(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(WS_REF_DS, currentNode, mem->right_r, HEBREW_ID))
 					)
 				)
 			)
@@ -3714,9 +4049,9 @@ void Race_detect_write(CilkWorkerState * const ws,
 	}
 
 	//! Update nodes (if necessary)
-	if(OM_DS_order(WS_REF_ENG, currentNode, mem->left_w, ENGLISH_ID))
+	if(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID))
 		mem->left_w = currentNode;
-	if(OM_DS_order(WS_REF_ENG, mem->right_w, currentNode, ENGLISH_ID))
+	if(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID))
 		mem->right_w = currentNode;
 
 	//! Write the data
