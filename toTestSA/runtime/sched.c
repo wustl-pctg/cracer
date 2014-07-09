@@ -2071,7 +2071,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 * Order Maintenance functions for race detection *
 **************************************************/
 
-#define WS_REF_DS->context->Cilk_global_state->OM_DS
+/*#define WS_REF_DS->context->Cilk_global_state->OM_DS*/
 #define ENGLISH_ID 10
 #define HEBREW_ID 11
 
@@ -3067,7 +3067,7 @@ void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
 /// Within the void *ds, depending on macros defined in main, determine the order
 /// of x and y. If x <= y, return true. Otherwise, return false.
 /// Note: the ID will determine which ordering to follow (english or hebrew)
-int OM_DS_order(void *ds, void * _x, void * _y, const int ID){
+int OM_DS_order(/*void *ds, if OM_IS_LL*/ void * _x, void * _y, const int ID){
 #ifdef OM_IS_LL
 	///Temp node to hold current node
 	OM_Node * current;
@@ -3212,14 +3212,14 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 		;*/
 
 /// Insert {current, spawned function, continuation node} into the english OM_DS
-	OM_DS_insert(ws, WS_REF_DS, frame->current_node, spawned_func_node, 	ENGLISH_ID);
-	OM_DS_insert(ws, WS_REF_DS, spawned_func_node, cont_node, 			ENGLISH_ID);
-	if (post_sync_node) OM_DS_insert(ws, WS_REF_DS, cont_node, post_sync_node,	ENGLISH_ID);
+	OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID);
+	OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID);
+	if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID);
 
 /// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-	OM_DS_insert(ws, WS_REF_DS, frame->current_node, cont_node, 			HEBREW_ID);
-	OM_DS_insert(ws, WS_REF_DS, cont_node, spawned_func_node, 				HEBREW_ID);
-	if (post_sync_node) OM_DS_insert(ws, WS_REF_DS, spawned_func_node, post_sync_node, HEBREW_ID);
+	OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID);
+	OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID);
+	if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID);
 /// If we had updates to post_sync_node, reset the frame's post_sync_node
 	if (post_sync_node) frame->post_sync_node = post_sync_node;
 
@@ -3234,8 +3234,8 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	frame->next_spawned_node = spawned_func_node;
 
 /// Used for debug
-	;//printList(WS_REF_DS, ENGLISH_ID);
-	;//printList(WS_REF_DS, HEBREW_ID);
+	;//printList(/*WS_REF_DS,*/ ENGLISH_ID);
+	;//printList(/*WS_REF_DS,*/ HEBREW_ID);
 
 
 }
@@ -3453,11 +3453,11 @@ void Race_detect_read_b(CilkWorkerState * const ws,
 			&&
 			(
 				//(1)
-				(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_DS, mem->left_w, currentNode, HEBREW_ID))
+				(OM_DS_order(/*WS_REF_DS*/, currentNode, mem->left_w, ENGLISH_ID) &&
+				 OM_DS_order(/*WS_REF_DS,*/ mem->left_w, currentNode, HEBREW_ID))
 				||  //(2)
-				(OM_DS_order(WS_REF_DS, mem->left_w, currentNode, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_DS, currentNode, mem->left_w, HEBREW_ID))
+				(OM_DS_order(/*WS_REF_DS,*/ mem->left_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_w, HEBREW_ID))
 				)
 			)
 		||
@@ -3466,11 +3466,11 @@ void Race_detect_read_b(CilkWorkerState * const ws,
 			&&
 			(
 				//(3)
-				(OM_DS_order(WS_REF_DS, currentNode, mem->right_w, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_DS, mem->right_w, currentNode, HEBREW_ID))
+				(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_w, ENGLISH_ID) &&
+				 OM_DS_order(/*WS_REF_DS,*/ mem->right_w, currentNode, HEBREW_ID))
 				||  //(4)
-				(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_DS, currentNode, mem->right_w, HEBREW_ID))
+				(OM_DS_order(/*WS_REF_DS,*/ mem->right_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_w, HEBREW_ID))
 				)
 			)
 		)
@@ -3486,9 +3486,9 @@ void Race_detect_read_b(CilkWorkerState * const ws,
 
 	;//printf("Debug: Left_r: %i  right_r: %i and current: %i\n", mem->left_r->id, mem->right_r->id, currentNode->id);
 	//! Update nodes (if necessary)
-	if(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID))
+	if(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_r, ENGLISH_ID))
 		mem->left_r = currentNode;
-	if(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID))
+	if(OM_DS_order(/*WS_REF_DS,*/ mem->right_r, currentNode, ENGLISH_ID))
 		mem->right_r = currentNode;
 
 	//! Write the data into holder
@@ -3558,11 +3558,11 @@ void Race_detect_read(CilkWorkerState * const ws,
 			&&
 			(
 				//(1)
-				(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_DS, mem->left_w, currentNode, HEBREW_ID))
+				(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_w, ENGLISH_ID) &&
+				 OM_DS_order(/*WS_REF_DS,*/ mem->left_w, currentNode, HEBREW_ID))
 				||  //(2)
-				(OM_DS_order(WS_REF_DS, mem->left_w, currentNode, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_DS, currentNode, mem->left_w, HEBREW_ID))
+				(OM_DS_order(/*WS_REF_DS,*/ mem->left_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_w, HEBREW_ID))
 				)
 			)
 		||
@@ -3571,11 +3571,11 @@ void Race_detect_read(CilkWorkerState * const ws,
 			&&
 			(
 				//(3)
-				(OM_DS_order(WS_REF_DS, currentNode, mem->right_w, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_DS, mem->right_w, currentNode, HEBREW_ID))
+				(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_w, ENGLISH_ID) &&
+				 OM_DS_order(/*WS_REF_DS,*/ mem->right_w, currentNode, HEBREW_ID))
 				||  //(4)
-				(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID) &&
-				 OM_DS_order(WS_REF_DS, currentNode, mem->right_w, HEBREW_ID))
+				(OM_DS_order(/*WS_REF_DS,*/ mem->right_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_w, HEBREW_ID))
 				)
 			)
 		)
@@ -3585,9 +3585,9 @@ void Race_detect_read(CilkWorkerState * const ws,
 	}
 
 	//! Update nodes (if necessary)
-	if(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID))
+	if(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_r, ENGLISH_ID))
 		mem->left_r = currentNode;
-	if(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID))
+	if(OM_DS_order(/*WS_REF_DS,*/ mem->right_r, currentNode, ENGLISH_ID))
 		mem->right_r = currentNode;
 
 	//! Write the data into holder
@@ -3646,11 +3646,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(5)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->left_r, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->left_r, currentNode, HEBREW_ID))
 					||  //(6)
-					(OM_DS_order(WS_REF_DS, mem->left_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->left_r, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_r, HEBREW_ID))
 					)
 				)
 			||
@@ -3659,11 +3659,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(7)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->right_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->right_r, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->right_r, currentNode, HEBREW_ID))
 					||  //(8)
-					(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->right_r, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_r, HEBREW_ID))
 					)
 				)
 			)
@@ -3742,11 +3742,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(1)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->left_w, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_w, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->left_w, currentNode, HEBREW_ID))
 					||  //(2)
-					(OM_DS_order(WS_REF_DS, mem->left_w, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->left_w, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->left_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_w, HEBREW_ID))
 					)
 				)
 			||
@@ -3755,11 +3755,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(3)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->right_w, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->right_w, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_w, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->right_w, currentNode, HEBREW_ID))
 					||  //(4)
-					(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->right_w, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->right_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_w, HEBREW_ID))
 					)
 				)
 			)
@@ -3773,11 +3773,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(5)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->left_r, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->left_r, currentNode, HEBREW_ID))
 					||  //(6)
-					(OM_DS_order(WS_REF_DS, mem->left_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->left_r, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_r, HEBREW_ID))
 					)
 				)
 			||
@@ -3786,11 +3786,11 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 				&&
 				(
 					//(7)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->right_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->right_r, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->right_r, currentNode, HEBREW_ID))
 					||  //(8)
-					(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->right_r, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_r, HEBREW_ID))
 					)
 				)
 			)
@@ -3807,9 +3807,9 @@ void Race_detect_write_b(CilkWorkerState * const ws,
 
 	;//printf("Debug: Left_w: %i  right_w: %i and current: %i\n", mem->left_w->id, mem->right_w->id, currentNode->id);
 	//! Update nodes (if necessary)
-	if(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID))
+	if(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_w, ENGLISH_ID))
 		mem->left_w = currentNode;
-	if(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID))
+	if(OM_DS_order(/*WS_REF_DS,*/ mem->right_w, currentNode, ENGLISH_ID))
 		mem->right_w = currentNode;
 
 	//! Write the data
@@ -3864,11 +3864,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(5)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->left_r, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->left_r, currentNode, HEBREW_ID))
 					||  //(6)
-					(OM_DS_order(WS_REF_DS, mem->left_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->left_r, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_r, HEBREW_ID))
 					)
 				)
 			||
@@ -3877,11 +3877,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(7)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->right_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->right_r, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->right_r, currentNode, HEBREW_ID))
 					||  //(8)
-					(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->right_r, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_r, HEBREW_ID))
 					)
 				)
 			)
@@ -3955,11 +3955,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(1)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->left_w, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_w, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->left_w, currentNode, HEBREW_ID))
 					||  //(2)
-					(OM_DS_order(WS_REF_DS, mem->left_w, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->left_w, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->left_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_w, HEBREW_ID))
 					)
 				)
 			||
@@ -3968,11 +3968,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(3)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->right_w, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->right_w, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_w, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->right_w, currentNode, HEBREW_ID))
 					||  //(4)
-					(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->right_w, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->right_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_w, HEBREW_ID))
 					)
 				)
 			)
@@ -3986,11 +3986,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(5)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->left_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->left_r, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->left_r, currentNode, HEBREW_ID))
 					||  //(6)
-					(OM_DS_order(WS_REF_DS, mem->left_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->left_r, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_r, HEBREW_ID))
 					)
 				)
 			||
@@ -3999,11 +3999,11 @@ void Race_detect_write(CilkWorkerState * const ws,
 				&&
 				(
 					//(7)
-					(OM_DS_order(WS_REF_DS, currentNode, mem->right_r, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, mem->right_r, currentNode, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ mem->right_r, currentNode, HEBREW_ID))
 					||  //(8)
-					(OM_DS_order(WS_REF_DS, mem->right_r, currentNode, ENGLISH_ID) &&
-					 OM_DS_order(WS_REF_DS, currentNode, mem->right_r, HEBREW_ID))
+					(OM_DS_order(/*WS_REF_DS,*/ mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->right_r, HEBREW_ID))
 					)
 				)
 			)
@@ -4014,9 +4014,9 @@ void Race_detect_write(CilkWorkerState * const ws,
 	}
 
 	//! Update nodes (if necessary)
-	if(OM_DS_order(WS_REF_DS, currentNode, mem->left_w, ENGLISH_ID))
+	if(OM_DS_order(/*WS_REF_DS,*/ currentNode, mem->left_w, ENGLISH_ID))
 		mem->left_w = currentNode;
-	if(OM_DS_order(WS_REF_DS, mem->right_w, currentNode, ENGLISH_ID))
+	if(OM_DS_order(/*WS_REF_DS,*/ mem->right_w, currentNode, ENGLISH_ID))
 		mem->right_w = currentNode;
 
 	//! Write the data

@@ -44,7 +44,6 @@ typedef struct Bottom_List__s {
 } Bottom_List;
 
 typedef struct InsertRecord_s{
-	OM_DS *ds;
 	OM_Node *x;
 	OM_Node *y;
 	int ID;
