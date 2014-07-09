@@ -49,7 +49,8 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-		 if (OM_DS_insert(nodeArray[i - 1], nodeArray[i], ENGLISH_ID))
+		j = rand() % i;
+		if (OM_DS_insert(nodeArray[j], nodeArray[i], ENGLISH_ID))
 		 {
 			 /*printf("TEST: splitting and adding to top at test index %i\n", i);*/
 
@@ -57,7 +58,7 @@ int main ( int argc, char *argv[] )
 			Rebalance_bottom_lists(list);
 		 }
 
-		if (OM_DS_insert(nodeArray[i - 1], nodeArray[i], HEBREW_ID))
+		if (OM_DS_insert(nodeArray[j], nodeArray[i], HEBREW_ID))
 		{
 			/*printf("TEST: splitting and adding to top at test index %i\n", i);*/
 

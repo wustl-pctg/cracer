@@ -91,7 +91,7 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 	current_e = current_h = blist->head;
 
 	/// English
-	if ( blist->size_e > 1) {
+	if ( blist->size_e > 1 && blist->Reorder_flag_e == 1) {
 
 		/// Iterate until middle
 		while(temp_e < blist->size_e/2 ) {
@@ -152,7 +152,7 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 	}
 
 	/// Hebrew
-	if ( blist->size_h > 1) {
+	if ( blist->size_h > 1 && blist->Reorder_flag_h == 1) {
 
 		/// Iterate until middle
 		while(temp_h < blist->size_h/2 ) {
