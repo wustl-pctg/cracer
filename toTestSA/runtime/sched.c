@@ -2988,7 +2988,7 @@ void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
 
 	/// Enter if ds and x are not NULL
 	if (ds && _x){
-		Sub_List * om_ds = (Sub_List *)ds;
+		Bottom_List * om_ds = (Bottom_List *)ds;
 		OM_Node * node = (OM_Node*)_x;
 
 		switch(ID) {
@@ -3134,8 +3134,8 @@ int OM_DS_order(/*void *ds, if OM_IS_LL*/ void * _x, void * _y, const int ID){
 		y_bl = y->ds_h;
 
 		/// If the nodes are in different lists, compare the list tags
-		if(x_bl->tag_h != y_bl->tag_h)
-			if(x_bl->tag_h > y_bl->tag_h) return 0; else return 1;
+		if(x_bl->tag != y_bl->tag)
+			if(x_bl->tag > y_bl->tag) return 0; else return 1;
 
 		/// Otherwise just check them directly
 		else
@@ -3148,8 +3148,8 @@ int OM_DS_order(/*void *ds, if OM_IS_LL*/ void * _x, void * _y, const int ID){
 		y_bl = y->ds_e;
 
 		/// If the nodes are in different lists, compare the list tags
-		if(x_bl->tag_e != y_bl->tag_e)
-			if(x_bl->tag_e > y_bl->tag_e) return 0; else return 1;
+		if(x_bl->tag != y_bl->tag)
+			if(x_bl->tag > y_bl->tag) return 0; else return 1;
 
 		/// Otherwise just check them directly
 		else
