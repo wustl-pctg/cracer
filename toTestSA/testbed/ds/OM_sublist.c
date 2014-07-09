@@ -125,14 +125,18 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 		blist->size_e = 0;
 
 		/// Add "first" node
+		iter_node = current_e->next_e;
+
 		OM_DS_add_first_node(blist, current_e, ENGLISH_ID);
-		current_e = current_e->next_e;
 
 		/// Reinsert until middle
-		while(current_e != middle_e) {
+		while(iter_node != middle_e) {
+			current_e = iter_node;
+			iter_node = iter_node->next_e;
+
 			OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
-			current_e = current_e->next_e;
 		}
+		current_e = iter_node;/// i.e. the middle_e node
 		OM_DS_insert(current_e->prev_e, current_e, ENGLISH_ID);
 
 		/// Update flags based on size
@@ -155,7 +159,7 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 			current_h = current_h->next_h;
 			++temp_h;
 		}
-		
+
 		/// Hold middle_h as the middle
 		middle_h = current_h;
 
@@ -163,7 +167,7 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 		current_h = current_h->next_h;
 		iter_node = current_h->next_h;
 		/// Insert first node
-		OM_DS_add_first_node(to_add, current_h, ENGLISH_ID);
+		OM_DS_add_first_node(to_add, current_h, HEBREW_ID);
 
 		/// Insert rest of second half into new ds
 		while(iter_node != blist->tail) {
@@ -171,9 +175,8 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 			current_h = iter_node;
 			iter_node = iter_node->next_h;
 
-			OM_DS_insert(current_h->prev_h, current_h, ENGLISH_ID);
+			OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
 		}
-
 
 		/// Do some maintenence on the original ds
 		/// in preparation to reinsert nodes
@@ -183,15 +186,19 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 		blist->size_h = 0;
 
 		/// Add "first" node
+		iter_node = current_h->next_h;
+
 		OM_DS_add_first_node(blist, current_h, HEBREW_ID);
 
 		/// Reinsert until middle
-		while(current_h != middle_h) {
-			OM_DS_insert(current_h, current_h->next_h, HEBREW_ID);
-			current_h = current_h->next_h;
+		while(iter_node != middle_h) {
+			current_h = iter_node;
+			iter_node = iter_node->next_h;
+
+			OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
 		}
-		/// Insert old middle into the end of the first list
-		OM_DS_insert(middle_h->prev_h, middle_h, HEBREW_ID);
+		current_h = iter_node;/// i.e. the middle_h node
+		OM_DS_insert(current_h->prev_h, current_h, HEBREW_ID);
 
 		/// Update flags based on size
 		if(blist->size_h < (INT_BIT_SIZE >> 1) )
@@ -201,9 +208,10 @@ void Split_and_add_to_top(Top_List * tlist, OM_DS * blist) {
 		if(to_add->size_h < (INT_BIT_SIZE >> 1) )
 			to_add->Reorder_flag_h = 0;
 		else to_add->Reorder_flag_h = 1;
+
 		
 	}
-
+	
 	/// Insert into top list
 	insert_top_list(tlist, blist, to_add, ENGLISH_ID, 0, NULL);
 
