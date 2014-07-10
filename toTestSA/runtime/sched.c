@@ -2261,7 +2261,7 @@ void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
 	if (ds && _x){
 		Bottom_List * om_ds = (Bottom_List *)ds;
 		OM_Node * node = (OM_Node*)_x;
-		if ((ID == ENGLISH_ID && om_ds->size_e == 0 ) || (ID == HEBREW_ID && om_ds->size_h == 0))
+		if ( om_ds->size_e == 0 && om_ds->size_h == 0)
 		{
 			/// Assign head and tail to new node
 			om_ds->tail = om_ds->head = node;
@@ -2272,11 +2272,11 @@ void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
 			/// Assign unique node id
 			node->id =global_node_count++;
 
-			/// Increment size of linked list
-			if ( (ID == ENGLISH_ID)  )
-				om_ds->size_e = 1;
-			if (ID == HEBREW_ID)
+			/// Assign the node' data structure reference to om_ds passed in
+			node->ds_e = node->ds_h = om_ds;
 
+			/// Increment size of linked list
+			om_ds->size_e = 1;
 			om_ds->size_h = 1;
 		}
 		else 	{
@@ -2736,9 +2736,9 @@ void OM_DS_insert(CilkWorkerState *const ws,/* Bottom_List *ds,*/ OM_Node * x, O
 
 	Bottom_List * ds;
 	if (ID == HEBREW_ID)
-		ds = x->ds_h;
+		ds = y->ds_h = x->ds_h;
 	else
-		ds = x->ds_e;
+		ds = y->ds_e = x->ds_e;
 
 #ifdef BATCHIFY_WORKING
 	/// Batchify insert
@@ -2768,7 +2768,7 @@ void OM_DS_insert(CilkWorkerState *const ws,/* Bottom_List *ds,*/ OM_Node * x, O
 	switch(ID){
 	case HEBREW_ID:
 		//if x->next is null, x  is tail
-		if (!(x->next_h))
+		if ((x->next_h) == NULL)
 			ds->tail = y;
 
 		//change next pointers
