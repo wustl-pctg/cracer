@@ -41,7 +41,7 @@ void print_top_list(Top_List *list){
  */
 void check_correctness (Top_List * list){
 	OM_DS * current = list->head;
-
+	
 	while (current != list->tail){
 		assert(current->tag_e < current->next_e->tag_e);
 
@@ -71,7 +71,7 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID, unsign
 	switch ( ID ) {
 		case ENGLISH_ID:
 		
-			while (x->next_e != y && x != list->tail){
+			while (x->next_e != y && x != list->tail){ // Shane ////   why is x == list->tail a concern here??
 				/// insert x->next after x but with y->tag_e as the end tag
 				insert_top_list(list, x, x->next_e, ENGLISH_ID, tag_spacing, &collision_detected);
 
@@ -84,8 +84,8 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID, unsign
 				x = x->next_e;
 
 			}
-			if (collision_detected)///just trying rebalacing from the end
-				top_list_rebalance(list, y,ID);
+			if (collision_detected)///just trying rebalancing from the end
+				top_list_rebalance(list, y,ID); /// Shane //// why is y passed in here but tmp passed below... tmp does nothing for english
 
 			break;
 
@@ -105,7 +105,7 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID, unsign
 
 			}
 			if (collision_detected)
-				top_list_rebalance(list, tmp, ID);
+				top_list_rebalance(list, tmp, ID); /// Shane /// temp used here, but y above???
 			break;
 
 		default:	
@@ -130,6 +130,7 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 	switch ( ID ) {
 		case ENGLISH_ID:	
 				/// We assume l/rList are not NULL since the list will have at least 3 elements
+			/// Shane ///// I sense that a big problem could arise. what if the pivot is the third list and we reach the head before a reblanace????
 			do	/// Check if range is in overflow
 			{
 				/// Move overflow list head and tail outward
@@ -184,7 +185,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 				/// correct for adding two odd numbers
 //				if (TAG_SPACING_RELABEL & x->tag_e & 0x1 == 0x1)
 //					y->tag_e++;
-				if (y->tag_e == x->tag_e || y->tag_e == TAG_SPACING_RELABEL)
+				if (y->tag_e == x->tag_e || y->tag_e == TAG_SPACING_RELABEL) //Shane// I don't understand how this is possible?
 
 				{
 					/// We have an issue, collision during rebalancing
@@ -225,7 +226,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 			}
 			break;
 			
-		case HEBREW_ID:		
+	case HEBREW_ID:		//Shane// Is this just not here anymore?? It's different than english
 			if (TAG_SPACING_RELABEL != 0)
 			{
 				y->tag_h = (TAG_SPACING_RELABEL >> 1) + (x->tag_h >> 1);
