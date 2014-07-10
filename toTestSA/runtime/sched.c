@@ -2201,7 +2201,7 @@ void top_list_rebalance(Top_List * list, Bottom_List *pivot)
 void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, unsigned long TAG_SPACING_RELABEL, int * collision_detected)
 {
 	///Debug: Double check that all vals are not null
-	assert(y != NULL && x != NULL && list != NULL);
+	//assert(y != NULL && x != NULL && list != NULL);
 
 	if (TAG_SPACING_RELABEL != 0)
 	{
@@ -2386,8 +2386,6 @@ void OM_DS_init(CilkContext *const context){
 	/// Define CILK running parameters
 
 	/// Various OM_DS Macros
-//#define OM_IS_LL
-#define OM_IS_BENDER
 
 	// If Batchify works
 //#define BATCHIFY_WORKING

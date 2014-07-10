@@ -27,7 +27,7 @@
 #include <cilk-internal.h>
 #include <cilk-cilk2c-pre.h>
 #include <cilk-cilk2c.h>
-
+#include <RD_and_OM.h>
 FILE_IDENTITY(ident,
 							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/invoke-main.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
@@ -100,15 +100,15 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 	    ;//printf("Nonempty OM_DS's, this is not the first invocation of slow main,dont create new nodes.\n");
 
 
-	#elif OM_IS_BENDER
+	#elif defined OM_IS_BENDER
 	//Using the order maintenance data struct defined by Bender
-	if (_cilk_ws->context->Cilk_global_state->om_ds->size == 1)
+	if (_cilk_ws->context->Cilk_global_state->OM_DS->size == 1)
 	{
 		OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
 		main_node->id = 1;
 		/// Add the main node to the first sublist
-		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->om_ds->head->next, main_node, ENGLISH_ID);
-		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->om_ds->head->next, main_node, HEBREW_ID);
+		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->OM_DS->head->next, main_node, ENGLISH_ID);
+		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->OM_DS->head->next, main_node, HEBREW_ID);
 
 
 		/// Set first spawned flag of the header frame
