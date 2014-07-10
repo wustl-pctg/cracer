@@ -51,9 +51,9 @@ void Race_detect_read_b(CilkWorkerState * const ws, const void * memPtr, void * 
 #define WRITE_b(mem, mem_to_copy, result) Race_detect_write_b(_cilk_ws, mem, mem_to_copy, __FUNCTION__, __LINE__, result)
 
 
-void tag_range_relabel (Top_List *list, Bottom_List *x, Bottom_List *y, unsigned long tag_spacing );
+void tag_range_relabel (Bottom_List *x, Bottom_List *y, unsigned long tag_spacing );
 
-void OM_DS_add_first_node(void *ds, void * _x, const int ID);
+void OM_DS_add_first_node(Bottom_List *ds, OM_Node * _x, const int ID);
 inline void OM_DS_after_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame);
 inline void OM_DS_after_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame);
 

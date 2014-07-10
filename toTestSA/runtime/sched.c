@@ -2185,9 +2185,10 @@ void top_list_rebalance(Top_List * list, Bottom_List *pivot)
 	while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && (lList != list->head || rList != list->tail));
 	//printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
 	/// rebalance subsection of top_list
-	long t =  (unsigned long)((enclosing_tag_range - 1 ) / (num_elements_in_sublist)) ;
-	/// Do we need this? assert(t>0);
-	tag_range_relabel(list, lList, rList, t );
+	long skip_size =  (unsigned long)((enclosing_tag_range - 1 ) / (num_elements_in_sublist)) ;
+	/// Debug: not needed in final
+	assert(skip_size>0);
+	tag_range_relabel(lList, rList, skip_size );
 
 	return;
 }		/* -----  end of function top_list_rebalance(Top_List * list, Bottom_List *pivot)  ----- */
@@ -2197,55 +2198,34 @@ void top_list_rebalance(Top_List * list, Bottom_List *pivot)
 /// Inserts a Bottom_List into a Top_List
 /// Bottom_List y is inserted after Bottom_List x in Top_List list
 /// param ID the Eng or Heb structure
-void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, unsigned long TAG_SPACING_RELABEL, int * collision_detected)
+void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y)
 {
 	///Debug: Double check that all vals are not null
 	//assert(y != NULL && x != NULL && list != NULL);
 
-	if (TAG_SPACING_RELABEL != 0)
+	y->tag = ((x->next->tag >> 1) + (x->tag >> 1));
+
+	/// correct for adding two odd numbers
+	if (x->next->tag & x->tag & 0x1 == 0x1)
+		y->tag++;
+
+	if (x->next->tag - x->tag <= 1)
 	{
-		y->tag = x->tag + TAG_SPACING_RELABEL;
-		//				y->tag = (TAG_SPACING_RELABEL >> 1) + (x->tag >> 1);
-		/// correct for adding two odd numbers
-//				if (TAG_SPACING_RELABEL & x->tag & 0x1 == 0x1)
-//					y->tag++;
-		if (y->tag == x->tag || y->tag == TAG_SPACING_RELABEL)
-		{
-			/// We have an issue, collision during rebalancing
-
-			//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag , y->tag );
-			*collision_detected = 1;
-
-			//top_list_rebalance(list, y, ID);
-		}
+		top_list_rebalance(list, x);
+		/// Dont assign pointers, call insert again to put y after x
+		Insert_top_list(list, x, y);
 	}
-	else //We are inserting a new element into the list
-	{
-		y->tag = ((x->next->tag >> 1) + (x->tag >> 1));
-
-		/// correct for adding two odd numbers
-		if (x->next->tag & x->tag & 0x1 == 0x1)
-			y->tag++;
-
-		/*if ( (y->tag  == x->tag ) ||  ( y->tag  == y->next ->tag  ))*/
-		if (x->next->tag - x->tag <= 1)
-		{
-			top_list_rebalance(list, x);
-			/// Dont assign pointers, call insert again to put y after x
-			Insert_top_list(list, x, y, 0 , NULL);
-		}
-		else{
-			/// Reassign  prev/next pointers
-			y->prev = x;
-			y->next = x->next;
-			x->next = y;
-			/// Update the next node after y's prev  reference (change it to y)
-			y->next->prev = y;
-		}
-
-		/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
-		(list->size)++;
+	else{
+		/// Reassign  prev/next pointers
+		y->prev = x;
+		y->next = x->next;
+		x->next = y;
+		/// Update the next node after y's prev  reference (change it to y)
+		y->next->prev = y;
 	}
+
+	/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
+	(list->size)++;
 	return ;
 }
 
@@ -2403,7 +2383,7 @@ void OM_DS_init(CilkContext *const context){
 		/// Add first node to top_list for eng & heb
 		Insert_top_list(context->Cilk_global_state->OM_DS,
 						context->Cilk_global_state->OM_DS->head,
-						bottom_list, 0, NULL);
+						bottom_list, 0);
 	}
 }
 
@@ -3014,7 +2994,7 @@ void Split_and_add_to_top(CilkWorkerState *const ws, Top_List * tlist, Bottom_Li
 	}
 	
 	/// Insert into top list
-	Insert_top_list(tlist, blist, to_add, 0, NULL);
+	Insert_top_list(tlist, blist, to_add, 0);
 }
 
 /// Iterate through the top list to find sublists needing reordered
@@ -3044,26 +3024,17 @@ void Rebalance_bottom_lists(CilkWorkerState *const ws, Top_List * list) {
 }
 
 /// Relabels the range of nodes from x to y
-void tag_range_relabel (Top_List *list, Bottom_List *x, Bottom_List *y, unsigned long tag_spacing )
+void tag_range_relabel (Bottom_List *x, Bottom_List *y, unsigned long tag_spacing )
 {
-	int collision_detected = 0, first_collision_flag = 0;
-	Bottom_List * tmp;
-	while (x->next != y && x != list->tail){
+	while (x->next != y){
+		/// Debug:
 		/// insert x->next after x but with y->tag as the end tag
-		Insert_top_list(list, x, x->next, tag_spacing, &collision_detected);
+		y->tag = x->tag + tag_spacing;
 
-		if (!first_collision_flag && collision_detected)
-		{
-			first_collision_flag = 1;
-			tmp = x->next;
-		}
 		/// Move along x pointer
 		x = x->next;
 
 	}
-	if (collision_detected)///just trying rebalacing from the end
-		top_list_rebalance(list, y);
-
 	return ;
 }		/* -----  end of function tag_range_relabel  ----- */
 
