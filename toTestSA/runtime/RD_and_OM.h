@@ -7,8 +7,15 @@
 
 #define ENGLISH_ID 10
 #define HEBREW_ID 11
-//#define OM_IS_LL
-#define OM_IS_BENDER
+#define OM_IS_LL
+
+//#define OM_IS_BENDER
+
+#ifdef OM_IS_BENDER
+
+#define WS_TOP_LIST ws->context->Cilk_global_state->OM_DS
+
+#endif
 
 /*! Forward declarations of our race_detection objects */
 struct RD_Memory_Struct_s;

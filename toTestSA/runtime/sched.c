@@ -2261,7 +2261,7 @@ void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
 	if (ds && _x){
 		Bottom_List * om_ds = (Bottom_List *)ds;
 		OM_Node * node = (OM_Node*)_x;
-		if (om_ds->size == 0)
+		if ((ID == ENGLISH_ID && om_ds->size_e == 0 ) || (ID == HEBREW_ID && om_ds->size_h == 0))
 		{
 			/// Assign head and tail to new node
 			om_ds->tail = om_ds->head = node;
@@ -2273,7 +2273,11 @@ void OM_DS_add_first_node(void *ds, void * _x, const int ID) {
 			node->id =global_node_count++;
 
 			/// Increment size of linked list
-			om_ds->size++;
+			if ( (ID == ENGLISH_ID)  )
+				om_ds->size_e = 1;
+			if (ID == HEBREW_ID)
+
+			om_ds->size_h = 1;
 		}
 		else 	{
 			/// Debug code
@@ -3233,6 +3237,8 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 		;*/
 
 /// Insert {current, spawned function, continuation node} into the english OM_DS
+
+#ifdef OM_IS_LL
 	OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID);
 	OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID);
 	if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID);
@@ -3242,6 +3248,51 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID);
 	if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID);
 /// If we had updates to post_sync_node, reset the frame's post_sync_node
+#elif defined OM_IS_BENDER
+
+	int rebalance_needed = 0;
+	if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID))
+	{
+		Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_e);
+		rebalance_needed = 1;
+	}
+	if (OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID))
+	{
+		Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_e);
+		rebalance_needed = 1;
+	}
+	if (post_sync_node) 
+		if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID))
+		{
+			Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_e);
+			rebalance_needed = 1;
+		}
+
+/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
+	if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID))
+	{
+		Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_h);
+		rebalance_needed = 1;
+	}
+
+	if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID))
+	{
+		Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_h);
+		rebalance_needed = 1;
+	}
+
+	if (post_sync_node) 
+		if (  OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID))
+		{
+			Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_h);
+			rebalance_needed = 1;
+		}
+
+	/// Rebalance all remaining lists that need to be rebalanced
+	if (rebalance_needed) /// This will changed when we batchify it
+		Rebalance_bottom_lists(ws, WS_TOP_LIST);
+
+#endif
 	if (post_sync_node) frame->post_sync_node = post_sync_node;
 
 /// Move the current node to the continuaion node

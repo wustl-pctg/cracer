@@ -73,14 +73,14 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 	
   	#ifdef OM_IS_LL
   /// If starting a slow main function and size of the OM_DS
-	if (_cilk_ws->context->Cilk_global_state->top_list->size == 0 || _cilk_ws->context->Cilk_global_state->hebrewOM_DS->size == 0)
+	if (_cilk_ws->context->Cilk_global_state->OM_DS->head->next->size_e == 0 || _cilk_ws->context->Cilk_global_state->OM_DS->head->next->size_h == 0)
 	{
 	    	/// Create and allocate mem for main node
 		OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
 
 		/// Add main node onto both OM_DS's
-		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->englishOM_DS, main_node);
-		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->hebrewOM_DS, main_node);
+		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->OM_DS, main_node, ENGLISH_ID);
+		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->OM_DS, main_node, HEBREW_ID);
 
 		/// Assign id one to this node
 		main_node->id = 1;
