@@ -2735,7 +2735,6 @@ void OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int
 	/* DEBUG
 	//if x is null
 	if (!(x && y) ){
-		printf("Some node or ds is null,\
                skipping insert; x(%d): %p y(%d):%p\n",
 			   x->id, x, y->id, y);
 		return;
@@ -3049,7 +3048,7 @@ int OM_DS_order(OM_Node * x, OM_Node * y, const int ID){
 	Bottom_List * ds;
 
 	///Temp node to hold current node
-	OM_Node * current;;
+	OM_Node * current;
 
 	if (ID == HEBREW_ID)
 		ds = x->ds_h;
@@ -3086,13 +3085,11 @@ int OM_DS_order(OM_Node * x, OM_Node * y, const int ID){
 	/// and it suffices to check their tags against another
 
 	Bottom_List * x_bl, * y_bl;
-
-	/* DEBUG
-	if( !(_x && _y) ) {
+/// Debug
+	if( !(x && y) ) {
 		printf("Debug: Order - one of the nodes null\n");
 		exit(10);
 	}
-	*/
 
 	switch(ID){
 	case HEBREW_ID:
@@ -3211,20 +3208,20 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	}
 	if (OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID))
 	{
-		Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_e);
+		Split_and_add_to_top(ws, WS_TOP_LIST, cont_node->ds_e);
 		rebalance_needed = 1;
 	}
 	if (post_sync_node) 
 		if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID))
 		{
-			Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_e);
+			Split_and_add_to_top(ws, WS_TOP_LIST, post_sync_node->ds_e);
 			rebalance_needed = 1;
 		}
 
 /// Insert {current, continuation node, spawned function} into the hebrew OM_DS
 	if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID))
 	{
-		Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_h);
+		Split_and_add_to_top(ws, WS_TOP_LIST, cont_node->ds_h);
 		rebalance_needed = 1;
 	}
 
@@ -3237,7 +3234,7 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	if (post_sync_node) 
 		if (  OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID))
 		{
-			Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_h);
+			Split_and_add_to_top(ws, WS_TOP_LIST, post_sync_node->ds_h);
 			rebalance_needed = 1;
 		}
 

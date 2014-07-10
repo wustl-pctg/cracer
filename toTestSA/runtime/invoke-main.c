@@ -102,7 +102,6 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 	#elif defined OM_IS_BENDER
 	//Using the order maintenance data struct defined by Bender
 	if (_cilk_frame->header.current_node == NULL)
-	/*if (_cilk_ws->context->Cilk_global_state->OM_DS->size == 1)*/
 	{
 		OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
 		main_node->id = 1;
