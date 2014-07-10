@@ -2383,7 +2383,7 @@ void OM_DS_init(CilkContext *const context){
 		/// Add first node to top_list for eng & heb
 		Insert_top_list(context->Cilk_global_state->OM_DS,
 						context->Cilk_global_state->OM_DS->head,
-						bottom_list, 0);
+						bottom_list);
 	}
 }
 
@@ -2994,7 +2994,7 @@ void Split_and_add_to_top(CilkWorkerState *const ws, Top_List * tlist, Bottom_Li
 	}
 	
 	/// Insert into top list
-	Insert_top_list(tlist, blist, to_add, 0);
+	Insert_top_list(tlist, blist, to_add);
 }
 
 /// Iterate through the top list to find sublists needing reordered
