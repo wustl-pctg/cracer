@@ -3155,8 +3155,9 @@ int OM_DS_order(/*void *ds, if OM_IS_LL*/ void * _x, void * _y, const int ID){
 			if(x_bl->tag > y_bl->tag) return 0; else return 1;
 
 		/// Otherwise just check them directly
+		/// Note: if they are the same node, return 0 (by convention)
 		else
-			if(x->tag_h > y->tag_h) return 0; else return 1;
+			if(x->tag_h >= y->tag_h) return 0; else return 1;
 
 	case ENGLISH_ID:
 
@@ -3169,8 +3170,9 @@ int OM_DS_order(/*void *ds, if OM_IS_LL*/ void * _x, void * _y, const int ID){
 			if(x_bl->tag > y_bl->tag) return 0; else return 1;
 
 		/// Otherwise just check them directly
+		/// Note: if they are the same node, return 0 (by convention)
 		else
-			if(x->tag_e > y->tag_e) return 0; else return 1;
+			if(x->tag_e >= y->tag_e) return 0; else return 1;
 	}
 
 	printf("Debug: something went wrong in OM_DS_order\n");
