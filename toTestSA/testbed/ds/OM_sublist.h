@@ -9,24 +9,26 @@
 
 #define HEBREW_ID 10
 #define ENGLISH_ID 11
-unsigned int MAX_NUMBER;
-unsigned int INT_BIT_SIZE;
+/*alex: try this
+ *unsigned long MAX_NUMBER;
+ *unsigned long INT_BIT_SIZE;
+ *
+ */
+Bottom_List * Bottom_List_init();
 
-OM_DS * OM_DS_init();
+void OM_free_and_free_nodes(Bottom_List *);
 
-void OM_free_and_free_nodes(OM_DS *);
+void printList(Bottom_List *, const int);
 
-void printList(OM_DS *, const int);
-
-void Split_and_add_to_top(Top_List * tlist, OM_DS * blist);
+void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist);
 
 void Rebalance_bottom_lists(Top_List * list);
 
-int OM_DS_insert(OM_Node *, OM_Node*, const int);
+int Bottom_List_insert(OM_Node *, OM_Node*, const int);
 
-void OM_DS_add_first_node(void*, void*, const int ID);
+void Bottom_List_add_first_node(Bottom_List*, OM_Node *, const int ID);
 
-int OM_DS_order(void*, void*, void*, const int);
+int Bottom_List_order( OM_Node *, OM_Node *, const int);
 
 void check_sub_correctness(Top_List * list);
 

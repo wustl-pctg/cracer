@@ -10,7 +10,7 @@
 
 void print_top_list(Top_List *list){
 
-	OM_DS * current_e = list->head, *current_h = list->head;
+	Bottom_List * current_e = list->head, *current_h = list->head;
 	printf("HEAD%u{ %lu}->", current_e->id, current_e->tag_e);
 
 	while(current_e != NULL)
@@ -40,7 +40,7 @@ void print_top_list(Top_List *list){
  * =====================================================================================
  */
 void check_correctness (Top_List * list){
-	OM_DS * current = list->head;
+	Bottom_List * current = list->head;
 	
 	while (current != list->tail){
 		assert(current->tag_e < current->next_e->tag_e);
@@ -64,14 +64,14 @@ void check_correctness (Top_List * list){
  *  Description:  Relabels the range of nodes from x to y
  * =====================================================================================
  */
-void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID, unsigned long tag_spacing )
+void tag_range_relabel (Top_List *list, Bottom_List *x, Bottom_List *y, const int ID, unsigned long tag_spacing )
 {
 	int collision_detected = 0, first_collision_flag = 0;
-	OM_DS * tmp;
+	Bottom_List * tmp;
 	switch ( ID ) {
 		case ENGLISH_ID:
 		
-			while (x->next_e != y && x != list->tail){ // Shane ////   why is x == list->tail a concern here??
+			while (x->next_e != y && x != list->tail){ // ** Shane ////   why is x == list->tail a concern here??
 				/// insert x->next after x but with y->tag_e as the end tag
 				insert_top_list(list, x, x->next_e, ENGLISH_ID, tag_spacing, &collision_detected);
 
@@ -85,7 +85,7 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID, unsign
 
 			}
 			if (collision_detected)///just trying rebalancing from the end
-				top_list_rebalance(list, y,ID); /// Shane //// why is y passed in here but tmp passed below... tmp does nothing for english
+				top_list_rebalance(list, y,ID); /// **this isnt needed, remove the checks (put an assert in there when going to test** Shane //// why is y passed in here but tmp passed below... tmp does nothing for english
 
 			break;
 
@@ -116,13 +116,13 @@ void tag_range_relabel (Top_List *list, OM_DS *x, OM_DS *y, const int ID, unsign
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
+ *         Name:  top_list_rebalance(Top_List * list, Bottom_List *pivot, const int ID)
  *  Description:  Rebalance list according to Bender's algorithm around pivot
  * =====================================================================================
  */
-void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
+void top_list_rebalance(Top_List * list, Bottom_List *pivot, const int ID)
 {
-	OM_DS *lList = pivot, *rList = pivot;
+	Bottom_List *lList = pivot, *rList = pivot;
 	double overflow_density, overflow_threshold;
 	unsigned long enclosing_tag_range, num_elements_in_sublist = 2;
 	double i = -1;
@@ -130,7 +130,6 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 	switch ( ID ) {
 		case ENGLISH_ID:	
 				/// We assume l/rList are not NULL since the list will have at least 3 elements
-			/// Shane ///// I sense that a big problem could arise. what if the pivot is the third list and we reach the head before a reblanace????
 			do	/// Check if range is in overflow
 			{
 				/// Move overflow list head and tail outward
@@ -163,15 +162,15 @@ void top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)
 	}				/* -----  end switch  ----- */
 	
 	return ;
-}		/* -----  end of function top_list_rebalance(Top_List * list, OM_DS *pivot, const int ID)  ----- */
+}		/* -----  end of function top_list_rebalance(Top_List * list, Bottom_List *pivot, const int ID)  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  insert_top_list(Top_List * list, OM_DS * x, OM_DS *y)
+ *         Name:  insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y)
  *  Description:  Insert x after y in the top list
  * =====================================================================================
  */
-void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigned long TAG_SPACING_RELABEL, int * collision_detected)
+void insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y, const int ID, unsigned long TAG_SPACING_RELABEL, int * collision_detected)
 {
 	///Debug: Double check that all vals are not null
 	assert(y != NULL && x != NULL && list != NULL);
@@ -185,13 +184,13 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
 				/// correct for adding two odd numbers
 //				if (TAG_SPACING_RELABEL & x->tag_e & 0x1 == 0x1)
 //					y->tag_e++;
-				if (y->tag_e == x->tag_e || y->tag_e == TAG_SPACING_RELABEL) //Shane// I don't understand how this is possible?
+				if (y->tag_e == x->tag_e ) // ** Shane// I don't understand how this is possible?
 
 				{
 					/// We have an issue, collision during rebalancing
 
 					//printf("Debug: We have an issue: collision during rebalance %ul - %ul\n", x->tag_e, y->tag_e);
-					*collision_detected = 1;
+					*collision_detected = 1; //** delete this stuff, maybe put aan assert here
 
 					//top_list_rebalance(list, y, ID);	
 					 
@@ -290,7 +289,7 @@ void insert_top_list(Top_List * list, OM_DS * x, OM_DS *y, const int ID, unsigne
  *  Description:  Appends the sublist passed into this function to the top list
  * =====================================================================================
  */
-void append_first_list (Top_List * list, OM_DS * first_sub_list, const int ID){
+void append_first_list (Top_List * list, Bottom_List * first_sub_list, const int ID){
 
 	insert_top_list(list, list->head, first_sub_list, ID, 0, NULL);
 }		/* -----  end of function append_first_list ---- */
@@ -337,7 +336,7 @@ Top_List * init_top_list ()
 void Top_List_free_and_free_nodes ( Top_List * list )
 {
 	/// Keep track pf current and next node
-	OM_DS * current = list->head, *next = NULL;
+	Bottom_List * current = list->head, *next = NULL;
 
 	do {
 		/// Assign next pointer
@@ -345,7 +344,7 @@ void Top_List_free_and_free_nodes ( Top_List * list )
 
 		/// Free current sublist
 		// TODO: free_and_free_nodes(current);
-		//printf("Debug: Free nodes currently does not call the OM_DS routine\n");
+		//printf("Debug: Free nodes currently does not call the Bottom_List routine\n");
 		free(current);
 
 		/// Move current along
@@ -364,10 +363,10 @@ int main ( int argc, char *argv[] )
 	Top_List *list =  init_top_list();
 	int num_inserts = atoi(argv[1]), i = 0;
 
-	OM_DS ** arrayToInsert = malloc(sizeof(OM_DS * ) * num_inserts);
+	Bottom_List ** arrayToInsert = malloc(sizeof(Bottom_List * ) * num_inserts);
 	for (i = 0; i < num_inserts; i++ )
 	{
-		arrayToInsert[i] = (OM_DS *)malloc(sizeof(OM_DS));
+		arrayToInsert[i] = (Bottom_List *)malloc(sizeof(Bottom_List));
 		arrayToInsert[i]->id = i;
 
 	}
