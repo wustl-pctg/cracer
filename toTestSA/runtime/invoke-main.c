@@ -79,7 +79,7 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 		OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
 
 		/// Add main node onto both OM_DS's
-		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->OM_DS->head->next, main_node, NULL);
+		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->OM_DS->head->next, main_node, 0);
 
 		/// Assign id one to this node
 		main_node->id = 1;

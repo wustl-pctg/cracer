@@ -7,8 +7,10 @@
 
 #define ENGLISH_ID 10
 #define HEBREW_ID 11
-//#define OM_IS_LL
 
+/// Various DS definitions
+
+//#define OM_IS_LL
 #define OM_IS_BENDER
 
 #ifdef OM_IS_BENDER

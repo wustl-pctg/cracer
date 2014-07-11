@@ -494,20 +494,128 @@ cilk void rd_gparent_gchild_test(void ** parseqArr){
 
 }
 
-/*
+
 ///  Start functions for rd_huge_test
 
-cilk void recursive_call(void * mem_ptr, test_struct_gen * s, test_struct_gen * t, int  * decrement_counter) {
+cilk void recursive_call_sequential(void * mem_ptr, int  * decrement_counter, const int op1, const int op2, test_struct_gen * s, test_struct_gen * t) {
 
+	int race_detected1 = -1, race_detected2 = -1;
+	if(*decrement_counter <= 1)
+	{
+		if(op1 == WRITE_ARG) {
+			spawn spawn_rd_cousin_write(mem_ptr, s, &race_detected1);
+		} else {
+			spawn spawn_rd_cousin_read(mem_ptr, s, &race_detected1);
+		} sync;
+
+		/// Spawn op2, then sync
+		if(op2 == WRITE_ARG) {
+			spawn spawn_rd_cousin_write(mem_ptr, t, &race_detected2);
+		} else {
+			spawn spawn_rd_cousin_read(mem_ptr, t, &race_detected2);
+		} sync;
+		return;
+	}
+	else {
+		--(*decrement_counter);
+		spawn recursive_call_sequential(mem_ptr, decrement_counter, op1, op2, s, t);
+		spawn recursive_call_sequential(mem_ptr, decrement_counter, op1, op2, s, t);
+		return;
+	}
 	
 }
 
-cilk int rd_huge_test(void ** parseqArr) {
+cilk void recursive_call_parallel(void * mem_ptr, int  * decrement_counter, const int op1, const int op2, test_struct_gen * s, test_struct_gen * t) {
 
+	int race_detected1 = -1, race_detected2 = -1;
+	if(*decrement_counter <= 1)
+	{
+		if(op1 == WRITE_ARG) {
+			spawn spawn_rd_cousin_write(mem_ptr, s, &race_detected1);
+		} else {
+			spawn spawn_rd_cousin_read(mem_ptr, s, &race_detected1);
+		}
+
+		/// Spawn op2, then sync
+		if(op2 == WRITE_ARG) {
+			spawn spawn_rd_cousin_write(mem_ptr, t, &race_detected2);
+		} else {
+			spawn spawn_rd_cousin_read(mem_ptr, t, &race_detected2);
+		} sync;
+
+		return;
+	}
+	else {
+		--(*decrement_counter);
+		spawn recursive_call_parallel(mem_ptr, decrement_counter, op1, op2, s, t);
+		spawn recursive_call_parallel(mem_ptr, decrement_counter, op1, op2, s, t);
+		return;
+	}
 	
-
 }
+
+
+/* So Alex, I'm not sure if I did this correctly at all... The biggest problem
+is I don't know "the solution" to what races we'd expect.  So at this point, there are no asserts
+for this test.
+
+I also did some testing without this function.  Everything will work (LL and bender) sequentially but
+with bender, in parallel, there was a weird error in the write/read case of rd_gparent... test.
+Bascially, both RD1 and RD2 were 1, so they somehow both detected races.. I tried to debug but made
+no progress as to how that could be possible. However, I did fix a few bugs I came across in sched
+and it seems our splitting changes are working as expected (i.e. infrequent and faster).
 */
+cilk void rd_huge_test(void ** parseqArr) {
+	
+	/// Declare test_struct_gen variable(s)
+	test_struct_gen a, b, c, d;
+	test_struct_gen e, f, g, h;
+	
+	/// Counters
+	int counter1 = 14, counter2 = 14, counter3 = 14,
+		counter4 = 14, counter5 = 14, counter6 = 14,
+		counter7 = 14, counter8 = 14;
+
+	/// instantiate test_struct_gen variables(s)
+	Assign_struct_random_vars(&a);
+	Assign_struct_random_vars(&b);
+	Assign_struct_random_vars(&c);
+	Assign_struct_random_vars(&d);
+	Assign_struct_random_vars(&e);
+	Assign_struct_random_vars(&f);
+	Assign_struct_random_vars(&g);
+	Assign_struct_random_vars(&h);
+
+	/// Sequential tests
+	spawn recursive_call_sequential(parseqArr[0], &counter1, READ_ARG, READ_ARG, &a, &b); sync;
+	
+	spawn recursive_call_sequential(parseqArr[1], &counter2, READ_ARG, WRITE_ARG, &c, &d); sync;
+	
+	spawn recursive_call_sequential(parseqArr[2], &counter3, WRITE_ARG, READ_ARG, &e, &f); sync;
+	
+	spawn recursive_call_sequential(parseqArr[3], &counter4, WRITE_ARG, WRITE_ARG, &g, &h); sync;
+
+	/// Redefine all the dummy structs
+	Assign_struct_random_vars(&a);
+	Assign_struct_random_vars(&b);
+	Assign_struct_random_vars(&c);
+	Assign_struct_random_vars(&d);
+	Assign_struct_random_vars(&e);
+	Assign_struct_random_vars(&f);
+	Assign_struct_random_vars(&g);
+	Assign_struct_random_vars(&h);
+
+	/// Parallel tests
+	spawn recursive_call_parallel(parseqArr[4], &counter5, READ_ARG, READ_ARG, &a, &b); sync;
+	
+	spawn recursive_call_parallel(parseqArr[5], &counter6, READ_ARG, WRITE_ARG, &c, &d); sync;
+	
+	spawn recursive_call_parallel(parseqArr[6], &counter7, WRITE_ARG, READ_ARG, &e, &f); sync;
+	
+	spawn recursive_call_parallel(parseqArr[7], &counter8, WRITE_ARG, WRITE_ARG, &g, &h); sync;
+	
+}
+
 
 cilk int main(int argv, char* argc){
 
@@ -574,6 +682,13 @@ cilk int main(int argv, char* argc){
 	/// within cousin nodes and sibling nodes
 	/// in both the serial and parallel case.
 	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	/// Case 5;
+	/// These functions each contain read/write
+	/// after a web of ~50,000 spawns to check
+	/// if ordering maintains in crazy conditionds
+	spawn rd_huge_test(parseqArr);
 	sync;
 
 	;//printf("Test completed fully as expected. No errors [before the frees...]\n");
