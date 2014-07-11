@@ -3015,7 +3015,7 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 	/// ***** Alex's version ***** ///
 	
-	Bottom_List * to_add = Bottom_List_init();/*Init_bottom_list();*/
+	Bottom_List * to_add = Init_bottom_list();
 	
 	int node_count_e = 1, node_count_h = 1;
 	/// English
@@ -3154,7 +3154,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 	/// Reset reorder flag
 	blist->Reorder_flag_e = blist->Reorder_flag_h = 0;
 
-	nsert_top_list(tlist, blist, to_add);
+	Insert_top_list(tlist, blist, to_add);
 
 
 }
