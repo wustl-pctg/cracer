@@ -9,7 +9,7 @@
 #define HEBREW_ID 11
 
 /// Various DS definitions
-
+#define BATCHIFY_WORKING
 //#define OM_IS_LL
 #define OM_IS_BENDER
 
