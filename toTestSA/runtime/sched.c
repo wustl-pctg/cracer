@@ -2681,11 +2681,11 @@ void printList(Bottom_List * list, const int ID) {
 
     while (n != NULL){
 		if (ID == HEBREW_ID) {
-			printf("%d(%ul)->", n->id, n->tag_h);
+			printf("%d(%lu)->", n->id, n->tag_h);
         	n = n->next_h;
 		}
 		else {
-			printf("%d(%ul)->", n->id, n->tag_e);
+			printf("%d(%lu)->", n->id, n->tag_e);
 			n = n->next_e;
 		}
     }
@@ -2820,8 +2820,10 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 		/// Assign y's tag
 		y->tag_h = ((y->next_h->tag_h >> 1) + (y->prev_h->tag_h >> 1));
 		
-
-		if( !(ds->size_h < (INT_BIT_SIZE >> 1) ) )
+		/// Update flag as necessary
+		if(ds->size_h < (INT_BIT_SIZE >> 1))
+			ds->Reorder_flag_h = 0;
+		else
 			ds->Reorder_flag_h = 1;
 
 		ds->size_h++;
@@ -2859,8 +2861,11 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 		/// Assign y's tag
 		y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
 
-		if( !(ds->size_e < (INT_BIT_SIZE >> 1) ) )
-	  		ds->Reorder_flag_e = 1;
+		/// Update flag as necessary
+		if(ds->size_e < (INT_BIT_SIZE >> 1))
+			ds->Reorder_flag_e = 0;
+		else
+			ds->Reorder_flag_e = 1;
 
 		ds->size_e++;
 
@@ -2905,7 +2910,7 @@ void Split_and_add_to_top(CilkWorkerState *const ws, Top_List * tlist, Bottom_Li
 		current_e = current_e->next_e;
 		iter_node = current_e->next_e;
 
-		/// Insert first node
+		/// Insert first node, updates current_e's ds_e (to_add)
 		OM_DS_add_first_node(to_add, current_e, ENGLISH_ID);
 
 		/// Insert rest of second half into new ds
@@ -2927,6 +2932,7 @@ void Split_and_add_to_top(CilkWorkerState *const ws, Top_List * tlist, Bottom_Li
 		/// Add "first" node
 		iter_node = current_e->next_e;
 
+		/// Insert first node, updates current_e's ds_e (blist)
 		OM_DS_add_first_node(blist, current_e, ENGLISH_ID);
 
 		/// Reinsert until middle
@@ -2957,7 +2963,7 @@ void Split_and_add_to_top(CilkWorkerState *const ws, Top_List * tlist, Bottom_Li
 		current_h = current_h->next_h;
 		iter_node = current_h->next_h;
 
-		/// Insert first node
+		/// Insert first node, updates current_h's ds_h (to_add)
 		OM_DS_add_first_node(to_add, current_h, HEBREW_ID);
 
 		/// Insert rest of second half into new ds
@@ -2979,6 +2985,7 @@ void Split_and_add_to_top(CilkWorkerState *const ws, Top_List * tlist, Bottom_Li
 		/// Add "first" node
 		iter_node = current_h->next_h;
 
+		/// Insert first node, updates current_h's ds_e (blist)
 		OM_DS_add_first_node(blist, current_h, HEBREW_ID);
 
 		/// Reinsert until middle

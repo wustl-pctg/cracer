@@ -494,6 +494,7 @@ cilk void rd_gparent_gchild_test(void ** parseqArr){
 
 }
 
+/*
 ///  Start functions for rd_huge_test
 
 cilk void recursive_call(void * mem_ptr, test_struct_gen * s, test_struct_gen * t, int  * decrement_counter) {
@@ -506,6 +507,7 @@ cilk int rd_huge_test(void ** parseqArr) {
 	
 
 }
+*/
 
 cilk int main(int argv, char* argc){
 
