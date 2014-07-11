@@ -91,7 +91,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 	
 	int node_count_e = 1, node_count_h = 1;
 	/// English
-	if (blist->size_e > (MAX_NUMBER >> 1 )){
+	if (blist->size_e > (INT_BIT_SIZE >> 1 )){
 		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 1) ;
 		
 
@@ -114,6 +114,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 
 		/// Update the tail of each list
 		blist->tail->prev_e = current_e;/*middle_node;*/
+		current_e->next_e = blist->tail;
 
 
 		/// Update size of first and second lists
@@ -123,13 +124,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		///Reassign head->next_e of to_add
 		// and update to_add head and tail references
 		current_e = current_e->next_e;
-		to_add->head->next_e = to_add->tail->prev_e = current_e;
-		
-		/// Update current node references to prev and next
-		/* don't update this yet, or we will lose the next node reference
-		 * current_e->next_e = to_add->tail;
-		 * */
-
+		to_add->head->next_e = current_e;
 		current_e->prev_e = to_add->head;
 		
 		/// Update current node reference to ds
@@ -160,9 +155,8 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		
 
 	}
-	/// Hebrew
-	if (blist->size_h > (MAX_NUMBER >> 1 )){
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)(1+ (blist->size_h >> 1)) ;
+	if (blist->size_h > (INT_BIT_SIZE >> 1 )){
+		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 1) ;
 		
 
 		/// Assign first node tag
@@ -184,6 +178,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 
 		/// Update the tail of each list
 		blist->tail->prev_h = current_h;/*middle_node;*/
+		current_h->next_h = blist->tail;
 
 
 		/// Update size of first and second lists
@@ -193,13 +188,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		///Reassign head->next_h of to_add
 		// and update to_add head and tail references
 		current_h = current_h->next_h;
-		to_add->head->next_h = to_add->tail->prev_h = current_h;
-		
-		/// Update current node references to prev and next
-		/* don't update this yet, or we will lose the next node reference
-		 * current_h->next_h = to_add->tail;
-		 * */
-
+		to_add->head->next_h = current_h;
 		current_h->prev_h = to_add->head;
 		
 		/// Update current node reference to ds
@@ -227,7 +216,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		/// Update tail of to_add list
 		to_add->tail->prev_h = current_h;
 
-
+		
 
 	}
 	/// Reset reorder flag
@@ -252,7 +241,7 @@ void Rebalance_bottom_lists(Top_List * list) {
 			Split_and_add_to_top(list, current_e);
 		current_e = current_e->next_e;
 	}
-	;//next_echeck_sub_correctness(list);
+	;//check_sub_correctness(list);
 
 	/// Hebrew
 	while(current_h != list->tail) {
@@ -260,7 +249,7 @@ void Rebalance_bottom_lists(Top_List * list) {
 			Split_and_add_to_top(list, current_h);
 		current_h = current_h->next_h;
 	}
-	;//check_sub_correctness(list);
+	check_sub_correctness(list);
 	
 }
 
@@ -499,7 +488,8 @@ void check_sub_correctness (Top_List * list){
 		cur_node = current->head;
 		while(cur_node != current->tail) {
 			
-			assert(cur_node->tag_e < cur_node->next_e->tag_e);
+			if (!(cur_node->tag_e < cur_node->next_e->tag_e))
+				printf("not working right\n");
 			cur_node = cur_node->next_e;
 		}
 
@@ -514,7 +504,8 @@ void check_sub_correctness (Top_List * list){
 		cur_node = current->head;
 		while(cur_node != current->tail) {
 			
-			assert(cur_node->tag_h < cur_node->next_h->tag_h);
+			if (!(cur_node->tag_h < cur_node->next_h->tag_h))
+				printf("not working right\n");
 			cur_node = cur_node->next_h;
 		}
 
