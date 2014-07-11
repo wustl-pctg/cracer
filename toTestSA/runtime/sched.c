@@ -2706,7 +2706,116 @@ void print_top_list(Top_List *list){
 	printf("Tail\n\n\n");
 
 }
+/*Does one insert into the data structure x is held in*/
+int single_node_insert_batch_helper(OM_Node *x, OM_Node * y, const int ID)
+{
+	Bottom_List * ds;
 
+	switch(ID){
+	case HEBREW_ID:
+
+		/// Retrieve the data structure known node
+		ds = x->ds_h;
+	
+		/// Update the ds y is in 
+		y->ds_h = ds;
+
+		///Debug: if x is null
+		if (!(x && y && ds) ){
+			printf("Some node or ds is null,\
+               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+				   x->id, x, y->id, y, ds->tail->id, ds->tail);
+			return 0 ;
+		}
+		
+		/// This is the procedure:
+		y->next_h = x->next_h;
+		x->next_h->prev_h = y;
+		x->next_h = y;
+		y->prev_h = x;
+		
+		/// Assign y's tag
+		y->tag_h = ((y->next_h->tag_h >> 1) + (y->prev_h->tag_h >> 1));
+		
+		/// Update flag as necessary
+		if(ds->size_h < (INT_BIT_SIZE >> 1))
+			ds->Reorder_flag_h = 0;
+		else
+			ds->Reorder_flag_h = 1;
+
+		ds->size_h++;
+
+		if(ds->size_h == INT_BIT_SIZE)
+			return 1; ///< Needs to be split
+		return 0; ///< Doesn't needs immediately split
+
+		break;
+
+	case ENGLISH_ID:
+
+		/// Retrieve the data structure known node
+		ds = x->ds_e;
+	
+		/// Update the ds y is in 
+		y->ds_e = ds;
+
+		/* DEBUG
+		//if x is null
+		if (!(x && y && ds) ){
+			printf("Some node or ds is null,\
+               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+				   x->id, x, y->id, y, ds->tail->id, ds->tail);
+			return 1;
+		}
+		*/
+
+		/// This is the procedure:
+		y->next_e = x->next_e;
+		x->next_e->prev_e = y;
+		x->next_e = y;
+		y->prev_e = x;
+		
+		/// Assign y's tag
+		y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
+
+		/// Update flag as necessary
+		if(ds->size_e < (INT_BIT_SIZE >> 1))
+			ds->Reorder_flag_e = 0;
+		else
+			ds->Reorder_flag_e = 1;
+
+		ds->size_e++;
+
+		if(ds->size_e == INT_BIT_SIZE)
+			return 1; ///< Needs to be split
+		return 0; ///< Doesn't needs immediately split
+
+	}
+
+	/// Specific number for checks
+	return 100;
+}
+
+/*For now just leave this as a C procedure*/
+void insert_node_batch_op(CilkWorkerState *const _cilk_ws,
+                                       void *data_struct, void *data,
+                                       size_t num_elem, void *result)
+
+{
+	Top_List *list = data_struct;
+	InsertRecord *ir, *irArray = (InsertRecord * )data;
+
+	while (num_elem > 0)
+	{
+		ir = &irArray[--num_elem];
+		/// We need to do a rebalance if this returns 1
+		if (single_node_insert_batch_helper(ir->x, ir->y, ir->ID) == 1)
+			Rebalance_bottom_lists(_cilk_ws, list);
+		num_elem--;
+	}
+
+	return;
+}
 #ifdef OM_IS_LL
 void OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int ID){
 
@@ -2788,6 +2897,20 @@ void OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int
 /// Returns 1 if full and needs reorderd immediately and 0 otherwise
 int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int ID){
 
+#ifdef BATCHIFY_WORKING
+	/// Create the insert record, which will be passed to the operation function
+	/// that we reference in Cilk_batchify(...,  &callback operation, ....);
+	InsertRecord * ir = (InsertRecord * ) Cilk_malloc(sizeof(InsertRecord));
+	ir->x =  x;
+	ir->y =  y;
+	ir->ID = ID;
+
+	;//printf("Debug: INSERT:  x: %d , y: %d \n", x->id, y->id);
+	/// Make call to batchify to assign this data structure opeartion
+	/// to be executed at another time.
+	Cilk_batchify(ws, &batch_insert_top_list, WS_TOP_LIST, ir, sizeof(InsertRecord), NULL);
+	return 0;
+#else
 	Bottom_List * ds;
 
 	//INT_BIT_SIZE =  32;
@@ -2877,7 +3000,8 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 
 	/// Specific number for checks
 	return 100;
-
+/// End else for if BATCHIFY_WORKING
+#endif
 }
 #endif
 
@@ -3207,47 +3331,60 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 /// If we had updates to post_sync_node, reset the frame's post_sync_node
 #elif defined OM_IS_BENDER
 
-	int rebalance_needed = 0;
-	if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID))
-	{
-		Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_e);
-		rebalance_needed = 1;
-	}
-	if (OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID))
-	{
-		Split_and_add_to_top(ws, WS_TOP_LIST, cont_node->ds_e);
-		rebalance_needed = 1;
-	}
-	if (post_sync_node) 
-		if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID))
+	#ifdef BATCHIFY_WORKING
+		OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID);
+		OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID);
+		if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID);
+
+		/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
+		OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID);
+		OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID);
+		if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID);
+	#else 
+
+		int rebalance_needed = 0;
+		if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID))
 		{
-			Split_and_add_to_top(ws, WS_TOP_LIST, post_sync_node->ds_e);
+			Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_e);
+			rebalance_needed = 1;
+		}
+		if (OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID))
+		{
+			Split_and_add_to_top(ws, WS_TOP_LIST, cont_node->ds_e);
+			rebalance_needed = 1;
+		}
+		if (post_sync_node) 
+			if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID))
+			{
+				Split_and_add_to_top(ws, WS_TOP_LIST, post_sync_node->ds_e);
+				rebalance_needed = 1;
+			}
+
+	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
+		if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID))
+		{
+			Split_and_add_to_top(ws, WS_TOP_LIST, cont_node->ds_h);
 			rebalance_needed = 1;
 		}
 
-/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-	if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID))
-	{
-		Split_and_add_to_top(ws, WS_TOP_LIST, cont_node->ds_h);
-		rebalance_needed = 1;
-	}
-
-	if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID))
-	{
-		Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_h);
-		rebalance_needed = 1;
-	}
-
-	if (post_sync_node) 
-		if (  OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID))
+		if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID))
 		{
-			Split_and_add_to_top(ws, WS_TOP_LIST, post_sync_node->ds_h);
+			Split_and_add_to_top(ws, WS_TOP_LIST, spawned_func_node->ds_h);
 			rebalance_needed = 1;
 		}
 
-	/// Rebalance all remaining lists that need to be rebalanced
-	if (rebalance_needed) /// This will changed when we batchify it
-		Rebalance_bottom_lists(ws, WS_TOP_LIST);
+		if (post_sync_node) 
+			if (  OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID))
+			{
+				Split_and_add_to_top(ws, WS_TOP_LIST, post_sync_node->ds_h);
+				rebalance_needed = 1;
+			}
+
+		/// Rebalance all remaining lists that need to be rebalanced
+		if (rebalance_needed) /// This will changed when we batchify it
+			Rebalance_bottom_lists(ws, WS_TOP_LIST);
+		/// End else for (if BATCHIFY_WORKING)
+#endif 
 
 #endif
 	if (post_sync_node) frame->post_sync_node = post_sync_node;
