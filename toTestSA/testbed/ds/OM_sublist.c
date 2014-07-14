@@ -71,11 +71,11 @@ void printList(Bottom_List * list, const int ID) {
 
     while (n != NULL){
 		if( ID == HEBREW_ID ) {
-			printf("%d (%u)->", n->id, n->tag_h);
+			printf("%d (%ul)->", n->id, n->tag_h);
         	n = n->next_h;
 		}
 		else {
-			printf("%d (%u)->", n->id, n->tag_e);
+			printf("%d (%ul)->", n->id, n->tag_e);
 			n = n->next_e;
 		}
     }
@@ -114,7 +114,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 
 		/// Update the tail of each list
 		blist->tail->prev_e = current_e;/*middle_node;*/
-		current_e->next_e = blist->tail;
+		/* Why was this here? current_e->next_e = blist->tail;*/
 
 
 		/// Update size of first and second lists
@@ -153,6 +153,8 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		to_add->tail->prev_e = current_e;
 
 		
+		/*Update the middle node's next_h reference*/
+		blist->tail->prev_e->next_e = blist->tail;
 
 	}
 	if (blist->size_h > (INT_BIT_SIZE >> 1 )){
@@ -178,7 +180,8 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 
 		/// Update the tail of each list
 		blist->tail->prev_h = current_h;/*middle_node;*/
-		current_h->next_h = blist->tail;
+		
+		/*Qhy was this here ? current_h->next_h = blist->tail;*/
 
 
 		/// Update size of first and second lists
@@ -215,6 +218,9 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 
 		/// Update tail of to_add list
 		to_add->tail->prev_h = current_h;
+
+		/*Update the middle node's next_h reference*/
+		blist->tail->prev_h->next_h = blist->tail;
 
 		
 
