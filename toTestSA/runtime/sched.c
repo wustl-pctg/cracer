@@ -2239,37 +2239,37 @@ void OM_DS_add_first_node(Bottom_List * om_ds, OM_Node * node, const int ID) {
 	/// Enter if ds and x are not NULL
 	;// (debug) if (om_ds && node){
 
-		if ( om_ds->size_e == 0 && om_ds->size_h == 0)
-		{
-			/// Assign head and tail to new node
-			om_ds->tail = om_ds->head = node;
+	if ( om_ds->size_e == 0 && om_ds->size_h == 0)
+	{
+		/// Assign head and tail to new node
+		om_ds->tail = om_ds->head = node;
 
-			/// Ensure node has no next
-			node->next_e = node->next_h = NULL;
+		/// Ensure node has no next
+		node->next_e = node->next_h = NULL;
 
-			/// Assign unique node id
-			node->id =global_node_count++;
+		/// Assign unique node id
+		node->id =global_node_count++;
 
-			/// Assign the node' data structure reference to om_ds passed in
-			node->ds_e = node->ds_h = om_ds;
+		/// Assign the node' data structure reference to om_ds passed in
+		node->ds_e = node->ds_h = om_ds;
 
-			/// Increment size of linked list
-			om_ds->size_e = 1;
-			om_ds->size_h = 1;
-		}
-		else {
-			/// Debug code
-			/// If linked list has nodes already, exit. Don't let this be called
-			/// incorrectly and let code continue
-			printf("List is non-empty, dont call add first node\n");
-			exit(0);
-		}
-		;/*DEBUG}
+		/// Increment size of linked list
+		om_ds->size_e = 1;
+		om_ds->size_h = 1;
+	}
 	else {
-		printf("Debug: appending null node or to null ds\n");
+		/// Debug code
+		/// If linked list has nodes already, exit. Don't let this be called
+		/// incorrectly and let code continue
+		printf("List is non-empty, dont call add first node\n");
 		exit(0);
 	}
-		 */
+	;/*DEBUG}
+	   else {
+	   printf("Debug: appending null node or to null ds\n");
+	   exit(0);
+	   }
+	 */
 #elif defined OM_IS_BENDER
 
 	/// Debug message
@@ -2278,85 +2278,85 @@ void OM_DS_add_first_node(Bottom_List * om_ds, OM_Node * node, const int ID) {
 	/// Enter if ds and x are not NULL
 	;//DEBUG iff (om_ds && node){
 
-		switch(ID) {
+	switch(ID) {
 
-		case ENGLISH_ID:
+	case ENGLISH_ID:
 
-			if (om_ds->size_e == 0) {
+		if (om_ds->size_e == 0) {
 
-				/// Change head->next to be this node
-				om_ds->head->next_e = node;
+			/// Change head->next to be this node
+			om_ds->head->next_e = node;
 
-				/// Change node->prev to be the head
-				node->prev_e = om_ds->head;
+			/// Change node->prev to be the head
+			node->prev_e = om_ds->head;
 
-				/// Change node->next to be tail
-				node->next_e = om_ds->tail;
+			/// Change node->next to be tail
+			node->next_e = om_ds->tail;
 
-				/// Change tail->prev to be this node
-				om_ds->tail->prev_e = node;
+			/// Change tail->prev to be this node
+			om_ds->tail->prev_e = node;
 
-				/// Assign unique node id
-				node->id =global_node_count++;
+			/// Assign unique node id
+			node->id =global_node_count++;
 
-				/// Assign tag
-				node->tag_e = (om_ds->tail->tag_e >> 1);
+			/// Assign tag
+			node->tag_e = (om_ds->tail->tag_e >> 1);
 
-				/// Increment size of linked list
-				om_ds->size_e++;
+			/// Increment size of linked list
+			om_ds->size_e++;
 
-				/// Assign node to this ds
-				node->ds_e = om_ds;
-			}
-			else {
-				/// Debug code
-				/// If linked list has nodes already, exit. Don't let this be called
-				/// incorrectly and let code continue
-				printf("List is non-empty, dont call add first node\n");
-				exit(0);
-			}
-			break;
-
-		case HEBREW_ID:
-
-			if (om_ds->size_h == 0) {
-				/// Change head->next to be this node
-				om_ds->head->next_h = node;
-
-				/// Change node->prev to be the head
-				node->prev_h = om_ds->head;
-
-				/// Change node->next to be tail
-				node->next_h = om_ds->tail;
-
-				/// Change tail->prev to be this node
-				om_ds->tail->prev_h = node;
-
-				/// Assign unique node id
-				node->id =global_node_count++;
-
-				/// Assign tag
-				node->tag_h = (om_ds->tail->tag_h >> 1);
-
-				/// Increment size of linked list
-				om_ds->size_h++;
-
-				/// Assign node to this ds
-				node->ds_h = om_ds;
-			}
-			else 	{
-				/// Debug code
-				/// If linked list has nodes already, exit. Don't let this be called
-				/// incorrectly and let code continue
-				printf("List is non-empty, dont call add first node\n");
-				exit(0);
-			}
-			break;
+			/// Assign node to this ds
+			node->ds_e = om_ds;
 		}
-		;/*DEBUG}
-	else
-		printf("Debug: appending null node or to null ds\n");
-		 */
+		else {
+			/// Debug code
+			/// If linked list has nodes already, exit. Don't let this be called
+			/// incorrectly and let code continue
+			printf("List is non-empty, dont call add first node\n");
+			exit(0);
+		}
+		break;
+
+	case HEBREW_ID:
+
+		if (om_ds->size_h == 0) {
+			/// Change head->next to be this node
+			om_ds->head->next_h = node;
+
+			/// Change node->prev to be the head
+			node->prev_h = om_ds->head;
+
+			/// Change node->next to be tail
+			node->next_h = om_ds->tail;
+
+			/// Change tail->prev to be this node
+			om_ds->tail->prev_h = node;
+
+			/// Assign unique node id
+			node->id =global_node_count++;
+
+			/// Assign tag
+			node->tag_h = (om_ds->tail->tag_h >> 1);
+
+			/// Increment size of linked list
+			om_ds->size_h++;
+
+			/// Assign node to this ds
+			node->ds_h = om_ds;
+		}
+		else 	{
+			/// Debug code
+			/// If linked list has nodes already, exit. Don't let this be called
+			/// incorrectly and let code continue
+			printf("List is non-empty, dont call add first node\n");
+			exit(0);
+		}
+		break;
+	}
+	;/*DEBUG}
+	   else
+	   printf("Debug: appending null node or to null ds\n");
+	 */
 #endif
 }
 
@@ -2405,6 +2405,7 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 	while(node != NULL){
 		nextNode = node->next_e;
 		Cilk_free(node);
+		node = NULL; //!< prevent dangling pointers
 		node = nextNode;
 	}
 
@@ -2413,6 +2414,9 @@ void OM_LL_free_nodes_internal(CilkContext *const context){
 	Cilk_free(context->Cilk_global_state->OM_DS->head);
 	Cilk_free(context->Cilk_global_state->OM_DS->head->next);
 	Cilk_free(context->Cilk_global_state->OM_DS->tail);
+	context->Cilk_global_state->OM_DS->head = NULL; //!< prevent dangling pointers
+	context->Cilk_global_state->OM_DS->head->next = NULL; //!< prevent dangling pointers
+	context->Cilk_global_state->OM_DS->tail = NULL; //!< prevent dangling pointers
 
 }
 
@@ -2434,15 +2438,18 @@ void OM_free_nodes_internal(CilkContext *const context) {
 		while(node != current->tail){
 			nextNode = node->next_e;
 			Cilk_free(node); //!< Free the node
+			node = NULL; //!< prevent dangling pointers
 			node = nextNode;
 		}
 		Cilk_free(node); //!< Free tail node
 	
 		Cilk_free(current); //!< Free the Bot_list
+		current = NULL; //!< prevent dangling pointers
 		current = next;
+		
 	}
 	Cilk_free(current); //!< Free the tail Bot_list
-
+	current = NULL;
 }
 
 
@@ -2464,205 +2471,206 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 
 	/// Finally, free the Top_List
 	Cilk_free(context->Cilk_global_state->OM_DS);
+	context->Cilk_global_state->OM_DS = NULL:
 }
 
 
 /**** START EXP SECTION ****/
 /*
-struct _cilk_insertPar_frame{CilkStackFrame header;
-	struct{
-		void*dataStruct;
-		void*data;
-		size_t size;
-		void*result;
-	}scope0;
-	struct{InsertRecord*irArray;
-		OM_DS*ds;
-		InsertRecord*ir;
-		OM_Node*x;
-		OM_Node*y;
-		int ID;
-	}scope1;
-};
-struct _cilk_insertPar_args{
-	void*dataStruct;
-	void*data;
-	size_t size;
-	void*result;
-};
-static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insertPar_frame*_cilk_frame);
-static CilkProcInfo _cilk_insertPar_sig[]={{0,sizeof(struct _cilk_insertPar_frame),_cilk_insertPar_slow,0,0}};
+  struct _cilk_insertPar_frame{CilkStackFrame header;
+  struct{
+  void*dataStruct;
+  void*data;
+  size_t size;
+  void*result;
+  }scope0;
+  struct{InsertRecord*irArray;
+  OM_DS*ds;
+  InsertRecord*ir;
+  OM_Node*x;
+  OM_Node*y;
+  int ID;
+  }scope1;
+  };
+  struct _cilk_insertPar_args{
+  void*dataStruct;
+  void*data;
+  size_t size;
+  void*result;
+  };
+  static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insertPar_frame*_cilk_frame);
+  static CilkProcInfo _cilk_insertPar_sig[]={{0,sizeof(struct _cilk_insertPar_frame),_cilk_insertPar_slow,0,0}};
 
-void insertPar (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,size_t size,void*result){struct _cilk_insertPar_frame*_cilk_frame;
-	{ _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_insertPar_frame), _cilk_insertPar_sig);
-	};
-	{ Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
-		Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
-		;//ignore OM_DS stuff OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
-	};
+  void insertPar (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,size_t size,void*result){struct _cilk_insertPar_frame*_cilk_frame;
+  { _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_insertPar_frame), _cilk_insertPar_sig);
+  };
+  { Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
+  Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
+  ;//ignore OM_DS stuff OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
+  };
 
-	{
-		InsertRecord *irArray= (InsertRecord *)data;
-		OM_DS *ds= (OM_DS *) dataStruct;
+  {
+  InsertRecord *irArray= (InsertRecord *)data;
+  OM_DS *ds= (OM_DS *) dataStruct;
 
-		int i = 0;
-		for (; i < size ; i++)
-		{
-			InsertRecord *ir= &irArray[i];
-			OM_Node *x= ir->x;
-			OM_Node*y=ir->y;
-			int ID= ir->ID;
+  int i = 0;
+  for (; i < size ; i++)
+  {
+  InsertRecord *ir= &irArray[i];
+  OM_Node *x= ir->x;
+  OM_Node*y=ir->y;
+  int ID= ir->ID;
 
-			if (!(x && y&& ds)) {
-				printf("Some nod,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
+  if (!(x && y&& ds)) {
+  printf("Some nod,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
 
-				{{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
-						Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
-					};
-					return;
-				}
-			};
+  {{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
+  Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+  };
+  return;
+  }
+  };
 
-			switch (ID) {
-			case HEBREW_ID:
+  switch (ID) {
+  case HEBREW_ID:
 
-				if (!(x->next_h))
-					ds->tail = y;
+  if (!(x->next_h))
+  ds->tail = y;
 
-				y->next_h = x->next_h;
+  y->next_h = x->next_h;
 
-				if (!(__sync_bool_compare_and_swap(&(x->next_h),x->next_h, y)))
-				{
-					printf("Exiting, atomic insert failed");
+  if (!(__sync_bool_compare_and_swap(&(x->next_h),x->next_h, y)))
+  {
+  printf("Exiting, atomic insert failed");
 
-					exit(0);
+  exit(0);
 
-				}
-				break;
+  }
+  break;
 
-			case ENGLISH_ID:
+  case ENGLISH_ID:
 
-				if (!(x->next_e))
-					ds->tail = y;
+  if (!(x->next_e))
+  ds->tail = y;
 
-				y->next_e = x->next_e;
+  y->next_e = x->next_e;
 
-				if (!(__sync_bool_compare_and_swap(&(x->next_e),x->next_e, y)))
-				{
-					printf("Exiting, atomic insert failed");
-					exit(0);
-				}
-				break;
-			}
+  if (!(__sync_bool_compare_and_swap(&(x->next_e),x->next_e, y)))
+  {
+  printf("Exiting, atomic insert failed");
+  exit(0);
+  }
+  break;
+  }
 
-			ds->size++;
-		} //end for
+  ds->size++;
+  } //end for
 
-		{{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
-				Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
-			};
-			return;
-		}}}
+  {{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
+  Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+  };
+  return;
+  }}}
 
-static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insertPar_frame*_cilk_frame){CilkWorkerState*ws;
-	void*dataStruct;
-	void*data;
-	size_t size;
-	void*result;
-	{ Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
-		Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
-		;// ignore order maintenance functions OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
-	};
-	switch (_cilk_frame->header.entry) {}
-	dataStruct=_cilk_frame->scope0.dataStruct;
-	data=_cilk_frame->scope0.data;
-	size=_cilk_frame->scope0.size;
-	result=_cilk_frame->scope0.result;
+  static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insertPar_frame*_cilk_frame){CilkWorkerState*ws;
+  void*dataStruct;
+  void*data;
+  size_t size;
+  void*result;
+  { Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
+  Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
+  ;// ignore order maintenance functions OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
+  };
+  switch (_cilk_frame->header.entry) {}
+  dataStruct=_cilk_frame->scope0.dataStruct;
+  data=_cilk_frame->scope0.data;
+  size=_cilk_frame->scope0.size;
+  result=_cilk_frame->scope0.result;
 
-	{
-		InsertRecord *irArray= (InsertRecord *)data;
+  {
+  InsertRecord *irArray= (InsertRecord *)data;
 
-		OM_DS *ds= (OM_DS *) dataStruct;
-		int i = 0;
-		for (; i < size ; i++)
-		{ //start for
-			InsertRecord *ir= &irArray[i];
+  OM_DS *ds= (OM_DS *) dataStruct;
+  int i = 0;
+  for (; i < size ; i++)
+  { //start for
+  InsertRecord *ir= &irArray[i];
 
-			OM_Node *x= ir->x;
-			OM_Node*y=ir->y;
-			int ID= ir->ID;
+  OM_Node *x= ir->x;
+  OM_Node*y=ir->y;
+  int ID= ir->ID;
 
-			if (!(x && y&& ds)) {
-				printf("Some node or ds is null,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
+  if (!(x && y&& ds)) {
+  printf("Some node or ds is null,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
 
-				{{ Cilk_set_result(_cilk_ws, (void *)0, 0);
-					};
-					{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
-						Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
-					};
-					return;
-				}
-			};
+  {{ Cilk_set_result(_cilk_ws, (void *)0, 0);
+  };
+  { Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
+  Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+  };
+  return;
+  }
+  };
 
-			switch (ID) {
-			case HEBREW_ID:
+  switch (ID) {
+  case HEBREW_ID:
 
-				if (!(x->next_h))
-					ds->tail = y;
+  if (!(x->next_h))
+  ds->tail = y;
 
-				y->next_h = x->next_h;
+  y->next_h = x->next_h;
 
-				if (!(__sync_bool_compare_and_swap(&(x->next_h),x->next_h, y)))
-				{
-					printf("Exiting, atomic insert failed");
-					exit(0);
-				}
-				break;
+  if (!(__sync_bool_compare_and_swap(&(x->next_h),x->next_h, y)))
+  {
+  printf("Exiting, atomic insert failed");
+  exit(0);
+  }
+  break;
 
-			case ENGLISH_ID:
+  case ENGLISH_ID:
 
-				if (!(x->next_e))
-					ds->tail = y;
+  if (!(x->next_e))
+  ds->tail = y;
 
-				y->next_e = x->next_e;
+  y->next_e = x->next_e;
 
-				if (!(__sync_bool_compare_and_swap(&(x->next_e),x->next_e, y)))
-				{
-					printf("Exiting, atomic insert failed");
-					exit(0);
-				}
-				break;
-			}
+  if (!(__sync_bool_compare_and_swap(&(x->next_e),x->next_e, y)))
+  {
+  printf("Exiting, atomic insert failed");
+  exit(0);
+  }
+  break;
+  }
 
-			ds->size++;
-		} //end for
+  ds->size++;
+  } //end for
 
-		{{ Cilk_set_result(_cilk_ws, (void *)0, 0);
-			};
-			{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
-				Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
-			};
-			return;
-		}}}
+  {{ Cilk_set_result(_cilk_ws, (void *)0, 0);
+  };
+  { Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
+  Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+  };
+  return;
+  }}}
 
-static void _cilk_insertPar_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v)
+  static void _cilk_insertPar_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v)
 
-{(void)_cilk_ws;
-	(void)_cilk_procargs_v;
-	insertPar(_cilk_ws,((struct _cilk_insertPar_args*)_cilk_procargs_v)->dataStruct,((struct _cilk_insertPar_args*)_cilk_procargs_v)->data,((struct _cilk_insertPar_args*)_cilk_procargs_v)->size,((struct _cilk_insertPar_args*)_cilk_procargs_v)->result);
+  {(void)_cilk_ws;
+  (void)_cilk_procargs_v;
+  insertPar(_cilk_ws,((struct _cilk_insertPar_args*)_cilk_procargs_v)->dataStruct,((struct _cilk_insertPar_args*)_cilk_procargs_v)->data,((struct _cilk_insertPar_args*)_cilk_procargs_v)->size,((struct _cilk_insertPar_args*)_cilk_procargs_v)->result);
 
-}
-void mt_insertPar(CilkContext*const context,void*dataStruct,void*data,size_t size,void*result)
-{struct _cilk_insertPar_args*_cilk_procargs;
-	_cilk_procargs=(struct _cilk_insertPar_args*)Cilk_malloc_fixed(sizeof(struct _cilk_insertPar_args));
-	_cilk_procargs->dataStruct=dataStruct;
-	_cilk_procargs->data=data;
-	_cilk_procargs->size=size;
-	_cilk_procargs->result=result;
-	Cilk_start(context,_cilk_insertPar_import,_cilk_procargs,0);
-	Cilk_free(_cilk_procargs);
+  }
+  void mt_insertPar(CilkContext*const context,void*dataStruct,void*data,size_t size,void*result)
+  {struct _cilk_insertPar_args*_cilk_procargs;
+  _cilk_procargs=(struct _cilk_insertPar_args*)Cilk_malloc_fixed(sizeof(struct _cilk_insertPar_args));
+  _cilk_procargs->dataStruct=dataStruct;
+  _cilk_procargs->data=data;
+  _cilk_procargs->size=size;
+  _cilk_procargs->result=result;
+  Cilk_start(context,_cilk_insertPar_import,_cilk_procargs,0);
+  Cilk_free(_cilk_procargs);
 
-}
+  }
 */
 /*** END EXP SECTION ****/
 
@@ -2796,8 +2804,8 @@ int single_node_insert_batch_helper(OM_Node *x, OM_Node * y, const int ID)
 
 /*For now just leave this as a C procedure*/
 void insert_node_batch_op(CilkWorkerState *const _cilk_ws,
-                                       void *data_struct, void *data,
-                                       size_t num_elem, void *result)
+						  void *data_struct, void *data,
+						  size_t num_elem, void *result)
 
 {
 	Top_List *list = data_struct;
@@ -2817,7 +2825,7 @@ void insert_node_batch_op(CilkWorkerState *const _cilk_ws,
 	}
 
 	if (rebalance)
-			Rebalance_bottom_lists(_cilk_ws, list);
+		Rebalance_bottom_lists(_cilk_ws, list);
 	return;
 }
 #ifdef OM_IS_LL
@@ -2848,9 +2856,9 @@ void OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int
 	/* DEBUG
 	//if x is null
 	if (!(x && y) ){
-               skipping insert; x(%d): %p y(%d):%p\n",
-			   x->id, x, y->id, y);
-		return;
+	skipping insert; x(%d): %p y(%d):%p\n",
+	x->id, x, y->id, y);
+	return;
 	}
 	*/
 
@@ -2931,10 +2939,10 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 		/* DEBUG
 		//if x is null
 		if (!(x && y && ds) ){
-			printf("Some node or ds is null,\
-               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-				   x->id, x, y->id, y, ds->tail->id, ds->tail);
-			return 0 ;
+		printf("Some node or ds is null,\
+		skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+		x->id, x, y->id, y, ds->tail->id, ds->tail);
+		return 0 ;
 		}
 		*/
 		
@@ -2972,10 +2980,10 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 		/* DEBUG
 		//if x is null
 		if (!(x && y && ds) ){
-			printf("Some node or ds is null,\
-               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-				   x->id, x, y->id, y, ds->tail->id, ds->tail);
-			return 1;
+		printf("Some node or ds is null,\
+		skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+		x->id, x, y->id, y, ds->tail->id, ds->tail);
+		return 1;
 		}
 		*/
 
@@ -3361,59 +3369,59 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 /// If we had updates to post_sync_node, reset the frame's post_sync_node
 #elif defined OM_IS_BENDER
 
-	#ifdef BATCHIFY_WORKING
-		OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID);
-		OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID);
-		if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID);
-
-		/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-		OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID);
-		OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID);
-		if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID);
-	#else 
-
-		int rebalance_needed = 0;
-		if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID))
-		{
-			Split_and_add_to_top( WS_TOP_LIST, spawned_func_node->ds_e);
-			rebalance_needed = 1;
-		}
-		if (OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID))
-		{
-			Split_and_add_to_top( WS_TOP_LIST, cont_node->ds_e);
-			rebalance_needed = 1;
-		}
-		if (post_sync_node) 
-			if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID))
-			{
-				Split_and_add_to_top( WS_TOP_LIST, post_sync_node->ds_e);
-				rebalance_needed = 1;
-			}
+#ifdef BATCHIFY_WORKING
+	OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID);
+	OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID);
+	if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID);
 
 	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-		if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID))
+	OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID);
+	OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID);
+	if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID);
+#else 
+
+	int rebalance_needed = 0;
+	if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID))
+	{
+		Split_and_add_to_top( WS_TOP_LIST, spawned_func_node->ds_e);
+		rebalance_needed = 1;
+	}
+	if (OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID))
+	{
+		Split_and_add_to_top( WS_TOP_LIST, cont_node->ds_e);
+		rebalance_needed = 1;
+	}
+	if (post_sync_node) 
+		if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID))
 		{
-			Split_and_add_to_top( WS_TOP_LIST, cont_node->ds_h);
+			Split_and_add_to_top( WS_TOP_LIST, post_sync_node->ds_e);
 			rebalance_needed = 1;
 		}
 
-		if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID))
+	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
+	if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID))
+	{
+		Split_and_add_to_top( WS_TOP_LIST, cont_node->ds_h);
+		rebalance_needed = 1;
+	}
+
+	if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID))
+	{
+		Split_and_add_to_top( WS_TOP_LIST, spawned_func_node->ds_h);
+		rebalance_needed = 1;
+	}
+
+	if (post_sync_node) 
+		if (  OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID))
 		{
-			Split_and_add_to_top( WS_TOP_LIST, spawned_func_node->ds_h);
+			Split_and_add_to_top( WS_TOP_LIST, post_sync_node->ds_h);
 			rebalance_needed = 1;
 		}
 
-		if (post_sync_node) 
-			if (  OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID))
-			{
-				Split_and_add_to_top( WS_TOP_LIST, post_sync_node->ds_h);
-				rebalance_needed = 1;
-			}
-
-		/// Rebalance all remaining lists that need to be rebalanced
-		if (rebalance_needed) /// This will changed when we batchify it
-			Rebalance_bottom_lists(ws, WS_TOP_LIST);
-		/// End else for (if BATCHIFY_WORKING)
+	/// Rebalance all remaining lists that need to be rebalanced
+	if (rebalance_needed) /// This will changed when we batchify it
+		Rebalance_bottom_lists(ws, WS_TOP_LIST);
+	/// End else for (if BATCHIFY_WORKING)
 #endif 
 
 #endif
