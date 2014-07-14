@@ -2158,10 +2158,11 @@ Bottom_List * Init_bottom_list ()
 /// Relabels the range of nodes from x to y
 void tag_range_relabel (Bottom_List *x, Bottom_List *y, unsigned long tag_spacing )
 {
-	while (x->next != y){
+	/*while (x->next != y){*/
+	while (x != y){
 		/// Debug:
 		/// insert x->next after x but with y->tag as the end tag
-		y->tag = x->tag + tag_spacing;
+		x->next->tag = x->tag + tag_spacing;
 
 		/// Move along x pointer
 		x = x->next;
