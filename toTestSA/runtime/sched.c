@@ -2154,6 +2154,22 @@ Bottom_List * Init_bottom_list ()
 	return list;
 
 }
+
+/// Relabels the range of nodes from x to y
+void tag_range_relabel (Bottom_List *x, Bottom_List *y, unsigned long tag_spacing )
+{
+	while (x->next != y){
+		/// Debug:
+		/// insert x->next after x but with y->tag as the end tag
+		y->tag = x->tag + tag_spacing;
+
+		/// Move along x pointer
+		x = x->next;
+
+	}
+	return ;
+}		/* -----  end of function tag_range_relabel  ----- */
+
 /// Rebalances the list according to Bender's algorithm around pivot
 void top_list_rebalance(Top_List * list, Bottom_List *pivot)
 {
@@ -2192,8 +2208,6 @@ void top_list_rebalance(Top_List * list, Bottom_List *pivot)
 
 	return;
 }		/* -----  end of function top_list_rebalance(Top_List * list, Bottom_List *pivot)  ----- */
-
-
 
 /// Inserts a Bottom_List into a Top_List
 /// Bottom_List y is inserted after Bottom_List x in Top_List list
@@ -2802,6 +2816,174 @@ int single_node_insert_batch_helper(OM_Node *x, OM_Node * y, const int ID)
 	return 100;
 }
 
+/// Function that splits a sublist in half and adds second
+/// half to top list as a new sublist
+void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
+	/// ***** Alex's version ***** ///
+	
+	Bottom_List * to_add = Init_bottom_list();
+	
+
+	int node_count_e = 1, node_count_h = 1;
+	/// English
+	if (blist->size_e > 32 ){
+		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 2) ;
+		
+
+		/// Assign first node tag
+		OM_Node * current_e = blist->head->next_e;
+		current_e->tag_e = skip_size;
+
+		/// Update first half of the list
+		while(node_count_e < (blist->size_e >> 1) ) {
+			/// Move current node along
+			current_e = current_e->next_e;
+			/// Update current tage
+			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
+			/// Update node count
+			node_count_e++;
+		}
+
+		/// Holds the middle node
+		OM_Node * middle_node = current_e;
+
+		/// Update the tail of each list
+		blist->tail->prev_e = middle_node;
+
+		/// Update size of first and second lists
+		to_add->size_e = blist->size_e - node_count_e;
+		blist->size_e = node_count_e; 
+
+		///Reassign head->next_e of to_add
+		// and update to_add head and tail references
+		current_e = current_e->next_e;
+		to_add->head->next_e = current_e;
+		current_e->prev_e = to_add->head;
+		
+		/// Update current node reference to ds
+		current_e->ds_e = to_add;
+
+		current_e->tag_e = skip_size;
+		
+		while (current_e->next_e != blist->tail)
+		{
+			/// Move along current node
+			current_e = current_e->next_e;
+
+			/// Update current tag_e
+			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
+
+			/// Update node's ds
+			current_e->ds_e = to_add;
+		}
+		/// Update tag_e
+		/*current_e->tag_e = current_e->prev_e->tag_e + skip_size;*/
+
+		/// Update next_e pointer to the new list's tail
+		current_e->next_e = to_add->tail;
+
+
+		/// Update tail of to_add list
+		to_add->tail->prev_e = current_e;
+
+		// Update middle node's referenece to next_e
+		middle_node->next_e = blist->tail;
+	}
+	if (blist->size_h > 32 ) {
+		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 2) ;
+		
+
+		/// Assign first node tag
+		OM_Node * current_h = blist->head->next_h;
+		current_h->tag_h = skip_size;
+
+		/// Update first half of the list
+		while(node_count_h < (blist->size_h >> 1) ) {
+			/// Move current node along
+			current_h = current_h->next_h;
+			/// Update current tage
+			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
+			/// Update node count
+			node_count_h++;
+		}
+		/// Holds the middle node
+		OM_Node * middle_node = current_h;
+
+		/// Update the tail of each list
+		blist->tail->prev_h = middle_node;
+
+		/// Update size of first and second lists
+		to_add->size_h = blist->size_h - node_count_h;
+		blist->size_h = node_count_h; 
+
+		///Reassign head->next_h of to_add
+		// and update to_add head and tail references
+		current_h = current_h->next_h;
+		to_add->head->next_h = current_h;
+		current_h->prev_h = to_add->head;
+		
+		/// Update current node reference to ds
+		current_h->ds_h = to_add;
+
+		current_h->tag_h = skip_size;
+		
+		while (current_h->next_h != blist->tail)
+		{
+			/// Move along current node
+			current_h = current_h->next_h;
+
+			/// Update current tag_h
+			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
+
+			/// Update node's ds
+			current_h->ds_h = to_add;
+		}
+
+		/// Update tag_h
+		/*current_h->tag_h = current_h->prev_h->tag_h + skip_size;*/
+
+		/// Update next_h pointer to the new list's tail
+		current_h->next_h = to_add->tail;
+
+		/// Update tail of to_add list
+		to_add->tail->prev_h = current_h;
+
+		/*Update the middle node's next_h reference*/
+		middle_node->next_h = blist->tail;
+		
+
+	}
+	/// Reset reorder flag
+	blist->Reorder_flag_e = blist->Reorder_flag_h = 0;
+
+	Insert_top_list(tlist, blist, to_add);
+}
+
+/// Iterate through the top list to find sublists needing reordered
+void Rebalance_bottom_lists(Top_List * list) {
+
+	/// The iterators
+	Bottom_List * current_e, * current_h;
+	current_e = current_h = list->head;
+
+	/// NOTE: Only eng/heb distinction for the flags, not top_list splits
+
+	/// English
+	while(current_e != list->tail) {
+		if(current_e->Reorder_flag_e == 1) ///< If 1, then needs split
+			Split_and_add_to_top(list, current_e);
+		current_e = current_e->next;
+	}
+
+	/// Hebrew
+	while(current_h != list->tail) {
+		if(current_h->Reorder_flag_h == 1) ///< If 1, then needs split
+			Split_and_add_to_top(list, current_h);
+		current_h = current_h->next;
+	} 
+}
+
+
 /*For now just leave this as a C procedure*/
 void insert_node_batch_op(CilkWorkerState *const _cilk_ws,
 						  void *data_struct, void *data,
@@ -3016,189 +3198,6 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 #endif
 }
 #endif
-
-
-/// Function that splits a sublist in half and adds second
-/// half to top list as a new sublist
-void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
-	/// ***** Alex's version ***** ///
-	
-	Bottom_List * to_add = Init_bottom_list();
-	
-
-	int node_count_e = 1, node_count_h = 1;
-	/// English
-	if (blist->size_e > 32 ){
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 2) ;
-		
-
-		/// Assign first node tag
-		OM_Node * current_e = blist->head->next_e;
-		current_e->tag_e = skip_size;
-
-		/// Update first half of the list
-		while(node_count_e < (blist->size_e >> 1) ) {
-			/// Move current node along
-			current_e = current_e->next_e;
-			/// Update current tage
-			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
-			/// Update node count
-			node_count_e++;
-		}
-
-		/// Holds the middle node
-		OM_Node * middle_node = current_e;
-
-		/// Update the tail of each list
-		blist->tail->prev_e = middle_node;
-
-		/// Update size of first and second lists
-		to_add->size_e = blist->size_e - node_count_e;
-		blist->size_e = node_count_e; 
-
-		///Reassign head->next_e of to_add
-		// and update to_add head and tail references
-		current_e = current_e->next_e;
-		to_add->head->next_e = current_e;
-		current_e->prev_e = to_add->head;
-		
-		/// Update current node reference to ds
-		current_e->ds_e = to_add;
-
-		current_e->tag_e = skip_size;
-		
-		while (current_e->next_e != blist->tail)
-		{
-			/// Move along current node
-			current_e = current_e->next_e;
-
-			/// Update current tag_e
-			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
-
-			/// Update node's ds
-			current_e->ds_e = to_add;
-		}
-		/// Update tag_e
-		/*current_e->tag_e = current_e->prev_e->tag_e + skip_size;*/
-
-		/// Update next_e pointer to the new list's tail
-		current_e->next_e = to_add->tail;
-
-
-		/// Update tail of to_add list
-		to_add->tail->prev_e = current_e;
-
-		// Update middle node's referenece to next_e
-		middle_node->next_e = blist->tail;
-	}
-	if (blist->size_h > 32 ) {
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 2) ;
-		
-
-		/// Assign first node tag
-		OM_Node * current_h = blist->head->next_h;
-		current_h->tag_h = skip_size;
-
-		/// Update first half of the list
-		while(node_count_h < (blist->size_h >> 1) ) {
-			/// Move current node along
-			current_h = current_h->next_h;
-			/// Update current tage
-			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
-			/// Update node count
-			node_count_h++;
-		}
-		/// Holds the middle node
-		OM_Node * middle_node = current_h;
-
-		/// Update the tail of each list
-		blist->tail->prev_h = middle_node;
-
-		/// Update size of first and second lists
-		to_add->size_h = blist->size_h - node_count_h;
-		blist->size_h = node_count_h; 
-
-		///Reassign head->next_h of to_add
-		// and update to_add head and tail references
-		current_h = current_h->next_h;
-		to_add->head->next_h = current_h;
-		current_h->prev_h = to_add->head;
-		
-		/// Update current node reference to ds
-		current_h->ds_h = to_add;
-
-		current_h->tag_h = skip_size;
-		
-		while (current_h->next_h != blist->tail)
-		{
-			/// Move along current node
-			current_h = current_h->next_h;
-
-			/// Update current tag_h
-			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
-
-			/// Update node's ds
-			current_h->ds_h = to_add;
-		}
-
-		/// Update tag_h
-		/*current_h->tag_h = current_h->prev_h->tag_h + skip_size;*/
-
-		/// Update next_h pointer to the new list's tail
-		current_h->next_h = to_add->tail;
-
-		/// Update tail of to_add list
-		to_add->tail->prev_h = current_h;
-
-		/*Update the middle node's next_h reference*/
-		middle_node->next_h = blist->tail;
-		
-
-	}
-	/// Reset reorder flag
-	blist->Reorder_flag_e = blist->Reorder_flag_h = 0;
-
-	Insert_top_list(tlist, blist, to_add);
-}
-
-/// Iterate through the top list to find sublists needing reordered
-void Rebalance_bottom_lists(Top_List * list) {
-
-	/// The iterators
-	Bottom_List * current_e, * current_h;
-	current_e = current_h = list->head;
-
-	/// NOTE: Only eng/heb distinction for the flags, not top_list splits
-
-	/// English
-	while(current_e != list->tail) {
-		if(current_e->Reorder_flag_e == 1) ///< If 1, then needs split
-			Split_and_add_to_top(list, current_e);
-		current_e = current_e->next;
-	}
-
-	/// Hebrew
-	while(current_h != list->tail) {
-		if(current_h->Reorder_flag_h == 1) ///< If 1, then needs split
-			Split_and_add_to_top(list, current_h);
-		current_h = current_h->next;
-	} 
-}
-
-/// Relabels the range of nodes from x to y
-void tag_range_relabel (Bottom_List *x, Bottom_List *y, unsigned long tag_spacing )
-{
-	while (x->next != y){
-		/// Debug:
-		/// insert x->next after x but with y->tag as the end tag
-		y->tag = x->tag + tag_spacing;
-
-		/// Move along x pointer
-		x = x->next;
-
-	}
-	return ;
-}		/* -----  end of function tag_range_relabel  ----- */
 
 
 /// Within the void *ds, depending on macros defined in main, determine the order
