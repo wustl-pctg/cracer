@@ -2818,9 +2818,9 @@ void insert_node_batch_op(CilkWorkerState *const _cilk_ws,
 		if (single_node_insert_batch_helper(ir->x, ir->y, ir->ID) == 1)
 		{
 			if (ir->ID == ENGLISH_ID)
-				Split_and_add_to_top(_cilk_ws, list, ir->x->ds_e);
+				Split_and_add_to_top(list, ir->x->ds_e);
 			else if (ir->ID == HEBREW_ID)
-				Split_and_add_to_top(_cilk_ws, list, ir->x->ds_h);
+				Split_and_add_to_top(list, ir->x->ds_h);
 		}
 	}
 
