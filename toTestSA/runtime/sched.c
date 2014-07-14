@@ -2488,6 +2488,148 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 	context->Cilk_global_state->OM_DS = NULL;
 }
 
+/// Function that splits a sublist in half and adds second
+/// half to top list as a new sublist
+void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
+	/// ***** Alex's version ***** ///
+	
+	Bottom_List * to_add = Init_bottom_list();
+	
+
+	int node_count_e = 1, node_count_h = 1;
+	/// English
+	if (blist->size_e > 3 ){
+		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 2) ;
+		
+
+		/// Assign first node tag
+		OM_Node * current_e = blist->head->next_e;
+		current_e->tag_e = skip_size;
+
+		/// Update first half of the list
+		while(node_count_e < (blist->size_e >> 1) ) {
+			/// Move current node along
+			current_e = current_e->next_e;
+			/// Update current tage
+			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
+			/// Update node count
+			node_count_e++;
+		}
+
+		/// Holds the middle node
+		OM_Node * middle_node = current_e;
+
+		/// Update the tail of each list
+		blist->tail->prev_e = middle_node;
+
+		/// Update size of first and second lists
+		to_add->size_e = blist->size_e - node_count_e;
+		blist->size_e = node_count_e; 
+
+		///Reassign head->next_e of to_add
+		// and update to_add head and tail references
+		current_e = current_e->next_e;
+		to_add->head->next_e = current_e;
+		current_e->prev_e = to_add->head;
+		
+		/// Update current node reference to ds
+		current_e->ds_e = to_add;
+
+		current_e->tag_e = skip_size;
+		
+		while (current_e->next_e != blist->tail)
+		{
+			/// Move along current node
+			current_e = current_e->next_e;
+
+			/// Update current tag_e
+			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
+
+			/// Update node's ds
+			current_e->ds_e = to_add;
+		}
+		/// Update tag_e
+		/*current_e->tag_e = current_e->prev_e->tag_e + skip_size;*/
+
+		/// Update next_e pointer to the new list's tail
+		current_e->next_e = to_add->tail;
+
+
+		/// Update tail of to_add list
+		to_add->tail->prev_e = current_e;
+
+		// Update middle node's referenece to next_e
+		middle_node->next_e = blist->tail;
+	}
+	if (blist->size_h > 3  ) {
+		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 2) ;
+		
+
+		/// Assign first node tag
+		OM_Node * current_h = blist->head->next_h;
+		current_h->tag_h = skip_size;
+
+		/// Update first half of the list
+		while(node_count_h < (blist->size_h >> 1) ) {
+			/// Move current node along
+			current_h = current_h->next_h;
+			/// Update current tage
+			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
+			/// Update node count
+			node_count_h++;
+		}
+		/// Holds the middle node
+		OM_Node * middle_node = current_h;
+
+		/// Update the tail of each list
+		blist->tail->prev_h = middle_node;
+
+		/// Update size of first and second lists
+		to_add->size_h = blist->size_h - node_count_h;
+		blist->size_h = node_count_h; 
+
+		///Reassign head->next_h of to_add
+		// and update to_add head and tail references
+		current_h = current_h->next_h;
+		to_add->head->next_h = current_h;
+		current_h->prev_h = to_add->head;
+		
+		/// Update current node reference to ds
+		current_h->ds_h = to_add;
+
+		current_h->tag_h = skip_size;
+		
+		while (current_h->next_h != blist->tail)
+		{
+			/// Move along current node
+			current_h = current_h->next_h;
+
+			/// Update current tag_h
+			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
+
+			/// Update node's ds
+			current_h->ds_h = to_add;
+		}
+
+		/// Update tag_h
+		/*current_h->tag_h = current_h->prev_h->tag_h + skip_size;*/
+
+		/// Update next_h pointer to the new list's tail
+		current_h->next_h = to_add->tail;
+
+		/// Update tail of to_add list
+		to_add->tail->prev_h = current_h;
+
+		/*Update the middle node's next_h reference*/
+		middle_node->next_h = blist->tail;
+		
+
+	}
+	/// Reset reorder flag
+	blist->Reorder_flag_e = blist->Reorder_flag_h = 0;
+
+	Insert_top_list(tlist, blist, to_add);
+}
 
 /**** START EXP SECTION ****/
 
@@ -2810,164 +2952,6 @@ Cilk_free(_cilk_procargs);
 /*** END EXP SECTION ****/
 
 
-/// Prints the bottom List
-void printList(Bottom_List * list, const int ID) {
-    OM_Node * n;
-    if (list && list->head)
-        n = list->head;
-    else
-		exit(10);
-	if( ID == HEBREW_ID)
-		printf("Hebrew format: ==ID(tag)->== Head:");
-	else
-		printf("English format: ==ID(tag)->== Head:");
-
-    while (n != NULL){
-		if (ID == HEBREW_ID) {
-			printf("%d(%lu)->", n->id, n->tag_h);
-        	n = n->next_h;
-		}
-		else {
-			printf("%d(%lu)->", n->id, n->tag_e);
-			n = n->next_e;
-		}
-    }
-    printf("Tail\n");
-}
-
-/// Prints the Top List
-void print_top_list(Top_List *list){
-
-	Bottom_List * current = list->head;
-	printf("HEAD%u{ %lu}->", current->id, current->tag);
-
-	while(current != NULL)
-	{
-		printf("#%u{%lu}->", current->id, current->tag);
-		current = current->next;
-	}
-	printf("Tail\n\n\n");
-
-}
-/* Does one insert into the data structure x is held in*/
-int single_node_insert_batch_helper(OM_Node *x, OM_Node * y, const int ID)
-{
-	Bottom_List * ds;
-
-	switch(ID){
-	case HEBREW_ID:
-
-		/// Retrieve the data structure known node
-		ds = x->ds_h;
-	
-		/// Update the ds y is in 
-		y->ds_h = ds;
-
-		///Debug: if x is null
-		if (!(x && y && ds) ){
-			printf("Some node or ds is null,\
-               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-				   x->id, x, y->id, y, ds->tail->id, ds->tail);
-			return 0 ;
-		}
-		
-		/// This is the procedure:
-		y->next_h = x->next_h;
-		x->next_h->prev_h = y;
-		x->next_h = y;
-		y->prev_h = x;
-		
-		/// Assign y's tag
-		y->tag_h = ((y->next_h->tag_h >> 1) + (y->prev_h->tag_h >> 1));
-		
-		/// Update flag as necessary
-		if(ds->size_h < (INT_BIT_SIZE >> 1))
-			ds->Reorder_flag_h = 0;
-		else
-			ds->Reorder_flag_h = 1;
-
-		ds->size_h++;
-
-		if(ds->size_h == INT_BIT_SIZE)
-			return 1; ///< Needs to be split
-		return 0; ///< Doesn't needs immediately split
-
-		break;
-
-	case ENGLISH_ID:
-
-		/// Retrieve the data structure known node
-		ds = x->ds_e;
-	
-		/// Update the ds y is in 
-		y->ds_e = ds;
-
-		//if x is null
-		if (!(x && y && ds) ){
-			printf("Some node or ds is null,\
-               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-				   x->id, x, y->id, y, ds->tail->id, ds->tail);
-			return 1;
-		}
-
-		/// This is the procedure:
-		y->next_e = x->next_e;
-		x->next_e->prev_e = y;
-		x->next_e = y;
-		y->prev_e = x;
-		
-		/// Assign y's tag
-		y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
-
-		/// Update flag as necessary
-		if(ds->size_e < (INT_BIT_SIZE >> 1))
-			ds->Reorder_flag_e = 0;
-		else
-			ds->Reorder_flag_e = 1;
-
-		ds->size_e++;
-
-		if(ds->size_e == INT_BIT_SIZE)
-			return 1; ///< Needs to be split
-		return 0; ///< Doesn't needs immediately split
-
-	}
-
-	/// Specific number for checks
-	return 100;
-}
-/*
- *
- *[>For now just leave this as a C procedure<]
- *void insert_node_batch_op(CilkWorkerState *const _cilk_ws,
- *                          void *data_struct, void *data,
- *                          size_t num_elem, void *result)
- *
- *{
- *    Top_List *list = data_struct;
- *    InsertRecord *ir, *irArray = (InsertRecord * )data;
- *    int rebalance = 0;
- *    while (num_elem > 0)
- *    {
- *        ir = &irArray[--num_elem];
- *        /// We need to do a rebalance if this returns 1
- *        if (single_node_insert_batch_helper(ir->x, ir->y, ir->ID) == 1)
- *        {
- *            if (ir->ID == ENGLISH_ID)
- *                Split_and_add_to_top(list, ir->x->ds_e);
- *            else if (ir->ID == HEBREW_ID)
- *                Split_and_add_to_top(list, ir->x->ds_h);
- *        }
- *        free(ir);
- *    }
- *    [>For now, this doesn;t have to be called, since the split's should make things work correctly, but not necessarily fast<]
- *    [>if (rebalance)<]
- *        [>Rebalance_bottom_lists(_cilk_ws, list);<]
- *
- *    return;
- *}
- */
-
 #ifdef OM_IS_LL
 void OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int ID){
 
@@ -3158,149 +3142,164 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 }
 #endif
 
+/// Prints the bottom List
+void printList(Bottom_List * list, const int ID) {
+    OM_Node * n;
+    if (list && list->head)
+        n = list->head;
+    else
+		exit(10);
+	if( ID == HEBREW_ID)
+		printf("Hebrew format: ==ID(tag)->== Head:");
+	else
+		printf("English format: ==ID(tag)->== Head:");
 
-/// Function that splits a sublist in half and adds second
-/// half to top list as a new sublist
-void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
-	/// ***** Alex's version ***** ///
-	
-	Bottom_List * to_add = Init_bottom_list();
-	
-
-	int node_count_e = 1, node_count_h = 1;
-	/// English
-	if (blist->size_e > 3 ){
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 2) ;
-		
-
-		/// Assign first node tag
-		OM_Node * current_e = blist->head->next_e;
-		current_e->tag_e = skip_size;
-
-		/// Update first half of the list
-		while(node_count_e < (blist->size_e >> 1) ) {
-			/// Move current node along
-			current_e = current_e->next_e;
-			/// Update current tage
-			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
-			/// Update node count
-			node_count_e++;
+    while (n != NULL){
+		if (ID == HEBREW_ID) {
+			printf("%d(%lu)->", n->id, n->tag_h);
+        	n = n->next_h;
 		}
-
-		/// Holds the middle node
-		OM_Node * middle_node = current_e;
-
-		/// Update the tail of each list
-		blist->tail->prev_e = middle_node;
-
-		/// Update size of first and second lists
-		to_add->size_e = blist->size_e - node_count_e;
-		blist->size_e = node_count_e; 
-
-		///Reassign head->next_e of to_add
-		// and update to_add head and tail references
-		current_e = current_e->next_e;
-		to_add->head->next_e = current_e;
-		current_e->prev_e = to_add->head;
-		
-		/// Update current node reference to ds
-		current_e->ds_e = to_add;
-
-		current_e->tag_e = skip_size;
-		
-		while (current_e->next_e != blist->tail)
-		{
-			/// Move along current node
-			current_e = current_e->next_e;
-
-			/// Update current tag_e
-			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
-
-			/// Update node's ds
-			current_e->ds_e = to_add;
+		else {
+			printf("%d(%lu)->", n->id, n->tag_e);
+			n = n->next_e;
 		}
-		/// Update tag_e
-		/*current_e->tag_e = current_e->prev_e->tag_e + skip_size;*/
-
-		/// Update next_e pointer to the new list's tail
-		current_e->next_e = to_add->tail;
-
-
-		/// Update tail of to_add list
-		to_add->tail->prev_e = current_e;
-
-		// Update middle node's referenece to next_e
-		middle_node->next_e = blist->tail;
-	}
-	if (blist->size_h > 3  ) {
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 2) ;
-		
-
-		/// Assign first node tag
-		OM_Node * current_h = blist->head->next_h;
-		current_h->tag_h = skip_size;
-
-		/// Update first half of the list
-		while(node_count_h < (blist->size_h >> 1) ) {
-			/// Move current node along
-			current_h = current_h->next_h;
-			/// Update current tage
-			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
-			/// Update node count
-			node_count_h++;
-		}
-		/// Holds the middle node
-		OM_Node * middle_node = current_h;
-
-		/// Update the tail of each list
-		blist->tail->prev_h = middle_node;
-
-		/// Update size of first and second lists
-		to_add->size_h = blist->size_h - node_count_h;
-		blist->size_h = node_count_h; 
-
-		///Reassign head->next_h of to_add
-		// and update to_add head and tail references
-		current_h = current_h->next_h;
-		to_add->head->next_h = current_h;
-		current_h->prev_h = to_add->head;
-		
-		/// Update current node reference to ds
-		current_h->ds_h = to_add;
-
-		current_h->tag_h = skip_size;
-		
-		while (current_h->next_h != blist->tail)
-		{
-			/// Move along current node
-			current_h = current_h->next_h;
-
-			/// Update current tag_h
-			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
-
-			/// Update node's ds
-			current_h->ds_h = to_add;
-		}
-
-		/// Update tag_h
-		/*current_h->tag_h = current_h->prev_h->tag_h + skip_size;*/
-
-		/// Update next_h pointer to the new list's tail
-		current_h->next_h = to_add->tail;
-
-		/// Update tail of to_add list
-		to_add->tail->prev_h = current_h;
-
-		/*Update the middle node's next_h reference*/
-		middle_node->next_h = blist->tail;
-		
-
-	}
-	/// Reset reorder flag
-	blist->Reorder_flag_e = blist->Reorder_flag_h = 0;
-
-	Insert_top_list(tlist, blist, to_add);
+    }
+    printf("Tail\n");
 }
+
+/// Prints the Top List
+void print_top_list(Top_List *list){
+
+	Bottom_List * current = list->head;
+	printf("HEAD%u{ %lu}->", current->id, current->tag);
+
+	while(current != NULL)
+	{
+		printf("#%u{%lu}->", current->id, current->tag);
+		current = current->next;
+	}
+	printf("Tail\n\n\n");
+
+}
+/* Does one insert into the data structure x is held in*/
+int single_node_insert_batch_helper(OM_Node *x, OM_Node * y, const int ID)
+{
+	Bottom_List * ds;
+
+	switch(ID){
+	case HEBREW_ID:
+
+		/// Retrieve the data structure known node
+		ds = x->ds_h;
+	
+		/// Update the ds y is in 
+		y->ds_h = ds;
+
+		///Debug: if x is null
+		if (!(x && y && ds) ){
+			printf("Some node or ds is null,\
+               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+				   x->id, x, y->id, y, ds->tail->id, ds->tail);
+			return 0 ;
+		}
+		
+		/// This is the procedure:
+		y->next_h = x->next_h;
+		x->next_h->prev_h = y;
+		x->next_h = y;
+		y->prev_h = x;
+		
+		/// Assign y's tag
+		y->tag_h = ((y->next_h->tag_h >> 1) + (y->prev_h->tag_h >> 1));
+		
+		/// Update flag as necessary
+		if(ds->size_h < (INT_BIT_SIZE >> 1))
+			ds->Reorder_flag_h = 0;
+		else
+			ds->Reorder_flag_h = 1;
+
+		ds->size_h++;
+
+		if(ds->size_h == INT_BIT_SIZE)
+			return 1; ///< Needs to be split
+		return 0; ///< Doesn't needs immediately split
+
+		break;
+
+	case ENGLISH_ID:
+
+		/// Retrieve the data structure known node
+		ds = x->ds_e;
+	
+		/// Update the ds y is in 
+		y->ds_e = ds;
+
+		//if x is null
+		if (!(x && y && ds) ){
+			printf("Some node or ds is null,\
+               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
+				   x->id, x, y->id, y, ds->tail->id, ds->tail);
+			return 1;
+		}
+
+		/// This is the procedure:
+		y->next_e = x->next_e;
+		x->next_e->prev_e = y;
+		x->next_e = y;
+		y->prev_e = x;
+		
+		/// Assign y's tag
+		y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
+
+		/// Update flag as necessary
+		if(ds->size_e < (INT_BIT_SIZE >> 1))
+			ds->Reorder_flag_e = 0;
+		else
+			ds->Reorder_flag_e = 1;
+
+		ds->size_e++;
+
+		if(ds->size_e == INT_BIT_SIZE)
+			return 1; ///< Needs to be split
+		return 0; ///< Doesn't needs immediately split
+
+	}
+
+	/// Specific number for checks
+	return 100;
+}
+/*
+ *
+ *[>For now just leave this as a C procedure<]
+ *void insert_node_batch_op(CilkWorkerState *const _cilk_ws,
+ *                          void *data_struct, void *data,
+ *                          size_t num_elem, void *result)
+ *
+ *{
+ *    Top_List *list = data_struct;
+ *    InsertRecord *ir, *irArray = (InsertRecord * )data;
+ *    int rebalance = 0;
+ *    while (num_elem > 0)
+ *    {
+ *        ir = &irArray[--num_elem];
+ *        /// We need to do a rebalance if this returns 1
+ *        if (single_node_insert_batch_helper(ir->x, ir->y, ir->ID) == 1)
+ *        {
+ *            if (ir->ID == ENGLISH_ID)
+ *                Split_and_add_to_top(list, ir->x->ds_e);
+ *            else if (ir->ID == HEBREW_ID)
+ *                Split_and_add_to_top(list, ir->x->ds_h);
+ *        }
+ *        free(ir);
+ *    }
+ *    [>For now, this doesn;t have to be called, since the split's should make things work correctly, but not necessarily fast<]
+ *    [>if (rebalance)<]
+ *        [>Rebalance_bottom_lists(_cilk_ws, list);<]
+ *
+ *    return;
+ *}
+ */
+
 
 /// Iterate through the top list to find sublists needing reordered
 void Rebalance_bottom_lists(Top_List * list) {
