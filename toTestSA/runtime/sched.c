@@ -2110,7 +2110,7 @@ Top_List * Init_top_list ()
 
 	/// Assign T (in bender's paper), which governs how dense the list can be
 	/// before rebalancing. As of now, we just pick an arbitrary val in [1,2]
-	list->overflow_constant 	=	1.3;
+	list->overflow_constant 	=	1.4;
 
 	/// Assign appropriate vals to head and tail node tags
 	list->head->tag = 0;
@@ -2201,7 +2201,7 @@ void top_list_rebalance(Top_List * list, Bottom_List *pivot)
 	while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && (lList != list->head || rList != list->tail));
 	//printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
 	/// rebalance subsection of top_list
-	long skip_size =  (unsigned long)((enclosing_tag_range - 1 ) / (num_elements_in_sublist)) ;
+	long skip_size = (unsigned long)((enclosing_tag_range ) / (num_elements_in_sublist )) ;
 	/// Debug: not needed in final
 	assert(skip_size>0);
 	tag_range_relabel(lList, rList, skip_size );
@@ -2490,6 +2490,127 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 
 
 /**** START EXP SECTION ****/
+
+struct _cilk_insert_node_batch_op_frame{CilkStackFrame header;
+struct{void*data_struct;
+void*data;
+size_t num_elem;
+void*result;
+}scope0;
+struct{Top_List*list;
+InsertRecord*ir;
+InsertRecord*irArray;
+}scope1;
+};
+struct _cilk_insert_node_batch_op_args{void*data_struct;
+void*data;
+size_t num_elem;
+void*result;
+};
+static void _cilk_insert_node_batch_op_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insert_node_batch_op_frame*_cilk_frame);
+static CilkProcInfo _cilk_insert_node_batch_op_sig[]={{0,sizeof(struct _cilk_insert_node_batch_op_frame),_cilk_insert_node_batch_op_slow,0,0}};
+
+void insert_node_batch_op (CilkWorkerState*const _cilk_ws,void*data_struct,void*data,size_t num_elem,void*result){struct _cilk_insert_node_batch_op_frame*_cilk_frame;
+{ _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_insert_node_batch_op_frame), _cilk_insert_node_batch_op_sig);
+ };
+{ Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
+ // ignore OM_DS stuff OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
+ };
+
+{
+ Top_List *list= data_struct;
+
+ InsertRecord *ir;
+InsertRecord*irArray=(InsertRecord*)data;
+
+ while (num_elem > 0)
+ {
+  ir = &irArray[--num_elem];
+
+
+  if (single_node_insert_batch_helper(ir->x, ir->y, ir->ID) == 1)
+  {
+   if (ir->ID == 10)
+    Split_and_add_to_top(list, ir->x->ds_e);
+
+   else if (ir->ID == 11)
+    Split_and_add_to_top(list, ir->x->ds_h);
+
+  }
+ }
+
+ {{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+ };
+return;
+}
+}}
+
+static void _cilk_insert_node_batch_op_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insert_node_batch_op_frame*_cilk_frame){void*data_struct;
+void*data;
+size_t num_elem;
+void*result;
+{ Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
+ // ignore OM_DS stuff: OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
+ };
+switch (_cilk_frame->header.entry) {}data_struct=_cilk_frame->scope0.data_struct;
+data=_cilk_frame->scope0.data;
+num_elem=_cilk_frame->scope0.num_elem;
+result=_cilk_frame->scope0.result;
+
+{
+ Top_List *list= data_struct;
+
+ InsertRecord *ir;
+InsertRecord*irArray=(InsertRecord*)data;
+
+ while (num_elem > 0)
+ {
+  ir = &irArray[--num_elem];
+
+
+  if (single_node_insert_batch_helper(ir->x, ir->y, ir->ID) == 1)
+  {
+   if (ir->ID == 10)
+    Split_and_add_to_top(list, ir->x->ds_e);
+
+   else if (ir->ID == 11)
+    Split_and_add_to_top(list, ir->x->ds_h);
+
+  }
+ }
+
+ {{ Cilk_set_result(_cilk_ws, (void *)0, 0);
+ };
+{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+ };
+return;
+}
+}}
+
+static void _cilk_insert_node_batch_op_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v)
+{(void)_cilk_ws;
+(void)_cilk_procargs_v;
+insert_node_batch_op(_cilk_ws,((struct _cilk_insert_node_batch_op_args*)_cilk_procargs_v)->data_struct,((struct _cilk_insert_node_batch_op_args*)_cilk_procargs_v)->data,((struct _cilk_insert_node_batch_op_args*)_cilk_procargs_v)->num_elem,((struct _cilk_insert_node_batch_op_args*)_cilk_procargs_v)->result);
+
+}
+void mt_insert_node_batch_op(CilkContext*const context,void*data_struct,void*data,size_t num_elem,void*result)
+{struct _cilk_insert_node_batch_op_args*_cilk_procargs;
+_cilk_procargs=(struct _cilk_insert_node_batch_op_args*)Cilk_malloc_fixed(sizeof(struct _cilk_insert_node_batch_op_args));
+_cilk_procargs->data_struct=data_struct;
+_cilk_procargs->data=data;
+_cilk_procargs->num_elem=num_elem;
+_cilk_procargs->result=result;
+Cilk_start(context,_cilk_insert_node_batch_op_import,_cilk_procargs,0);
+Cilk_free(_cilk_procargs);
+
+}
+
+
+
 /*
   struct _cilk_insertPar_frame{CilkStackFrame header;
   struct{
@@ -2728,7 +2849,7 @@ void print_top_list(Top_List *list){
 	printf("Tail\n\n\n");
 
 }
-/*Does one insert into the data structure x is held in*/
+/* Does one insert into the data structure x is held in*/
 int single_node_insert_batch_helper(OM_Node *x, OM_Node * y, const int ID)
 {
 	Bottom_List * ds;
@@ -2815,201 +2936,38 @@ int single_node_insert_batch_helper(OM_Node *x, OM_Node * y, const int ID)
 	/// Specific number for checks
 	return 100;
 }
+/*
+ *
+ *[>For now just leave this as a C procedure<]
+ *void insert_node_batch_op(CilkWorkerState *const _cilk_ws,
+ *                          void *data_struct, void *data,
+ *                          size_t num_elem, void *result)
+ *
+ *{
+ *    Top_List *list = data_struct;
+ *    InsertRecord *ir, *irArray = (InsertRecord * )data;
+ *    int rebalance = 0;
+ *    while (num_elem > 0)
+ *    {
+ *        ir = &irArray[--num_elem];
+ *        /// We need to do a rebalance if this returns 1
+ *        if (single_node_insert_batch_helper(ir->x, ir->y, ir->ID) == 1)
+ *        {
+ *            if (ir->ID == ENGLISH_ID)
+ *                Split_and_add_to_top(list, ir->x->ds_e);
+ *            else if (ir->ID == HEBREW_ID)
+ *                Split_and_add_to_top(list, ir->x->ds_h);
+ *        }
+ *        free(ir);
+ *    }
+ *    [>For now, this doesn;t have to be called, since the split's should make things work correctly, but not necessarily fast<]
+ *    [>if (rebalance)<]
+ *        [>Rebalance_bottom_lists(_cilk_ws, list);<]
+ *
+ *    return;
+ *}
+ */
 
-/// Function that splits a sublist in half and adds second
-/// half to top list as a new sublist
-void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
-	/// ***** Alex's version ***** ///
-	
-	Bottom_List * to_add = Init_bottom_list();
-	
-
-	int node_count_e = 1, node_count_h = 1;
-	/// English
-	if (blist->size_e > (INT_BIT_SIZE >> 1) ){
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 2) ;
-		
-
-		/// Assign first node tag
-		OM_Node * current_e = blist->head->next_e;
-		current_e->tag_e = skip_size;
-
-		/// Update first half of the list
-		while(node_count_e < (blist->size_e >> 1) ) {
-			/// Move current node along
-			current_e = current_e->next_e;
-			/// Update current tage
-			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
-			/// Update node count
-			node_count_e++;
-		}
-
-		/// Holds the middle node
-		OM_Node * middle_node = current_e;
-
-		/// Update the tail of each list
-		blist->tail->prev_e = middle_node;
-
-		/// Update size of first and second lists
-		to_add->size_e = blist->size_e - node_count_e;
-		blist->size_e = node_count_e; 
-
-		///Reassign head->next_e of to_add
-		// and update to_add head and tail references
-		current_e = current_e->next_e;
-		to_add->head->next_e = current_e;
-		current_e->prev_e = to_add->head;
-		
-		/// Update current node reference to ds
-		current_e->ds_e = to_add;
-
-		current_e->tag_e = skip_size;
-		
-		while (current_e->next_e != blist->tail)
-		{
-			/// Move along current node
-			current_e = current_e->next_e;
-
-			/// Update current tag_e
-			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
-
-			/// Update node's ds
-			current_e->ds_e = to_add;
-		}
-		/// Update tag_e
-		/*current_e->tag_e = current_e->prev_e->tag_e + skip_size;*/
-
-		/// Update next_e pointer to the new list's tail
-		current_e->next_e = to_add->tail;
-
-
-		/// Update tail of to_add list
-		to_add->tail->prev_e = current_e;
-
-		// Update middle node's referenece to next_e
-		middle_node->next_e = blist->tail;
-	}
-	if (blist->size_h > (INT_BIT_SIZE >> 1) ) {
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 2) ;
-		
-
-		/// Assign first node tag
-		OM_Node * current_h = blist->head->next_h;
-		current_h->tag_h = skip_size;
-
-		/// Update first half of the list
-		while(node_count_h < (blist->size_h >> 1) ) {
-			/// Move current node along
-			current_h = current_h->next_h;
-			/// Update current tage
-			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
-			/// Update node count
-			node_count_h++;
-		}
-		/// Holds the middle node
-		OM_Node * middle_node = current_h;
-
-		/// Update the tail of each list
-		blist->tail->prev_h = middle_node;
-
-		/// Update size of first and second lists
-		to_add->size_h = blist->size_h - node_count_h;
-		blist->size_h = node_count_h; 
-
-		///Reassign head->next_h of to_add
-		// and update to_add head and tail references
-		current_h = current_h->next_h;
-		to_add->head->next_h = current_h;
-		current_h->prev_h = to_add->head;
-		
-		/// Update current node reference to ds
-		current_h->ds_h = to_add;
-
-		current_h->tag_h = skip_size;
-		
-		while (current_h->next_h != blist->tail)
-		{
-			/// Move along current node
-			current_h = current_h->next_h;
-
-			/// Update current tag_h
-			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
-
-			/// Update node's ds
-			current_h->ds_h = to_add;
-		}
-
-		/// Update tag_h
-		/*current_h->tag_h = current_h->prev_h->tag_h + skip_size;*/
-
-		/// Update next_h pointer to the new list's tail
-		current_h->next_h = to_add->tail;
-
-		/// Update tail of to_add list
-		to_add->tail->prev_h = current_h;
-
-		/*Update the middle node's next_h reference*/
-		middle_node->next_h = blist->tail;
-		
-
-	}
-	/// Reset reorder flag
-	blist->Reorder_flag_e = blist->Reorder_flag_h = 0;
-
-	Insert_top_list(tlist, blist, to_add);
-}
-
-/// Iterate through the top list to find sublists needing reordered
-void Rebalance_bottom_lists(Top_List * list) {
-
-	/// The iterators
-	Bottom_List * current_e, * current_h;
-	current_e = current_h = list->head;
-
-	/// NOTE: Only eng/heb distinction for the flags, not top_list splits
-
-	/// English
-	while(current_e != list->tail) {
-		if(current_e->Reorder_flag_e == 1) ///< If 1, then needs split
-			Split_and_add_to_top(list, current_e);
-		current_e = current_e->next;
-	}
-
-	/// Hebrew
-	while(current_h != list->tail) {
-		if(current_h->Reorder_flag_h == 1) ///< If 1, then needs split
-			Split_and_add_to_top(list, current_h);
-		current_h = current_h->next;
-	} 
-}
-
-
-/*For now just leave this as a C procedure*/
-void insert_node_batch_op(CilkWorkerState *const _cilk_ws,
-						  void *data_struct, void *data,
-						  size_t num_elem, void *result)
-
-{
-	Top_List *list = data_struct;
-	InsertRecord *ir, *irArray = (InsertRecord * )data;
-	int rebalance = 0;
-	while (num_elem > 0)
-	{
-		ir = &irArray[--num_elem];
-		/// We need to do a rebalance if this returns 1
-		if (single_node_insert_batch_helper(ir->x, ir->y, ir->ID) == 1)
-		{
-			if (ir->ID == ENGLISH_ID)
-				Split_and_add_to_top(list, ir->x->ds_e);
-			else if (ir->ID == HEBREW_ID)
-				Split_and_add_to_top(list, ir->x->ds_h);
-		}
-	}
-
-	if (rebalance)
-		Rebalance_bottom_lists(list);
-	return;
-}
 #ifdef OM_IS_LL
 void OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int ID){
 
@@ -3027,7 +2985,7 @@ void OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int
 	ir->x =  x;
 	ir->y =  y;
 	ir->ID = ID;
-
+	
 	;//printf("Debug: INSERT:  x: %d , y: %d \n", x->id, y->id);
 	/// Make call to batchify to assign this data structure opeartion
 	/// to be executed at another time.
@@ -3103,6 +3061,7 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 	/// Make call to batchify to assign this data structure opeartion
 	/// to be executed at another time.
 	Cilk_batchify(ws, &insert_node_batch_op, WS_TOP_LIST, ir, sizeof(InsertRecord), NULL);
+	CILK_ASSERT(ws, OM_DS_order(x, y, ID));
 	return 0;
 #else
 	Bottom_List * ds;
@@ -3199,6 +3158,173 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 }
 #endif
 
+
+/// Function that splits a sublist in half and adds second
+/// half to top list as a new sublist
+void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
+	/// ***** Alex's version ***** ///
+	
+	Bottom_List * to_add = Init_bottom_list();
+	
+
+	int node_count_e = 1, node_count_h = 1;
+	/// English
+	if (blist->size_e > 3 ){
+		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 2) ;
+		
+
+		/// Assign first node tag
+		OM_Node * current_e = blist->head->next_e;
+		current_e->tag_e = skip_size;
+
+		/// Update first half of the list
+		while(node_count_e < (blist->size_e >> 1) ) {
+			/// Move current node along
+			current_e = current_e->next_e;
+			/// Update current tage
+			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
+			/// Update node count
+			node_count_e++;
+		}
+
+		/// Holds the middle node
+		OM_Node * middle_node = current_e;
+
+		/// Update the tail of each list
+		blist->tail->prev_e = middle_node;
+
+		/// Update size of first and second lists
+		to_add->size_e = blist->size_e - node_count_e;
+		blist->size_e = node_count_e; 
+
+		///Reassign head->next_e of to_add
+		// and update to_add head and tail references
+		current_e = current_e->next_e;
+		to_add->head->next_e = current_e;
+		current_e->prev_e = to_add->head;
+		
+		/// Update current node reference to ds
+		current_e->ds_e = to_add;
+
+		current_e->tag_e = skip_size;
+		
+		while (current_e->next_e != blist->tail)
+		{
+			/// Move along current node
+			current_e = current_e->next_e;
+
+			/// Update current tag_e
+			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
+
+			/// Update node's ds
+			current_e->ds_e = to_add;
+		}
+		/// Update tag_e
+		/*current_e->tag_e = current_e->prev_e->tag_e + skip_size;*/
+
+		/// Update next_e pointer to the new list's tail
+		current_e->next_e = to_add->tail;
+
+
+		/// Update tail of to_add list
+		to_add->tail->prev_e = current_e;
+
+		// Update middle node's referenece to next_e
+		middle_node->next_e = blist->tail;
+	}
+	if (blist->size_h > 3  ) {
+		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 2) ;
+		
+
+		/// Assign first node tag
+		OM_Node * current_h = blist->head->next_h;
+		current_h->tag_h = skip_size;
+
+		/// Update first half of the list
+		while(node_count_h < (blist->size_h >> 1) ) {
+			/// Move current node along
+			current_h = current_h->next_h;
+			/// Update current tage
+			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
+			/// Update node count
+			node_count_h++;
+		}
+		/// Holds the middle node
+		OM_Node * middle_node = current_h;
+
+		/// Update the tail of each list
+		blist->tail->prev_h = middle_node;
+
+		/// Update size of first and second lists
+		to_add->size_h = blist->size_h - node_count_h;
+		blist->size_h = node_count_h; 
+
+		///Reassign head->next_h of to_add
+		// and update to_add head and tail references
+		current_h = current_h->next_h;
+		to_add->head->next_h = current_h;
+		current_h->prev_h = to_add->head;
+		
+		/// Update current node reference to ds
+		current_h->ds_h = to_add;
+
+		current_h->tag_h = skip_size;
+		
+		while (current_h->next_h != blist->tail)
+		{
+			/// Move along current node
+			current_h = current_h->next_h;
+
+			/// Update current tag_h
+			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
+
+			/// Update node's ds
+			current_h->ds_h = to_add;
+		}
+
+		/// Update tag_h
+		/*current_h->tag_h = current_h->prev_h->tag_h + skip_size;*/
+
+		/// Update next_h pointer to the new list's tail
+		current_h->next_h = to_add->tail;
+
+		/// Update tail of to_add list
+		to_add->tail->prev_h = current_h;
+
+		/*Update the middle node's next_h reference*/
+		middle_node->next_h = blist->tail;
+		
+
+	}
+	/// Reset reorder flag
+	blist->Reorder_flag_e = blist->Reorder_flag_h = 0;
+
+	Insert_top_list(tlist, blist, to_add);
+}
+
+/// Iterate through the top list to find sublists needing reordered
+void Rebalance_bottom_lists(Top_List * list) {
+
+	/// The iterators
+	Bottom_List * current_e, * current_h;
+	current_e = current_h = list->head;
+
+	/// NOTE: Only eng/heb distinction for the flags, not top_list splits
+
+	/// English
+	while(current_e != list->tail) {
+		if(current_e->Reorder_flag_e == 1) ///< If 1, then needs split
+			Split_and_add_to_top(list, current_e);
+		current_e = current_e->next;
+	}
+
+	/// Hebrew
+	while(current_h != list->tail) {
+		if(current_h->Reorder_flag_h == 1) ///< If 1, then needs split
+			Split_and_add_to_top(list, current_h);
+		current_h = current_h->next;
+	} 
+}
 
 /// Within the void *ds, depending on macros defined in main, determine the order
 /// of x and y. If x <= y, return true. Otherwise, return false.
