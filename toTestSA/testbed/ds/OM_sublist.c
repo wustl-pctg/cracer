@@ -153,7 +153,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		to_add->tail->prev_e = current_e;
 
 		
-		/*Update the middle node's next_h reference*/
+		/*Update the middle node's next_e reference*/
 		blist->tail->prev_e->next_e = blist->tail;
 
 	}

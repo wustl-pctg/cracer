@@ -55,7 +55,7 @@ int main ( int argc, char *argv[] )
 		j = (rand() % i); 
 		if (Bottom_List_insert(nodeArray[j], nodeArray[i], ENGLISH_ID))
 		 {
-			 printf("TEST: splitting and adding to top at test index %i\n", i);
+			 /*printf("TEST: splitting and adding to top at test index %i\n", i);*/
 
 		 	Split_and_add_to_top(list, nodeArray[i]->ds_e);
 			Rebalance_bottom_lists(list);
@@ -63,7 +63,7 @@ int main ( int argc, char *argv[] )
 
 		if (Bottom_List_insert(nodeArray[j], nodeArray[i], HEBREW_ID))
 		{
-			printf("TEST: splitting and adding to top at test index %i\n", i);
+			/*printf("TEST: splitting and adding to top at test index %i\n", i);*/
 
 			Split_and_add_to_top(list, nodeArray[i]->ds_h);
 			Rebalance_bottom_lists(list);
