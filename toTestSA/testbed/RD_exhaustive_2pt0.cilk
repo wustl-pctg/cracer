@@ -497,10 +497,10 @@ cilk void rd_gparent_gchild_test(void ** parseqArr){
 
 ///  Start functions for rd_huge_test
 
-cilk void recursive_call_sequential(void * mem_ptr, int  * decrement_counter, const int op1, const int op2, test_struct_gen * s, test_struct_gen * t) {
+cilk void recursive_call_sequential(void * mem_ptr, int decrement_counter, const int op1, const int op2, test_struct_gen * s, test_struct_gen * t) {
 
 	int race_detected1 = -1, race_detected2 = -1;
-	if(*decrement_counter <= 1)
+	if(decrement_counter <= 1)
 	{
 		if(op1 == WRITE_ARG) {
 			spawn spawn_rd_cousin_write(mem_ptr, s, &race_detected1);
@@ -517,7 +517,7 @@ cilk void recursive_call_sequential(void * mem_ptr, int  * decrement_counter, co
 		return;
 	}
 	else {
-		--(*decrement_counter);
+		--(decrement_counter);
 		spawn recursive_call_sequential(mem_ptr, decrement_counter, op1, op2, s, t);
 		spawn recursive_call_sequential(mem_ptr, decrement_counter, op1, op2, s, t);
 		return;
@@ -525,10 +525,10 @@ cilk void recursive_call_sequential(void * mem_ptr, int  * decrement_counter, co
 	
 }
 
-cilk void recursive_call_parallel(void * mem_ptr, int  * decrement_counter, const int op1, const int op2, test_struct_gen * s, test_struct_gen * t) {
+cilk void recursive_call_parallel(void * mem_ptr, int decrement_counter, const int op1, const int op2, test_struct_gen * s, test_struct_gen * t) {
 
 	int race_detected1 = -1, race_detected2 = -1;
-	if(*decrement_counter <= 1)
+	if(decrement_counter <= 1)
 	{
 		if(op1 == WRITE_ARG) {
 			spawn spawn_rd_cousin_write(mem_ptr, s, &race_detected1);
@@ -546,7 +546,7 @@ cilk void recursive_call_parallel(void * mem_ptr, int  * decrement_counter, cons
 		return;
 	}
 	else {
-		--(*decrement_counter);
+		--(decrement_counter);
 		spawn recursive_call_parallel(mem_ptr, decrement_counter, op1, op2, s, t);
 		spawn recursive_call_parallel(mem_ptr, decrement_counter, op1, op2, s, t);
 		return;
@@ -587,13 +587,13 @@ cilk void rd_huge_test(void ** parseqArr) {
 	Assign_struct_random_vars(&h);
 
 	/// Sequential tests
-	spawn recursive_call_sequential(parseqArr[0], &counter1, READ_ARG, READ_ARG, &a, &b); sync;
+	spawn recursive_call_sequential(parseqArr[0], counter1, READ_ARG, READ_ARG, &a, &b); sync;
 	
-	spawn recursive_call_sequential(parseqArr[1], &counter2, READ_ARG, WRITE_ARG, &c, &d); sync;
+	spawn recursive_call_sequential(parseqArr[1], counter2, READ_ARG, WRITE_ARG, &c, &d); sync;
 	
-	spawn recursive_call_sequential(parseqArr[2], &counter3, WRITE_ARG, READ_ARG, &e, &f); sync;
+	spawn recursive_call_sequential(parseqArr[2], counter3, WRITE_ARG, READ_ARG, &e, &f); sync;
 	
-	spawn recursive_call_sequential(parseqArr[3], &counter4, WRITE_ARG, WRITE_ARG, &g, &h); sync;
+	spawn recursive_call_sequential(parseqArr[3], counter4, WRITE_ARG, WRITE_ARG, &g, &h); sync;
 
 	/// Redefine all the dummy structs
 	Assign_struct_random_vars(&a);
@@ -606,13 +606,13 @@ cilk void rd_huge_test(void ** parseqArr) {
 	Assign_struct_random_vars(&h);
 
 	/// Parallel tests
-	spawn recursive_call_parallel(parseqArr[4], &counter5, READ_ARG, READ_ARG, &a, &b); sync;
+	spawn recursive_call_parallel(parseqArr[4], counter5, READ_ARG, READ_ARG, &a, &b); sync;
 	
-	spawn recursive_call_parallel(parseqArr[5], &counter6, READ_ARG, WRITE_ARG, &c, &d); sync;
+	spawn recursive_call_parallel(parseqArr[5], counter6, READ_ARG, WRITE_ARG, &c, &d); sync;
 	
-	spawn recursive_call_parallel(parseqArr[6], &counter7, WRITE_ARG, READ_ARG, &e, &f); sync;
+	spawn recursive_call_parallel(parseqArr[6], counter7, WRITE_ARG, READ_ARG, &e, &f); sync;
 	
-	spawn recursive_call_parallel(parseqArr[7], &counter8, WRITE_ARG, WRITE_ARG, &g, &h); sync;
+	spawn recursive_call_parallel(parseqArr[7], counter8, WRITE_ARG, WRITE_ARG, &g, &h); sync;
 	
 }
 
