@@ -14,6 +14,7 @@
  *unsigned long INT_BIT_SIZE;
  *
  */
+
 Bottom_List * Bottom_List_init();
 
 void OM_free_and_free_nodes(Bottom_List *);

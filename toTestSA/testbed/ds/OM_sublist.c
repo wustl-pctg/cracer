@@ -451,26 +451,53 @@ void Bottom_List_add_first_node(Bottom_List *om_ds,OM_Node  * node, const int ID
 /// Note: the ID will determine which ordering to follow (english or hebrew)
 int Bottom_List_order(/*alex: try this void *ds, */OM_Node*  x, OM_Node * y, const int ID){
 
-/*alex: try this
-	OM_Node * x, * y;
-	if( !(_x && _y) ) {
+	/// First check to see if the Top_List tags are ordered
+	/// If they're not, then the nodes are in the same sub_list
+	/// and it suffices to check their tags against another
 
+	Bottom_List * x_bl, * y_bl;
+	/// Debug
+	if( !(x && y) ) {
 		printf("Debug: Order - one of the nodes null\n");
 		exit(10);
 	}
-	x = (OM_Node*) _x;
-	y = (OM_Node*) _y;
 
-	*/
 	switch(ID){
 	case HEBREW_ID:
-		if(x->tag_h > y->tag_h) return 0; else return 1;
+
+		/// The tags of the lists of nodes themselves
+		x_bl = x->ds_h;
+		y_bl = y->ds_h;
+
+		/// If the nodes are in different lists, compare the list tags
+		if(x_bl->tag_h != y_bl->tag_h)
+			if(x_bl->tag_h < y_bl->tag_h) return 1; else return 0;
+
+		/// Otherwise just check them directly
+		/// Note: if they are the same node, return 0 (by convention)
+		else
+			if(x->tag_h < y->tag_h) return 1; else return 0;
 
 	case ENGLISH_ID:
-		if(x->tag_e > y->tag_e) return 0; else return 1;
+
+		/// The tags of the lists of nodes themselves
+		x_bl = x->ds_e;
+		y_bl = y->ds_e;
+
+		/// If the nodes are in different lists, compare the list tags
+		if(x_bl->tag_e != y_bl->tag_e)
+			if(x_bl->tag_e < y_bl->tag_e) return 1; else return 0;
+
+		/// Otherwise just check them directly
+		/// Note: if they are the same node, return 0 (by convention)
+		else
+			if(x->tag_e < y->tag_e) return 1; else return 0;
 	}
-	printf("Debug: something went wrong in Bottom_List_order\n");
+
+	printf("Debug: something went wrong in OM_DS_order\n");
 	return 0;
+
+
 }
 
 /* 

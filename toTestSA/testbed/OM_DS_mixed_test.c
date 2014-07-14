@@ -22,8 +22,23 @@
 #include	"OM_DS_bender.h"
 #include	"OM_sublist.h"
 #include	<time.h>
+
 extern unsigned long MAX_NUMBER;
 extern unsigned long MAX_NUMBER_HALF;
+
+
+void order_test(OM_Node ** nodeArray, int num_nodes) {
+
+	int i = 1, j = 1;
+	for(; i < num_nodes-1; ++i) {
+		for(j = i+1; j < num_nodes-1; ++j) {
+			if(!Bottom_List_order(nodeArray[i], nodeArray[j], ENGLISH_ID))
+				printf("English Nodes %i and  %i out of order...................\n", i, j);
+//			if(!Bottom_List_order(nodeArray[i], nodeArray[j], HEBREW_ID))
+//				printf("Hebrew Nodes %i and  %i out of order...................\n", i, j);
+		}
+	}
+}
 int main ( int argc, char *argv[] )
 {
 	int num_nodes = atoi(argv[1]);
@@ -60,7 +75,6 @@ int main ( int argc, char *argv[] )
 		 	Split_and_add_to_top(list, nodeArray[i]->ds_e);
 			Rebalance_bottom_lists(list);
 		 }
-
 		if (Bottom_List_insert(nodeArray[i - 1], nodeArray[i], HEBREW_ID))
 		{
 			/*printf("TEST: splitting and adding to top at test index %i\n", i);*/
@@ -78,9 +92,10 @@ int main ( int argc, char *argv[] )
 
 	printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
-		check_correctness(list);
-		check_sub_correctness(list);
-		/*print_top_list(list);*/
+	order_test(nodeArray, num_nodes);
+	check_correctness(list);
+	check_sub_correctness(list);
+	/*print_top_list(list);*/
 	return EXIT_SUCCESS;
 }				/* ----------  end of function main  ---------- */
 
