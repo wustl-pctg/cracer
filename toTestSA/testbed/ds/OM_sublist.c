@@ -71,11 +71,11 @@ void printList(Bottom_List * list, const int ID) {
 
     while (n != NULL){
 		if( ID == HEBREW_ID ) {
-			printf("%d (%ul)->", n->id, n->tag_h);
+			printf("%d (%lu)->", n->id, n->tag_h);
         	n = n->next_h;
 		}
 		else {
-			printf("%d (%ul)->", n->id, n->tag_e);
+			printf("%d (%lu)->", n->id, n->tag_e);
 			n = n->next_e;
 		}
     }
@@ -204,6 +204,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 			/// Update node's ds
 			current_h->ds_h = to_add;
 		}
+
 		/// Update tag_h
 		/*current_h->tag_h = current_h->prev_h->tag_h + skip_size;*/
 
