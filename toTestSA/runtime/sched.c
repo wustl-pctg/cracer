@@ -2365,8 +2365,10 @@ void OM_DS_add_first_node(Bottom_List * om_ds, OM_Node * node, const int ID) {
 		}
 		break;
 	}
+	;/* DEBUG
 	else
 		printf("Debug: appending null node or to null ds\n");
+	 */
 #endif
 }
 
