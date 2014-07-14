@@ -1,4 +1,4 @@
-#include	<assert.h>
+#include <assert.h>
 #include "OM_sublist.h"
 
 unsigned long MAX_NUMBER = ~0;
