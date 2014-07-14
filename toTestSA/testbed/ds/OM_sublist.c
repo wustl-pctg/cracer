@@ -92,8 +92,8 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 
 	int node_count_e = 1, node_count_h = 1;
 	/// English
-	if (blist->size_e > (INT_BIT_SIZE >> 1 )){
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 1) ;
+	if (blist->size_e > 3){
+		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 2) ;
 		
 
 		/// Assign first node tag
@@ -155,8 +155,8 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		// Update middle node's referenece to next_e
 		middle_node->next_e = blist->tail;
 	}
-	if (blist->size_h > (INT_BIT_SIZE >> 1 )){
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 1) ;
+	if (blist->size_h > 3 ) {
+		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 2) ;
 		
 
 		/// Assign first node tag
@@ -297,7 +297,7 @@ int Bottom_List_insert(OM_Node * x, OM_Node * y, const int ID){
 		if( (ds->size_h >= (INT_BIT_SIZE >> 1) ) )
 			ds->Reorder_flag_h = 1;
 */
-		ds->size_h++;
+		(ds->size_h)++;
 
 		if(ds->size_h == INT_BIT_SIZE)
 			return 1; ///< Needs to be split
@@ -336,7 +336,7 @@ int Bottom_List_insert(OM_Node * x, OM_Node * y, const int ID){
 		if( (ds->size_e >= (INT_BIT_SIZE >> 1) ) )
 	  		ds->Reorder_flag_e = 1;
 */
-		ds->size_e++;
+		(ds->size_e)++;
 
 		if(ds->size_e == INT_BIT_SIZE)
 			return 1; ///< Needs to be split
@@ -384,7 +384,7 @@ void Bottom_List_add_first_node(Bottom_List *om_ds,OM_Node  * node, const int ID
 			 node->tag_e = (om_ds->tail->tag_e >> 1);
 
 				/// Increment size of linked list
-				om_ds->size_e++;
+				(om_ds->size_e)++;
 
 				/// Assign node to this ds
 				node->ds_e = om_ds;
@@ -422,7 +422,7 @@ void Bottom_List_add_first_node(Bottom_List *om_ds,OM_Node  * node, const int ID
 				/*node->tag_h = MAX_NUMBER_HALF;*/
 
 				/// Increment size of linked list
-				om_ds->size_h++;
+				(om_ds->size_h)++;
 
 				/// Assign node to this ds
 				node->ds_h = om_ds;

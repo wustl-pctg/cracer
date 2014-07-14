@@ -53,24 +53,27 @@ int main ( int argc, char *argv[] )
 	for (; i < num_nodes; i++)
 	{
 		j = (rand() % i); 
-		if (Bottom_List_insert(nodeArray[j], nodeArray[i], ENGLISH_ID))
+		if (Bottom_List_insert(nodeArray[i - 1], nodeArray[i], ENGLISH_ID))
 		 {
-			 printf("TEST: splitting and adding to top at test index %i\n", i);
+			 /*printf("TEST: splitting and adding to top at test index %i\n", i);*/
 
 		 	Split_and_add_to_top(list, nodeArray[i]->ds_e);
 			Rebalance_bottom_lists(list);
 		 }
 
-		if (Bottom_List_insert(nodeArray[j], nodeArray[i], HEBREW_ID))
+		if (Bottom_List_insert(nodeArray[i - 1], nodeArray[i], HEBREW_ID))
 		{
-			printf("TEST: splitting and adding to top at test index %i\n", i);
+			/*printf("TEST: splitting and adding to top at test index %i\n", i);*/
 
 			Split_and_add_to_top(list, nodeArray[i]->ds_h);
 			Rebalance_bottom_lists(list);
 		
 		}
 		/*printf("Check for correctness..");*/
+		/*check_correctness(list);*/
+		/*check_sub_correctness(list);*/
 		/*printf("..done %d\n", i);*/
+
 	}
 
 	printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
