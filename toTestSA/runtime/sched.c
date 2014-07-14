@@ -3028,7 +3028,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 
 	int node_count_e = 1, node_count_h = 1;
 	/// English
-	if (blist->size_e > 3){
+	if (blist->size_e > ){
 		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 2) ;
 		
 

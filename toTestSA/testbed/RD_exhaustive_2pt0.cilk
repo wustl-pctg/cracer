@@ -506,9 +506,9 @@ cilk void recursive_call_sequential(void * mem_ptr, int decrement_counter, const
 			spawn spawn_rd_cousin_write(mem_ptr, s, &race_detected1);
 		} else {
 			spawn spawn_rd_cousin_read(mem_ptr, s, &race_detected1);
-		} sync;
+		} sync; //!< Synced here
 
-		/// Spawn op2, then sync
+		/// Now spawn again
 		if(op2 == WRITE_ARG) {
 			spawn spawn_rd_cousin_write(mem_ptr, t, &race_detected2);
 		} else {
@@ -688,8 +688,8 @@ cilk int main(int argv, char* argc){
 	/// These functions each contain read/write
 	/// after a web of ~50,000 spawns to check
 	/// if ordering maintains in crazy conditionds
-	spawn rd_huge_test(parseqArr);
-	sync;
+//	spawn rd_huge_test(parseqArr);
+//	sync;
 
 	;//printf("Test completed fully as expected. No errors [before the frees...]\n");
 
