@@ -4,7 +4,7 @@
 unsigned long MAX_NUMBER = ~0;
 /*unsigned long MAX_NUMBER_HALF; [> = MAX_NUMBER >> 1;<]*/
 /*TEMP: need to get off machine*/ 
-unsigned int INT_BIT_SIZE = 64;
+unsigned int INT_BIT_SIZE = 32;
 
 /// Allocate memory and set variables
 Bottom_List * Bottom_List_init(){
@@ -92,7 +92,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 
 	int node_count_e = 1, node_count_h = 1;
 	/// English
-	if (blist->size_e > 32){
+	if (blist->size_e > 2){
 		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 2) ;
 		
 
@@ -155,7 +155,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		// Update middle node's referenece to next_e
 		middle_node->next_e = blist->tail;
 	}
-	if (blist->size_h > 32 ) {
+	if (blist->size_h > 2 ) {
 		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 2) ;
 		
 
