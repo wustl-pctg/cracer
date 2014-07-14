@@ -498,8 +498,9 @@ cilk void rd_gparent_gchild_test(void ** parseqArr){
 ///  Start functions for rd_huge_test
 
 cilk void recursive_call_sequential(void * mem_ptr, int decrement_counter, const int op1, const int op2, test_struct_gen * s, test_struct_gen * t) {
-
 	int race_detected1 = -1, race_detected2 = -1;
+	
+	printf("Seq: counter is %i\n", decrement_counter);
 	if(decrement_counter <= 1)
 	{
 		if(op1 == WRITE_ARG) {
@@ -587,13 +588,14 @@ cilk void rd_huge_test(void ** parseqArr) {
 	Assign_struct_random_vars(&h);
 
 	/// Sequential tests
+	printf("*********Entering first recursive_call_sequential\n");
 	spawn recursive_call_sequential(parseqArr[0], counter1, READ_ARG, READ_ARG, &a, &b); sync;
 	
-	spawn recursive_call_sequential(parseqArr[1], counter2, READ_ARG, WRITE_ARG, &c, &d); sync;
+//	spawn recursive_call_sequential(parseqArr[1], counter2, READ_ARG, WRITE_ARG, &c, &d); sync;
 	
-	spawn recursive_call_sequential(parseqArr[2], counter3, WRITE_ARG, READ_ARG, &e, &f); sync;
+//	spawn recursive_call_sequential(parseqArr[2], counter3, WRITE_ARG, READ_ARG, &e, &f); sync;
 	
-	spawn recursive_call_sequential(parseqArr[3], counter4, WRITE_ARG, WRITE_ARG, &g, &h); sync;
+//	spawn recursive_call_sequential(parseqArr[3], counter4, WRITE_ARG, WRITE_ARG, &g, &h); sync;
 
 	/// Redefine all the dummy structs
 	Assign_struct_random_vars(&a);
@@ -606,13 +608,13 @@ cilk void rd_huge_test(void ** parseqArr) {
 	Assign_struct_random_vars(&h);
 
 	/// Parallel tests
-	spawn recursive_call_parallel(parseqArr[4], counter5, READ_ARG, READ_ARG, &a, &b); sync;
+//	spawn recursive_call_parallel(parseqArr[4], counter5, READ_ARG, READ_ARG, &a, &b); sync;
 	
-	spawn recursive_call_parallel(parseqArr[5], counter6, READ_ARG, WRITE_ARG, &c, &d); sync;
+//	spawn recursive_call_parallel(parseqArr[5], counter6, READ_ARG, WRITE_ARG, &c, &d); sync;
 	
-	spawn recursive_call_parallel(parseqArr[6], counter7, WRITE_ARG, READ_ARG, &e, &f); sync;
+//	spawn recursive_call_parallel(parseqArr[6], counter7, WRITE_ARG, READ_ARG, &e, &f); sync;
 	
-	spawn recursive_call_parallel(parseqArr[7], counter8, WRITE_ARG, WRITE_ARG, &g, &h); sync;
+//	spawn recursive_call_parallel(parseqArr[7], counter8, WRITE_ARG, WRITE_ARG, &g, &h); sync;
 	
 }
 
@@ -681,6 +683,195 @@ cilk int main(int argv, char* argc){
 	/// These functions test each combination of read/write
 	/// within cousin nodes and sibling nodes
 	/// in both the serial and parallel case.
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_cousin_test(parseqArr);
+	sync;
+
+	spawn rd_same_function_test(seqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
+	spawn rd_parent_child_test(parseqArr);
+	sync;
 	spawn rd_cousin_test(parseqArr);
 	sync;
 
