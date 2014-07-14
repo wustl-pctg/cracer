@@ -3025,10 +3025,11 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 	
 	Bottom_List * to_add = Init_bottom_list();
 	
+
 	int node_count_e = 1, node_count_h = 1;
 	/// English
-	if (blist->size_e > (MAX_NUMBER >> 1 )){
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 1) ;
+	if (blist->size_e > 3){
+		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 2) ;
 		
 
 		/// Assign first node tag
@@ -3045,9 +3046,11 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 			node_count_e++;
 		}
 
-		/// Update the tail of each list
-		blist->tail->prev_e = current_e;/*middle_node;*/
+		/// Holds the middle node
+		OM_Node * middle_node = current_e;
 
+		/// Update the tail of each list
+		blist->tail->prev_e = middle_node;
 
 		/// Update size of first and second lists
 		to_add->size_e = blist->size_e - node_count_e;
@@ -3056,8 +3059,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		///Reassign head->next_e of to_add
 		// and update to_add head and tail references
 		current_e = current_e->next_e;
-		to_add->head->next_e = to_add->tail->prev_e = current_e;
-		
+		to_add->head->next_e = current_e;
 		current_e->prev_e = to_add->head;
 		
 		/// Update current node reference to ds
@@ -3082,15 +3084,15 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		/// Update next_e pointer to the new list's tail
 		current_e->next_e = to_add->tail;
 
+
 		/// Update tail of to_add list
 		to_add->tail->prev_e = current_e;
 
-		
-
+		// Update middle node's referenece to next_e
+		middle_node->next_e = blist->tail;
 	}
-	/// Hebrew
-	if (blist->size_h > (MAX_NUMBER >> 1 )){
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)(1+ (blist->size_h >> 1)) ;
+	if (blist->size_h > 3 ) {
+		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 2) ;
 		
 
 		/// Assign first node tag
@@ -3106,13 +3108,11 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 			/// Update node count
 			node_count_h++;
 		}
-
 		/// Holds the middle node
-		/*OM_Node * middle_node = current_h;*/
+		OM_Node * middle_node = current_h;
 
 		/// Update the tail of each list
-		blist->tail->prev_h = current_h;/*middle_node;*/
-
+		blist->tail->prev_h = middle_node;
 
 		/// Update size of first and second lists
 		to_add->size_h = blist->size_h - node_count_h;
@@ -3121,13 +3121,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		///Reassign head->next_h of to_add
 		// and update to_add head and tail references
 		current_h = current_h->next_h;
-		to_add->head->next_h = to_add->tail->prev_h = current_h;
-		
-		/// Update current node references to prev and next
-		/* don't update this yet, or we will lose the next node reference
-		 * current_h->next_h = to_add->tail;
-		 * */
-
+		to_add->head->next_h = current_h;
 		current_h->prev_h = to_add->head;
 		
 		/// Update current node reference to ds
@@ -3146,6 +3140,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 			/// Update node's ds
 			current_h->ds_h = to_add;
 		}
+
 		/// Update tag_h
 		/*current_h->tag_h = current_h->prev_h->tag_h + skip_size;*/
 
@@ -3155,16 +3150,15 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		/// Update tail of to_add list
 		to_add->tail->prev_h = current_h;
 
-
+		/*Update the middle node's next_h reference*/
+		middle_node->next_h = blist->tail;
+		
 
 	}
-
 	/// Reset reorder flag
 	blist->Reorder_flag_e = blist->Reorder_flag_h = 0;
 
 	Insert_top_list(tlist, blist, to_add);
-
-
 }
 
 /// Iterate through the top list to find sublists needing reordered
