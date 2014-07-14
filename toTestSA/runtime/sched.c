@@ -2471,7 +2471,7 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 
 	/// Finally, free the Top_List
 	Cilk_free(context->Cilk_global_state->OM_DS);
-	context->Cilk_global_state->OM_DS = NULL:
+	context->Cilk_global_state->OM_DS = NULL;
 }
 
 
