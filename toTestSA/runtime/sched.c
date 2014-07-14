@@ -3007,7 +3007,7 @@ void insert_node_batch_op(CilkWorkerState *const _cilk_ws,
 	}
 
 	if (rebalance)
-		Rebalance_bottom_lists(_cilk_ws, list);
+		Rebalance_bottom_lists(list);
 	return;
 }
 #ifdef OM_IS_LL
