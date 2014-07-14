@@ -89,6 +89,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 	
 	Bottom_List * to_add = Bottom_List_init();/*Init_bottom_list();*/
 	
+
 	int node_count_e = 1, node_count_h = 1;
 	/// English
 	if (blist->size_e > (INT_BIT_SIZE >> 1 )){
@@ -110,12 +111,10 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		}
 
 		/// Holds the middle node
-		/*OM_Node * middle_node = current_e;*/
+		OM_Node * middle_node = current_e;
 
 		/// Update the tail of each list
-		blist->tail->prev_e = current_e;/*middle_node;*/
-		/* Why was this here? current_e->next_e = blist->tail;*/
-
+		blist->tail->prev_e = middle_node;
 
 		/// Update size of first and second lists
 		to_add->size_e = blist->size_e - node_count_e;
@@ -149,13 +148,12 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		/// Update next_e pointer to the new list's tail
 		current_e->next_e = to_add->tail;
 
+
 		/// Update tail of to_add list
 		to_add->tail->prev_e = current_e;
 
-		
-		/*Update the middle node's next_e reference*/
-		blist->tail->prev_e->next_e = blist->tail;
-
+		// Update middle node's referenece to next_e
+		middle_node->next_e = blist->tail;
 	}
 	if (blist->size_h > (INT_BIT_SIZE >> 1 )){
 		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 1) ;
@@ -174,15 +172,11 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 			/// Update node count
 			node_count_h++;
 		}
-
 		/// Holds the middle node
-		/*OM_Node * middle_node = current_h;*/
+		OM_Node * middle_node = current_h;
 
 		/// Update the tail of each list
-		blist->tail->prev_h = current_h;/*middle_node;*/
-		
-		/*Qhy was this here ? current_h->next_h = blist->tail;*/
-
+		blist->tail->prev_h = middle_node;
 
 		/// Update size of first and second lists
 		to_add->size_h = blist->size_h - node_count_h;
@@ -220,8 +214,7 @@ void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
 		to_add->tail->prev_h = current_h;
 
 		/*Update the middle node's next_h reference*/
-		blist->tail->prev_h->next_h = blist->tail;
-
+		middle_node->next_h = blist->tail;
 		
 
 	}
