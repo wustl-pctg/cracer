@@ -2133,9 +2133,6 @@ Bottom_List * Init_bottom_list ()
 {
 	Bottom_List * list;
 
-	//MAX_NUMBER = ~0;
-	;//printf("Max # in init: %u\n", MAX_NUMBER);
-
 	list = Cilk_malloc(sizeof(*list));
 	list->head = Cilk_malloc(sizeof(* (list->head)));
 	list->tail = Cilk_malloc(sizeof(* (list->tail)));
@@ -2318,7 +2315,7 @@ void OM_DS_add_first_node(Bottom_List * om_ds, OM_Node * node, const int ID) {
 			node->tag_e = (om_ds->tail->tag_e >> 1);
 
 			/// Increment size of linked list
-			om_ds->size_e++;
+			(om_ds->size_e)++;
 
 			/// Assign node to this ds
 			node->ds_e = om_ds;
@@ -2354,7 +2351,7 @@ void OM_DS_add_first_node(Bottom_List * om_ds, OM_Node * node, const int ID) {
 			node->tag_h = (om_ds->tail->tag_h >> 1);
 
 			/// Increment size of linked list
-			om_ds->size_h++;
+			(om_ds->size_h)++;
 
 			/// Assign node to this ds
 			node->ds_h = om_ds;
@@ -2368,10 +2365,8 @@ void OM_DS_add_first_node(Bottom_List * om_ds, OM_Node * node, const int ID) {
 		}
 		break;
 	}
-	;/*DEBUG}
-	   else
-	   printf("Debug: appending null node or to null ds\n");
-	 */
+	else
+		printf("Debug: appending null node or to null ds\n");
 #endif
 }
 
@@ -3051,7 +3046,7 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 #else
 	Bottom_List * ds;
 
-	//INT_BIT_SIZE =  32;
+
 
 	switch(ID){
 	case HEBREW_ID:
@@ -3080,6 +3075,9 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 		
 		/// Assign y's tag
 		y->tag_h = ((y->next_h->tag_h >> 1) + (y->prev_h->tag_h >> 1));
+		if (y->next_h->tag_h & y->prev_h->tag_h & 0x1 == 0x1)
+			(y->tag_h)++;
+	
 		
 		/// Update flag as necessary
 		if(ds->size_h < (INT_BIT_SIZE >> 1))
@@ -3087,7 +3085,7 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 		else
 			ds->Reorder_flag_h = 1;
 
-		ds->size_h++;
+		(ds->size_h)++;
 
 		if(ds->size_h == INT_BIT_SIZE)
 			return 1; ///< Needs to be split
@@ -3121,6 +3119,8 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 		
 		/// Assign y's tag
 		y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
+		if (y->next_e->tag_e & y->prev_e->tag_e & 0x1 == 0x1)
+			(y->tag_e)++;
 
 		/// Update flag as necessary
 		if(ds->size_e < (INT_BIT_SIZE >> 1))
@@ -3128,7 +3128,7 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 		else
 			ds->Reorder_flag_e = 1;
 
-		ds->size_e++;
+		(ds->size_e)++;
 
 		if(ds->size_e == INT_BIT_SIZE)
 			return 1; ///< Needs to be split
@@ -3388,12 +3388,12 @@ int OM_DS_order(OM_Node * x, OM_Node * y, const int ID){
 
 		/// If the nodes are in different lists, compare the list tags
 		if(x_bl->tag != y_bl->tag)
-			if(x_bl->tag > y_bl->tag) return 0; else return 1;
+			if(x_bl->tag < y_bl->tag) return 1; else return 0;
 
 		/// Otherwise just check them directly
-		/// Note: if they are the same node, return 0 (by convention)
+		/// Note: if they are the same node, return 0 (error...)
 		else
-			if(x->tag_h >= y->tag_h) return 0; else return 1;
+			if(x->tag_h < y->tag_h) return 1; else return 0;
 
 	case ENGLISH_ID:
 
@@ -3403,12 +3403,12 @@ int OM_DS_order(OM_Node * x, OM_Node * y, const int ID){
 
 		/// If the nodes are in different lists, compare the list tags
 		if(x_bl->tag != y_bl->tag)
-			if(x_bl->tag > y_bl->tag) return 0; else return 1;
+			if(x_bl->tag < y_bl->tag) return 1; else return 0;
 
 		/// Otherwise just check them directly
-		/// Note: if they are the same node, return 0 (by convention)
+		/// Note: if they are the same node, return 0 (error...)
 		else
-			if(x->tag_e >= y->tag_e) return 0; else return 1;
+			if(x->tag_e < y->tag_e) return 1; else return 0;
 	}
 
 	printf("Debug: something went wrong in OM_DS_order\n");

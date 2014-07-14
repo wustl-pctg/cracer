@@ -352,12 +352,7 @@ int Bottom_List_insert(OM_Node * x, OM_Node * y, const int ID){
 /// This is called in the initialization of cilk
 /// Add the first node to the Bottom_List
 void Bottom_List_add_first_node(Bottom_List *om_ds,OM_Node  * node, const int ID){
-/* alex: try this
-	/// Enter if ds and x are not NULL
-	if (ds && _x){
-		Bottom_List * om_ds = (Bottom_List *)ds;
-		OM_Node * node = (OM_Node*)_x;
-*/
+
 		switch(ID) {
 
 		case ENGLISH_ID:
@@ -419,7 +414,6 @@ void Bottom_List_add_first_node(Bottom_List *om_ds,OM_Node  * node, const int ID
 
 				/// Assign tag
 				node->tag_h = (om_ds->tail->tag_h >> 1);
-				/*node->tag_h = MAX_NUMBER_HALF;*/
 
 				/// Increment size of linked list
 				(om_ds->size_h)++;
