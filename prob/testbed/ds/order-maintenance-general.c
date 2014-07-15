@@ -20,7 +20,7 @@
 
 static unsigned long MAX_NUMBER = ~0;
 static int INT_BIT_SIZE = 64;
-static double OVERFLOW_CONSTANT = 1.5;
+static double OVERFLOW_CONSTANT = 1.85;
 
 
 
@@ -89,14 +89,10 @@ int insert_bl(OM_Node * x, OM_Node *y, Bottom_List * ds){
 			ds->head = ds->tail = y;
 			y->next = y->prev = NULL;
 			ds->size = 1;
+			y->tag = 0;
 			return 0;
 		}
 
-		/// Reassign prev/next pointers
-		y->prev = x;
-		y->next = x->next;
-		x->next = y;
-		if ( y->next != NULL) y->next->prev = y;
 
 		/// Assign value to y->tag
 		if (x == ds->tail)
@@ -116,7 +112,14 @@ int insert_bl(OM_Node * x, OM_Node *y, Bottom_List * ds){
 			if (x->next->tag & x->tag & 0x1 == 0x1) y->tag++;
 		}
 
+		/// Reassign prev/next pointers
+		y->prev = x;
+		y->next = x->next;
+		x->next = y;
+		if ( y->next != NULL) y->next->prev = y;
+
 		ds->size += 1;
+
 		if (ds->size > INT_BIT_SIZE >> 1)
 			ds->reorder_flag = 1;
 
@@ -163,7 +166,6 @@ void insert_tl(Top_List * list, Bottom_List *x, Bottom_List *y)
 				/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 				if (x->tag & 0x1 == 0x1) y->tag++;
 
-				list->tail = y;
 			}
 			else
 			{
@@ -174,7 +176,8 @@ void insert_tl(Top_List * list, Bottom_List *x, Bottom_List *y)
 			}
 			
 			/// See if there is a "collision" of tags
-			if (x->next->tag - x->tag <= 1)
+			if (    (x == list->tail  && (MAX_NUMBER - x->tag <= 1)) || /// If x is tail, use MAX_NUMBER instead of x->next->tag
+					(x != list->tail  && (x->next->tag - x->tag <= 1) ) )
 				{
 				/// Thin out the list - make room for y
 				rebalance_tl(list, x);
@@ -189,7 +192,14 @@ void insert_tl(Top_List * list, Bottom_List *x, Bottom_List *y)
 				y->prev = x;
 				y->next = x->next;
 				x->next = y;
-				if ( y->next != NULL) y->next->prev = y;
+				/// If not null, the we can update tthe next nodes reference
+				if ( y->next != NULL) 
+					y->next->prev = y;
+
+					/// If x was the previous tail, then y->next will be NULL, so we assign y list->tail 
+				else 
+					list->tail = y;
+
 				
 				(list->size)++;
 			}
@@ -269,17 +279,25 @@ void split_bl(Top_List * list, Bottom_List * list_to_split){
 	/// Nullify prev of the middle node
 	middle_node->prev = NULL;
 
+	/// Assign 0 to first tag of to_add list
 	current->tag = 0;
-	while (current != NULL){
-		/// Reassign current ds
-		current->ds = to_add;
 
+	/// Reassign current ds
+	current->ds = to_add;
+
+	while (current->next != NULL){
 		/// Move node along
 		current = current->next;	
+
+		/// Reassign current ds
+		current->ds = to_add;
 
 		/// Update tag
 		current->tag = current->prev->tag + skip_size;
 	}
+	/// MAke the last node the tail of the to_add list
+	to_add->tail = current;
+	current->next = NULL;
 
 	list_to_split->reorder_flag = to_add->reorder_flag = 0;
 
@@ -301,6 +319,7 @@ void rebalance_tl(Top_List * list, Bottom_List * pivot){
 	unsigned long enclosing_tag_range, lTag, rTag, num_elements_in_sublist = 2, skip_size;
 	double i = -1;
 
+	/*blprintf("Rebalance\n");*/
 	do	/// Check if range is in overflow
 	{
 		/// Move overflow list head and tail outward
@@ -446,7 +465,7 @@ void free_tl ( Top_List * list )
 
 	while (current != NULL){
 		next = current->next;	
-		free(current);
+		free_bl(current);
 		current = next;
 		}
 

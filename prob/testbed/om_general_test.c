@@ -47,8 +47,8 @@ int main ( int argc, char *argv[] )
 		nodeArray[i]->ID = i;
 	}
 
-	clock_t start = clock();
 
+	clock_t start = clock();
 	// Create and add the first relevant thing to ds
 	insert_tl(list, NULL, firstBottom_List);
 	insert_bl(NULL, nodeArray[0], firstBottom_List);
@@ -56,8 +56,9 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-		/*j = (rand() % i);*/
-		j = i -1;
+		j = (rand() % i);
+		/*j = i -1;*/
+		/*j = 0;*/
 		if (insert_bl(nodeArray[j], nodeArray[i], nodeArray[j]->ds))
 		 {
 			 /*printf("TEST: splitting and adding to top at test index %i\n", i);*/
@@ -75,8 +76,10 @@ int main ( int argc, char *argv[] )
 	// End clock
 	printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
-	order_test(nodeArray, num_nodes);
+	/*order_test(nodeArray, num_nodes);*/
 	check_sub_correctness(list);
+
+	free_tl(list);
 
 	return EXIT_SUCCESS;
 }

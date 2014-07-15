@@ -25,23 +25,8 @@
 #include <math.h>
 #include <assert.h>
 
-#define RD_DEBUG
-/*
- *
- *#ifdef IS_SOURCE_FILE
- *unsigned int INT_BIT_SIZE;
- *unsigned long MAX_NUMBER;
- *double OVERFLOW_CONSTANT;
- *#else
- *extern unsigned int INT_BIT_SIZE;
- *extern unsigned long MAX_NUMBER;
- *extern double OVERFLOW_CONSTANT;
- *#endif
- *
- *
- */
+//#define RD_DEBUG
 
-//OM_DS
 struct Bottom_List_s;
 
 typedef struct OM_Node_s{
