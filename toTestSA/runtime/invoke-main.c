@@ -70,46 +70,30 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
   void *args;
 
   CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at the end of the func.*/
-	
-  	#ifdef OM_IS_LL
-  /// If starting a slow main function and size of the OM_DS
-	if (_cilk_ws->context->Cilk_global_state->OM_DS->head->next->size_e == 0 || _cilk_ws->context->Cilk_global_state->OM_DS->head->next->size_h == 0)
-	{
-	    	/// Create and allocate mem for main node
-		OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
 
-		/// Add main node onto both OM_DS's
-		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->OM_DS->head->next, main_node, 0);
-
-		/// Assign id one to this node
-		main_node->id = 1;
-
-		/// Reset first spawn flag of the fram in the invoke main slow frame
-		_cilk_frame->header.first_spawn_flag = 0;
-
-		/// Set the current node equal the first node 
-		/*_cilk_frame->header.current_node = _cilk_ws->context->Cilk_global_state->englishOM_DS->head;*/
-		_cilk_frame->header.current_node = main_node;
-		
-		/// Debug messages
-		;//printf("\nDebug: Created main node and added to eng/heb.\n");
-	}
-	else
-	/// Debug message	
-	    ;//printf("Nonempty OM_DS's, this is not the first invocation of slow main,dont create new nodes.\n");
-
-
-	#elif defined OM_IS_BENDER
-	//Using the order maintenance data struct defined by Bender
+	//If the current node hasn't been initialized yet, we havent been in invoke main slow
 	if (_cilk_frame->header.current_node == NULL)
 	{
-		OM_Node * main_node = Cilk_malloc(sizeof(OM_Node));
+		OM_Node * main_node_e = Cilk_malloc(sizeof(OM_Node)), *main_node_h = Cilk_malloc(sizeof(OM_Node));
+		Runtime_node * main_node = Cilk_malloc(sizeof(Runtime_node));
+
+		/// Create the first lists
+		Bottom_List * english_bl = create_bl(), *hebrew_bl = create_bl();
+
+		main_node->english = main_node_e;
+		main_node->hebrew  = main_node_h;
+
 		main_node->id = 1;
+		/// Add the sublists to the top lists
+		insert_tl(ws->context->Cilk_global_state->englishOM_DS, NULL, english_bl);
+		insert_tl(ws->context->Cilk_global_state->hebrewOM_DS, NULL, hebrew_bl);
+
 		/// Add the main node to the first sublist
-		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->OM_DS->head->next, main_node, ENGLISH_ID);
-		OM_DS_add_first_node(_cilk_ws->context->Cilk_global_state->OM_DS->head->next, main_node, HEBREW_ID);
+		insert_bl(NULL, main_node_e, english_bl);
+		insert_bl(NULL, main_node_h, hebrew_bl);
 
 
+		
 		/// Set first spawned flag of the header frame
 		_cilk_frame->header.first_spawn_flag = 0;
 
@@ -121,7 +105,6 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 	}
 
 
-	#endif
 
 	/// Update the worker state to match the frame
 	ws->current_node = _cilk_frame->header.current_node;

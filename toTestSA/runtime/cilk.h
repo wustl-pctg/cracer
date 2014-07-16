@@ -147,7 +147,7 @@ typedef struct {
 	WHEN_CILK_ND(DisjointSetMemberT p_set;)
 	WHEN_CILK_DEBUG(volatile unsigned int magic;)
 	//Order maintenance for race detector
-	OM_Node * current_node, *post_sync_node, *next_spawned_node;
+	Runtime_node * current_node, *post_sync_node, *next_spawned_node;
 	int first_spawn_flag;
 } CilkStackFrame;
 
@@ -325,7 +325,7 @@ typedef struct {
 #endif
 
 	/*ORDER MAINTENANCE FOR RACE DETECT*/
-	OM_Node *current_node;
+	Runtime_node *current_node;
 
 } CilkWorkerState;
 

@@ -2076,6 +2076,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 #define HEBREW_ID 11
 unsigned int INT_BIT_SIZE = 64;
 unsigned long MAX_NUMBER = ~0;
+unsigned double OVERFLOW_CONSTANT = 1.5;
 
 
 //! Race_Detect Struct
@@ -2097,936 +2098,88 @@ struct RD_Memory_Struct_s {
 
 };
 
-/// Initializes the paramers of a top list
-Top_List * Init_top_list ()
-{
-	/// Malloc data for all necessary nodes and for the list itself
-	Top_List * list = Cilk_malloc(sizeof(*list));
-	list->head = Cilk_malloc(sizeof(* (list->head)));
-	list->tail = Cilk_malloc(sizeof(* (list->tail)));
-
-	/// Assign appropriate vals to list
-	list->size  				= 	0;
-
-	/// Assign T (in bender's paper), which governs how dense the list can be
-	/// before rebalancing. As of now, we just pick an arbitrary val in [1,2]
-	list->overflow_constant 	=	1.4;
-
-	/// Assign appropriate vals to head and tail node tags
-	list->head->tag = 0;
-	list->tail->tag = ~0;
-
-	/// Assign correct vals to head and tail pointers
-	list->head->prev =  list->tail->next = NULL;
-
-	/// Prev node for tail is head
-	list->tail->prev = list->head;
-
-	/// Next node for head is tail
-	list->head->next = list->tail;
-
-	return list;
-}	
-
-/// Initializes the parameters of a bottom list
-Bottom_List * Init_bottom_list ()
-{
-	Bottom_List * list;
-
-	list = Cilk_malloc(sizeof(*list));
-	list->head = Cilk_malloc(sizeof(* (list->head)));
-	list->tail = Cilk_malloc(sizeof(* (list->tail)));
-
-	// Set up list
-	list->head->next_e = list->head->next_h = list->tail;
-	list->tail->prev_e = list->tail->prev_h = list->head;
-
-	list->size_e = list->size_h = list->Reorder_flag_h = list->Reorder_flag_e = 0;
-
-	// Set up nodes
-	list->head->tag_e = list->head->tag_h = 0;
-	list->tail->tag_e = list->tail->tag_h = MAX_NUMBER;
-	;//printf("Debug: list->tail->tag_e & id: %u & %i\n", list->tail->tag_e, list->tail->id);
-
-	return list;
-
-}
-
-/// Relabels the range of nodes from x to y
-void tag_range_relabel (Bottom_List *x, Bottom_List *y, unsigned long tag_spacing )
-{
-	/*while (x->next != y){*/
-	while (x != y){
-		/// Debug:
-		/// insert x->next after x but with y->tag as the end tag
-		x->next->tag = x->tag + tag_spacing;
-
-		/// Move along x pointer
-		x = x->next;
-
-	}
-	return ;
-}
-
-/// Rebalances the list according to Bender's algorithm around pivot
-void top_list_rebalance(Top_List * list, Bottom_List *pivot)
-{
-	Bottom_List *lList = pivot, *rList = pivot;
-	double overflow_density, overflow_threshold;
-	unsigned long enclosing_tag_range, num_elements_in_sublist = 2;
-	double i = -1;
-
-	/// We assume l/rList are not NULL since the list will have at least 3 elements
-	do	/// Check if range is in overflow
-	{
-		/// Move overflow list head and tail outward
-		if (lList->prev){
-			num_elements_in_sublist++;
-			lList = lList->prev;
-		}
-		if (rList->next){
-			num_elements_in_sublist++;
-			rList = rList->next;
-		}
-		/// Calculate overflow_density
-		enclosing_tag_range = rList->tag - lList->tag;
-
-		i = ceil( log2((double)enclosing_tag_range) );
-		overflow_threshold = pow(list->overflow_constant, -1.0 * i); 
-
-		overflow_density = (num_elements_in_sublist/ (double)enclosing_tag_range ) ;
-	}
-	while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && (lList != list->head || rList != list->tail));
-	//printf("Debug: Rebalancing of tag range of %ul and num of elements %ul with density %f15 \n", enclosing_tag_range,num_elements_in_sublist, overflow_density);
-	/// rebalance subsection of top_list
-	long skip_size = (unsigned long)((enclosing_tag_range ) / (num_elements_in_sublist )) ;
-	/// Debug: not needed in final
-	assert(skip_size>0);
-	tag_range_relabel(lList, rList, skip_size );
-
-	return;
-}		/* -----  end of function top_list_rebalance(Top_List * list, Bottom_List *pivot)  ----- */
-
-/// Inserts a Bottom_List into a Top_List
-/// Bottom_List y is inserted after Bottom_List x in Top_List list
-/// param ID the Eng or Heb structure
-void Insert_top_list(Top_List * list, Bottom_List * x, Bottom_List *y)
-{
-	///Debug: Double check that all vals are not null
-	//assert(y != NULL && x != NULL && list != NULL);
-
-	y->tag = ((x->next->tag >> 1) + (x->tag >> 1));
-
-	/// correct for adding two odd numbers
-	if (x->next->tag & x->tag & 0x1 == 0x1)
-		y->tag++;
-
-	if (x->next->tag - x->tag <= 1)
-	{
-		top_list_rebalance(list, x);
-		/// Dont assign pointers, call insert again to put y after x
-		Insert_top_list(list, x, y);
-	}
-	else{
-		/// Reassign  prev/next pointers
-		y->prev = x;
-		y->next = x->next;
-		x->next = y;
-		/// Update the next node after y's prev  reference (change it to y)
-		y->next->prev = y;
-	}
-
-	/// IMPORTANT NOTE: size is only updated once since the list referes to the same nodes
-	(list->size)++;
-	return ;
-}
-
-/// This is called in the initialization of cilk
-/// Add the first node to the OM_DS
-void OM_DS_add_first_node(Bottom_List * om_ds, OM_Node * node, const int ID) {
-#ifdef OM_IS_LL
-	/// Debug message
-	;//printf("Debug: appending node\n");
-
-	/// Enter if ds and x are not NULL
-	;// (debug) if (om_ds && node){
-
-	if ( om_ds->size_e == 0 && om_ds->size_h == 0)
-	{
-		/// Assign head and tail to new node
-		om_ds->tail = om_ds->head = node;
-
-		/// Ensure node has no next
-		node->next_e = node->next_h = NULL;
-
-		/// Assign unique node id
-		node->id =global_node_count++;
-
-		/// Assign the node' data structure reference to om_ds passed in
-		node->ds_e = node->ds_h = om_ds;
-
-		/// Increment size of linked list
-		om_ds->size_e = 1;
-		om_ds->size_h = 1;
-	}
-	else {
-		/// Debug code
-		/// If linked list has nodes already, exit. Don't let this be called
-		/// incorrectly and let code continue
-		printf("List is non-empty, dont call add first node\n");
-		exit(0);
-	}
-	;/*DEBUG}
-	   else {
-	   printf("Debug: appending null node or to null ds\n");
-	   exit(0);
-	   }
-	 */
-#elif defined OM_IS_BENDER
-
-	/// Debug message
-	;//printf("Debug: appending node\n");
-
-	/// Enter if ds and x are not NULL
-	;//DEBUG iff (om_ds && node){
-
-	switch(ID) {
-
-	case ENGLISH_ID:
-
-		if (om_ds->size_e == 0) {
-
-			/// Change head->next to be this node
-			om_ds->head->next_e = node;
-
-			/// Change node->prev to be the head
-			node->prev_e = om_ds->head;
-
-			/// Change node->next to be tail
-			node->next_e = om_ds->tail;
-
-			/// Change tail->prev to be this node
-			om_ds->tail->prev_e = node;
-
-			/// Assign unique node id
-			node->id =global_node_count++;
-
-			/// Assign tag
-			node->tag_e = (om_ds->tail->tag_e >> 1);
-
-			/// Increment size of linked list
-			(om_ds->size_e)++;
-
-			/// Assign node to this ds
-			node->ds_e = om_ds;
-		}
-		else {
-			/// Debug code
-			/// If linked list has nodes already, exit. Don't let this be called
-			/// incorrectly and let code continue
-			printf("List is non-empty, dont call add first node\n");
-			exit(0);
-		}
-		break;
-
-	case HEBREW_ID:
-
-		if (om_ds->size_h == 0) {
-			/// Change head->next to be this node
-			om_ds->head->next_h = node;
-
-			/// Change node->prev to be the head
-			node->prev_h = om_ds->head;
-
-			/// Change node->next to be tail
-			node->next_h = om_ds->tail;
-
-			/// Change tail->prev to be this node
-			om_ds->tail->prev_h = node;
-
-			/// Assign unique node id
-			node->id =global_node_count++;
-
-			/// Assign tag
-			node->tag_h = (om_ds->tail->tag_h >> 1);
-
-			/// Increment size of linked list
-			(om_ds->size_h)++;
-
-			/// Assign node to this ds
-			node->ds_h = om_ds;
-		}
-		else 	{
-			/// Debug code
-			/// If linked list has nodes already, exit. Don't let this be called
-			/// incorrectly and let code continue
-			printf("List is non-empty, dont call add first node\n");
-			exit(0);
-		}
-		break;
-	}
-	;/* DEBUG
-	else
-		printf("Debug: appending null node or to null ds\n");
-	 */
-#endif
-}
-
-
 /// Allocate memory and set variables
 void OM_DS_init(CilkContext *const context){
-	Bottom_List * bottom_list;
 
 	/// Define CILK running parameters
 
 	// If Batchify works
-//#define BATCHIFY_WORKING
+	//#define BATCHIFY_WORKING
 
 	if (context->Cilk_global_state){
 		/// Debug message
 		;//printf("Debug: OM_DS_init\n");
 
 		/// Allocate heap memory for top list
-		context->Cilk_global_state->OM_DS = Init_top_list();
+		context->Cilk_global_state->englishOM_DS = create_tl();
+		context->Cilk_global_state->hebrewOM_DS  = create_tl();
 
-		/// Make an initial bottom list for the top_list
-		bottom_list = Init_bottom_list();
 
-		/// Add first node to top_list for eng & heb
-		Insert_top_list(context->Cilk_global_state->OM_DS,
-						context->Cilk_global_state->OM_DS->head,
-						bottom_list);
 	}
 }
 
-
-/// Frees the nodes of the linked list
-/// Since both linked lists contain the same nodes, it is sufficient
-/// to move through the english list only.
-void OM_LL_free_nodes_internal(CilkContext *const context){
-	/// Create tmp nodes
-	OM_Node  * node, *nextNode;
-
-	/// Debug message
-	;//printf("DEBUG:LL free nodes\n");
-
-	/// Assign node to head of english list
-	node = context->Cilk_global_state->OM_DS->head->next->head;
-
-	/// Move through only Bottom_List, freeing each node.
-	while(node != NULL){
-		nextNode = node->next_e;
-		Cilk_free(node);
-		node = NULL; //!< prevent dangling pointers
-		node = nextNode;
-	}
-
-	/// If LL, then top list will have head & tail bot_lists as well as 
-	/// the one functioning linked list
-	Cilk_free(context->Cilk_global_state->OM_DS->head);
-	Cilk_free(context->Cilk_global_state->OM_DS->head->next);
-	Cilk_free(context->Cilk_global_state->OM_DS->tail);
-	context->Cilk_global_state->OM_DS->head = NULL; //!< prevent dangling pointers
-	context->Cilk_global_state->OM_DS->head->next = NULL; //!< prevent dangling pointers
-	context->Cilk_global_state->OM_DS->tail = NULL; //!< prevent dangling pointers
-
+void setup_runtime_node(Runtime_node * rn, OM_Node * en, OM_Node * hn){
+	rn->english = en;
+	rn->hebrew = hn;
+	en->parent = rn;
+	hn->parent = rn;
 }
 
-
-/// Frees nodes of OM_DS
-void OM_free_nodes_internal(CilkContext *const context) {
-
-	Top_List * top = context->Cilk_global_state->OM_DS; //!< Is freed in function that calls this
-	Bottom_List * current = top->head, * next;
-	OM_Node * node, * nextNode;
-
-	/// Iterate through the Bottom_Lists
-	while(current != top->tail) {
-
-		next = current->next;
-
-		/// Iterate through Nodes in Bottom_Lists
-		node = current->head;
-		while(node != current->tail){
-			nextNode = node->next_e;
-			Cilk_free(node); //!< Free the node
-			node = NULL; //!< prevent dangling pointers
-			node = nextNode;
-		}
-		Cilk_free(node); //!< Free tail node
-	
-		Cilk_free(current); //!< Free the Bot_list
-		current = NULL; //!< prevent dangling pointers
-		current = next;
-		
-	}
-	Cilk_free(current); //!< Free the tail Bot_list
-	current = NULL;
-}
-
-
-
-/// Frees the OM_DS in the context and all of the nodes within.
 void OM_DS_free_and_free_nodes(CilkContext *const context){
-#ifdef OM_IS_LL
-	/// Free nodes of linked list
-	OM_LL_free_nodes_internal(context);
-#elif defined OM_IS_BENDER
-	/// Free nodes of OM_DS
-	OM_free_nodes_internal(context);
-#else 
-	printf("No ds defined so failure to free.\n");
-	exit(10);
-#endif
-	///Debug message
-	;//printf("Debug: free OMDS\n");
+	Top_List * english_tl = context->Cilk_global_state->englishOM_DS;
+	Top_List * hebrew_tl = context->Cilk_global_state->hebrew_tl;
 
-	/// Finally, free the Top_List
-	Cilk_free(context->Cilk_global_state->OM_DS);
-	context->Cilk_global_state->OM_DS = NULL;
-}
+	Bottom_List *next_bl, * current_bl = english_tl->head;
+	OM_Node *next_node, * current_node = current_bl->head;
 
-/// Function that splits a sublist in half and adds second
-/// half to top list as a new sublist
-void Split_and_add_to_top(Top_List * tlist, Bottom_List * blist) {
-	/// ***** Alex's version ***** ///
+	/// ENGLISH
+	current_bl = context->Cilk_global_state->englishOM_DS;
+
+	/// Iterate through and call free_bl on the Bottom_List current
+	while (current_bl != NULL){
+		next_bl = current_bl->next;	
+			/// Iterate through and free the OM_Node's membory
+			while (current_node != NULL){
+				next_node = current_node->next;	
+				free(current_node);
+				current_node = next_node;
+			}
+		current_bl = next_bl;
+	}
+
+	/// Finally free the Top_List
+	free(english_tl);
+	english_tl = NULL;
 	
-	Bottom_List * to_add = Init_bottom_list();
-	
+	/// HEBREW
 
-	int node_count_e = 1, node_count_h = 1;
-	/// English
-	if (blist->size_e > 3 ){
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_e >> 1) + 2) ;
-		
+	current_bl = context->Cilk_global_state->hebrewOM_DS;
 
-		/// Assign first node tag
-		OM_Node * current_e = blist->head->next_e;
-		current_e->tag_e = skip_size;
-
-		/// Update first half of the list
-		while(node_count_e < (blist->size_e >> 1) ) {
-			/// Move current node along
-			current_e = current_e->next_e;
-			/// Update current tage
-			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
-			/// Update node count
-			node_count_e++;
-		}
-
-		/// Holds the middle node
-		OM_Node * middle_node = current_e;
-
-		/// Update the tail of each list
-		blist->tail->prev_e = middle_node;
-
-		/// Update size of first and second lists
-		to_add->size_e = blist->size_e - node_count_e;
-		blist->size_e = node_count_e; 
-
-		///Reassign head->next_e of to_add
-		// and update to_add head and tail references
-		current_e = current_e->next_e;
-		to_add->head->next_e = current_e;
-		current_e->prev_e = to_add->head;
-		
-		/// Update current node reference to ds
-		current_e->ds_e = to_add;
-
-		current_e->tag_e = skip_size;
-		
-		while (current_e->next_e != blist->tail)
-		{
-			/// Move along current node
-			current_e = current_e->next_e;
-
-			/// Update current tag_e
-			current_e->tag_e = current_e->prev_e->tag_e + skip_size;
-
-			/// Update node's ds
-			current_e->ds_e = to_add;
-		}
-		/// Update tag_e
-		/*current_e->tag_e = current_e->prev_e->tag_e + skip_size;*/
-
-		/// Update next_e pointer to the new list's tail
-		current_e->next_e = to_add->tail;
-
-
-		/// Update tail of to_add list
-		to_add->tail->prev_e = current_e;
-
-		// Update middle node's referenece to next_e
-		middle_node->next_e = blist->tail;
-	}
-	if (blist->size_h > 3  ) {
-		unsigned long skip_size = (MAX_NUMBER - 1) / (unsigned long)((blist->size_h >> 1) + 2) ;
-		
-
-		/// Assign first node tag
-		OM_Node * current_h = blist->head->next_h;
-		current_h->tag_h = skip_size;
-
-		/// Update first half of the list
-		while(node_count_h < (blist->size_h >> 1) ) {
-			/// Move current node along
-			current_h = current_h->next_h;
-			/// Update current tage
-			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
-			/// Update node count
-			node_count_h++;
-		}
-		/// Holds the middle node
-		OM_Node * middle_node = current_h;
-
-		/// Update the tail of each list
-		blist->tail->prev_h = middle_node;
-
-		/// Update size of first and second lists
-		to_add->size_h = blist->size_h - node_count_h;
-		blist->size_h = node_count_h; 
-
-		///Reassign head->next_h of to_add
-		// and update to_add head and tail references
-		current_h = current_h->next_h;
-		to_add->head->next_h = current_h;
-		current_h->prev_h = to_add->head;
-		
-		/// Update current node reference to ds
-		current_h->ds_h = to_add;
-
-		current_h->tag_h = skip_size;
-		
-		while (current_h->next_h != blist->tail)
-		{
-			/// Move along current node
-			current_h = current_h->next_h;
-
-			/// Update current tag_h
-			current_h->tag_h = current_h->prev_h->tag_h + skip_size;
-
-			/// Update node's ds
-			current_h->ds_h = to_add;
-		}
-
-		/// Update tag_h
-		/*current_h->tag_h = current_h->prev_h->tag_h + skip_size;*/
-
-		/// Update next_h pointer to the new list's tail
-		current_h->next_h = to_add->tail;
-
-		/// Update tail of to_add list
-		to_add->tail->prev_h = current_h;
-
-		/*Update the middle node's next_h reference*/
-		middle_node->next_h = blist->tail;
-		
+	/// Iterate through and call free_bl on the Bottom_List current
+	while (current_bl != NULL){
+		next_bl = current_bl->next;	
+			/// Iterate through and free the OM_Node's membory
+			while (current_node != NULL){
+				next_node = current_node->next;	
+				free(current_node->parent);
+				free(current_node);
+				current_bl = next_bl;
+			}
+		free(current_bl);
+		current_bl = next_bl;
 
 	}
-	/// Reset reorder flag
-	blist->Reorder_flag_e = blist->Reorder_flag_h = 0;
-
-	Insert_top_list(tlist, blist, to_add);
-}
-
-/**** START EXP SECTION ****/
-
-struct _cilk_insert_node_batch_op_frame{CilkStackFrame header;
-struct{void*data_struct;
-void*data;
-size_t num_elem;
-void*result;
-}scope0;
-struct{Top_List*list;
-InsertRecord*ir;
-InsertRecord*irArray;
-}scope1;
-};
-struct _cilk_insert_node_batch_op_args{void*data_struct;
-void*data;
-size_t num_elem;
-void*result;
-};
-static void _cilk_insert_node_batch_op_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insert_node_batch_op_frame*_cilk_frame);
-static CilkProcInfo _cilk_insert_node_batch_op_sig[]={{0,sizeof(struct _cilk_insert_node_batch_op_frame),_cilk_insert_node_batch_op_slow,0,0}};
-
-void insert_node_batch_op (CilkWorkerState*const _cilk_ws,void*data_struct,void*data,size_t num_elem,void*result){struct _cilk_insert_node_batch_op_frame*_cilk_frame;
-{ _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_insert_node_batch_op_frame), _cilk_insert_node_batch_op_sig);
- };
-{ Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
- // ignore OM_DS stuff OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
- };
-
-{
- Top_List *list= data_struct;
-
- InsertRecord *ir;
-InsertRecord*irArray=(InsertRecord*)data;
-
- while (num_elem > 0)
- {
-  ir = &irArray[--num_elem];
 
 
-  if (single_node_insert_batch_helper(ir->x, ir->y, ir->ID) == 1)
-  {
-   if (ir->ID == 10)
-    Split_and_add_to_top(list, ir->x->ds_e);
 
-   else if (ir->ID == 11)
-    Split_and_add_to_top(list, ir->x->ds_h);
+	free(hebrew_tl);
+	hebrew_tl = NULL; ///< Prevent dangling pointers
 
-  }
- }
-
- {{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
- };
-return;
-}
-}}
-
-static void _cilk_insert_node_batch_op_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insert_node_batch_op_frame*_cilk_frame){void*data_struct;
-void*data;
-size_t num_elem;
-void*result;
-{ Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
- // ignore OM_DS stuff: OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
- };
-switch (_cilk_frame->header.entry) {}data_struct=_cilk_frame->scope0.data_struct;
-data=_cilk_frame->scope0.data;
-num_elem=_cilk_frame->scope0.num_elem;
-result=_cilk_frame->scope0.result;
-
-{
- Top_List *list= data_struct;
-
- InsertRecord *ir;
-InsertRecord*irArray=(InsertRecord*)data;
-
- while (num_elem > 0)
- {
-  ir = &irArray[--num_elem];
-
-
-  if (single_node_insert_batch_helper(ir->x, ir->y, ir->ID) == 1)
-  {
-   if (ir->ID == 10)
-    Split_and_add_to_top(list, ir->x->ds_e);
-
-   else if (ir->ID == 11)
-    Split_and_add_to_top(list, ir->x->ds_h);
-
-  }
- }
-
- {{ Cilk_set_result(_cilk_ws, (void *)0, 0);
- };
-{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
- };
-return;
-}
-}}
-
-static void _cilk_insert_node_batch_op_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v)
-{(void)_cilk_ws;
-(void)_cilk_procargs_v;
-insert_node_batch_op(_cilk_ws,((struct _cilk_insert_node_batch_op_args*)_cilk_procargs_v)->data_struct,((struct _cilk_insert_node_batch_op_args*)_cilk_procargs_v)->data,((struct _cilk_insert_node_batch_op_args*)_cilk_procargs_v)->num_elem,((struct _cilk_insert_node_batch_op_args*)_cilk_procargs_v)->result);
-
-}
-void mt_insert_node_batch_op(CilkContext*const context,void*data_struct,void*data,size_t num_elem,void*result)
-{struct _cilk_insert_node_batch_op_args*_cilk_procargs;
-_cilk_procargs=(struct _cilk_insert_node_batch_op_args*)Cilk_malloc_fixed(sizeof(struct _cilk_insert_node_batch_op_args));
-_cilk_procargs->data_struct=data_struct;
-_cilk_procargs->data=data;
-_cilk_procargs->num_elem=num_elem;
-_cilk_procargs->result=result;
-Cilk_start(context,_cilk_insert_node_batch_op_import,_cilk_procargs,0);
-Cilk_free(_cilk_procargs);
 
 }
 
 
 
-/*
-  struct _cilk_insertPar_frame{CilkStackFrame header;
-  struct{
-  void*dataStruct;
-  void*data;
-  size_t size;
-  void*result;
-  }scope0;
-  struct{InsertRecord*irArray;
-  OM_DS*ds;
-  InsertRecord*ir;
-  OM_Node*x;
-  OM_Node*y;
-  int ID;
-  }scope1;
-  };
-  struct _cilk_insertPar_args{
-  void*dataStruct;
-  void*data;
-  size_t size;
-  void*result;
-  };
-  static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insertPar_frame*_cilk_frame);
-  static CilkProcInfo _cilk_insertPar_sig[]={{0,sizeof(struct _cilk_insertPar_frame),_cilk_insertPar_slow,0,0}};
-
-  void insertPar (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,size_t size,void*result){struct _cilk_insertPar_frame*_cilk_frame;
-  { _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_insertPar_frame), _cilk_insertPar_sig);
-  };
-  { Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
-  Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
-  ;//ignore OM_DS stuff OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
-  };
-
-  {
-  InsertRecord *irArray= (InsertRecord *)data;
-  OM_DS *ds= (OM_DS *) dataStruct;
-
-  int i = 0;
-  for (; i < size ; i++)
-  {
-  InsertRecord *ir= &irArray[i];
-  OM_Node *x= ir->x;
-  OM_Node*y=ir->y;
-  int ID= ir->ID;
-
-  if (!(x && y&& ds)) {
-  printf("Some nod,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
-
-  {{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
-  Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
-  };
-  return;
-  }
-  };
-
-  switch (ID) {
-  case HEBREW_ID:
-
-  if (!(x->next_h))
-  ds->tail = y;
-
-  y->next_h = x->next_h;
-
-  if (!(__sync_bool_compare_and_swap(&(x->next_h),x->next_h, y)))
-  {
-  printf("Exiting, atomic insert failed");
-
-  exit(0);
-
-  }
-  break;
-
-  case ENGLISH_ID:
-
-  if (!(x->next_e))
-  ds->tail = y;
-
-  y->next_e = x->next_e;
-
-  if (!(__sync_bool_compare_and_swap(&(x->next_e),x->next_e, y)))
-  {
-  printf("Exiting, atomic insert failed");
-  exit(0);
-  }
-  break;
-  }
-
-  ds->size++;
-  } //end for
-
-  {{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
-  Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
-  };
-  return;
-  }}}
-
-  static void _cilk_insertPar_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insertPar_frame*_cilk_frame){CilkWorkerState*ws;
-  void*dataStruct;
-  void*data;
-  size_t size;
-  void*result;
-  { Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
-  Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
-  ;// ignore order maintenance functions OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));
-  };
-  switch (_cilk_frame->header.entry) {}
-  dataStruct=_cilk_frame->scope0.dataStruct;
-  data=_cilk_frame->scope0.data;
-  size=_cilk_frame->scope0.size;
-  result=_cilk_frame->scope0.result;
-
-  {
-  InsertRecord *irArray= (InsertRecord *)data;
-
-  OM_DS *ds= (OM_DS *) dataStruct;
-  int i = 0;
-  for (; i < size ; i++)
-  { //start for
-  InsertRecord *ir= &irArray[i];
-
-  OM_Node *x= ir->x;
-  OM_Node*y=ir->y;
-  int ID= ir->ID;
-
-  if (!(x && y&& ds)) {
-  printf("Some node or ds is null,skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n", x->id, x, y->id, y, ds->tail->id, ds->tail);
-
-  {{ Cilk_set_result(_cilk_ws, (void *)0, 0);
-  };
-  { Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
-  Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
-  };
-  return;
-  }
-  };
-
-  switch (ID) {
-  case HEBREW_ID:
-
-  if (!(x->next_h))
-  ds->tail = y;
-
-  y->next_h = x->next_h;
-
-  if (!(__sync_bool_compare_and_swap(&(x->next_h),x->next_h, y)))
-  {
-  printf("Exiting, atomic insert failed");
-  exit(0);
-  }
-  break;
-
-  case ENGLISH_ID:
-
-  if (!(x->next_e))
-  ds->tail = y;
-
-  y->next_e = x->next_e;
-
-  if (!(__sync_bool_compare_and_swap(&(x->next_e),x->next_e, y)))
-  {
-  printf("Exiting, atomic insert failed");
-  exit(0);
-  }
-  break;
-  }
-
-  ds->size++;
-  } //end for
-
-  {{ Cilk_set_result(_cilk_ws, (void *)0, 0);
-  };
-  { Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
-  Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
-  };
-  return;
-  }}}
-
-  static void _cilk_insertPar_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v)
-
-  {(void)_cilk_ws;
-  (void)_cilk_procargs_v;
-  insertPar(_cilk_ws,((struct _cilk_insertPar_args*)_cilk_procargs_v)->dataStruct,((struct _cilk_insertPar_args*)_cilk_procargs_v)->data,((struct _cilk_insertPar_args*)_cilk_procargs_v)->size,((struct _cilk_insertPar_args*)_cilk_procargs_v)->result);
-
-  }
-  void mt_insertPar(CilkContext*const context,void*dataStruct,void*data,size_t size,void*result)
-  {struct _cilk_insertPar_args*_cilk_procargs;
-  _cilk_procargs=(struct _cilk_insertPar_args*)Cilk_malloc_fixed(sizeof(struct _cilk_insertPar_args));
-  _cilk_procargs->dataStruct=dataStruct;
-  _cilk_procargs->data=data;
-  _cilk_procargs->size=size;
-  _cilk_procargs->result=result;
-  Cilk_start(context,_cilk_insertPar_import,_cilk_procargs,0);
-  Cilk_free(_cilk_procargs);
-
-  }
-*/
-/*** END EXP SECTION ****/
-
-
-#ifdef OM_IS_LL
-void OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int ID){
-
-	Bottom_List * ds;
-	if (ID == HEBREW_ID)
-		ds = y->ds_h = x->ds_h;
-	else
-		ds = y->ds_e = x->ds_e;
-
-#ifdef BATCHIFY_WORKING
-	/// Batchify insert
-	/// Create the insert record, which will be passed to the operation function
-	/// that we reference in Cilk_batchify(...,  &callback operation, ....);
-	InsertRecord * ir = (InsertRecord * ) Cilk_malloc(sizeof(InsertRecord));
-	ir->x =  x;
-	ir->y =  y;
-	ir->ID = ID;
-	
-	;//printf("Debug: INSERT:  x: %d , y: %d \n", x->id, y->id);
-	/// Make call to batchify to assign this data structure opeartion
-	/// to be executed at another time.
-	Cilk_batchify(ws, &insertPar, ds, ir, sizeof(InsertRecord), NULL);
-#else
-	//Do insert here
-
-	/* DEBUG
-	//if x is null
-	if (!(x && y) ){
-	skipping insert; x(%d): %p y(%d):%p\n",
-	x->id, x, y->id, y);
-	return;
-	}
-	*/
-
-	/// Debug messages
-	;//printf("Debug: INSERT: , x: %d , y: %d \n", x->id, y->id);
-	switch(ID){
-	case HEBREW_ID:
-		//if x->next is null, x  is tail
-		if ((x->next_h) == NULL)
-			ds->tail = y;
-
-		//change next pointers
-		y->next_h = x->next_h;
-
-		if(!(__sync_bool_compare_and_swap(&(x->next_h), x->next_h, y)))
-		{
-			printf("Exiting, atomic insert failed");
-			exit(0);
-		}
-
-		ds->size_h++;
-
-		break;
-	case ENGLISH_ID:
-		//if x->next is null, x  is tail
-		if (!(x->next_e))
-			ds->tail = y;
-
-		//change next pointers
-		y->next_e = x->next_e;
-
-		if(!(__sync_bool_compare_and_swap(&(x->next_e), x->next_e, y)))
-		{
-			printf("Exiting, atomic insert failed");
-			exit(0);
-		}
-
-		ds->size_e++;
-
-		break;
-	}
-
-#endif
-}
-
-#elif defined OM_IS_BENDER
 /// Insert y after x into appropriate list based on ID
 /// Returns 1 if full and needs reorderd immediately and 0 otherwise
 int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int ID){
@@ -3043,385 +2196,515 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 	/// Make call to batchify to assign this data structure opeartion
 	/// to be executed at another time.
 	Cilk_batchify(ws, &insert_node_batch_op, WS_TOP_LIST, ir, sizeof(InsertRecord), NULL);
-	CILK_ASSERT(ws, OM_DS_order(x, y, ID));
+	/*Debug: CILK_ASSERT(ws, OM_DS_order(x, y, ID));*/
 	return 0;
 #else
-	Bottom_List * ds;
+	/// Non-batched insert
+	if (insert_bl(x, y, x->ds)
+#endif
+}
+/*****************Order Maintenance Data Structure Functions *******************/
 
+/*!
+ * ===  FUNCTION  ======================================================================
+ *         Name:  create_bl
+ *  Description:  Creates a new Bottom_List and allocates memory for it.
+ * =====================================================================================
+ */
+Bottom_List * create_bl ()
+{
+	/// Allocate memory for top list
+	Bottom_List * list = malloc(sizeof(*list));
 
+	/// Assign correct vals to head and tail pointers
+	list->head = list->tail = NULL; 
 
-	switch(ID){
-	case HEBREW_ID:
+	/// Reset size and reorder flag
+	list->size = list->reorder_flag = 0;
 
-		/// Retrieve the data structure known node
-		ds = x->ds_h;
-	
-		/// Update the ds y is in 
-		y->ds_h = ds;
+	return list;
+}
 
-		/* DEBUG
-		//if x is null
-		if (!(x && y && ds) ){
-		printf("Some node or ds is null,\
-		skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-		x->id, x, y->id, y, ds->tail->id, ds->tail);
-		return 0 ;
-		}
-		*/
-		
-		/// This is the procedure:
-		y->next_h = x->next_h;
-		x->next_h->prev_h = y;
-		x->next_h = y;
-		y->prev_h = x;
-		
-		/// Assign y's tag
-		y->tag_h = ((y->next_h->tag_h >> 1) + (y->prev_h->tag_h >> 1));
-		if (y->next_h->tag_h & y->prev_h->tag_h & 0x1 == 0x1)
-			(y->tag_h)++;
-	
-		
-		/// Update flag as necessary
-		if(ds->size_h < (INT_BIT_SIZE >> 1))
-			ds->Reorder_flag_h = 0;
-		else
-			ds->Reorder_flag_h = 1;
+/*!
+ * ===  FUNCTION  ======================================================================
+ *         Name:  create_tl
+ *  Description:  Allocate memory and initialize Top_List.
+ * =====================================================================================
+ */
+Top_List * create_tl ()
+{
+	/// Allocate memory for top list
+	Top_List * list = malloc(sizeof(*list));
 
-		(ds->size_h)++;
+	/// Assign appropriate vals to list
+	list->size = 0;
 
-		if(ds->size_h == INT_BIT_SIZE)
-			return 1; ///< Needs to be split
-		return 0; ///< Doesn't needs immediately split
+	/// Assign correct vals to head and tail pointers
+	list->head = list->tail = NULL;
 
-		break;
+	return list;
+}
 
-	case ENGLISH_ID:
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  insert_bl
+ *  Description:  Insert node y after node x in the Bottom_List specified in x->ds.
+ *  How to Call:  Pass in ds: if this is the first call, x is null and ds will be known.
+ *                Otherwise, ds is x->ds.
+ * =====================================================================================
+ */
+int insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
+{
+#ifdef RD_DEBUG
+	/// y and ds should never be NULL
+	if ( !(y && ds) )
+	{
+		printf("Some node or ds is null, skipping insert; x(%d) and y(%d)\n", x->ID, y->ID);
+		assert(0);
+	}
+#endif
 
-		/// Retrieve the data structure known node
-		ds = x->ds_e;
-	
-		/// Update the ds y is in 
-		y->ds_e = ds;
+	/// Update the ds y is in 
+	y->ds = ds;
 
-		/* DEBUG
-		//if x is null
-		if (!(x && y && ds) ){
-		printf("Some node or ds is null,\
-		skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-		x->id, x, y->id, y, ds->tail->id, ds->tail);
-		return 1;
-		}
-		*/
-
-		/// This is the procedure:
-		y->next_e = x->next_e;
-		x->next_e->prev_e = y;
-		x->next_e = y;
-		y->prev_e = x;
-		
-		/// Assign y's tag
-		y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
-		if (y->next_e->tag_e & y->prev_e->tag_e & 0x1 == 0x1)
-			(y->tag_e)++;
-
-		/// Update flag as necessary
-		if(ds->size_e < (INT_BIT_SIZE >> 1))
-			ds->Reorder_flag_e = 0;
-		else
-			ds->Reorder_flag_e = 1;
-
-		(ds->size_e)++;
-
-		if(ds->size_e == INT_BIT_SIZE)
-			return 1; ///< Needs to be split
-		return 0; ///< Doesn't needs immediately split
-
+	/// Size==0 Implies the first insert into the ds
+	if (ds->size == 0)
+	{
+		ds->head = ds->tail = y;
+		y->next = y->prev = NULL;
+		ds->size = 1;
+		y->tag = 0;
+		return 0; ///< Appending the first node is a unique case, so we return
 	}
 
-	/// Specific number for checks
-	return 100;
-/// End else for if BATCHIFY_WORKING
-#endif
-}
-#endif
+	if (x == ds->tail)
+	{
+		/// y's tage is the average of its neighbors
+		y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
 
-/// Prints the bottom List
-void printList(Bottom_List * list, const int ID) {
-    OM_Node * n;
-    if (list && list->head)
-        n = list->head;
-    else
-		exit(10);
-	if( ID == HEBREW_ID)
-		printf("Hebrew format: ==ID(tag)->== Head:");
+		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
+		if (x->tag & 0x1 == 0x1) y->tag += 1;
+
+		ds->tail = y;
+	}
 	else
-		printf("English format: ==ID(tag)->== Head:");
+	{
+		/// y's tage is the average of its neighbors
+		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
 
-    while (n != NULL){
-		if (ID == HEBREW_ID) {
-			printf("%d(%lu)->", n->id, n->tag_h);
-        	n = n->next_h;
-		}
-		else {
-			printf("%d(%lu)->", n->id, n->tag_e);
-			n = n->next_e;
-		}
-    }
-    printf("Tail\n");
+		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
+		if (x->next->tag & x->tag & 0x1 == 0x1) y->tag += 1;
+	}
+
+	/// Reassign prev/next pointers
+	y->prev = x;
+	y->next = x->next;
+	x->next = y;
+	if (y->next != NULL) y->next->prev = y; ///< If y isn't tail, make the next node point to it
+
+	ds->size += 1;
+
+	/// Mark flag in each list greater than half it's capacity
+	if (ds->size > (INT_BIT_SIZE >> 1))
+		ds->reorder_flag = 1;
+
+	if (ds->size == INT_BIT_SIZE) 
+		return 1; ///< Needs to be split
+	else
+		return 0; ///< Doesn't needs immediately split
 }
 
-/// Prints the Top List
-void print_top_list(Top_List *list){
 
-	Bottom_List * current = list->head;
-	printf("HEAD%u{ %lu}->", current->id, current->tag);
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  insert_tl
+ *  Description:  Insert list y after list x in Top_List list. To insert the first element, leave X null.
+ * =====================================================================================
+ */
+void insert_tl (Top_List * list, Bottom_List *x, Bottom_List *y)
+{
+#ifdef RD_DEBUG
+	assert( (list->size == 0 || x != NULL) && (y != NULL) && (list != NULL) );
+#endif
+
+	/// If size==0, it is the first insert int the list
+	if (list->size == 0)
+	{
+		/// Assign head and tail of list
+		list->head = list->tail = y;	
+		
+		/// Put y in the middle of the tag range
+		y->tag = 0;
+
+		y->reorder_flag = 0;
+		y->next = y->prev = NULL;
+
+		list->size += 1;
+	}
+	/// If there exist other elements in the top list
+	else
+	{
+		if (x == list->tail)
+		{
+			/// y's tag is the average of the max and the prior tag
+			y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
+
+			/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
+			if (x->tag & 0x1 == 0x1) y->tag++;
+		}
+		elske
+		{		
+			/// y's tag is the average of the next and prior tags
+			y->tag = (x->tag >> 1) + (x->next->tag >> 1);
+
+			/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
+			if (x->next->tag & x->tag & 0x1 == 0x1) y->tag++;
+		}
+			
+		/// See if there is a "collision" of tags
+		if (    (x == list->tail && (MAX_NUMBER - x->tag <= 1)  ) || ///< If x is tail, use MAX_NUMBER instead of x->next->tag
+				(x != list->tail && (x->next->tag - x->tag <= 1)) )
+		{
+			/// Thin out the list - make room for y
+			rebalance_tl(list, x);
+
+			/// Dont assign pointers, call insert again to put y after x
+			insert_tl(list, x, y);
+		}
+		else
+		{
+			/// NOTE: This is not atomic
+
+			/// Reassign prev/next pointers
+			y->prev = x;
+			y->next = x->next;
+			x->next = y;
+			if (y->next != NULL)
+				y->next->prev = y; ///< If not null, the we can update the next nodes prev reference
+			else 
+				list->tail = y; ///< If x was the previous tail, y->next is NULL and is new tail 
+
+			list->size += 1;
+		}
+	}
+}
+
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  order
+ *  Description:  Determines the total ordering (that is top and bottom ordering) of nodes x and y.
+ *  			  Returns 1 if x < y
+ *  			  Returns 0 if x > y
+ *                
+ * =====================================================================================
+ */
+int order (OM_Node * x, OM_Node * y)
+{
+	/// If they're in the same list, compare tags
+	if (x->ds == y->ds )
+	{
+		if (x->tag < y->tag)
+			return 1;
+		else 
+			return 0;
+	}
+	
+	/// Otherwise, compare their lists' tags
+	else
+	{
+		if (x->ds->tag < y->ds->tag)
+			return 1;
+		else
+			return 0;
+	}
+}
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  split_bl
+ *  Description:  Splits the bottom list into two bottom lists. Then it inserts the second
+ *  			  after the first in the top list.
+ * =====================================================================================
+ */
+void split_bl (Top_List * list, Bottom_List * list_to_split)
+{
+	OM_Node * current = list_to_split->head, *middle_node;
+	
+	/// Create new list to add to top 
+	Bottom_List * to_add = create_bl();
+	
+	/// Keep track of num  nodes visited
+	int node_count = 1;
+
+	/// Each node in the list will be spaced out by skip_size tag spaces
+	/// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
+	unsigned long skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
+
+	/// Iterate to the middle updating tags along the way
+	while (node_count < (list_to_split->size >> 1))
+	{
+		current->next->tag = current->tag + skip_size;
+		current = current->next;	
+		node_count++;
+	}
+
+	/// Update sizes of the lists
+	to_add->size = list_to_split->size - node_count;
+	list_to_split->size = node_count;
+	
+	/// Make current the end of the original list and save the middle
+	list_to_split->tail = current;
+	middle_node = current->next;
+	current->next = NULL;
+
+	/// Get current node back;
+	current = middle_node;
+
+	/// Set the head of the new list to middle node
+	to_add->head = middle_node;
+
+	/// Nullify prev of the middle node since it's the head
+	middle_node->prev = NULL;
+
+	/// Assign 0 to first tag of to_add list
+	current->tag = 0;
+
+	/// Reassign current ds
+	current->ds = to_add;
+
+	/// Iterate through remaining nodes updating tags and their ds
+	while (current->next != NULL)
+	{
+		current = current->next;	
+		current->ds = to_add;
+		current->tag = current->prev->tag + skip_size;
+	}
+
+	/// Make the last node the tail of the to_add list
+	to_add->tail = current;
+	current->next = NULL;
+
+	/// No longer need reordered
+	list_to_split->reorder_flag = to_add->reorder_flag = 0;
+
+	/// Insert the newly created list this into the top list
+	insert_tl(list, list_to_split, to_add);
+}
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  rebalance_tl
+ *  Description:  Rebalances the top list around a pivot node according to Bender's 
+ *  			  algorithm.
+ * =====================================================================================
+ */
+void rebalance_tl (Top_List * list, Bottom_List * pivot)
+{
+	/// Pointers for walking out from the pivot
+	Bottom_List *lList = pivot, *rList = pivot;
+	
+	/// Constants used to calculate when to rebalance
+	double overflow_density, overflow_threshold, i = -1;
+	unsigned long enclosing_tag_range, lTag, rTag, num_elements_in_sublist = 2, skip_size;
+
+	/// Check if range is in overflow
+	do	
+	{
+		/// Move overflow list head and tail outward
+		if (lList->prev)
+		{
+			num_elements_in_sublist++;
+			lList = lList->prev;
+			lTag = lList->tag;
+		}
+		if (rList->next)
+		{
+			num_elements_in_sublist++;
+			rList = rList->next;
+			rTag = rList->tag;
+		}
+		else
+		{
+			/// If we reach the tail, just make the tag the maximum number
+			rTag = MAX_NUMBER;	
+		}
+
+		/// Calculate overflow_density
+		enclosing_tag_range = rTag - lTag;
+
+		i = ceil( log2((double)enclosing_tag_range) );
+
+		overflow_threshold = pow(OVERFLOW_CONSTANT, -1.0 * i); 
+
+		overflow_density = (num_elements_in_sublist) / (double)enclosing_tag_range ;
+	}
+	while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && enclosing_tag_range != MAX_NUMBER);
+
+	/// This is the spacing in between tags of Bottom_Lists in between lList and rList
+	skip_size = (unsigned long)( enclosing_tag_range / (num_elements_in_sublist + 1) );
+
+#ifdef RD_DEBUG
+	if (rtag != MAX_NUMBER)
+		assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= rList->tag ));
+	else
+		assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= MAX_NUMBER ));		
+#endif
+
+	/// Relabel the tag range
+	relabel_tl_tag_range(lList, rList, skip_size);
+}
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  relabel_tl_tag_range
+ *  Description:  Relabels the range of tags from list start to end using a distance of skip_size.
+ * =====================================================================================
+ */
+void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const long skip_size)
+{
+	Bottom_List * current = start;
+	current->tag = start->tag;
+	
+	/// Iterate through and update tags
+	do
+	{
+		current->next->tag = current->tag + skip_size;
+		current = current->next;
+	}
+	while (current != end);
+}
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  rebalance_bls
+ *  Description:  Rebalance all bottom lists with the reorder flag.
+ * =====================================================================================
+ */
+void rebalance_bls (Top_List * list)
+{
+	/// The Iterators
+	Bottom_List * current, * current_h;
+	current = list->head;
 
 	while(current != NULL)
 	{
-		printf("#%u{%lu}->", current->id, current->tag);
+		if(current->reorder_flag == 1) ///< If 1, then needs split
+			split_bl(list, current);
 		current = current->next;
 	}
-	printf("Tail\n\n\n");
-
 }
-/* Does one insert into the data structure x is held in*/
-int single_node_insert_batch_helper(OM_Node *x, OM_Node * y, const int ID)
-{
-	Bottom_List * ds;
 
-	switch(ID){
-	case HEBREW_ID:
 
-		/// Retrieve the data structure known node
-		ds = x->ds_h;
-	
-		/// Update the ds y is in 
-		y->ds_h = ds;
-
-		///Debug: if x is null
-		if (!(x && y && ds) ){
-			printf("Some node or ds is null,\
-               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-				   x->id, x, y->id, y, ds->tail->id, ds->tail);
-			return 0 ;
-		}
-		
-		/// This is the procedure:
-		y->next_h = x->next_h;
-		x->next_h->prev_h = y;
-		x->next_h = y;
-		y->prev_h = x;
-		
-		/// Assign y's tag
-		y->tag_h = ((y->next_h->tag_h >> 1) + (y->prev_h->tag_h >> 1));
-		
-		/// Update flag as necessary
-		if(ds->size_h < (INT_BIT_SIZE >> 1))
-			ds->Reorder_flag_h = 0;
-		else
-			ds->Reorder_flag_h = 1;
-
-		ds->size_h++;
-
-		if(ds->size_h == INT_BIT_SIZE)
-			return 1; ///< Needs to be split
-		return 0; ///< Doesn't needs immediately split
-
-		break;
-
-	case ENGLISH_ID:
-
-		/// Retrieve the data structure known node
-		ds = x->ds_e;
-	
-		/// Update the ds y is in 
-		y->ds_e = ds;
-
-		//if x is null
-		if (!(x && y && ds) ){
-			printf("Some node or ds is null,\
-               skipping insert; x(%d): %p y(%d):%p tail(%d):%p\n",
-				   x->id, x, y->id, y, ds->tail->id, ds->tail);
-			return 1;
-		}
-
-		/// This is the procedure:
-		y->next_e = x->next_e;
-		x->next_e->prev_e = y;
-		x->next_e = y;
-		y->prev_e = x;
-		
-		/// Assign y's tag
-		y->tag_e = ((y->next_e->tag_e >> 1) + (y->prev_e->tag_e >> 1));
-
-		/// Update flag as necessary
-		if(ds->size_e < (INT_BIT_SIZE >> 1))
-			ds->Reorder_flag_e = 0;
-		else
-			ds->Reorder_flag_e = 1;
-
-		ds->size_e++;
-
-		if(ds->size_e == INT_BIT_SIZE)
-			return 1; ///< Needs to be split
-		return 0; ///< Doesn't needs immediately split
-
-	}
-
-	/// Specific number for checks
-	return 100;
-}
-/*
- *
- *[>For now just leave this as a C procedure<]
- *void insert_node_batch_op(CilkWorkerState *const _cilk_ws,
- *                          void *data_struct, void *data,
- *                          size_t num_elem, void *result)
- *
- *{
- *    Top_List *list = data_struct;
- *    InsertRecord *ir, *irArray = (InsertRecord * )data;
- *    int rebalance = 0;
- *    while (num_elem > 0)
- *    {
- *        ir = &irArray[--num_elem];
- *        /// We need to do a rebalance if this returns 1
- *        if (single_node_insert_batch_helper(ir->x, ir->y, ir->ID) == 1)
- *        {
- *            if (ir->ID == ENGLISH_ID)
- *                Split_and_add_to_top(list, ir->x->ds_e);
- *            else if (ir->ID == HEBREW_ID)
- *                Split_and_add_to_top(list, ir->x->ds_h);
- *        }
- *        free(ir);
- *    }
- *    [>For now, this doesn;t have to be called, since the split's should make things work correctly, but not necessarily fast<]
- *    [>if (rebalance)<]
- *        [>Rebalance_bottom_lists(_cilk_ws, list);<]
- *
- *    return;
- *}
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  print_tl
+ *  Description:  Print all the tags of the "nodes" in Top_List list.
+ * =====================================================================================
  */
+void print_tl (Top_List * list)
+{
+	Bottom_List * current = list->head;
 
-
-/// Iterate through the top list to find sublists needing reordered
-void Rebalance_bottom_lists(Top_List * list) {
-
-	/// The iterators
-	Bottom_List * current_e, * current_h;
-	current_e = current_h = list->head;
-
-	/// NOTE: Only eng/heb distinction for the flags, not top_list splits
-
-	/// English
-	while(current_e != list->tail) {
-		if(current_e->Reorder_flag_e == 1) ///< If 1, then needs split
-			Split_and_add_to_top(list, current_e);
-		current_e = current_e->next;
+	printf ( "(size = %i) Head->", list->size );
+	while (current != NULL)
+	{
+		printf ( "(%lu)->", current->tag);
+		current = current->next;
 	}
-
-	/// Hebrew
-	while(current_h != list->tail) {
-		if(current_h->Reorder_flag_h == 1) ///< If 1, then needs split
-			Split_and_add_to_top(list, current_h);
-		current_h = current_h->next;
-	} 
+	printf ( "Tail\n" );
 }
 
-/// Within the void *ds, depending on macros defined in main, determine the order
-/// of x and y. If x <= y, return true. Otherwise, return false.
-/// Note: the ID will determine which ordering to follow (english or hebrew)
-int OM_DS_order(OM_Node * x, OM_Node * y, const int ID){
-#ifdef OM_IS_LL
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  print_bl
+ *  Description:  Print all the ID's of the nodes in the Bottom_List list.
+ * =====================================================================================
+ */
+void print_bl (Bottom_List * list)
+{
+	OM_Node * current = list->head;
 
-	/// To retrieve Bottom_List
-	Bottom_List * ds;
-
-	///Temp node to hold current node
-	OM_Node * current;
-
-	if (ID == HEBREW_ID)
-		ds = x->ds_h;
-	else
-		ds = x->ds_e;
-
-    /// Point tmp to head
-	current = ds->head;
-
-	/// For a linked list, inc. the node pointer down the correct list.
-	/// If at any point current is x, we immediately exit true
-	/// If at any point current is y, we immediately exit false
-	do {
-		if (current == y)
-			return 0;
-		else if (current == x)
-			return 1;
-		else if (ID == ENGLISH_ID)
-			current = current->next_e;
-		else if (ID == HEBREW_ID)
-			current = current->next_h;
-	} while( current != ds->tail);
-
-	/// Debug code, to ensure we are not getting false or true by calling order
-	/// on incorrect nodes.
-	printf("Debug: Neither node found in linked list. Error, exiting.");
-	exit(1);
-
-	return 0;
-
-#elif defined OM_IS_BENDER
-	/// First check to see if the Top_List tags are ordered
-	/// If they're not, then the nodes are in the same sub_list
-	/// and it suffices to check their tags against another
-
-	Bottom_List * x_bl, * y_bl;
-/// Debug
-	if( !(x && y) ) {
-		printf("Debug: Order - one of the nodes null\n");
-		exit(10);
+	printf ( "(size = %i) Head->", list->size );
+	while (current != NULL)
+	{
+		printf ( "(%i | %lu)->", current->ID, current->tag);
+		current = current->next;
 	}
-
-	switch(ID){
-	case HEBREW_ID:
-
-		/// The tags of the lists of nodes themselves
-		x_bl = x->ds_h;
-		y_bl = y->ds_h;
-
-		/// If the nodes are in different lists, compare the list tags
-		if(x_bl->tag != y_bl->tag)
-			if(x_bl->tag < y_bl->tag) return 1; else return 0;
-
-		/// Otherwise just check them directly
-		/// Note: if they are the same node, return 0 (error...)
-		else
-			if(x->tag_h < y->tag_h) return 1; else return 0;
-
-	case ENGLISH_ID:
-
-		/// The tags of the lists of nodes themselves
-		x_bl = x->ds_e;
-		y_bl = y->ds_e;
-
-		/// If the nodes are in different lists, compare the list tags
-		if(x_bl->tag != y_bl->tag)
-			if(x_bl->tag < y_bl->tag) return 1; else return 0;
-
-		/// Otherwise just check them directly
-		/// Note: if they are the same node, return 0 (error...)
-		else
-			if(x->tag_e < y->tag_e) return 1; else return 0;
-	}
-
-	printf("Debug: something went wrong in OM_DS_order\n");
-	return 0;
-
-#else
-	printf("Order called with no applicable ds macro specified.\n");
-	exit(10);
-#endif
+	printf ( "Tail\n" );
 }
 
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  free_bl
+ *  Description:  Free all nodes in bottom list and the list itself
+ * =====================================================================================
+ */
+void free_bl (Bottom_List * list)
+{
+	OM_Node *next, * current = list->head;
+
+	/// Iterate through and free the OM_Node's membory
+	while (current != NULL){
+		next = current->next;	
+		free(current);
+		current = NULL; ///< Prevent dangling pointers
+		current = next;
+	}
+
+	/// Finally free the Bottom_List
+	free(list);
+	list = NULL; ///< Prevent dangling pointers
+}
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  free_tl
+ *  Description:  Free all Bottom_Lists in Top_List list and the list itself.
+ * =====================================================================================
+ */
+void free_tl (Top_List * list)
+{
+	Bottom_List *next, * current = list->head;
+
+	/// Iterate through and call free_bl on the Bottom_List current
+	while (current != NULL){
+		next = current->next;	
+		free_bl(current); ///< Implicitly prevents dangling pointers
+		current = next;
+	}
+
+	/// Finally free the Top_List
+	free(list);
+	list = NULL; ///< Prevent dangling pointers
+}
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  check_sub_correctness
+ *  Description:  Checks the list so each node's tag is less than the next node's.
+ * =====================================================================================
+ */
+void check_sub_correctness (Top_List * list)
+{
+	Bottom_List * current = list->head;
+	OM_Node * cur_node;
+
+	/// Iterate through the Bottom_List(s)
+	while (current != NULL)
+	{
+		/// Iterate through the OM_Node(s) in each Bottom_List
+		cur_node = current->head;
+		while(cur_node != current->tail)
+		{	
+			if ( !(cur_node->tag < cur_node->next->tag) )
+				printf("Node tags are out of order\n");
+			cur_node = cur_node->next;
+		}
+		current = current->next;
+	}
+}
 
 
 /*!******************************************************************************
@@ -3478,29 +2761,6 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 
 /// Insert {current, spawned function, continuation node} into the english OM_DS
 
-#ifdef OM_IS_LL
-	OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID);
-	OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID);
-	if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID);
-
-/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-	OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID);
-	OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID);
-	if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID);
-/// If we had updates to post_sync_node, reset the frame's post_sync_node
-#elif defined OM_IS_BENDER
-
-#ifdef BATCHIFY_WORKING
-	OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID);
-	OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID);
-	if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID);
-
-	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-	OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID);
-	OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID);
-	if (post_sync_node) OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID);
-#else 
-
 	int rebalance_needed = 0;
 	if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID))
 	{
@@ -3542,10 +2802,8 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	/// Rebalance all remaining lists that need to be rebalanced
 	if (rebalance_needed) /// This will changed when we batchify it
 		Rebalance_bottom_lists(ws, WS_TOP_LIST);
-	/// End else for (if BATCHIFY_WORKING)
-#endif 
 
-#endif
+	/// End else for (if BATCHIFY_WORKING)
 	if (post_sync_node) frame->post_sync_node = post_sync_node;
 
 /// Move the current node to the continuaion node

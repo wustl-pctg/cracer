@@ -221,8 +221,9 @@ struct CilkGlobalState_s{
 	volatile unsigned int batch_lock;
 	//	CILK_CACHE_LINE_PAD;
 	/* End BATCHER */
+
 	/*! Order maintenance for race detect*/
-	Top_List * OM_DS;
+	Top_List * englishOM_DS, *hebrewOM_DS;
 
 	/*End order maintenance*/
 
