@@ -127,6 +127,22 @@ void insert_bl (OM_Node * x, OM_Node *y)
 		/// Check for collision
 		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag		
 		{
+#ifdef RD_STATS
+			if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
+			{
+				ds->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
+				ds->list_of_size_of_bottom_list_when_split_tail = ds->list_of_size_of_bottom_list_when_split_head;
+				ds->list_of_size_of_bottom_list_when_split_head->data = ds->size;
+			}
+			else
+			{
+				ll_node * nextnode = malloc(sizeof(ll_node));
+				ds->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
+				nextnode->next = NULL;
+				nextnode->data = ds->size;
+			}
+
+#endif
 			split_bl(ds->parent, ds);
 			insert_bl(x, y);
 			return;
@@ -145,6 +161,24 @@ void insert_bl (OM_Node * x, OM_Node *y)
 		/// Check for collision
 		if ((x->next->tag - x->tag) <= 1)
 		{
+#ifdef RD_STATS
+			
+			if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
+			{
+				ds->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
+				ds->list_of_size_of_bottom_list_when_split_tail = ds->list_of_size_of_bottom_list_when_split_head;
+				ds->list_of_size_of_bottom_list_when_split_head->data = ds->size;
+			}
+			else
+			{
+				ll_node * nextnode = malloc(sizeof(ll_node));
+				ds->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
+				nextnode->next = NULL;
+				nextnode->data = ds->size;
+			}
+
+#endif
+
 			split_bl(ds->parent, ds);
 			insert_bl(x, y);
 			return;
@@ -312,6 +346,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	/// Create new list to add to top 
 	Bottom_List * to_add = create_bl();
 	
+	
 	/// Keep track of num  nodes visited
 	int node_count = 1;
 
@@ -366,6 +401,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	/// No longer need reordered
 	list_to_split->reorder_flag = to_add->reorder_flag = 0;
 
+
 	/// Insert the newly created list this into the top list
 	insert_tl(list_to_split, to_add);
 }
@@ -381,6 +417,23 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 {
 	/// Pointers for walking out from the pivot
 	Bottom_List *lList = pivot, *rList = pivot;
+#ifdef RD_STATS
+			
+			if (list->list_of_size_of_top_list_when_split_head == NULL)
+			{
+				list->list_of_size_of_top_list_when_split_head = malloc(sizeof(ll_node));
+				list->list_of_size_of_top_list_when_split_tail = list_of_size_of_top_list_when_split_head;
+				list->list_of_size_of_top_list_when_split_head->data = list->size;
+			}
+			else
+			{
+				ll_node * nextnode = malloc(sizeof(ll_node));
+				list_of_size_of_top_list_when_split_tail->next = nextnode;
+				nextnode->next = NULL;
+				nextnode->data = list->size;
+			}
+
+#endif
 	
 	/// Constants used to calculate when to rebalance
 	double overflow_density, overflow_threshold, i = -1;

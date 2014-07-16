@@ -89,7 +89,43 @@ int main ( int argc, char *argv[] )
 	
 	/*order_test(nodeArray, num_nodes);*/
 	check_sub_correctness(list);
+#ifdef RD_STATS
+	int num_splits = 1, list_count = 1;
+	int num_rebalances = 1;
 
+	Bottom_List * current_bl = list->head;
+	ll_node * current_ll_node;
+	printf("Size of bottom lists when split:");
+	/// Calc size of bottom lists when splits occurred
+	while (current_bl != NULL){
+		printf("Bottom List # %i : ", list_count++);
+		current_ll_node = current_bl->list_of_size_of_top_list_when_split_head;
+		while (	current_ll_node != NULL){
+			num_splits++;
+			printf("%i,", current_ll_node->data);
+			current_ll_node = current_ll_node->next;
+		}
+
+		printf ( "\n" );
+		current_bl = current_bl->next;
+	}
+
+	printf("Total number of bottom list splits: %i\n", num_splits);
+
+	list_count = 1;
+	current_ll_node = list->list_of_size_of_top_list_when_split_head;
+	printf("Size of top list when split: ");
+
+	/// Calc size of bottom lists when splits occurred
+	while (current_ll_node != NULL){
+		printf("%i,", current_ll_node->data );
+		list_count++;
+		current_ll_node = current_ll_node->next;
+	}
+	printf ( "\n" );
+
+	printf ( "Total number of top list rebalances: %i \n", num_rebalances );
+#endif
 	/// Free all the allocated memory
 	free_tl(list);
 

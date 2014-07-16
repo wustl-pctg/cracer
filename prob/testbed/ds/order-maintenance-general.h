@@ -27,6 +27,7 @@
 
 /// Pre-compiler macro for debugging 
 //#define RD_DEBUG
+#define RD_STATS
 
 /// FWD Declaration
 struct Bottom_List_s;
@@ -62,9 +63,7 @@ typedef struct Bottom_List_s {
 	unsigned long int tag;
 
 #ifdef RD_STATS
-	unsigned int num_of_splits;
-	
-	ll_node_s * list_of_size_of_bottom_list_when_split;
+	ll_node * list_of_size_of_bottom_list_when_split_head, *list_of_size_of_bottom_list_when_split_tail;
 
 
 #endif
@@ -87,8 +86,7 @@ typedef struct Top_List_s{
 	int size;
 
 #ifdef RD_STATS
-	unsigned int num_of_rebalances;
-
+	ll_node * list_of_size_of_top_list_when_split_head, *list_of_size_of_top_list_when_split_tail;
 
 #endif
 } Top_List;
