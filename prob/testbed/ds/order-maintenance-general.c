@@ -172,7 +172,7 @@ void insert_tl (Top_List * list, Bottom_List *x, Bottom_List *y)
 			if (x->tag & 0x1 == 0x1) y->tag++;
 		}
 		else
-		
+		{		
 			/// y's tag is the average of the next and prior tags
 			y->tag = (x->tag >> 1) + (x->next->tag >> 1);
 
@@ -206,8 +206,8 @@ void insert_tl (Top_List * list, Bottom_List *x, Bottom_List *y)
 			list->size += 1;
 		}
 	}
-
 }
+
 
 /*! 
  * ===  FUNCTION  ======================================================================
