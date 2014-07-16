@@ -60,8 +60,8 @@ int main ( int argc, char *argv[] )
 	clock_t start = clock();
 
 	// Create and add the first relevant thing to ds
-	insert_tl(list, NULL, firstBottom_List);
-	insert_bl(NULL, nodeArray[0], firstBottom_List);
+	first_insert_tl(list, firstBottom_List);
+	first_insert_bl(firstBottom_List, nodeArray[0]);
 
 	i = 1;
 	for (; i < num_nodes; i++)
@@ -75,7 +75,7 @@ int main ( int argc, char *argv[] )
 //
 //			rebalance_bls(list);
 //		}
-		insert_bl(nodeArray[j], nodeArray[i], nodeArray[j]->ds);
+		insert_bl(nodeArray[j], nodeArray[i]);
 
 #ifdef RD_DEBUG
 		printf("Check for correctness..");

@@ -76,7 +76,7 @@ void first_insert_bl(Bottom_List * ds, OM_Node * y)
 	/// Make sure they're not NULL
 	if ( !(ds && y) )
 	{
-		printf("First node or ds null: ds: %p y:(%d) %p\n", ds, y->id, y);
+		printf("First node or ds null: ds: %p y:(%d) %p\n", ds, y->ID, y);
 		assert(0);
 	}
 	
@@ -128,7 +128,7 @@ void insert_bl (OM_Node * x, OM_Node *y)
 		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag		
 		{
 			split_bl(ds->parent, ds);
-			insert_bl(x, y, x->ds);
+			insert_bl(x, y);
 			return;
 		}
 
@@ -143,10 +143,10 @@ void insert_bl (OM_Node * x, OM_Node *y)
 		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
 
 		/// Check for collision
-		if ((y->next->tag - y->tag) <= 1)
+		if ((x->next->tag - x->tag) <= 1)
 		{
 			split_bl(ds->parent, ds);
-			insert_bl(x, y, x->ds);
+			insert_bl(x, y);
 			return;
 		}
 
@@ -167,7 +167,7 @@ void insert_bl (OM_Node * x, OM_Node *y)
 //	if (ds->size > (INT_BIT_SIZE >> 1))
 //		ds->reorder_flag = 1;
 
-//	if (ds->size == INT_BIT_SIZE) 
+//	if (ds->size == INT_BIT_SIZE)
 //		return 1; ///< Needs to be split
 //	else
 //		return 0; ///< Doesn't needs immediately split
@@ -186,7 +186,7 @@ void first_insert_tl(Top_List * list, Bottom_List * y)
 	/// Make sure they're not NULL
 	if ( !(list && y) )
 	{
-		printf("First node or ds null: ds: %p y:(%d) %p\n", ds, y->id, y);
+		printf("First node or ds null: ds: %p y: %p\n", list, y);
 		assert(0);
 	}
 	
@@ -215,13 +215,13 @@ void first_insert_tl(Top_List * list, Bottom_List * y)
  */
 void insert_tl (Bottom_List *x, Bottom_List *y)
 {
+	/// Retrieve Top_List
+	Top_List * list = x->parent;
+
 #ifdef RD_DEBUG
 	assert( (list->size == 0 || x != NULL) && (y != NULL) && (list != NULL) );
 #endif
 	
-	/// Retrieve Top_List
-	Top_List * list = x->parent;
-
 	if (x == list->tail)
 	{
 		/// y's tag is the average of the max and the prior tag
@@ -247,7 +247,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		rebalance_tl(list, x);
 
 		/// Dont assign pointers, call insert again to put y after x
-		insert_tl(list, x, y);
+		insert_tl(x, y);
 	}
 	else
 	{
@@ -367,7 +367,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	list_to_split->reorder_flag = to_add->reorder_flag = 0;
 
 	/// Insert the newly created list this into the top list
-	insert_tl(list, list_to_split, to_add);
+	insert_tl(list_to_split, to_add);
 }
 
 /*! 
@@ -423,7 +423,7 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 	skip_size = (unsigned long)( enclosing_tag_range / (num_elements_in_sublist + 1) );
 
 #ifdef RD_DEBUG
-	if (rtag != MAX_NUMBER)
+	if (rTag != MAX_NUMBER)
 		assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= rList->tag ));
 	else
 		assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= MAX_NUMBER ));		
