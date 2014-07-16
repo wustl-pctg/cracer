@@ -66,9 +66,9 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-		j = (rand() % i); ///< Case where each insert is random
-		/*j = i -1;*/     ///< Case where each insert is at the back
-		/*j = 0;*/        ///< Case where each insert is at the front
+		/*j = (rand() % i); ///< Case where each insert is random*/
+		j = i -1;     ///< Case where each insert is at the back
+		/*j = 0;        ///< Case where each insert is at the front*/
 //		if (insert_bl(nodeArray[j], nodeArray[i], nodeArray[j]->ds))
 //		{
 //			/*printf("TEST: splitting and adding to top at test index %i\n", i);*/
@@ -90,19 +90,19 @@ int main ( int argc, char *argv[] )
 	/*order_test(nodeArray, num_nodes);*/
 	check_sub_correctness(list);
 #ifdef RD_STATS
-	int num_splits = 1, list_count = 1;
-	int num_rebalances = 1;
+	int num_splits = 0, list_count = 1;
+	int num_rebalances = 0;
 
 	Bottom_List * current_bl = list->head;
 	ll_node * current_ll_node;
-	printf("Size of bottom lists when split:");
+	printf("Size of bottom lists when split:\n");
 	/// Calc size of bottom lists when splits occurred
 	while (current_bl != NULL){
-		printf("Bottom List # %i : ", list_count++);
-		current_ll_node = current_bl->list_of_size_of_top_list_when_split_head;
+		printf("\tBottom List # %i : ", list_count++);
+		current_ll_node = current_bl->list_of_size_of_bottom_list_when_split_head;
 		while (	current_ll_node != NULL){
 			num_splits++;
-			printf("%i,", current_ll_node->data);
+			printf("%i; ", current_ll_node->data);
 			current_ll_node = current_ll_node->next;
 		}
 
@@ -110,21 +110,21 @@ int main ( int argc, char *argv[] )
 		current_bl = current_bl->next;
 	}
 
-	printf("Total number of bottom list splits: %i\n", num_splits);
+	printf("Total number of bottom list splits: %i\n\n", num_splits);
 
-	list_count = 1;
+	list_count = 0;
 	current_ll_node = list->list_of_size_of_top_list_when_split_head;
 	printf("Size of top list when split: ");
 
 	/// Calc size of bottom lists when splits occurred
 	while (current_ll_node != NULL){
-		printf("%i,", current_ll_node->data );
+		printf("%i; ", current_ll_node->data);
 		list_count++;
 		current_ll_node = current_ll_node->next;
 	}
 	printf ( "\n" );
 
-	printf ( "Total number of top list rebalances: %i \n", num_rebalances );
+	printf ( "Total number of top list rebalances: %i \n\n",  list_count);
 #endif
 	/// Free all the allocated memory
 	free_tl(list);

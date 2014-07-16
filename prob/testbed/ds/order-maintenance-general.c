@@ -20,7 +20,7 @@
 #include "order-maintenance-general.h"
 
 /// Constants used within this source file
-static unsigned long MAX_NUMBER = ~0;
+static unsigned /*long */int MAX_NUMBER = ~0;
 static int INT_BIT_SIZE = 64;
 static double OVERFLOW_CONSTANT = 1.85;
 
@@ -40,6 +40,9 @@ Bottom_List * create_bl ()
 
 	/// Reset size and reorder flag
 	list->size = list->reorder_flag = 0;
+#ifdef RD_STATS
+	list->list_of_size_of_bottom_list_when_split_head = list->list_of_size_of_bottom_list_when_split_head = NULL;
+#endif
 
 	return list;
 }
@@ -60,6 +63,9 @@ Top_List * create_tl ()
 
 	/// Assign correct vals to head and tail pointers
 	list->head = list->tail = NULL;
+#ifdef RD_STATS
+	list->list_of_size_of_top_list_when_split_head = list->list_of_size_of_top_list_when_split_head = NULL;
+#endif
 
 	return list;
 }
@@ -124,6 +130,9 @@ void insert_bl (OM_Node * x, OM_Node *y)
 		/// y's tage is the average of its neighbors
 		y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
 
+		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
+		if (x->tag & 0x1 == 0x1) y->tag += 1;
+
 		/// Check for collision
 		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag		
 		{
@@ -138,6 +147,7 @@ void insert_bl (OM_Node * x, OM_Node *y)
 			{
 				ll_node * nextnode = malloc(sizeof(ll_node));
 				ds->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
+				ds->list_of_size_of_bottom_list_when_split_tail = nextnode;
 				nextnode->next = NULL;
 				nextnode->data = ds->size;
 			}
@@ -148,15 +158,16 @@ void insert_bl (OM_Node * x, OM_Node *y)
 			return;
 		}
 
-		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-		if (x->tag & 0x1 == 0x1) y->tag += 1;
-
 		ds->tail = y;
 	}
 	else
 	{
 		/// y's tage is the average of its neighbors
 		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
+
+		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
+		if (x->next->tag & x->tag & 0x1 == 0x1) y->tag += 1;
+			
 
 		/// Check for collision
 		if ((x->next->tag - x->tag) <= 1)
@@ -173,6 +184,7 @@ void insert_bl (OM_Node * x, OM_Node *y)
 			{
 				ll_node * nextnode = malloc(sizeof(ll_node));
 				ds->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
+				ds->list_of_size_of_bottom_list_when_split_tail = nextnode;
 				nextnode->next = NULL;
 				nextnode->data = ds->size;
 			}
@@ -184,8 +196,6 @@ void insert_bl (OM_Node * x, OM_Node *y)
 			return;
 		}
 
-		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-		if (x->next->tag & x->tag & 0x1 == 0x1) y->tag += 1;
 	}
 
 	/// Reassign prev/next pointers
@@ -296,6 +306,8 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		else 
 			list->tail = y; ///< If x was the previous tail, y->next is NULL and is new tail 
 
+		/// Assign the parent of y to the list
+		y->parent = list;
 		list->size += 1;
 	}
 
@@ -352,8 +364,9 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
 	/// Each node in the list will be spaced out by skip_size tag spaces
 	/// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
-	unsigned long skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
+	unsigned /*long */ int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
 
+	printf ( "Split\n" );
 	/// Iterate to the middle updating tags along the way
 	while (node_count < (list_to_split->size >> 1))
 	{
@@ -422,13 +435,14 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 			if (list->list_of_size_of_top_list_when_split_head == NULL)
 			{
 				list->list_of_size_of_top_list_when_split_head = malloc(sizeof(ll_node));
-				list->list_of_size_of_top_list_when_split_tail = list_of_size_of_top_list_when_split_head;
+				list->list_of_size_of_top_list_when_split_tail = list->list_of_size_of_top_list_when_split_head;
 				list->list_of_size_of_top_list_when_split_head->data = list->size;
 			}
 			else
 			{
 				ll_node * nextnode = malloc(sizeof(ll_node));
-				list_of_size_of_top_list_when_split_tail->next = nextnode;
+				list->list_of_size_of_top_list_when_split_tail->next = nextnode;
+				list->list_of_size_of_top_list_when_split_tail = nextnode;
 				nextnode->next = NULL;
 				nextnode->data = list->size;
 			}
@@ -437,7 +451,7 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 	
 	/// Constants used to calculate when to rebalance
 	double overflow_density, overflow_threshold, i = -1;
-	unsigned long enclosing_tag_range, lTag, rTag, num_elements_in_sublist = 2, skip_size;
+	unsigned /* long */int enclosing_tag_range, lTag, rTag, num_elements_in_sublist = 2, skip_size;
 
 	/// Check if range is in overflow
 	do	
@@ -473,7 +487,7 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 	while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && enclosing_tag_range != MAX_NUMBER);
 
 	/// This is the spacing in between tags of Bottom_Lists in between lList and rList
-	skip_size = (unsigned long)( enclosing_tag_range / (num_elements_in_sublist + 1) );
+	skip_size = (unsigned /* long*/ int) ( enclosing_tag_range / (num_elements_in_sublist + 1) );
 
 #ifdef RD_DEBUG
 	if (rTag != MAX_NUMBER)
@@ -492,7 +506,7 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
  *  Description:  Relabels the range of tags from list start to end using a distance of skip_size.
  * =====================================================================================
  */
-void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const long skip_size)
+void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const /*long*/int  skip_size)
 {
 	Bottom_List * current = start;
 	current->tag = start->tag;
