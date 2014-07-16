@@ -97,6 +97,8 @@ typedef struct Top_List_s{
 /// Declarations of the OM-functions
 Bottom_List * create_bl();
 Top_List * create_tl();
+void first_insert_bl(Bottom_List * ds, OM_Node * y);
+void first_insert_tl(Top_List * list, Bottom_List * y);
 void insert_bl(OM_Node * x, OM_Node *y, Bottom_List * ds);
 void insert_tl(Bottom_List *x, Bottom_List *y);
 int order(OM_Node * x, OM_Node * y);
@@ -111,3 +113,5 @@ void free_tl ( Top_List * list );
 void check_sub_correctness (Top_List * list);
 
 #endif 
+
+

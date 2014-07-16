@@ -66,17 +66,50 @@ Top_List * create_tl ()
 
 /*! 
  * ===  FUNCTION  ======================================================================
+ *         Name:  first_insert_bl
+ *  Description:  Insert the first OM_Node y into the Bottom_List ds
+ * =====================================================================================
+ */
+void first_insert_bl(Bottom_List * ds, OM_Node * y)
+{
+#ifdef RD_DEBUG
+	/// Make sure they're not NULL
+	if ( !(ds && y) )
+	{
+		printf("First node or ds null: ds: %p y:(%d) %p\n", ds, y->id, y);
+		assert(0);
+	}
+	
+	if (ds->size != 0)
+	{
+		printf("Size was not 0. Improper call to first_insert_bl\n");
+		assert(0);
+	}
+#endif
+
+	y->ds = ds;
+	ds->head = ds->tail = y;
+	y->next = y->prev = NULL;
+	ds->size = 1;
+	y->tag = 0;
+}
+
+/*! 
+ * ===  FUNCTION  ======================================================================
  *         Name:  insert_bl
  *  Description:  Insert node y after node x in the Bottom_List specified in x->ds.
  *  How to Call:  Pass in ds: if this is the first call, x is null and ds will be known.
  *                Otherwise, ds is x->ds.
  * =====================================================================================
  */
-void insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
+void insert_bl (OM_Node * x, OM_Node *y)
 {
+	/// Retrieve the Bottom_List
+	Bottom_List * ds = x->ds;
+
 #ifdef RD_DEBUG
 	/// y and ds should never be NULL
-	if ( !(y && ds) )
+	if ( !(x && y && ds) )
 	{
 		printf("Some node or ds is null, skipping insert; x(%d) and y(%d)\n", x->ID, y->ID);
 		assert(0);
@@ -85,16 +118,6 @@ void insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
 
 	/// Update the ds y is in 
 	y->ds = ds;
-
-	/// Size==0 Implies the first insert into the ds
-	if (ds->size == 0)
-	{
-		ds->head = ds->tail = y;
-		y->next = y->prev = NULL;
-		ds->size = 1;
-		y->tag = 0;
-		return 0; ///< Appending the first node is a unique case, so we return
-	}
 
 	if (x == ds->tail)
 	{
@@ -150,6 +173,39 @@ void insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
 //		return 0; ///< Doesn't needs immediately split
 }
 
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  first_insert_tl
+ *  Description:  Insert list y after list x in Top_List list.
+ * =====================================================================================
+ */
+void first_insert_tl(Top_List * list, Bottom_List * y)
+{
+
+#ifdef RD_DEBUG
+	/// Make sure they're not NULL
+	if ( !(list && y) )
+	{
+		printf("First node or ds null: ds: %p y:(%d) %p\n", ds, y->id, y);
+		assert(0);
+	}
+	
+	if (list->size != 0)
+	{
+		printf("Size was not 0. Improper call to first_insert_bl\n");
+		assert(0);
+	}
+#endif
+	
+	/// Update necessary parameters
+	y->parent = list;
+	list->head = list->tail = y;	
+	y->tag = 0;
+
+	y->reorder_flag = 0;
+	y->next = y->prev = NULL;
+	list->size += 1;
+}
 
 /*! 
  * ===  FUNCTION  ======================================================================
@@ -157,72 +213,58 @@ void insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
  *  Description:  Insert list y after list x in Top_List list.
  * =====================================================================================
  */
-void insert_tl (Top_List * list, Bottom_List *x, Bottom_List *y)
+void insert_tl (Bottom_List *x, Bottom_List *y)
 {
 #ifdef RD_DEBUG
 	assert( (list->size == 0 || x != NULL) && (y != NULL) && (list != NULL) );
 #endif
+	
+	/// Retrieve Top_List
+	Top_List * list = x->parent;
 
-	/// If size==0, it is the first insert int the list
-	if (list->size == 0)
+	if (x == list->tail)
 	{
-		/// Assign head and tail of list
-		list->head = list->tail = y;	
-		
-		/// Put y in the middle of the tag range
-		y->tag = 0;
+		/// y's tag is the average of the max and the prior tag
+		y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
 
-		y->reorder_flag = 0;
-		y->next = y->prev = NULL;
+		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
+		if (x->tag & 0x1 == 0x1) y->tag++;
+	}
+	else
+	{		
+		/// y's tag is the average of the next and prior tags
+		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
+
+		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
+		if (x->next->tag & x->tag & 0x1 == 0x1) y->tag++;
+	}
+			
+	/// See if there is a "collision" of tags
+	if (    (x == list->tail && (MAX_NUMBER - x->tag <= 1)  ) || ///< If x is tail, use MAX_NUMBER instead of x->next->tag
+			(x != list->tail && (x->next->tag - x->tag <= 1)) )
+	{
+		/// Thin out the list - make room for y
+		rebalance_tl(list, x);
+
+		/// Dont assign pointers, call insert again to put y after x
+		insert_tl(list, x, y);
+	}
+	else
+	{
+		/// NOTE: This is not atomic
+
+		/// Reassign prev/next pointers
+		y->prev = x;
+		y->next = x->next;
+		x->next = y;
+		if (y->next != NULL)
+			y->next->prev = y; ///< If not null, the we can update the next nodes prev reference
+		else 
+			list->tail = y; ///< If x was the previous tail, y->next is NULL and is new tail 
 
 		list->size += 1;
 	}
-	/// If there exist other elements in the top list
-	else
-	{
-		if (x == list->tail)
-		{
-			/// y's tag is the average of the max and the prior tag
-			y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
 
-			/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-			if (x->tag & 0x1 == 0x1) y->tag++;
-		}
-		else
-		{		
-			/// y's tag is the average of the next and prior tags
-			y->tag = (x->tag >> 1) + (x->next->tag >> 1);
-
-			/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-			if (x->next->tag & x->tag & 0x1 == 0x1) y->tag++;
-		}
-			
-		/// See if there is a "collision" of tags
-		if (    (x == list->tail && (MAX_NUMBER - x->tag <= 1)  ) || ///< If x is tail, use MAX_NUMBER instead of x->next->tag
-				(x != list->tail && (x->next->tag - x->tag <= 1)) )
-		{
-			/// Thin out the list - make room for y
-			rebalance_tl(list, x);
-
-			/// Dont assign pointers, call insert again to put y after x
-			insert_tl(list, x, y);
-		}
-		else
-		{
-			/// NOTE: This is not atomic
-
-			/// Reassign prev/next pointers
-			y->prev = x;
-			y->next = x->next;
-			x->next = y;
-			if (y->next != NULL)
-				y->next->prev = y; ///< If not null, the we can update the next nodes prev reference
-			else 
-				list->tail = y; ///< If x was the previous tail, y->next is NULL and is new tail 
-
-			list->size += 1;
-		}
-	}
 }
 
 

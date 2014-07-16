@@ -69,12 +69,13 @@ int main ( int argc, char *argv[] )
 		j = (rand() % i); ///< Case where each insert is random
 		/*j = i -1;*/     ///< Case where each insert is at the back
 		/*j = 0;*/        ///< Case where each insert is at the front
-		if (insert_bl(nodeArray[j], nodeArray[i], nodeArray[j]->ds))
-		{
-			/*printf("TEST: splitting and adding to top at test index %i\n", i);*/
-
-			rebalance_bls(list);
-		}
+//		if (insert_bl(nodeArray[j], nodeArray[i], nodeArray[j]->ds))
+//		{
+//			/*printf("TEST: splitting and adding to top at test index %i\n", i);*/
+//
+//			rebalance_bls(list);
+//		}
+		insert_bl(nodeArray[j], nodeArray[i], nodeArray[j]->ds);
 
 #ifdef RD_DEBUG
 		printf("Check for correctness..");
