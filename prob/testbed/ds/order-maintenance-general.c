@@ -101,8 +101,14 @@ void insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
 		/// y's tage is the average of its neighbors
 		y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
 
-		/// Check for there being no space
-		if (((MAX_NUMBER - y->tag) <= 1) || ((y->next->tag - y->tag) <= 1))
+		/// Check for collision
+		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag		
+		{
+			split_bl(ds->parent, ds);
+			insert_bl(x, y, x->ds);
+			return;
+		}
+
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if (x->tag & 0x1 == 0x1) y->tag += 1;
 
@@ -112,6 +118,14 @@ void insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
 	{
 		/// y's tage is the average of its neighbors
 		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
+
+		/// Check for collision
+		if ((y->next->tag - y->tag) <= 1)
+		{
+			split_bl(ds->parent, ds);
+			insert_bl(x, y, x->ds);
+			return;
+		}
 
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if (x->next->tag & x->tag & 0x1 == 0x1) y->tag += 1;
@@ -124,6 +138,7 @@ void insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
 	if (y->next != NULL) y->next->prev = y; ///< If y isn't tail, make the next node point to it
 
 	ds->size += 1;
+
 
 	/// Mark flag in each list greater than half it's capacity
 //	if (ds->size > (INT_BIT_SIZE >> 1))
