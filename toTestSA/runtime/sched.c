@@ -2200,7 +2200,7 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 	return 0;
 #else
 	/// Non-batched insert
-	if (insert_bl(x, y, x->ds)
+	return (insert_bl(x, y, x->ds);
 #endif
 }
 /*****************Order Maintenance Data Structure Functions *******************/
@@ -2722,7 +2722,9 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 /// cont_node: continuation node, will follow from the current node (continues after spawn)
 /// post_sync_node: the node to move to after the next sync occurs (only malloc'ed if first_Spawn_flag is 0)
 /// spawned_func_node: the node that the spawned function will be represented by
-	OM_Node * cont_node = NULL , * post_sync_node = NULL, * spawned_func_node = NULL;
+	OM_Node * cont_node_e = NULL , * post_sync_node_e = NULL, * spawned_func_node_e = NULL;
+	OM_Node * cont_node_h = NULL , * post_sync_node_h = NULL, * spawned_func_node_h = NULL;
+	Runtime_node * cont_node = NULL,* post_sync_node = NULL,* spawned_func_node = NULL;
 
 /// Create heap memory for the two guaranteed nodes
 	cont_node =  Cilk_malloc(sizeof(OM_Node));
