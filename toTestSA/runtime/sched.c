@@ -2195,7 +2195,7 @@ int OM_DS_insert(CilkWorkerState *const ws, OM_Node * x, OM_Node * y, const int 
 	;//printf("Debug: INSERT:  x: %d , y: %d \n", x->id, y->id);
 	/// Make call to batchify to assign this data structure opeartion
 	/// to be executed at another time.
-	Cilk_batchify(ws, &insert_node_batch_op, WS_TOP_LIST, ir, sizeof(InsertRecord), NULL);
+	Cilk_batchify(ws, &insert_node_batch_op, pS_TOP_LIST, ir, sizeof(InsertRecord), NULL);
 	/*Debug: CILK_ASSERT(ws, OM_DS_order(x, y, ID));*/
 	return 0;
 #else
@@ -2727,18 +2727,30 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	Runtime_node * cont_node = NULL,* post_sync_node = NULL,* spawned_func_node = NULL;
 
 /// Create heap memory for the two guaranteed nodes
-	cont_node =  Cilk_malloc(sizeof(OM_Node));
-	spawned_func_node =  Cilk_malloc(sizeof(OM_Node));
+	cont_node_e =  Cilk_malloc(sizeof(OM_Node));
+	cont_node_h =  Cilk_malloc(sizeof(OM_Node));
+	spawned_func_node_h =  Cilk_malloc(sizeof(OM_Node));
+	spawned_func_node_e =  Cilk_malloc(sizeof(OM_Node));
+
+	cont_node = 		Cilk_malloc(sizeof(Runtime_node));
+	spawned_func_node = 	Cilk_malloc(sizeof(Runtime_node));
+
+/// Setup runtime node's pointers
+	setup_runtime_node(cont_node, cont_node_e, cont_node_h);
+	setup_runtime_node(spanwed_func_node, spanwed_func_node_e, spanwed_func_node_h);
 
 /// Assign uniquee node ID's
-	cont_node->id = global_node_count++;
-	spawned_func_node->id = global_node_count++;
+	cont_node_e->id = cont_node_e->id = global_node_count++;
+	spawned_func_node_e->id = spawned_func_node_h->id =  global_node_count++;
 
 /// Enter only if this is the first spawn after a sync/in a function
 	if (frame->first_spawn_flag != 1){
 /// Allocate heap memory
-		post_sync_node =  Cilk_malloc(sizeof(OM_Node));
-
+		post_sync_node_e =  Cilk_malloc(sizeof(OM_Node));
+		post_sync_node_h =  Cilk_malloc(sizeof(OM_Node));
+		post_sync_node 	 =  Cilk_malloc(sizeof(Runtime_node));
+		
+		setup_runtime_node(post_sync_node, post_sync_node_e, post_sync_node_h);
 /// Assign unique id
 		post_sync_node->id = global_node_count++;
 
@@ -2752,58 +2764,62 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	}
 
 /// Asserts we have a valid (non-null) frame current node before we start inserting
+
+#ifdef RD_DEBUG
 	CILK_ASSERT(ws, frame->current_node != NULL);
 
-	;/* Debug messages
-		if (FAST_NOT_SLOW)//TODO
+		if (FAST_NOT_SLOW)
 		printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
 		else
 		printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
-		;*/
 
-/// Insert {current, spawned function, continuation node} into the english OM_DS
+#endif
+	/// Insert {current, spawned function, continuation node} into the english OM_DS
+	int rebalance_needed_e = 0, rebalance_needed_h = 0;
 
-	int rebalance_needed = 0;
-	if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, spawned_func_node, 	ENGLISH_ID))
+	if (OM_DS_insert(ws, frame->current_node_e, spawned_func_node_e))
 	{
-		Split_and_add_to_top( WS_TOP_LIST, spawned_func_node->ds_e);
-		rebalance_needed = 1;
+		split_bl( WS_TOP_LIST_ENGLISH, spawned_func_node_e->ds);
+		rebalance_needed_e = 1;
 	}
-	if (OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, cont_node, 			ENGLISH_ID))
+	if (OM_DS_insert(ws, spawned_func_node->english_e, cont_node_e));
 	{
-		Split_and_add_to_top( WS_TOP_LIST, cont_node->ds_e);
-		rebalance_needed = 1;
+		split_bl( WS_TOP_LIST_ENGLISH, cont_node_e->ds);
+		rebalance_needed_e = 1;
 	}
 	if (post_sync_node) 
-		if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, post_sync_node,	ENGLISH_ID))
+		if (OM_DS_insert(ws, cont_node_e, post_sync_node_e))
 		{
-			Split_and_add_to_top( WS_TOP_LIST, post_sync_node->ds_e);
-			rebalance_needed = 1;
+			split_bl( WS_TOP_LIST_ENGLISH, post_sync_node_e->ds);
+			rebalance_needed_e = 1;
 		}
 
 	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-	if (OM_DS_insert(ws, /*WS_REF_DS,*/ frame->current_node, cont_node, 			HEBREW_ID))
-	{
-		Split_and_add_to_top( WS_TOP_LIST, cont_node->ds_h);
-		rebalance_needed = 1;
-	}
 
-	if (OM_DS_insert(ws, /*WS_REF_DS,*/ cont_node, spawned_func_node, 				HEBREW_ID))
+	if (OM_DS_insert(ws, frame->current_node_h, spawned_func_node_h))
 	{
-		Split_and_add_to_top( WS_TOP_LIST, spawned_func_node->ds_h);
-		rebalance_needed = 1;
+		split_bl( WS_TOP_LIST_HEBREW, spawned_func_node_h->ds);
+		rebalance_needed_h = 1;
 	}
-
+	if (OM_DS_insert(ws, spawned_func_node->english_h, cont_node_h));
+	{
+		split_bl( WS_TOP_LIST_HEBREW, cont_node_h->ds);
+		rebalance_needed_h = 1;
+	}
 	if (post_sync_node) 
-		if (  OM_DS_insert(ws, /*WS_REF_DS,*/ spawned_func_node, post_sync_node, HEBREW_ID))
+		if (OM_DS_insert(ws, cont_node_h, post_sync_node_h))
 		{
-			Split_and_add_to_top( WS_TOP_LIST, post_sync_node->ds_h);
-			rebalance_needed = 1;
+			split_bl( WS_TOP_LIST_HEBREW, post_sync_node_h->ds);
+			rebalance_needed_h = 1;
 		}
 
+
 	/// Rebalance all remaining lists that need to be rebalanced
-	if (rebalance_needed) /// This will changed when we batchify it
-		Rebalance_bottom_lists(ws, WS_TOP_LIST);
+	if (rebalance_needed_e) /// This will changed when we batchify it
+		rebalance_bl(ws, WS_TOP_LIST_ENGLISH);
+
+	if (rebalance_needed_e) /// This will changed when we batchify it
+		rebalance_bl(ws, WS_TOP_LIST_HEBREW);
 
 	/// End else for (if BATCHIFY_WORKING)
 	if (post_sync_node) frame->post_sync_node = post_sync_node;

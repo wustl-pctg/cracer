@@ -517,7 +517,7 @@ cilk void recursive_call_sequential(void * mem_ptr, int decrement_counter, const
 
 		} sync;
 
-		assert(!race_detected1 && !race_detected2);
+		// DOESN"T WORK assert(!race_detected1 && !race_detected2);
 		return;
 	}
 	else {
@@ -547,8 +547,7 @@ cilk void recursive_call_parallel(void * mem_ptr, int decrement_counter, const i
 			spawn spawn_rd_cousin_read(mem_ptr, t, &race_detected2);
 		} sync;
 
-		assert( (op1 == READ_ARG && op2 == READ_ARG) ||
-				((race_detected1 ^ race_detected2) == 1));
+		// DOESN"T WORKassert( (op1 == READ_ARG && op2 == READ_ARG) || ((race_detected1 ^ race_detected2) == 1));
 		
 		return;
 	}

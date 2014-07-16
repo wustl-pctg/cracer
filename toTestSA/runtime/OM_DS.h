@@ -24,6 +24,8 @@
 
 /// Pre-compiler macro for debugging 
 //#define RD_DEBUG
+#define WS_TOP_LIST_ENGLISH ws->context->Cilk_global_state->englishOM_DS
+#define WS_TOP_LIST_HEBREW ws->context->Cilk_global_state->hebrewOM_DS
 
 /// FWD Declaration
 struct Bottom_List_s;
