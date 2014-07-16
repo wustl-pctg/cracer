@@ -3,15 +3,15 @@
  *
  *       Filename:  order-maintenance-general.h
  *
- *    Description:  Header for same name .c
+ *    Description:  Header  order-maintenance-general.c
  *
  *        Version:  1.0
  *        Created:  07/15/2014 11:36:19 AM
  *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  Alex Jones (aj), atjalex@gmail.com, AND SHANE
- *        Company:  
+ *         Author:  Alex Jones (aj), atjalex@gmail.com; Shane Deiley, shanedeiley@wustl.edu
+ *        Company:  Washington University in St. Louis Summer REU 2014
  *
  * =====================================================================================
  */
@@ -25,11 +25,15 @@
 #include <math.h>
 #include <assert.h>
 
+/// Pre-compiler macro for debugging 
 //#define RD_DEBUG
 
+/// FWD Declaration
 struct Bottom_List_s;
 
+/// The Node that makes up Bottom_Lists
 typedef struct OM_Node_s{
+
 	struct OM_Node_s *next;
 	struct OM_Node_s *prev;
 	int ID;
@@ -38,18 +42,20 @@ typedef struct OM_Node_s{
 
 } OM_Node;
 
+/// Holds OM_Nodes and is what comprises the Top_List
 typedef struct Bottom_List_s {
+
 	OM_Node *head,*tail;
 	int size;
 	int reorder_flag; 
 	struct Bottom_List_s *next;
 	struct Bottom_List_s *prev;
-
 	unsigned long int tag;
 
 } Bottom_List;
 
 typedef struct InsertRecord_s{
+
 	Bottom_List *ds;
 	OM_Node *x;
 	OM_Node *y;
@@ -57,16 +63,18 @@ typedef struct InsertRecord_s{
 
 } InsertRecord;
 
-///bender
+/// Top-level LL made up of Bottom_List(s)
 typedef struct Top_List_s{
+
 	Bottom_List *head, *tail; /// TODO: change to Bottom_List of the sublist
 	int size;
+
 } Top_List;
 
 
+/// Declarations of the OM-functions
 Bottom_List * create_bl();
 Top_List * create_tl();
-
 int insert_bl(OM_Node * x, OM_Node *y, Bottom_List * ds);
 void insert_tl(Top_List * list, Bottom_List *x, Bottom_List *y);
 int order(OM_Node * x, OM_Node * y);
