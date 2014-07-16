@@ -72,7 +72,7 @@ Top_List * create_tl ()
  *                Otherwise, ds is x->ds.
  * =====================================================================================
  */
-int insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
+void insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
 {
 #ifdef RD_DEBUG
 	/// y and ds should never be NULL
@@ -101,6 +101,8 @@ int insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
 		/// y's tage is the average of its neighbors
 		y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
 
+		/// Check for there being no space
+		if (((MAX_NUMBER - y->tag) <= 1) || ((y->next->tag - y->tag) <= 1))
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if (x->tag & 0x1 == 0x1) y->tag += 1;
 
@@ -124,13 +126,13 @@ int insert_bl (OM_Node * x, OM_Node *y, Bottom_List * ds)
 	ds->size += 1;
 
 	/// Mark flag in each list greater than half it's capacity
-	if (ds->size > (INT_BIT_SIZE >> 1))
-		ds->reorder_flag = 1;
+//	if (ds->size > (INT_BIT_SIZE >> 1))
+//		ds->reorder_flag = 1;
 
-	if (ds->size == INT_BIT_SIZE) 
-		return 1; ///< Needs to be split
-	else
-		return 0; ///< Doesn't needs immediately split
+//	if (ds->size == INT_BIT_SIZE) 
+//		return 1; ///< Needs to be split
+//	else
+//		return 0; ///< Doesn't needs immediately split
 }
 
 
