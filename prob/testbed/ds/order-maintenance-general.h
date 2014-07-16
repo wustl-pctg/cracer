@@ -30,6 +30,7 @@
 
 /// FWD Declaration
 struct Bottom_List_s;
+struct Top_List_s;
 
 /// The Node that makes up Bottom_Lists
 typedef struct OM_Node_s{
@@ -42,15 +43,31 @@ typedef struct OM_Node_s{
 
 } OM_Node;
 
+#ifdef RD_STATS
+typedef struct ll_node_s {
+	unsigned int data;
+	struct ll_node_s 	 *next;
+} ll_node;
+#endif
+
+
 /// Holds OM_Nodes and is what comprises the Top_List
 typedef struct Bottom_List_s {
-
+	struct Top_List_s *parent;
 	OM_Node *head,*tail;
 	int size;
 	int reorder_flag; 
 	struct Bottom_List_s *next;
 	struct Bottom_List_s *prev;
 	unsigned long int tag;
+
+#ifdef RD_STATS
+	unsigned int num_of_splits;
+	
+	ll_node_s * list_of_size_of_bottom_list_when_split;
+
+
+#endif
 
 } Bottom_List;
 
@@ -69,6 +86,11 @@ typedef struct Top_List_s{
 	Bottom_List *head, *tail; /// TODO: change to Bottom_List of the sublist
 	int size;
 
+#ifdef RD_STATS
+	unsigned int num_of_rebalances;
+
+
+#endif
 } Top_List;
 
 
@@ -76,7 +98,7 @@ typedef struct Top_List_s{
 Bottom_List * create_bl();
 Top_List * create_tl();
 void insert_bl(OM_Node * x, OM_Node *y, Bottom_List * ds);
-void insert_tl(Top_List * list, Bottom_List *x, Bottom_List *y);
+void insert_tl(Bottom_List *x, Bottom_List *y);
 int order(OM_Node * x, OM_Node * y);
 void split_bl(Top_List * list, Bottom_List * list_to_split);
 void rebalance_tl(Top_List * list, Bottom_List * pivot);
