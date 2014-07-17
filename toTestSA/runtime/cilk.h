@@ -53,9 +53,6 @@ FILE_IDENTITY(cilk_h_ident,
 
 #include <cilk-conf.h>
 
-/************For order maintenance****************/
-//#include "order-maintenance-general.h"
-
 /***********************************************************\
  * Types used by cilk2c output
 \***********************************************************/
@@ -98,7 +95,7 @@ struct cilk_alloca_header {
 /************************************ |
  **********Order maintanance*********
 \************************************/
-//#include "order-maintenance-general.c"
+#include <OM_DS.h>
 
 /***********************************************************\
  * Hooks

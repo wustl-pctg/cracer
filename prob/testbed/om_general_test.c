@@ -45,7 +45,8 @@ int main ( int argc, char *argv[] )
 
 	OM_Node ** nodeArray = malloc(num_nodes * sizeof(OM_Node *));
 	
-	/// Create the list
+	/// Create the lists
+	Bottom_List * firstBottom_List = create_bl();
  	Top_List * list = create_tl(); 
 
 	/// Assign memory to all the nodes to be inserted
@@ -58,8 +59,9 @@ int main ( int argc, char *argv[] )
 	/// Clock to record how long the inserts take
 	clock_t start = clock();
 
-	// Create and add the first relevant thing to the ds
-	first_insert(list, nodeArray[0]);
+	// Create and add the first relevant thing to ds
+	first_insert_tl(list, firstBottom_List);
+	first_insert_bl(firstBottom_List, nodeArray[0]);
 
 	i = 1;
 	for (; i < num_nodes; i++)
@@ -67,8 +69,13 @@ int main ( int argc, char *argv[] )
 		/*j = (rand() % i); ///< Case where each insert is random*/
 		j = i -1;     ///< Case where each insert is at the back
 		/*j = 0;        ///< Case where each insert is at the front*/
-
-		insert(nodeArray[j], nodeArray[i]);
+//		if (insert_bl(nodeArray[j], nodeArray[i], nodeArray[j]->ds))
+//		{
+//			/*printf("TEST: splitting and adding to top at test index %i\n", i);*/
+//
+//			rebalance_bls(list);
+//		}
+		insert_bl(nodeArray[j], nodeArray[i]);
 
 #ifdef RD_DEBUG
 		printf("Check for correctness..");

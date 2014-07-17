@@ -2,9 +2,9 @@ lib_LTLIBRARIES = libcilk.la libcilk.g.la libcilk.p.la libcilk.g.p.la
 pkglib_LIBRARIES = libcilkrt0.a libcilkrt0g.a libcilkrt0p.a libcilkrt0gp.a
 
 CILK_HFILES = cilk-cilk2c.h cilk.h cilk-lib.h cilk-lib.cilkh	\
-gcc-builtin.h cilk-cilk2c-pre.h order-maintenance.h
+gcc-builtin.h cilk-cilk2c-pre.h
 
-CILK_CFILES = order-maintenance.c sysdep.c cilk.c sched.c hooks.c stats.c barrier.c		\
+CILK_CFILES = sysdep.c cilk.c sched.c hooks.c stats.c barrier.c		\
 cmdline.c internal-malloc.c timing.c invoke-main.c malloc.c debug.c	\
 workers.c mutex.c
 

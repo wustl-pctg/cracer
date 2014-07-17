@@ -81,7 +81,7 @@ AUTOMAKE = ${SHELL} /home/shane_deiley/Documents/CS_REU/SVN/parallelDS/toTestSA/
 AWK = gawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
-CFLAGS = -g -lm -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L
+CFLAGS = -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L -lm
 CPP = gcc -E
 CPPFLAGS = 
 CXX = g++

@@ -23,6 +23,8 @@
 #ifndef _CILK_LIB_H
 #define _CILK_LIB_H
 
+struct OM_Node_s;
+#include <OM_DS.h>
 #include <cilk.h>
 #include <RD_and_OM.h>
 

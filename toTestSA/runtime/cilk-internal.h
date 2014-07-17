@@ -31,7 +31,6 @@ FILE_IDENTITY(ident_cilk_internal_h,
 #include <pthread.h>
 #endif
 
-
 /******************************************************
  *  Locks and associated operations
  ******************************************************/
