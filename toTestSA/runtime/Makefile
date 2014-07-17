@@ -76,7 +76,7 @@ libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libcilk_g_la_LIBADD =
 am__objects_1 = libcilk_g_la-sysdep.lo libcilk_g_la-cilk.lo \
-	libcilk_g_la-sched.lo libcilk_g_la-hooks.lo \
+	libcilk_g_la-sched.lo libcilk_g_la-hooks.lo libcilk_g_la-order-maintenance.lo \\
 	libcilk_g_la-stats.lo libcilk_g_la-barrier.lo \
 	libcilk_g_la-cmdline.lo libcilk_g_la-internal-malloc.lo \
 	libcilk_g_la-timing.lo libcilk_g_la-invoke-main.lo \
@@ -88,7 +88,7 @@ am_libcilk_g_la_OBJECTS = $(am__objects_3)
 libcilk_g_la_OBJECTS = $(am_libcilk_g_la_OBJECTS)
 libcilk_g_p_la_LIBADD =
 am__objects_4 = libcilk_g_p_la-sysdep.lo libcilk_g_p_la-cilk.lo \
-	libcilk_g_p_la-sched.lo libcilk_g_p_la-hooks.lo \
+	libcilk_g_p_la-sched.lo libcilk_g_p_la-hooks.lo libcilk_g_p_la-order-maintenance.lo\
 	libcilk_g_p_la-stats.lo libcilk_g_p_la-barrier.lo \
 	libcilk_g_p_la-cmdline.lo libcilk_g_p_la-internal-malloc.lo \
 	libcilk_g_p_la-timing.lo libcilk_g_p_la-invoke-main.lo \
@@ -98,7 +98,7 @@ am__objects_5 = $(am__objects_4) $(am__objects_2)
 am_libcilk_g_p_la_OBJECTS = $(am__objects_5)
 libcilk_g_p_la_OBJECTS = $(am_libcilk_g_p_la_OBJECTS)
 libcilk_la_LIBADD =
-am__objects_6 = sysdep.lo cilk.lo sched.lo hooks.lo stats.lo \
+am__objects_6 = sysdep.lo cilk.lo sched.lo hooks.lo order-maintenance.lo stats.lo \
 	barrier.lo cmdline.lo internal-malloc.lo timing.lo \
 	invoke-main.lo malloc.lo debug.lo workers.lo mutex.lo
 am__objects_7 = $(am__objects_6) $(am__objects_2)
@@ -106,7 +106,7 @@ am_libcilk_la_OBJECTS = $(am__objects_7)
 libcilk_la_OBJECTS = $(am_libcilk_la_OBJECTS)
 libcilk_p_la_LIBADD =
 am__objects_8 = libcilk_p_la-sysdep.lo libcilk_p_la-cilk.lo \
-	libcilk_p_la-sched.lo libcilk_p_la-hooks.lo \
+	libcilk_p_la-sched.lo libcilk_p_la-hooks.lo libcilk_p_la-order-maintenance.lo\
 	libcilk_p_la-stats.lo libcilk_p_la-barrier.lo \
 	libcilk_p_la-cmdline.lo libcilk_p_la-internal-malloc.lo \
 	libcilk_p_la-timing.lo libcilk_p_la-invoke-main.lo \
@@ -262,7 +262,7 @@ gcc-builtin.h cilk-cilk2c-pre.h
 
 CILK_CFILES = sysdep.c cilk.c sched.c hooks.c stats.c barrier.c		\
 cmdline.c internal-malloc.c timing.c invoke-main.c malloc.c debug.c	\
-workers.c mutex.c
+workers.c mutex.c order-maintenance.c
 
 pkginclude_HEADERS = $(CILK_HFILES) cilk-conf.h cilk-sysdep.h
 CILK_SRC = cilk-internal.h $(CILK_CFILES) $(CILK_HFILES)
@@ -433,6 +433,7 @@ include ./$(DEPDIR)/cilkrt0.Po
 include ./$(DEPDIR)/cmdline.Plo
 include ./$(DEPDIR)/debug.Plo
 include ./$(DEPDIR)/hooks.Plo
+include ./$(DEPDIR)/order-maintenance.Plo
 include ./$(DEPDIR)/internal-malloc.Plo
 include ./$(DEPDIR)/invoke-main.Plo
 include ./$(DEPDIR)/libcilk_g_la-barrier.Plo
@@ -440,6 +441,7 @@ include ./$(DEPDIR)/libcilk_g_la-cilk.Plo
 include ./$(DEPDIR)/libcilk_g_la-cmdline.Plo
 include ./$(DEPDIR)/libcilk_g_la-debug.Plo
 include ./$(DEPDIR)/libcilk_g_la-hooks.Plo
+include ./$(DEPDIR)/libcilk_g_la-order-maintenance.Plo
 include ./$(DEPDIR)/libcilk_g_la-internal-malloc.Plo
 include ./$(DEPDIR)/libcilk_g_la-invoke-main.Plo
 include ./$(DEPDIR)/libcilk_g_la-malloc.Plo
@@ -454,6 +456,7 @@ include ./$(DEPDIR)/libcilk_g_p_la-cilk.Plo
 include ./$(DEPDIR)/libcilk_g_p_la-cmdline.Plo
 include ./$(DEPDIR)/libcilk_g_p_la-debug.Plo
 include ./$(DEPDIR)/libcilk_g_p_la-hooks.Plo
+include ./$(DEPDIR)/libcilk_g_p_la-order-maintenance.Plo
 include ./$(DEPDIR)/libcilk_g_p_la-internal-malloc.Plo
 include ./$(DEPDIR)/libcilk_g_p_la-invoke-main.Plo
 include ./$(DEPDIR)/libcilk_g_p_la-malloc.Plo
@@ -468,6 +471,7 @@ include ./$(DEPDIR)/libcilk_p_la-cilk.Plo
 include ./$(DEPDIR)/libcilk_p_la-cmdline.Plo
 include ./$(DEPDIR)/libcilk_p_la-debug.Plo
 include ./$(DEPDIR)/libcilk_p_la-hooks.Plo
+include ./$(DEPDIR)/libcilk_p_la-order-maintenance.Plo
 include ./$(DEPDIR)/libcilk_p_la-internal-malloc.Plo
 include ./$(DEPDIR)/libcilk_p_la-invoke-main.Plo
 include ./$(DEPDIR)/libcilk_p_la-malloc.Plo
@@ -579,6 +583,14 @@ libcilk_g_la-hooks.lo: hooks.c
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcilk_g_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libcilk_g_la-hooks.lo `test -f 'hooks.c' || echo '$(srcdir)/'`hooks.c
 
+libcilk_g_la-order-maintenance.lo: order-maintenance.c
+	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcilk_g_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libcilk_g_la-order-maintenance.lo -MD -MP -MF $(DEPDIR)/libcilk_g_la-order-maintenance.Tpo -c -o libcilk_g_la-order-maintenance.lo `test -f 'order-maintenance.c' || echo '$(srcdir)/'`order-maintenance.c
+	mv -f $(DEPDIR)/libcilk_g_la-order-maintenance.Tpo $(DEPDIR)/libcilk_g_la-order-maintenance.Plo
+#	source='order-maintenance.c' object='libcilk_g_la-order-maintenance.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+
+
+
 libcilk_g_la-stats.lo: stats.c
 	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcilk_g_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libcilk_g_la-stats.lo -MD -MP -MF $(DEPDIR)/libcilk_g_la-stats.Tpo -c -o libcilk_g_la-stats.lo `test -f 'stats.c' || echo '$(srcdir)/'`stats.c
 	mv -f $(DEPDIR)/libcilk_g_la-stats.Tpo $(DEPDIR)/libcilk_g_la-stats.Plo
@@ -674,6 +686,14 @@ libcilk_g_p_la-hooks.lo: hooks.c
 	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcilk_g_p_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libcilk_g_p_la-hooks.lo -MD -MP -MF $(DEPDIR)/libcilk_g_p_la-hooks.Tpo -c -o libcilk_g_p_la-hooks.lo `test -f 'hooks.c' || echo '$(srcdir)/'`hooks.c
 	mv -f $(DEPDIR)/libcilk_g_p_la-hooks.Tpo $(DEPDIR)/libcilk_g_p_la-hooks.Plo
 #	source='hooks.c' object='libcilk_g_p_la-hooks.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcilk_g_p_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libcilk_g_p_la-hooks.lo `test -f 'hooks.c' || echo '$(srcdir)/'`hooks.c
+
+#added by alex jones
+libcilk_g_p_la-order-maintenance.lo: order-maintenance.c
+	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcilk_g_p_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libcilk_g_p_la-order-maintenance.lo -MD -MP -MF $(DEPDIR)/libcilk_g_p_la-order-maintenance.Tpo -c -o libcilk_g_p_la-order-maintenance.lo `test -f 'order-maintenance.c' || echo '$(srcdir)/'`order-maintenance.c
+	mv -f $(DEPDIR)/libcilk_g_p_la-order-maintenance.Tpo $(DEPDIR)/libcilk_g_p_la-order-maintenance.Plo
+#	source='order-maintenance.c' object='libcilk_g_p_la-order-maintenance.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcilk_g_p_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libcilk_g_p_la-hooks.lo `test -f 'hooks.c' || echo '$(srcdir)/'`hooks.c
 
@@ -774,6 +794,15 @@ libcilk_p_la-hooks.lo: hooks.c
 #	source='hooks.c' object='libcilk_p_la-hooks.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcilk_p_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libcilk_p_la-hooks.lo `test -f 'hooks.c' || echo '$(srcdir)/'`hooks.c
+
+# added by alex jones
+libcilk_p_la-order-maintenance.lo: order-maintenance.c
+	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcilk_p_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libcilk_p_la-order-maintenance.lo -MD -MP -MF $(DEPDIR)/libcilk_p_la-order-maintenance.Tpo -c -o libcilk_p_la-order-maintenance.lo `test -f 'order-maintenance.c' || echo '$(srcdir)/'`order-maintenance.c
+	mv -f $(DEPDIR)/libcilk_p_la-order-maintenance.Tpo $(DEPDIR)/libcilk_p_la-order-maintenance.Plo
+#	source='order-maintenance.c' object='libcilk_p_la-order-maintenance.lo' libtool=yes \
+#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
+#	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcilk_p_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o libcilk_p_la-order-maintenance.lo `test -f 'order-maintenance.c' || echo '$(srcdir)/'`order-maintenance.c
+
 
 libcilk_p_la-stats.lo: stats.c
 	$(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcilk_p_la_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT libcilk_p_la-stats.lo -MD -MP -MF $(DEPDIR)/libcilk_p_la-stats.Tpo -c -o libcilk_p_la-stats.lo `test -f 'stats.c' || echo '$(srcdir)/'`stats.c
