@@ -24,7 +24,8 @@
 #define _CILK_LIB_H
 
 struct OM_Node_s;
-#include <OM_DS.h>
+#include "order-maintenance-general.h"
+/*#include <OM_DS.h>*/
 #include <cilk.h>
 #include <RD_and_OM.h>
 

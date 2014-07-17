@@ -77,23 +77,15 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 		OM_Node * main_node_e = Cilk_malloc(sizeof(OM_Node)), *main_node_h = Cilk_malloc(sizeof(OM_Node));
 		Runtime_node * main_node = Cilk_malloc(sizeof(Runtime_node));
 
-		/// Create the first lists
-		Bottom_List * english_bl = create_bl(), *hebrew_bl = create_bl();
-
-		main_node->english = main_node_e;
-		main_node->hebrew  = main_node_h;
+		/// Link the three nodes together
+		setup_runtime_node(main_node, main_node_e, main_node_h);
 
 		main_node->id = 1;
-		/// Add the sublists to the top lists
-		insert_tl(ws->context->Cilk_global_state->englishOM_DS, NULL, english_bl);
-		insert_tl(ws->context->Cilk_global_state->hebrewOM_DS, NULL, hebrew_bl);
 
-		/// Add the main node to the first sublist
-		insert_bl(NULL, main_node_e, english_bl);
-		insert_bl(NULL, main_node_h, hebrew_bl);
+		/// Insert the first node into the OM_DS's	
+		first_insert(ws->context->Cilk_global_state->englishOM_DS, main_node_e);
+		first_insert(ws->context->Cilk_global_state->hebrewOM_DS, main_node_h);
 
-
-		
 		/// Set first spawned flag of the header frame
 		_cilk_frame->header.first_spawn_flag = 0;
 
@@ -110,6 +102,7 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 	ws->current_node = _cilk_frame->header.current_node;
 
   	/*end order maintenance*/
+
   CILK2C_START_THREAD_SLOW();
   switch (_cilk_frame->header.entry) {
   case 1:
