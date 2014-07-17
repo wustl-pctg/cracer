@@ -50,7 +50,7 @@ Bottom_List * create_bl ()
 /*!
  * ===  FUNCTION  ======================================================================
  *         Name:  create_tl
- *  Description:  Allocate memory and initialize Top_List.
+ *  Description:  Allocate memory and initialize Top_List; inialize and insert first Bottom_List.
  * =====================================================================================
  */
 Top_List * create_tl ()
@@ -67,16 +67,20 @@ Top_List * create_tl ()
 	list->list_of_size_of_top_list_when_split_head = list->list_of_size_of_top_list_when_split_head = NULL;
 #endif
 
+	/// Insert the first Bottom_List
+	Bottom_List * bl = create_bl();
+	first_insert_tl(list, bl);
+
 	return list;
 }
 
 /*! 
  * ===  FUNCTION  ======================================================================
  *         Name:  first_insert_bl
- *  Description:  Insert the first OM_Node y into the Bottom_List ds
+ *  Description:  Insert the first OM_Node y into the Bottom_List ds.
  * =====================================================================================
  */
-void first_insert_bl(Bottom_List * ds, OM_Node * y)
+void first_insert_bl (Bottom_List * ds, OM_Node * y)
 {
 #ifdef RD_DEBUG
 	/// Make sure they're not NULL
@@ -102,13 +106,11 @@ void first_insert_bl(Bottom_List * ds, OM_Node * y)
 
 /*! 
  * ===  FUNCTION  ======================================================================
- *         Name:  insert_bl
+ *         Name:  insert
  *  Description:  Insert node y after node x in the Bottom_List specified in x->ds.
- *  How to Call:  Pass in ds: if this is the first call, x is null and ds will be known.
- *                Otherwise, ds is x->ds.
  * =====================================================================================
  */
-void insert_bl (OM_Node * x, OM_Node *y)
+void insert (OM_Node * x, OM_Node *y)
 {
 	/// Retrieve the Bottom_List
 	Bottom_List * ds = x->ds;
@@ -154,7 +156,7 @@ void insert_bl (OM_Node * x, OM_Node *y)
 
 #endif
 			split_bl(ds->parent, ds);
-			insert_bl(x, y);
+			insert(x, y);
 			return;
 		}
 
@@ -192,7 +194,7 @@ void insert_bl (OM_Node * x, OM_Node *y)
 #endif
 
 			split_bl(ds->parent, ds);
-			insert_bl(x, y);
+			insert(x, y);
 			return;
 		}
 
@@ -220,10 +222,10 @@ void insert_bl (OM_Node * x, OM_Node *y)
 /*! 
  * ===  FUNCTION  ======================================================================
  *         Name:  first_insert_tl
- *  Description:  Insert list y after list x in Top_List list.
+ *  Description:  Insert y into list and initialize the necessary parameters of each.
  * =====================================================================================
  */
-void first_insert_tl(Top_List * list, Bottom_List * y)
+void first_insert_tl (Top_List * list, Bottom_List * y)
 {
 
 #ifdef RD_DEBUG
@@ -236,7 +238,7 @@ void first_insert_tl(Top_List * list, Bottom_List * y)
 	
 	if (list->size != 0)
 	{
-		printf("Size was not 0. Improper call to first_insert_bl\n");
+		printf("Size was not 0. Improper call to first_insert_tl\n");
 		assert(0);
 	}
 #endif
@@ -249,6 +251,18 @@ void first_insert_tl(Top_List * list, Bottom_List * y)
 	y->reorder_flag = 0;
 	y->next = y->prev = NULL;
 	list->size += 1;
+}
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  first_insert
+ *  Description:  Insert y into the first Bottom_List in the Top_List specified (list)
+ * =====================================================================================
+ */
+void first_insert (Top_List * list, OM_Node * y)
+{
+	/// Call the function for the first insert in a Bottom_List
+	first_insert_bl(list->head, y);
 }
 
 /*! 
@@ -617,6 +631,7 @@ void free_tl (Top_List * list)
 	while (current != NULL){
 		next = current->next;	
 		free_bl(current); ///< Implicitly prevents dangling pointers
+		current = NULL; ///< Prevent dangling pointers
 		current = next;
 	}
 
