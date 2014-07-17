@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  order-maintenance-general.c
+ *       Filename:  order-maintenance.c
  *
  *    Description:  Source file for Bender's OM-Data Structure implemented with a LL top
  *                  and a LL bottom
@@ -17,8 +17,8 @@
  * =====================================================================================
  */
 
-#ifndef _ORDER_MAINTAIN_GENERAL_C
-#define _ORDER_MAINTAIN_GENERAL_C
+#ifndef _ORDER_MAINTAIN_C
+#define _ORDER_MAINTAIN_C
 
 #include <stdlib.h>
 #include <stdio.h>
