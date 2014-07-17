@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  order-maintenance.c
+ *       Filename:  order-maintenance-general.c
  *
  *    Description:  Source file for Bender's OM-Data Structure implemented with a LL top
  *                  and a LL bottom
@@ -17,103 +17,7 @@
  * =====================================================================================
  */
 
-#ifndef _ORDER_MAINTAIN_C
-#define _ORDER_MAINTAIN_C
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <limits.h>
-#include <math.h>
-//#include <assert.h>
-
-/// Pre-compiler macro for debugging 
-//#define RD_DEBUG
-//#define RD_STATS
-
-/// FWD Declaration
-struct Bottom_List_s;
-struct Top_List_s;
-
-/// The Node that makes up Bottom_Lists
-typedef struct OM_Node_s{
-
-	struct OM_Node_s *next;
-	struct OM_Node_s *prev;
-	int ID;
-	unsigned/* long */int tag;
-	struct Bottom_List_s * ds;
-
-} OM_Node;
-
-#ifdef RD_STATS
-typedef struct ll_node_s {
-	unsigned int data;
-	struct ll_node_s 	 *next;
-} ll_node;
-#endif
-
-
-/// Holds OM_Nodes and is what comprises the Top_List
-typedef struct Bottom_List_s {
-	struct Top_List_s *parent;
-	OM_Node *head,*tail;
-	int size;
-	int reorder_flag; 
-	struct Bottom_List_s *next;
-	struct Bottom_List_s *prev;
-	unsigned /*long */int tag;
-
-#ifdef RD_STATS
-	ll_node * list_of_size_of_bottom_list_when_split_head, *list_of_size_of_bottom_list_when_split_tail;
-
-
-#endif
-
-} Bottom_List;
-
-typedef struct InsertRecord_s{
-
-	Bottom_List *ds;
-	OM_Node *x;
-	OM_Node *y;
-	int ID;
-
-} InsertRecord;
-
-/// Top-level LL made up of Bottom_List(s)
-typedef struct Top_List_s{
-
-	Bottom_List *head, *tail; /// TODO: change to Bottom_List of the sublist
-	int size;
-
-#ifdef RD_STATS
-	ll_node * list_of_size_of_top_list_when_split_head, *list_of_size_of_top_list_when_split_tail;
-
-#endif
-} Top_List;
-
-
-/// Declarations of the OM-functions
-Bottom_List * create_bl();
-Top_List * create_tl();
-void first_insert_bl(Bottom_List * ds, OM_Node * y);
-void first_insert_tl(Top_List * list, Bottom_List * y);
-void first_insert(Top_List *, OM_Node *);
-void insert(OM_Node * x, OM_Node *y);
-void insert_tl(Bottom_List *x, Bottom_List *y);
-int order(OM_Node * x, OM_Node * y);
-void split_bl(Top_List * list, Bottom_List * list_to_split);
-void rebalance_tl(Top_List * list, Bottom_List * pivot);
-void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const /*long*/ int skip_size);
-void rebalance_bls(Top_List * list);
-void print_tl(Top_List * list);
-void print_bl(Bottom_List * list);
-void free_bl (Bottom_List * list);
-void free_tl ( Top_List * list );
-void check_sub_correctness (Top_List * list);
-
-
-
+#include "order-maintenance-general.h"
 
 /// Constants used within this source file
 static unsigned /*long */int MAX_NUMBER = ~0;
@@ -476,6 +380,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	/// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
 	unsigned /*long */ int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
 
+	printf ( "Split\n" );
 	/// Iterate to the middle updating tags along the way
 	while (node_count < (list_to_split->size >> 1))
 	{
@@ -644,7 +549,6 @@ void rebalance_bls (Top_List * list)
 	while(current != NULL)
 	{
 		if(current->reorder_flag == 1) ///< If 1, then needs split
-		/*if ( current->min_dist < 64)*/
 			split_bl(list, current);
 		current = current->next;
 	}
@@ -758,10 +662,7 @@ void check_sub_correctness (Top_List * list)
 				printf("Node tags are out of order\n");
 			cur_node = cur_node->next;
 		}
-		if (current->next && !(current->tag < current->next->tag))
-			printf("Bottom_List tags are out of order\n");
-
 		current = current->next;
 	}
 }
-#endif
+
