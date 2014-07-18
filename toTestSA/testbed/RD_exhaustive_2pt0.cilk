@@ -578,9 +578,9 @@ cilk void rd_huge_test(void ** parseqArr) {
 	test_struct_gen e, f, g, h;
 	
 	/// Counters
-	int counter1 = 14, counter2 = 14, counter3 = 14,
-		counter4 = 14, counter5 = 14, counter6 = 14,
-		counter7 = 14, counter8 = 14;
+	int counter1 = 10, counter2 = 10, counter3 = 10,
+		counter4 = 10, counter5 = 10, counter6 = 10,
+		counter7 = 10, counter8 = 10;
 
 	/// instantiate test_struct_gen variables(s)
 	Assign_struct_random_vars(&a);
