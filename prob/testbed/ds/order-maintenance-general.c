@@ -20,9 +20,9 @@
 #include "order-maintenance-general.h"
 
 /// Constants used within this source file
-static unsigned /*long */int MAX_NUMBER = ~0;
+static unsigned long int MAX_NUMBER = ~0;
 static int INT_BIT_SIZE = 64;
-static double OVERFLOW_CONSTANT = 1.85;
+static double OVERFLOW_CONSTANT = 1.5;
 
 /*!
  * ===  FUNCTION  ======================================================================
@@ -378,7 +378,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
 	/// Each node in the list will be spaced out by skip_size tag spaces
 	/// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
-	unsigned /*long */ int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
+	unsigned long int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
 
 	printf ( "Split\n" );
 	/// Iterate to the middle updating tags along the way
@@ -465,7 +465,7 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 	
 	/// Constants used to calculate when to rebalance
 	double overflow_density, overflow_threshold, i = -1;
-	unsigned /* long */int enclosing_tag_range, lTag, rTag, num_elements_in_sublist = 2, skip_size;
+	unsigned long int enclosing_tag_range, lTag, rTag, num_elements_in_sublist = 2, skip_size;
 
 	/// Check if range is in overflow
 	do	
@@ -501,7 +501,7 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 	while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && enclosing_tag_range != MAX_NUMBER);
 
 	/// This is the spacing in between tags of Bottom_Lists in between lList and rList
-	skip_size = (unsigned /* long*/ int) ( enclosing_tag_range / (num_elements_in_sublist + 1) );
+	skip_size = (unsigned long int) ( enclosing_tag_range / (num_elements_in_sublist + 1) );
 
 #ifdef RD_DEBUG
 	if (rTag != MAX_NUMBER)
@@ -520,7 +520,7 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
  *  Description:  Relabels the range of tags from list start to end using a distance of skip_size.
  * =====================================================================================
  */
-void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const /*long*/int  skip_size)
+void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const long int  skip_size)
 {
 	Bottom_List * current = start;
 	current->tag = start->tag;
