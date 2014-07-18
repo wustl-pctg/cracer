@@ -41,7 +41,7 @@ typedef struct OM_Node_s{
 	unsigned /*long*/ int tag;
 	struct Bottom_List_s * ds;
 
-	Runtime_node_s * parent;
+	struct Runtime_node_s * parent;
 
 } OM_Node;
 
@@ -52,12 +52,6 @@ typedef struct ll_node_s {
 	struct ll_node_s 	 *next;
 } ll_node;
 #endif
-
-/*The runtime node that is carried through the cilk processes*/
-typedef struct Runtime_node_s{
-	OM_Node * english, *hebrew;
-} Runtime_node;
-
 
 /// Holds OM_Nodes and is what comprises the Top_List
 typedef struct Bottom_List_s {
@@ -99,15 +93,21 @@ typedef struct Top_List_s{
 
 } Top_List;
 
+/*The runtime node that is carried through the cilk processes*/
+typedef struct Runtime_node_s{
+	struct OM_Node_s * english, *hebrew;
+} Runtime_node;
+
+
 
 /// Declarations of the OM-functions
 Bottom_List * create_bl();
 Top_List * create_tl();
 void first_insert_bl(Bottom_List * ds, OM_Node *y);
 void first_insert_tl(Top_List * list, Bottom_List * y);
-void first_insert(Top_List * list, Bottom_List * y);
+void first_insert(Top_List * list, OM_Node* y);
 void insert(OM_Node * x, OM_Node * y);
-void insert_tl(Top_List * list, Bottom_List *x, Bottom_List *y);
+void insert_tl(Bottom_List *x, Bottom_List *y);
 int order(OM_Node * x, OM_Node * y);
 void split_bl(Top_List * list, Bottom_List * list_to_split);
 void rebalance_tl(Top_List * list, Bottom_List * pivot);

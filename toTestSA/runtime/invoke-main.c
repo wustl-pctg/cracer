@@ -80,7 +80,7 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 		// Link nodes together	
 		setup_runtime_node(main_node, main_node_e, main_node_h);
 
-		main_node->id = 1;
+		main_node_e->ID = main_node_h->ID = 1;
 
 		/// Add the sublists to the top lists
 		first_insert(ws->context->Cilk_global_state->englishOM_DS, main_node_e);

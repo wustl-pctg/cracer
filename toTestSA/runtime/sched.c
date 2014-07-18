@@ -2770,7 +2770,7 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 
 	/// Retrieve Top_Lists
 	Top_List * english_tl = context->Cilk_global_state->englishOM_DS;
-	Top_List * hebrew_tl = context->Cilk_global_state->hebrew_tl;
+	Top_List * hebrew_tl = context->Cilk_global_state->hebrewOM_DS;
 	
 	/// Free each and all their contents
 	free_tl(english_tl);
@@ -2846,9 +2846,13 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	cont_node =  Cilk_malloc(sizeof(Runtime_node));
 	spawned_func_node =  Cilk_malloc(sizeof(Runtime_node));
 
+	// Link nodes
+	setup_runtime_node(cont_node, cont_node_e, cont_node_h);
+	setup_runtime_node(spawned_func_node, spawned_func_node_e, spawned_func_node_h);
+
 	/// Assign uniquee node ID's
-	cont_node_e->id = cont_node_e->id = global_node_count++;
-	spawned_func_node_e->id = spawned_func_node_h->id =  global_node_count++;
+	cont_node_e->ID = cont_node_e->ID = global_node_count++;
+	spawned_func_node_e->ID = spawned_func_node_h->ID =  global_node_count++;
 
 	/// Enter only if this is the first spawn after a sync/in a function
 	if (frame->first_spawn_flag != 1){
@@ -2858,7 +2862,10 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 		post_sync_node =  Cilk_malloc(sizeof(Runtime_node));
 
 		/// Assign unique id
-		post_sync_node->id = global_node_count++;
+		post_sync_node_e->ID =post_sync_node_h->ID =  global_node_count++;
+
+		/// Link nodes
+		setup_runtime_node(post_sync_node, post_sync_node_e, post_sync_node_h);
 
 		/// Set first_spawn_flag to indicate the next spawn will not be the first, barring
 		/// that a sync occurs.
@@ -2884,23 +2891,17 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 	insert(spawned_func_node_e, cont_node_e);
 
 	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-	insert(frame->current_node->english, spawned_func_node_e);
-	insert(spawned_func_node_e, cont_node_e);
+	insert(frame->current_node->hebrew, cont_node_h);
+	insert(cont_node_h, spawned_func_node_h);
 
 	if (post_sync_node){
 		//English
 		insert(cont_node_e, post_sync_node_e);
 		/// Hebrew
-		insert(spawned_func_node_e, post_sync_node_h);
+		insert(spawned_func_node_h, post_sync_node_h);
 		/// Set the frame's post-sync node
 	}
-/*
-
-	/// Rebalance all remaining lists that need to be rebalanced
-	if (rebalance_needed) // This will changed when we batchify it
-		Rebalance_bottom_lists(ws, WS_TOP_LIST);
-*/
-
+	
 	/// Move the current node to the continuaion node
 	/// &
 	/// Update the worker state's current node so any calls to Race_detect_{read,write} have
