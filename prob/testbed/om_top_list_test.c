@@ -66,8 +66,8 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-		/*j = (rand() % i); ///< Case where each insert is random*/
-		j = i -1;     ///< Case where each insert is at the back
+		j = (rand() % i); ///< Case where each insert is random*/
+		//j = i -1;     ///< Case where each insert is at the back
 		/*j = 0;        ///< Case where each insert is at the front*/
 
 		insert_tl(nodeArray[j], nodeArray[i]);
@@ -107,15 +107,15 @@ int main ( int argc, char *argv[] )
  *    }
  *
  */
-	printf("Total number of bottom list splits: %i\n\n", num_splits);
+	//printf("Total number of bottom list splits: %i\n\n", num_splits);
 
 	list_count = 0;
 	current_ll_node = list->list_of_size_of_top_list_when_split_head;
-	printf("Size of top list when split: ");
+	//printf("Size of top list when split: ");
 
 	/// Calc size of bottom lists when splits occurred
 	while (current_ll_node != NULL){
-		printf("%i; ", current_ll_node->data);
+		//printf("%i; ", current_ll_node->data);
 		list_count++;
 		current_ll_node = current_ll_node->next;
 	}
