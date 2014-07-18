@@ -29,7 +29,7 @@
 
 /// FWD Declaration
 struct Bottom_List_s;
-struct Top_List_s
+struct Top_List_s;
 struct Runtime_node_s;
 
 /// The Node that makes up Bottom_Lists
