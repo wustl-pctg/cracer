@@ -29,6 +29,7 @@
 
 /// FWD Declaration
 struct Bottom_List_s;
+struct Top_List_s
 struct Runtime_node_s;
 
 /// The Node that makes up Bottom_Lists
@@ -37,12 +38,20 @@ typedef struct OM_Node_s{
 	struct OM_Node_s *next;
 	struct OM_Node_s *prev;
 	int ID;
-	unsigned long int tag;
+	unsigned /*long*/ int tag;
 	struct Bottom_List_s * ds;
 
 	Runtime_node_s * parent;
+
 } OM_Node;
 
+
+#ifdef RD_STATS
+typedef struct ll_node_s {
+	unsigned int data;
+	struct ll_node_s 	 *next;
+} ll_node;
+#endif
 
 /*The runtime node that is carried through the cilk processes*/
 typedef struct Runtime_node_s{
@@ -50,17 +59,21 @@ typedef struct Runtime_node_s{
 } Runtime_node;
 
 
-
-
 /// Holds OM_Nodes and is what comprises the Top_List
 typedef struct Bottom_List_s {
 
+	struct Top_List_s * parent;
 	OM_Node *head,*tail;
 	int size;
 	int reorder_flag; 
 	struct Bottom_List_s *next;
 	struct Bottom_List_s *prev;
-	unsigned long int tag;
+	unsigned /*long*/ int tag;
+
+
+#ifdef RD_STATS
+	ll_node * list_of_size_of_bottom_list_when_split_head, *list_of_size_of_bottom_list_when_split_tail;
+#endif
 
 } Bottom_List;
 
@@ -79,18 +92,26 @@ typedef struct Top_List_s{
 	Bottom_List *head, *tail; /// TODO: change to Bottom_List of the sublist
 	int size;
 
+
+#ifdef RD_STATS
+	ll_node * list_of_size_of_top_list_when_split_head, *list_of_size_of_top_list_when_split_tail;
+#endif
+
 } Top_List;
 
 
 /// Declarations of the OM-functions
 Bottom_List * create_bl();
 Top_List * create_tl();
-int insert_bl(OM_Node * x, OM_Node *y, Bottom_List * ds);
+void first_insert_bl(Bottom_List * ds, OM_Node *y);
+void first_insert_tl(Top_List * list, Bottom_List * y);
+void first_insert(Top_List * list, Bottom_List * y);
+void insert(OM_Node * x, OM_Node * y);
 void insert_tl(Top_List * list, Bottom_List *x, Bottom_List *y);
 int order(OM_Node * x, OM_Node * y);
 void split_bl(Top_List * list, Bottom_List * list_to_split);
 void rebalance_tl(Top_List * list, Bottom_List * pivot);
-void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const long skip_size);
+void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const /*long*/ int skip_size);
 void rebalance_bls(Top_List * list);
 void print_tl(Top_List * list);
 void print_bl(Bottom_List * list);
