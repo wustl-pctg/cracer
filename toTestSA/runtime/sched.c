@@ -2141,12 +2141,12 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
  *  Description:  Inserts y after x in the list (eng or heb) specified by ID.
  * =====================================================================================
  */
-void OM_DS_insert(Runtime_node * x, Runtime_node *y, const int ID){
+void OM_DS_insert(CilkWorkerState *const ws, Runtime_node * x, Runtime_node *y, const int ID){
 
 	if (ID == ENGLISH_ID)
-		return insert(x->english, y->english);
+		return insert(ws, x->english, y->english);
 	else if (ID == HEBREW_ID)
-		return insert(x->hebrew, y->hebrew);
+		return insert(ws, x->hebrew, y->hebrew);
 	else
 	{
 		printf("Incorrect ID specified in OM_DS_insert. Exit.\n");
@@ -2244,18 +2244,18 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 		printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
 #endif
 	/// Insert {current, spawned function, continuation node} into the english OM_DS
-	insert(frame->current_node->english, spawned_func_node_e);
-	insert(spawned_func_node_e, cont_node_e);
+	insert(ws,frame->current_node->english, spawned_func_node_e);
+	insert(ws,spawned_func_node_e, cont_node_e);
 
 	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
-	insert(frame->current_node->hebrew, cont_node_h);
-	insert(cont_node_h, spawned_func_node_h);
+	insert(ws,frame->current_node->hebrew, cont_node_h);
+	insert(ws,cont_node_h, spawned_func_node_h);
 
 	if (post_sync_node){
 		//English
-		insert(cont_node_e, post_sync_node_e);
+		insert(ws,cont_node_e, post_sync_node_e);
 		/// Hebrew
-		insert(spawned_func_node_h, post_sync_node_h);
+		insert(ws,spawned_func_node_h, post_sync_node_h);
 		/// Set the frame's post-sync node
 	}
 	

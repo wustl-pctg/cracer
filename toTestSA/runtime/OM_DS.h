@@ -21,6 +21,7 @@
 
 #include <limits.h>
 #include <math.h>
+#include <cilk.h>
 
 /// Pre-compiler macro for debugging 
 //#define RD_DEBUG
@@ -106,12 +107,13 @@ Top_List * create_tl();
 void first_insert_bl(Bottom_List * ds, OM_Node *y);
 void first_insert_tl(Top_List * list, Bottom_List * y);
 void first_insert(Top_List * list, OM_Node* y);
-void insert(OM_Node * x, OM_Node * y);
+void insert(struct CilkWorkerState_s *const ws, OM_Node * x, OM_Node * y);
 void insert_tl(Bottom_List *x, Bottom_List *y);
 int order(OM_Node * x, OM_Node * y);
+void batchInsertOp (struct CilkWorkerState_s *const ws, void *dataStruct, void *data, size_t size, void *result);
 void split_bl(Top_List * list, Bottom_List * list_to_split);
 void rebalance_tl(Top_List * list, Bottom_List * pivot);
-void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const /*long*/ int skip_size);
+void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const long int skip_size);
 void rebalance_bls(Top_List * list);
 void print_tl(Top_List * list);
 void print_bl(Bottom_List * list);

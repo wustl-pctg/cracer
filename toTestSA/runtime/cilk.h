@@ -92,10 +92,6 @@ struct cilk_alloca_header {
 	size_t size;
 };
 
-/************************************ |
- **********Order maintanance*********
-\************************************/
-#include <OM_DS.h>
 
 /***********************************************************\
  * Hooks
@@ -128,6 +124,12 @@ WHEN_CILK_ND(
 	typedef unsigned int DisjointSetMemberT;
 	)
 
+struct CilkWorkerState_s;
+/************************************ |
+ **********Order maintanance*********
+\************************************/
+#include "OM_DS.h"
+
 /*
  * a stack frame consists of this header and of a procedure-specific
  * part
@@ -148,6 +150,7 @@ typedef struct {
 	WHEN_CILK_DEBUG(volatile unsigned int magic;)
 	//Order maintenance for race detector
 	Runtime_node * current_node, *post_sync_node, *next_spawned_node;
+
 	int first_spawn_flag;
 } CilkStackFrame;
 
@@ -299,9 +302,8 @@ typedef struct {
 
 }  CilkContext;
 
-
 /* worker state */
-typedef struct {
+typedef struct CilkWorkerState_s{
 	CilkClosureCache *current_cache;
 	struct ReadyDeque *current_deque_pool;
 	CilkClosureCache cache;
