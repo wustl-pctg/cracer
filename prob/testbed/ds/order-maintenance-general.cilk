@@ -17,7 +17,7 @@
  * =====================================================================================
  */
 
-#include "order-maintenance-general.h"
+#include "order-maintenance-general.cilkh"
 
 /// Constants used within this source file
 static unsigned long int MAX_NUMBER = ~0;
@@ -58,6 +58,7 @@ Top_List * create_tl ()
 	/// Allocate memory for top list
 	Top_List * list = malloc(sizeof(*list));
 
+	Bottom_List * bl;
 	/// Assign appropriate vals to list
 	list->size = 0;
 
@@ -67,8 +68,8 @@ Top_List * create_tl ()
 	list->list_of_size_of_top_list_when_split_head = list->list_of_size_of_top_list_when_split_head = NULL;
 #endif
 
+	bl =  create_bl();
 	/// Insert the first Bottom_List
-	Bottom_List * bl = create_bl();
 	first_insert_tl(list, bl);
 
 	return list;
@@ -104,13 +105,37 @@ void first_insert_bl (Bottom_List * ds, OM_Node * y)
 	y->tag = 0;
 }
 
+
+cilk void insert(OM_Node *x, OM_Node *y){
+	InsertRecord *ir = (InsertRecord *)malloc(sizeof(InsertRecord));
+	ir->x  = x;
+	ir->y  = y;
+	
+	Cilk_batchify(_cilk_ws, batchInsertOp ,NULL, ir, sizeof(InsertRecord), NULL);
+}
+
+cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result)
+{
+	int i = 0;
+	InsertRecord * ir = (InsertRecord *)data, *ir_next;
+	/// use a regular for loop to be sequential
+	for(; i < size; i++){
+		insert_internal(ir->x, ir->y); 
+		ir_next = ir + sizeof(InsertRecord *);
+		free(ir);
+		ir = ir_next;
+	}
+	
+}
+	
 /*! 
  * ===  FUNCTION  ======================================================================
- *         Name:  insert
+ *         Name:  insert_internal
  *  Description:  Insert node y after node x in the Bottom_List specified in x->ds.
  * =====================================================================================
  */
-void insert (OM_Node * x, OM_Node *y)
+void insert_internal(OM_Node * x, OM_Node *y)
+
 {
 	/// Retrieve the Bottom_List
 	Bottom_List * ds = x->ds;
@@ -156,7 +181,7 @@ void insert (OM_Node * x, OM_Node *y)
 
 #endif
 			split_bl(ds->parent, ds);
-			insert(x, y);
+			insert_internal(x, y);
 			return;
 		}
 
@@ -194,7 +219,7 @@ void insert (OM_Node * x, OM_Node *y)
 #endif
 
 			split_bl(ds->parent, ds);
-			insert(x, y);
+			insert_internal(x, y);
 			return;
 		}
 
@@ -380,6 +405,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	/// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
 	unsigned long int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
 
+	/*printf ( "Split\n" );*/
 	/// Iterate to the middle updating tags along the way
 	while (node_count < (list_to_split->size >> 1))
 	{
@@ -443,6 +469,10 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 {
 	/// Pointers for walking out from the pivot
 	Bottom_List *lList = pivot, *rList = pivot;
+
+	/// Constants used to calculate when to rebalance
+	double overflow_density, overflow_threshold, i = -1;
+	unsigned long int enclosing_tag_range, lTag, rTag, num_elements_in_sublist = 2, skip_size;
 #ifdef RD_STATS
 			
 			if (list->list_of_size_of_top_list_when_split_head == NULL)
@@ -462,10 +492,6 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 
 #endif
 	
-	/// Constants used to calculate when to rebalance
-	double overflow_density, overflow_threshold, i = -1;
-	unsigned long int enclosing_tag_range, lTag, rTag, num_elements_in_sublist = 2, skip_size;
-
 	/// Check if range is in overflow
 	do	
 	{
@@ -542,7 +568,7 @@ void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const long int 
 void rebalance_bls (Top_List * list)
 {
 	/// The Iterators
-	Bottom_List * current, * current_h;
+	Bottom_List * current;
 	current = list->head;
 
 	while(current != NULL)
