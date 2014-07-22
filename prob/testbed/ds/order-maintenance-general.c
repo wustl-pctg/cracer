@@ -110,7 +110,7 @@ void first_insert_bl (Bottom_List * ds, OM_Node * y)
  *  Description:  Insert node y after node x in the Bottom_List specified in x->ds.
  * =====================================================================================
  */
-void insert (OM_Node * x, OM_Node *y)
+void insert (OM_Node * x, OM_Node *y, int depth)
 {
 	/// Retrieve the Bottom_List
 	Bottom_List * ds = x->ds;
@@ -156,7 +156,8 @@ void insert (OM_Node * x, OM_Node *y)
 
 #endif
 			split_bl(ds->parent, ds);
-			insert(x, y);
+			printf ( "Depth:%i\n", depth );
+			insert(x, y,depth++ );
 			return;
 		}
 
@@ -194,7 +195,9 @@ void insert (OM_Node * x, OM_Node *y)
 #endif
 
 			split_bl(ds->parent, ds);
-			insert(x, y);
+			
+			printf ( "Depth:%i\n", depth );
+			insert(x, y,depth++);
 			return;
 		}
 
