@@ -24,7 +24,7 @@
 #include <cilk.h>
 
 /// Pre-compiler macro for debugging 
-//#define RD_DEBUG
+#define RD_DEBUG
 #define WS_TOP_LIST_ENGLISH ws->context->Cilk_global_state->englishOM_DS
 #define WS_TOP_LIST_HEBREW ws->context->Cilk_global_state->hebrewOM_DS
 
@@ -107,10 +107,12 @@ Top_List * create_tl();
 void first_insert_bl(Bottom_List * ds, OM_Node *y);
 void first_insert_tl(Top_List * list, Bottom_List * y);
 void first_insert(Top_List * list, OM_Node* y);
-void insert(OM_Node * x, OM_Node * y);
+void insert(struct CilkWorkerState_s *const ws, OM_Node * x, OM_Node * y);
 void insert_tl(Bottom_List *x, Bottom_List *y);
+//CILK2C
 int order(OM_Node * x, OM_Node * y);
-//void batchInsertOp (struct CilkWorkerState_s *const ws, void *dataStruct, void *data, size_t size, void *result);
+//CILK2C
+void batchInsertOp (struct CilkWorkerState_s *const ws, void *dataStruct, void *data, size_t size, void *result);
 void split_bl(Top_List * list, Bottom_List * list_to_split);
 void rebalance_tl(Top_List * list, Bottom_List * pivot);
 void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const /*long */int skip_size);

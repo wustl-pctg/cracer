@@ -2093,6 +2093,7 @@ void OM_DS_init(CilkContext *const context){
 
 	// If Batchify works
 	//#define BATCHIFY_WORKING
+#define RD_DEBUG
 
 	if (context->Cilk_global_state){
 		/// Debug message
@@ -2128,7 +2129,42 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 	/// Retrieve Top_Lists
 	Top_List * english_tl = context->Cilk_global_state->englishOM_DS;
 	Top_List * hebrew_tl = context->Cilk_global_state->hebrewOM_DS;
+	unsigned int node_count = 0;
+	Bottom_List * current_bl = english_tl->head;
+	OM_Node * current_node = english_tl->head->head;
+	printf("Debug: Global Node count: %i\n English/Hebrew Size:%i/%i\n", global_node_count, english_tl->size, hebrew_tl->size);
+
+	while (current_bl != NULL){
+		while (current_node != NULL){
+			node_count++;
+			current_node = current_node->next;
+		}
+		current_bl = current_bl->next;
+		if (current_bl)
+			current_node = current_bl->head;
+
+	}
 	
+	printf ( "Num nodes (counted) in english: %i\n", node_count );
+
+	node_count = 0;
+	current_bl = hebrew_tl->head;
+	current_node = current_bl->head;
+	
+	while (current_bl != NULL){
+		while (current_node != NULL){
+			node_count++;
+			current_node = current_node->next;
+		}
+		current_bl = current_bl->next;
+		if (current_bl)
+			current_node = current_bl->head;
+
+	}
+	
+	printf ( "Num nodes (counted) in hebrew: %i\n", node_count );
+
+
 	/// Free each and all their contents
 	free_tl(english_tl);
 	free_tl(hebrew_tl);
@@ -2141,7 +2177,7 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
  *  Description:  Inserts y after x in the list (eng or heb) specified by ID.
  * =====================================================================================
  */
-void OM_DS_insert(CilkWorkerState *const ws, Runtime_node * x, Runtime_node *y, const int ID){
+inline void OM_DS_insert(CilkWorkerState *const ws, Runtime_node * x, Runtime_node *y, const int ID){
 
 	if (ID == ENGLISH_ID)
 		return insert(ws, x->english, y->english);
@@ -2160,7 +2196,7 @@ void OM_DS_insert(CilkWorkerState *const ws, Runtime_node * x, Runtime_node *y, 
  *  Description:  Returns true if x is before y for the list's (eng or heb) ID.
  * =====================================================================================
  */
-int OM_DS_order(Runtime_node * x, Runtime_node *y, const int ID){
+inline int OM_DS_order(Runtime_node * x, Runtime_node *y, const int ID){
 
 	if (ID == ENGLISH_ID)
 		return order(x->english, y->english);
@@ -2176,7 +2212,7 @@ int OM_DS_order(Runtime_node * x, Runtime_node *y, const int ID){
 /********************************************************************************
  *                OM_DS Functions that are Runtime Specific                     *
  ********************************************************************************/
-void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const int FAST_NOT_SLOW){
+inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const int FAST_NOT_SLOW){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
@@ -2237,11 +2273,8 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 
 #ifdef RD_DEBUG
 	CILK_ASSERT(ws, frame->current_node != NULL);
-
-		if (FAST_NOT_SLOW)
-		printf("Debug: OM_DS_before_spawn_fast called currnt node id: %d\n", frame->current_node->id);
-		else
-		printf("Debug: OM_DS_before_spawn_slow called currnt node id: %d\n", frame->current_node->id);
+	CILK_ASSERT(ws, frame->current_node->english != NULL && frame->current_node->hebrew != NULL
+					&& frame->current_node->english->ds != NULL && frame->current_node->hebrew->ds != NULL);
 #endif
 	/// Insert {current, spawned function, continuation node} into the english OM_DS
 	insert(ws,frame->current_node->english, spawned_func_node_e);
@@ -2272,7 +2305,7 @@ void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const 
 }
 
 /// After a sync in a slow clone, execute this function.
-void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
+inline void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
@@ -2299,7 +2332,7 @@ void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 
 /// After a sync in a fast clone, execute this function.
-void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
+inline void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
@@ -2348,7 +2381,7 @@ inline void OM_DS_after_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *fr
 }
 
 /// Start a new thread: reset first spawn flag
-void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
+inline void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{

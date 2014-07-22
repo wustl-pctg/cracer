@@ -62,6 +62,126 @@ Top_List * create_tl ()
 
 /*! 
  * ===  FUNCTION  ======================================================================
+ *         Name:  insert_internal
+ *  Description:  Insert node y after node x in the Bottom_List specified in x->ds.
+ * =====================================================================================
+ */
+void insert_internal(OM_Node * x, OM_Node *y)
+{
+	/// Retrieve the Bottom_List
+	Bottom_List * ds = x->ds;
+
+#ifdef RD_DEBUG
+	/// y and ds should never be NULL
+	if ( !(x && y && ds) )
+	{
+		printf("Some node or ds is null, skipping insert; x(%d) and y(%d)\n", x->ID, y->ID);
+		assert(0);
+	}
+#endif
+
+	/// Update the ds y is in 
+	y->ds = ds;
+
+	if (x == ds->tail)
+	{
+		/// y's tage is the average of its neighbors
+		y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
+
+		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
+		if (x->tag & 0x1 == 0x1) y->tag += 1;
+
+		/// Check for collision
+		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag		
+		{
+#ifdef RD_STATS
+			if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
+			{
+				ds->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
+				ds->list_of_size_of_bottom_list_when_split_tail = ds->list_of_size_of_bottom_list_when_split_head;
+				ds->list_of_size_of_bottom_list_when_split_head->data = ds->size;
+			}
+			else
+			{
+				ll_node * nextnode = malloc(sizeof(ll_node));
+				ds->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
+				ds->list_of_size_of_bottom_list_when_split_tail = nextnode;
+				nextnode->next = NULL;
+				nextnode->data = ds->size;
+			}
+
+#endif
+			split_bl(ds->parent, ds);
+			
+			// non cilk: insert(x, y);
+			insert_internal(x, y);
+			return;
+		}
+
+		ds->tail = y;
+	}
+	else
+	{
+		/// y's tage is the average of its neighbors
+		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
+
+		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
+		if (x->next->tag & x->tag & 0x1 == 0x1) y->tag += 1;
+			
+
+		/// Check for collision
+		if ((x->next->tag - x->tag) <= 1)
+		{
+#ifdef RD_STATS
+			
+			if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
+			{
+				ds->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
+				ds->list_of_size_of_bottom_list_when_split_tail = ds->list_of_size_of_bottom_list_when_split_head;
+				ds->list_of_size_of_bottom_list_when_split_head->data = ds->size;
+			}
+			else
+			{
+				ll_node * nextnode = malloc(sizeof(ll_node));
+				ds->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
+				ds->list_of_size_of_bottom_list_when_split_tail = nextnode;
+				nextnode->next = NULL;
+				nextnode->data = ds->size;
+			}
+
+#endif
+
+			split_bl(ds->parent, ds);
+			// non cilk: insert(x, y);
+			insert_internal(x, y);
+			return;
+		}
+
+	}
+
+	/// Reassign prev/next pointers
+	y->prev = x;
+	y->next = x->next;
+	x->next = y;
+	if (y->next != NULL) y->next->prev = y; ///< If y isn't tail, make the next node point to it
+
+	ds->size += 1;
+
+
+	/// Mark flag in each list greater than half it's capacity
+//	if (ds->size > (INT_BIT_SIZE >> 1))
+//		ds->reorder_flag = 1;
+
+//	if (ds->size == INT_BIT_SIZE)
+//		return 1; ///< Needs to be split
+//	else
+//		return 0; ///< Doesn't needs immediately split
+}
+
+
+
+/*! 
+ * ===  FUNCTION  ======================================================================
  *         Name:  first_insert_bl
  *  Description:  Insert the first OM_Node y into the Bottom_List ds.
  * =====================================================================================
@@ -134,13 +254,13 @@ void first_insert (Top_List * list, OM_Node * y)
 	/// Call the function for the first insert in a Bottom_List
 	first_insert_bl(list->head, y);
 }
-
-/*! 
+/*
+[>! 
  * ===  FUNCTION  ======================================================================
  *         Name:  insert
  *  Description:  Insert node y after node x in the Bottom_List specified in x->ds.
  * =====================================================================================
- */
+ <]
 void insert (OM_Node * x, OM_Node *y)
 {
 	/// Retrieve the Bottom_List
@@ -249,6 +369,7 @@ void insert (OM_Node * x, OM_Node *y)
 //	else
 //		return 0; ///< Doesn't needs immediately split
 }
+*/
 
 /*! 
  * ===  FUNCTION  ======================================================================
@@ -363,6 +484,16 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	/// Each node in the list will be spaced out by skip_size tag spaces
 	/// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
 	unsigned /*long */ int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
+
+	if (list_to_split->size < 2)
+	{
+		printf("Debug: An error occured, a list of size less than 2 is trying to be split\n");
+		if (list_to_split->head)
+			list_to_split->head->tag = 0;
+		return;
+	}
+
+
 
 	/// Iterate to the middle updating tags along the way
 	while (node_count < (list_to_split->size >> 1))
@@ -649,4 +780,182 @@ void check_sub_correctness (Top_List * list)
 	}
 }
 
+// POST CILK2C CODE
 
+struct _cilk_insert_frame{CilkStackFrame header;
+struct{OM_Node*x;
+OM_Node*y;
+}scope0;
+struct{InsertRecord ir;
+}scope1;
+};
+struct _cilk_insert_args{OM_Node*x;
+OM_Node*y;
+};
+static void _cilk_insert_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insert_frame*_cilk_frame);
+static CilkProcInfo _cilk_insert_sig[]={{0,sizeof(struct _cilk_insert_frame),_cilk_insert_slow,0,0}};
+
+void insert (CilkWorkerState*const _cilk_ws,OM_Node*x,OM_Node*y){struct _cilk_insert_frame*_cilk_frame;
+{ _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_insert_frame), _cilk_insert_sig);
+ };
+{ Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
+ /*OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));*/
+ };
+{
+
+ _cilk_frame->scope1.ir.x=x;
+
+ _cilk_frame->scope1.ir.y=y;
+
+
+ Cilk_batchify(_cilk_ws, batchInsertOp, ((void *)0), &_cilk_frame->scope1.ir,sizeof(InsertRecord),((void*)0));
+
+{{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+ };
+return;
+}}}
+
+static void _cilk_insert_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insert_frame*_cilk_frame){OM_Node*x;
+OM_Node*y;
+{ Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
+ /*OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));*/
+ };
+switch (_cilk_frame->header.entry) {}x=_cilk_frame->scope0.x;
+y=_cilk_frame->scope0.y;
+{
+
+ _cilk_frame->scope1.ir.x=x;
+
+ _cilk_frame->scope1.ir.y=y;
+
+
+ Cilk_batchify(_cilk_ws, batchInsertOp, ((void *)0), &_cilk_frame->scope1.ir,sizeof(InsertRecord),((void*)0));
+
+{{ Cilk_set_result(_cilk_ws, (void *)0, 0);
+ };
+{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+ };
+return;
+}}}
+
+static void _cilk_insert_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v){(void)_cilk_ws;
+(void)_cilk_procargs_v;
+insert(_cilk_ws,((struct _cilk_insert_args*)_cilk_procargs_v)->x,((struct _cilk_insert_args*)_cilk_procargs_v)->y);
+
+}
+void mt_insert(CilkContext*const context,OM_Node*x,OM_Node*y){struct _cilk_insert_args*_cilk_procargs;
+_cilk_procargs=(struct _cilk_insert_args*)Cilk_malloc_fixed(sizeof(struct _cilk_insert_args));
+_cilk_procargs->x=x;
+_cilk_procargs->y=y;
+Cilk_start(context,_cilk_insert_import,_cilk_procargs,0);
+Cilk_free(_cilk_procargs);
+
+}
+
+struct _cilk_batchInsertOp_frame{CilkStackFrame header;
+struct{void*dataStruct;
+void*data;
+size_t size;
+void*result;
+}scope0;
+struct{int i;
+InsertRecord*irArray;
+InsertRecord ir;
+}scope1;
+};
+struct _cilk_batchInsertOp_args{void*dataStruct;
+void*data;
+size_t size;
+void*result;
+};
+static void _cilk_batchInsertOp_slow(CilkWorkerState*const _cilk_ws,struct _cilk_batchInsertOp_frame*_cilk_frame);
+static CilkProcInfo _cilk_batchInsertOp_sig[]={{0,sizeof(struct _cilk_batchInsertOp_frame),_cilk_batchInsertOp_slow,0,0}};
+
+
+void batchInsertOp (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,size_t size,void*result){struct _cilk_batchInsertOp_frame*_cilk_frame;
+{ _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_batchInsertOp_frame), _cilk_batchInsertOp_sig);
+ };
+{ Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
+ /*OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));*/
+ };
+
+{
+ int i= 0;
+
+ InsertRecord *irArray= (InsertRecord *)data;
+
+
+ for (;
+ i< size;
+ i++) {
+  _cilk_frame->scope1.ir=irArray[i];
+
+  if (_cilk_frame->scope1.ir.x->ds == NULL)
+	  printf ( "DS is null, error\n" );
+  insert_internal(_cilk_frame->scope1.ir.x,_cilk_frame->scope1.ir.y);
+
+ }
+{{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+ };
+return;
+}}}
+
+static void _cilk_batchInsertOp_slow(CilkWorkerState*const _cilk_ws,struct _cilk_batchInsertOp_frame*_cilk_frame){void*dataStruct;
+void*data;
+size_t size;
+void*result;
+{ Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
+ /*OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));*/
+ };
+switch (_cilk_frame->header.entry) {}dataStruct=_cilk_frame->scope0.dataStruct;
+data=_cilk_frame->scope0.data;
+size=_cilk_frame->scope0.size;
+result=_cilk_frame->scope0.result;
+
+{
+ int i= 0;
+
+ InsertRecord *irArray= (InsertRecord *)data;
+
+
+ for (;
+ i< size;
+ i++) {
+  _cilk_frame->scope1.ir=irArray[i];
+
+  insert_internal(_cilk_frame->scope1.ir.x,_cilk_frame->scope1.ir.y);
+
+ }
+{{ Cilk_set_result(_cilk_ws, (void *)0, 0);
+ };
+{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
+ Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
+ };
+return;
+}}}
+
+static void _cilk_batchInsertOp_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v)
+{(void)_cilk_ws;
+(void)_cilk_procargs_v;
+batchInsertOp(_cilk_ws,((struct _cilk_batchInsertOp_args*)_cilk_procargs_v)->dataStruct,((struct _cilk_batchInsertOp_args*)_cilk_procargs_v)->data,((struct _cilk_batchInsertOp_args*)_cilk_procargs_v)->size,((struct _cilk_batchInsertOp_args*)_cilk_procargs_v)->result);
+
+}
+
+void mt_batchInsertOp(CilkContext*const context,void*dataStruct,void*data,size_t size,void*result)
+{struct _cilk_batchInsertOp_args*_cilk_procargs;
+_cilk_procargs=(struct _cilk_batchInsertOp_args*)Cilk_malloc_fixed(sizeof(struct _cilk_batchInsertOp_args));
+_cilk_procargs->dataStruct=dataStruct;
+_cilk_procargs->data=data;
+_cilk_procargs->size=size;
+_cilk_procargs->result=result;
+Cilk_start(context,_cilk_batchInsertOp_import,_cilk_procargs,0);
+Cilk_free(_cilk_procargs);
+
+}
