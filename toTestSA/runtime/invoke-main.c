@@ -71,6 +71,8 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 
   CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at the end of the func.*/
 
+	
+/*
 	//If the current node hasn't been initialized yet, we havent been in invoke main slow
 	if (_cilk_frame->header.current_node == NULL)
 	{
@@ -96,11 +98,9 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 		printf("Debug:Starting invoke main slow in separate thread\n"); 
 	}
 
-
-
 	/// Update the worker state to match the frame
 	ws->current_node = _cilk_frame->header.current_node;
-
+*/
   	/*end order maintenance*/
   CILK2C_START_THREAD_SLOW();
   switch (_cilk_frame->header.entry) {
@@ -123,7 +123,7 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 
   _cilk_frame->header.receiver = (void *) &_cilk_frame->retval;
   _cilk_frame->header.entry=1;
-  CILK2C_BEFORE_SPAWN_SLOW();
+  CILK2C_BEFORE_SPAWN_SLOW_INVOKE_MAIN_SLOW();
   CILK2C_PUSH_FRAME(_cilk_frame);
 
   _cilk_frame->import_main(_cilk_ws, args);

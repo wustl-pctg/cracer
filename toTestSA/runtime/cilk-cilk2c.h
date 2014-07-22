@@ -85,6 +85,12 @@
   OM_DS_before_spawn(_cilk_ws, &(_cilk_frame->header), 1);			\
 }
 
+/// Ignore OM_DS calls
+#define CILK2C_BEFORE_SPAWN_SLOW_INVOKE_MAIN_SLOW(){					\
+  Cilk_cilk2c_before_spawn_slow_cp(_cilk_ws, &(_cilk_frame->header));	\
+}
+
+
 
 #define CILK2C_BEFORE_SPAWN_SLOW(){					\
   Cilk_cilk2c_before_spawn_slow_cp(_cilk_ws, &(_cilk_frame->header));	\

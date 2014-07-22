@@ -8,7 +8,7 @@
 
 static unsigned /*long */int MAX_NUMBER = ~0;
 static int INT_BIT_SIZE = 64;
-static double OVERFLOW_CONSTANT = 1.85;
+static double OVERFLOW_CONSTANT = 1.35;
 
 /*!
  * ===  FUNCTION  ======================================================================

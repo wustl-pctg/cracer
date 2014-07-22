@@ -2173,6 +2173,7 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 
 /*! 
  * ===  FUNCTION  ======================================================================
+
  *         Name:  OM_DS_insert
  *  Description:  Inserts y after x in the list (eng or heb) specified by ID.
  * =====================================================================================
@@ -2213,11 +2214,29 @@ inline int OM_DS_order(Runtime_node * x, Runtime_node *y, const int ID){
  *                OM_DS Functions that are Runtime Specific                     *
  ********************************************************************************/
 inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const int FAST_NOT_SLOW){
+
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
 	    ;//printf("Debug: In batch node, no race detect needed");
 		return;
+	}
+	// TEST:
+	if (frame->current_node == NULL)
+	{
+		OM_Node * first_node_e = Cilk_malloc(sizeof(OM_Node)), *first_node_h  = Cilk_malloc(sizeof(OM_Node));
+		ws->current_node = frame->current_node = Cilk_malloc(sizeof(Runtime_node));
+	
+		printf("Debug: Current node is null, this should only be when calling before spawn in invoke main slow\n");
+		/// Setup frame nodes
+		setup_runtime_node(frame->current_node, first_node_e, first_node_h);
+
+		frame->current_node->english->ID = frame->current_node->hebrew->ID = global_node_count++;
+		
+		first_insert(WS_TOP_LIST_ENGLISH,  first_node_e);
+		first_insert(WS_TOP_LIST_HEBREW,   first_node_h);
+
+		//return;
 	}
 	/// Instantiate three new nodes
 
@@ -2229,7 +2248,6 @@ inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame,
 	Runtime_node * cont_node = NULL,* post_sync_node = NULL,* spawned_func_node = NULL;
 
 	/// Create heap memory for the two guaranteed nodes
-
 	cont_node_e = Cilk_malloc(sizeof(OM_Node));
 	cont_node_h = Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node_e = Cilk_malloc(sizeof(OM_Node));	
@@ -2249,6 +2267,7 @@ inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame,
 
 	/// Enter only if this is the first spawn after a sync/in a function
 	if (frame->first_spawn_flag != 1){
+
 		/// Allocate heap memory
 		post_sync_node_e = Cilk_malloc(sizeof(OM_Node));
 		post_sync_node_h = Cilk_malloc(sizeof(OM_Node));
@@ -2317,7 +2336,7 @@ inline void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	;//printf("Debug: OM_DS_sync_slow, current frame id: %d\n",  frame->current_node->id );
 
 	/// If the sync was legitimate, then reset frame and worker state to post_sync_node.
-	CILK_ASSERT(ws, frame->post_sync_node != NULL);
+	/// TODO: fix when current frame is the invoke main slow frame - > CILK_ASSERT(ws, frame->post_sync_node != NULL);
 
 	/// Assign frame/worker state's current node to the post sync node
 	frame->current_node = ws->current_node = frame->post_sync_node;

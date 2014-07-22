@@ -101,16 +101,19 @@ typedef struct Runtime_node_s{
 
 
 
-/// Declarations of the OM-functions
+/// Declarations of the OM-functions operating internally
 Bottom_List * create_bl();
 Top_List * create_tl();
 void first_insert_bl(Bottom_List * ds, OM_Node *y);
 void first_insert_tl(Top_List * list, Bottom_List * y);
+void insert_tl(Bottom_List *x, Bottom_List *y);
+void insert_internal(OM_Node*, OM_Node*);
+
+/// Usable OM_DS functions
 void first_insert(Top_List * list, OM_Node* y);
 void insert(struct CilkWorkerState_s *const ws, OM_Node * x, OM_Node * y);
-void insert_tl(Bottom_List *x, Bottom_List *y);
-//CILK2C
 int order(OM_Node * x, OM_Node * y);
+
 //CILK2C
 void batchInsertOp (struct CilkWorkerState_s *const ws, void *dataStruct, void *data, size_t size, void *result);
 void split_bl(Top_List * list, Bottom_List * list_to_split);
