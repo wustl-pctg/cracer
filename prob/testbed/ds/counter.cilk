@@ -45,8 +45,7 @@ void counterLockIncrement(Counter *c, int incr)
 }
 
 // Private functions.
-cilk void batchIncrement(void *dataStruct, void *data, size_t size, void *result)
-{
+cilk void batchIncrement(void *dataStruct, void *data, size_t size, void *result){
 	int *nums = (int*)data;
 	int *count = &(((Counter*)dataStruct)->value);
 	int temp;

@@ -27,15 +27,15 @@
 #include <math.h>
 #include <assert.h>
 
-/// Pre-compiler macro for debugging 
-//#define RD_DEBUG
-#define RD_STATS
+/*/// Pre-compiler macro for debugging */
+/*//#define RD_DEBUG*/
+/*#define RD_STATS*/
 
-/// FWD Declaration
-struct Bottom_List_s;
-struct Top_List_s;
+/*/// FWD Declaration*/
+/*struct Bottom_List_s;*/
+/*struct Top_List_s;*/
 
-/// The Node that makes up Bottom_Lists
+/*/// The Node that makes up Bottom_Lists*/
 typedef struct OM_Node_s{
 
 	struct OM_Node_s *next;
@@ -46,12 +46,12 @@ typedef struct OM_Node_s{
 
 } OM_Node;
 
-#ifdef RD_STATS
-typedef struct ll_node_s {
-	unsigned int data;
-	struct ll_node_s 	 *next;
-} ll_node;
-#endif
+/*#ifdef RD_STATS*/
+/*typedef struct ll_node_s {*/
+	/*unsigned int data;*/
+	/*struct ll_node_s 	 *next;*/
+/*} ll_node;*/
+/*#endif*/
 
 
 /// Holds OM_Nodes and is what comprises the Top_List
@@ -59,7 +59,7 @@ typedef struct Bottom_List_s {
 	struct Top_List_s *parent;
 	OM_Node *head,*tail;
 	int size;
-	int reorder_flag; 
+	int reorder_flag;
 	struct Bottom_List_s *next;
 	struct Bottom_List_s *prev;
 	unsigned long int tag;
@@ -95,27 +95,10 @@ typedef struct Top_List_s{
 
 
 /// Declarations of the OM-functions
-Bottom_List * create_bl();
-Top_List * create_tl();
-void first_insert_bl(Bottom_List * ds, OM_Node * y);
-void first_insert_tl(Top_List * list, Bottom_List * y);
-void first_insert(Top_List *, OM_Node *);
 void insert_internal(OM_Node * x, OM_Node *y);
-cilk void insert (OM_Node * x, OM_Node *y);
+cilk void insertM (OM_Node * x, OM_Node *y);
 
 cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result);
-
-void insert_tl(Bottom_List *x, Bottom_List *y);
-int order(OM_Node * x, OM_Node * y);
-void split_bl(Top_List * list, Bottom_List * list_to_split);
-void rebalance_tl(Top_List * list, Bottom_List * pivot);
-void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const long int skip_size);
-void rebalance_bls(Top_List * list);
-void print_tl(Top_List * list);
-void print_bl(Bottom_List * list);
-void free_bl (Bottom_List * list);
-void free_tl ( Top_List * list );
-void check_sub_correctness (Top_List * list);
 
 #endif 
 

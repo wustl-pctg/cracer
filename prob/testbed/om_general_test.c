@@ -64,8 +64,8 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-		/*j = (rand() % i); ///< Case where each insert is random*/
-		j = i -1;     ///< Case where each insert is at the back
+		j = (rand() % i); ///< Case where each insert is random
+		/*j = i -1;     ///< Case where each insert is at the back*/
 		/*j = 0;        ///< Case where each insert is at the front*/
 
 		insert(nodeArray[j], nodeArray[i]);
@@ -78,7 +78,7 @@ int main ( int argc, char *argv[] )
 	}
 
 	// End clock
-	printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
+	printf("Took %f s.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
 	/*order_test(nodeArray, num_nodes);*/
 	check_sub_correctness(list);
