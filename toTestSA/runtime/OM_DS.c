@@ -7,7 +7,7 @@
 #include <time.h>
 
 static unsigned /*long */int MAX_NUMBER = ~0;
-static int INT_BIT_SIZE = 64;
+static int INT_BIT_SIZE = 32;
 static double OVERFLOW_CONSTANT = 1.35;
 
 /*!
@@ -589,7 +589,7 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 	
 	/// Constants used to calculate when to rebalance
 	double overflow_density, overflow_threshold, i = -1;
-	unsigned /* long */int enclosing_tag_range, lTag, rTag, num_elements_in_sublist = 2, skip_size;
+	unsigned /* long */int enclosing_tag_range, lTag = 0, rTag = MAX_NUMBER, num_elements_in_sublist = 2, skip_size;
 
 	/// Check if range is in overflow
 	do	
@@ -627,11 +627,19 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 	/// This is the spacing in between tags of Bottom_Lists in between lList and rList
 	skip_size = (unsigned /* long*/ int) ( enclosing_tag_range / (num_elements_in_sublist + 1) );
 
+	assert(skip_size >0);
 #ifdef RD_DEBUG
 	if (rTag != MAX_NUMBER)
-		assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= rList->tag ));
-	/*else*/
-		/*assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= MAX_NUMBER ));		*/
+	{
+		if (!(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= rList->tag )))
+		{
+			printf("Skip_size: %u\nnum_elements:%u\n enclosing_tag_range %u\n", skip_size, num_elements_in_sublist , enclosing_tag_range);
+			assert(10);
+		}
+
+	}
+	else
+		assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= MAX_NUMBER ));		
 #endif
 
 	/// Relabel the tag range
@@ -656,6 +664,10 @@ void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const /*long*/i
 		current = current->next;
 	}
 	while (current != end);
+#ifdef RD_DEBUG
+	if(end->next)
+		assert(end->tag < end->next->tag);
+#endif
 }
 
 /*! 

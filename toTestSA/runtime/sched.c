@@ -2340,7 +2340,7 @@ inline void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	}
 	else
-		printf("Debug: OM_DS_sync_slow, current frame id: %d\n",  frame->current_node->english->ID );
+		;//printf("Debug: OM_DS_sync_slow, current frame id: %d\n",  frame->current_node->english->ID );
 
 	/// If the sync was legitimate, then reset frame and worker state to post_sync_node.
 	/// TODO: fix when current frame is the invoke main slow frame - > CILK_ASSERT(ws, frame->post_sync_node != NULL);
@@ -2373,7 +2373,7 @@ inline void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	}
 	else
-		printf("Debug: OM_DS_sync_fast, current frame id: %d\n",  frame->current_node->english->ID );
+		;//printf("Debug: OM_DS_sync_fast, current frame id: %d\n",  frame->current_node->english->ID );
 
 	/// If the sync was legitimate, then reset frame and worker state to post_sync_node.
 	CILK_ASSERT(ws, frame->post_sync_node != NULL);
