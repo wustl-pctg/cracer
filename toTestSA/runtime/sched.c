@@ -2299,17 +2299,18 @@ inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame,
 	insert(ws,frame->current_node->english, spawned_func_node_e);
 	insert(ws,spawned_func_node_e, cont_node_e);
 
+	if (post_sync_node)
+		//English
+		insert(ws,cont_node_e, post_sync_node_e);
+
+
 	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
 	insert(ws,frame->current_node->hebrew, cont_node_h);
 	insert(ws,cont_node_h, spawned_func_node_h);
 
-	if (post_sync_node){
-		//English
-		insert(ws,cont_node_e, post_sync_node_e);
+	if (post_sync_node)
 		/// Hebrew
 		insert(ws,spawned_func_node_h, post_sync_node_h);
-		/// Set the frame's post-sync node
-	}
 	
 	/// Move the current node to the continuaion node
 	/// &
@@ -2333,7 +2334,13 @@ inline void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	}
 
 	/// For debug
-	;//printf("Debug: OM_DS_sync_slow, current frame id: %d\n",  frame->current_node->id );
+	if (frame->current_node == NULL){
+	
+		printf ( "DEBUG: Current node is null when calling OM_DS_sync_slow, should be in invoke main slow\n" );
+
+	}
+	else
+		printf("Debug: OM_DS_sync_slow, current frame id: %d\n",  frame->current_node->english->ID );
 
 	/// If the sync was legitimate, then reset frame and worker state to post_sync_node.
 	/// TODO: fix when current frame is the invoke main slow frame - > CILK_ASSERT(ws, frame->post_sync_node != NULL);
@@ -2360,7 +2367,13 @@ inline void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	}
 
 	/// For debug
-	;//printf("Debug: OM_DS_sync_slow, current frame id: %d\n",  frame->current_node->id );
+	if (frame->current_node == NULL){
+	
+		printf ( "DEBUG: Current node is null when calling OM_DS_sync_slow, should be in invoke main slow\n" );
+
+	}
+	else
+		printf("Debug: OM_DS_sync_fast, current frame id: %d\n",  frame->current_node->english->ID );
 
 	/// If the sync was legitimate, then reset frame and worker state to post_sync_node.
 	CILK_ASSERT(ws, frame->post_sync_node != NULL);

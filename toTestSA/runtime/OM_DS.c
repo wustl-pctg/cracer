@@ -254,6 +254,16 @@ void first_insert (Top_List * list, OM_Node * y)
 	/// Call the function for the first insert in a Bottom_List
 	first_insert_bl(list->head, y);
 }
+
+void insert(struct CilkWorkerState_s *const ws, OM_Node *x, OM_Node *y){
+
+	InsertRecord *ir = Cilk_malloc(sizeof(InsertRecord));
+
+	ir->x = x;
+	ir->y = y;
+
+	Cilk_batchify(ws, &batchInsertOp, NULL, ir, sizeof(InsertRecord), NULL);
+}
 /*
 [>! 
  * ===  FUNCTION  ======================================================================
@@ -620,8 +630,8 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 #ifdef RD_DEBUG
 	if (rTag != MAX_NUMBER)
 		assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= rList->tag ));
-	else
-		assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= MAX_NUMBER ));		
+	/*else*/
+		/*assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= MAX_NUMBER ));		*/
 #endif
 
 	/// Relabel the tag range
@@ -779,82 +789,7 @@ void check_sub_correctness (Top_List * list)
 		current = current->next;
 	}
 }
-
-// POST CILK2C CODE
-
-struct _cilk_insert_frame{CilkStackFrame header;
-struct{OM_Node*x;
-OM_Node*y;
-}scope0;
-struct{InsertRecord ir;
-}scope1;
-};
-struct _cilk_insert_args{OM_Node*x;
-OM_Node*y;
-};
-static void _cilk_insert_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insert_frame*_cilk_frame);
-static CilkProcInfo _cilk_insert_sig[]={{0,sizeof(struct _cilk_insert_frame),_cilk_insert_slow,0,0}};
-
-void insert (CilkWorkerState*const _cilk_ws,OM_Node*x,OM_Node*y){struct _cilk_insert_frame*_cilk_frame;
-{ _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_insert_frame), _cilk_insert_sig);
- };
-{ Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
- /*OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));*/
- };
-{
-
- _cilk_frame->scope1.ir.x=x;
-
- _cilk_frame->scope1.ir.y=y;
-
-
- Cilk_batchify(_cilk_ws, batchInsertOp, ((void *)0), &_cilk_frame->scope1.ir,sizeof(InsertRecord),((void*)0));
-
-{{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_before_return_fast( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
- };
-return;
-}}}
-
-static void _cilk_insert_slow(CilkWorkerState*const _cilk_ws,struct _cilk_insert_frame*_cilk_frame){OM_Node*x;
-OM_Node*y;
-{ Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
- /*OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));*/
- };
-switch (_cilk_frame->header.entry) {}x=_cilk_frame->scope0.x;
-y=_cilk_frame->scope0.y;
-{
-
- _cilk_frame->scope1.ir.x=x;
-
- _cilk_frame->scope1.ir.y=y;
-
-
- Cilk_batchify(_cilk_ws, batchInsertOp, ((void *)0), &_cilk_frame->scope1.ir,sizeof(InsertRecord),((void*)0));
-
-{{ Cilk_set_result(_cilk_ws, (void *)0, 0);
- };
-{ Cilk_cilk2c_before_return_slow_cp(_cilk_ws, &(_cilk_frame->header));
- Cilk_cilk2c_before_return_slow( _cilk_ws, &(_cilk_frame->header), sizeof(*_cilk_frame));
- };
-return;
-}}}
-
-static void _cilk_insert_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v){(void)_cilk_ws;
-(void)_cilk_procargs_v;
-insert(_cilk_ws,((struct _cilk_insert_args*)_cilk_procargs_v)->x,((struct _cilk_insert_args*)_cilk_procargs_v)->y);
-
-}
-void mt_insert(CilkContext*const context,OM_Node*x,OM_Node*y){struct _cilk_insert_args*_cilk_procargs;
-_cilk_procargs=(struct _cilk_insert_args*)Cilk_malloc_fixed(sizeof(struct _cilk_insert_args));
-_cilk_procargs->x=x;
-_cilk_procargs->y=y;
-Cilk_start(context,_cilk_insert_import,_cilk_procargs,0);
-Cilk_free(_cilk_procargs);
-
-}
+//POST CILK2C CODE #2
 
 struct _cilk_batchInsertOp_frame{CilkStackFrame header;
 struct{void*dataStruct;
@@ -863,8 +798,8 @@ size_t size;
 void*result;
 }scope0;
 struct{int i;
-InsertRecord*irArray;
-InsertRecord ir;
+InsertRecord**irArray;
+InsertRecord*ir;
 }scope1;
 };
 struct _cilk_batchInsertOp_args{void*dataStruct;
@@ -875,29 +810,26 @@ void*result;
 static void _cilk_batchInsertOp_slow(CilkWorkerState*const _cilk_ws,struct _cilk_batchInsertOp_frame*_cilk_frame);
 static CilkProcInfo _cilk_batchInsertOp_sig[]={{0,sizeof(struct _cilk_batchInsertOp_frame),_cilk_batchInsertOp_slow,0,0}};
 
-
 void batchInsertOp (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,size_t size,void*result){struct _cilk_batchInsertOp_frame*_cilk_frame;
 { _cilk_frame = Cilk_cilk2c_init_frame(_cilk_ws, sizeof(struct _cilk_batchInsertOp_frame), _cilk_batchInsertOp_sig);
  };
 { Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header));
  Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);
- /*OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));*/
  };
 
 {
  int i= 0;
 
  InsertRecord *irArray= (InsertRecord *)data;
+InsertRecord *ir;
 
 
  for (;
  i< size;
  i++) {
-  _cilk_frame->scope1.ir=irArray[i];
+  ir = &irArray[i];
 
-  if (_cilk_frame->scope1.ir.x->ds == NULL)
-	  printf ( "DS is null, error\n" );
-  insert_internal(_cilk_frame->scope1.ir.x,_cilk_frame->scope1.ir.y);
+  insert_internal(ir->x, ir->y);
 
  }
 {{ Cilk_cilk2c_before_return_fast_cp(_cilk_ws, &(_cilk_frame->header));
@@ -905,14 +837,12 @@ void batchInsertOp (CilkWorkerState*const _cilk_ws,void*dataStruct,void*data,siz
  };
 return;
 }}}
-
 static void _cilk_batchInsertOp_slow(CilkWorkerState*const _cilk_ws,struct _cilk_batchInsertOp_frame*_cilk_frame){void*dataStruct;
 void*data;
 size_t size;
 void*result;
 { Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header));
  Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));
- /*OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));*/
  };
 switch (_cilk_frame->header.entry) {}dataStruct=_cilk_frame->scope0.dataStruct;
 data=_cilk_frame->scope0.data;
@@ -922,15 +852,16 @@ result=_cilk_frame->scope0.result;
 {
  int i= 0;
 
- InsertRecord *irArray= (InsertRecord *)data;
+InsertRecord *irArray= (InsertRecord *)data;
+InsertRecord*ir;
 
 
  for (;
  i< size;
  i++) {
-  _cilk_frame->scope1.ir=irArray[i];
+  ir = &irArray[i];
 
-  insert_internal(_cilk_frame->scope1.ir.x,_cilk_frame->scope1.ir.y);
+  insert_internal(ir->x, ir->y);
 
  }
 {{ Cilk_set_result(_cilk_ws, (void *)0, 0);
@@ -940,14 +871,12 @@ result=_cilk_frame->scope0.result;
  };
 return;
 }}}
-
 static void _cilk_batchInsertOp_import(CilkWorkerState*const _cilk_ws,void*_cilk_procargs_v)
 {(void)_cilk_ws;
 (void)_cilk_procargs_v;
 batchInsertOp(_cilk_ws,((struct _cilk_batchInsertOp_args*)_cilk_procargs_v)->dataStruct,((struct _cilk_batchInsertOp_args*)_cilk_procargs_v)->data,((struct _cilk_batchInsertOp_args*)_cilk_procargs_v)->size,((struct _cilk_batchInsertOp_args*)_cilk_procargs_v)->result);
 
 }
-
 void mt_batchInsertOp(CilkContext*const context,void*dataStruct,void*data,size_t size,void*result)
 {struct _cilk_batchInsertOp_args*_cilk_procargs;
 _cilk_procargs=(struct _cilk_batchInsertOp_args*)Cilk_malloc_fixed(sizeof(struct _cilk_batchInsertOp_args));
@@ -959,3 +888,4 @@ Cilk_start(context,_cilk_batchInsertOp_import,_cilk_procargs,0);
 Cilk_free(_cilk_procargs);
 
 }
+

@@ -73,12 +73,9 @@ typedef struct Bottom_List_s {
 } Bottom_List;
 
 typedef struct InsertRecord_s{
-
-	Bottom_List *ds;
 	OM_Node *x;
 	OM_Node *y;
 	int ID;
-
 } InsertRecord;
 
 /// Top-level LL made up of Bottom_List(s)
