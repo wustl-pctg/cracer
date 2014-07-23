@@ -16,34 +16,116 @@
  * =====================================================================================
  */
 
-#include "order-maintenance-par-rebalances.cilkh"
+#include "order-maintenance-par-rebalances.h"
 
 /// Constants used within this source file
 static unsigned long int MAX_NUMBER = ~0;
 static int INT_BIT_SIZE = 64;
 static double OVERFLOW_CONSTANT = 1.5;
 
-void insert(OM_Node *x, OM_Node *y){
-	InsertRecord *ir = malloc(sizeof(InsertRecord));
-	ir->x  = x;
-	ir->y  = y;
-	
-	Cilk_batchify(_cilk_ws, &batchInsertOp ,NULL, ir, sizeof(InsertRecord), NULL);
+/// Create the tree above x and y
+void create_btree_scaffolding(Bottom_List *_x, Bottom_List *_y){
+	/// Get the internal node
+	Internal_Node *x = _x->internal, *y = _y->internal;
+	unsigned int current_lvl = 1,
+				 xtag = x->tag,
+				 ytag = y->tag, 
+				 lvl_count = INT_BIT_SIZE,
+				 bit_counter = (0x1) >> ( INT_BIT_SIZE - 1);
+
+	/// This will get the first bit from the left in x->tag and y->tag that 
+	/// are not the same. That bit (counted from the right) will be lvl_count.
+	/// TODO: double check validity
+	while ( ((!(xtag ^ ytag)) & bit_counter) == bit_counter){
+		lvl_count--;
+		bit_counter = bit_counter >> 1;
+	}
+
+	bit_counter = 0x1;
+
+	// This is lvl_count -1 because at lvl count we want to create the same node
+	while (current_lvl < lvl_count-1){
+		/// Deal with X
+		if (!(x->parent))
+				x->parent = malloc(sizeof(Internal_Node));
+		/// Assign x->parent's reference to x (left if bit is 0, right if bit is 1)
+		if (xtag & bit_counter == bit_counter)
+			x->parent->right = x;
+		else
+			x->parent->left = x;
+
+		x->parent->num_children++;
+		x = x->parent;
+
+		/// Deal with Y
+		if (!(y->parent))
+				y->parent = malloc(sizeof(Internal_Node));
+		/// Assign y->parent's reference to y (left if bit is 0, right if bit is 1)
+		if (ytag & bit_counter == bit_counter)
+			y->parent->right = y;
+		else
+			y->parent->left = y;
+
+		y->parent->num_children++;
+		y = y->parent;
+
+		/// Update base
+		if (current_lvl = 1 ){
+			x->parent->base =  ((_x->tag >> 1) << 1);
+			y->parent->base =  ((_y->tag >> 1) << 1);
+		}
+		/// Update bit_counter
+		bit_counter = bit_counter >> 1;
+		/// Update lvl of x/y
+		x->lvl = y->lvl = ++current_lvl;
+	}
+
+	//Now current_lvl == lvl_count-1
+	if (x->parent || y->parent){
+		if (x->parent)
+		{
+			x->parent->left = x;
+			x->parent->right = y;
+			y->parent = x->parent;	
+		}
+		else if (y->parent) {
+			y->parent->left = x;
+			y->parent->right = y;
+			x->parent = y->parent;
+		}
+	}
+	else
+	{
+		x->parent = y->parent = malloc(sizeof(Internal_Node));
+		x->parent->lvl = ++current_lvl;
+	}
+
+	x->parent->num_children = x->num_children + y->num_children;
+
 }
 
-cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result)
-{
-	int i = 0;
-	InsertRecord * irArray = (InsertRecord *)data,* ir;
-	/// use a regular for loop to be sequential
-	for(; i < size; i++){
-		ir = &irArray[i];	
-		insert_internal(ir->x, ir->y); 
-	}
+void insert(OM_Node *x, OM_Node *y){
+	/*InsertRecord *ir = malloc(sizeof(InsertRecord));*/
+	/*ir->x  = x;*/
+	/*ir->y  = y;*/
+	
+	/*Cilk_batchify(_cilk_ws, &batchInsertOp ,NULL, ir, sizeof(InsertRecord), NULL);*/
+	/// This is the C (non cilk) version
+	insert_internal(x, y);
 }
-cilk void parforpar(const int begin, const int end, const int incr,
-                    const parallelBody body, void *data)
-{
+
+//This is for the cilk version 
+/*cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result)*/
+/*{*/
+	/*int i = 0;*/
+	/*InsertRecord * irArray = (InsertRecord *)data,* ir;*/
+	/*/// use a regular for loop to be sequential*/
+	/*for(; i < size; i++){*/
+		/*ir = &irArray[i];	*/
+		/*insert_internal(ir->x, ir->y); */
+	/*}*/
+/*}*/
+
 void insert_internal(OM_Node *x, OM_Node *y){
 	/// Retrieve the Bottom_List
 	Bottom_List * ds = x->ds;
@@ -268,6 +350,15 @@ void first_insert_tl (Top_List * list, Bottom_List * y)
 	y->reorder_flag = 0;
 	y->next = y->prev = NULL;
 	list->size += 1;
+
+	/// Parallel: Binary tree internal node
+	y->internal = malloc(sizeof(Internal_Node));
+	// Base level
+	y->internal->lvl = 1;
+	// This is a leaf internal node, so no children. Base won't be used in leaf node.
+	y->internal->num_children = y->internall->base =  0; 
+	y->internal->parent = y->internal->left = y->internal->right = NULL;
+	y->internal->om_node = y;
 }
 
 /*! 
@@ -305,7 +396,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if (x->tag & 0x1 == 0x1) y->tag++;
 	}
-	else
+	else /// Not tail
 	{		
 		/// y's tag is the average of the next and prior tags
 		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
@@ -319,12 +410,15 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 			(x != list->tail && (x->next->tag - x->tag <= 1)) )
 	{
 		/// Thin out the list - make room for y
-		rebalance_tl(list, x);
+		rebalance_tl(x);
+
+		/// PARALLEL:
+		/*spawn rebalance_tl(x);sync;*/
 
 		/// Dont assign pointers, call insert again to put y after x
 		insert_tl(x, y);
 	}
-	else
+	else /// No collision
 	{
 		/// NOTE: This is not atomic
 
@@ -340,8 +434,11 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		/// Assign the parent of y to the list
 		y->parent = list;
 		list->size += 1;
-	}
 
+		///Parallel: Create binary tree scaffolding
+		///TODO: Make this parallel
+		create_btree_scaffolding(x, y);
+	}
 }
 
 
@@ -456,10 +553,8 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
  *  			  algorithm.
  * =====================================================================================
  */
-void rebalance_tl (Top_List * list, Bottom_List * pivot)
-{
-	/// Pointers for walking out from the pivot
-	Bottom_List *lList = pivot, *rList = pivot;
+void rebalance_tl (Bottom_List * pivot)
+
 #ifdef RD_STATS
 			
 			if (list->list_of_size_of_top_list_when_split_head == NULL)
@@ -478,34 +573,16 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 			}
 
 #endif
+	/// Temp current internal node
+	Internal_Node *current_node = pivot->internal;
 	
 	/// Constants used to calculate when to rebalance
 	double overflow_density, overflow_threshold, i = -1;
 	unsigned long int enclosing_tag_range, lTag, rTag, num_elements_in_sublist = 2, skip_size;
 
 	/// Check if range is in overflow
-	do	
-	{
-		/// Move overflow list head and tail outward
-		if (lList->prev)
-		{
-			num_elements_in_sublist++;
-			lList = lList->prev;
-			lTag = lList->tag;
-		}
-		if (rList->next)
-		{
-			num_elements_in_sublist++;
-			rList = rList->next;
-			rTag = rList->tag;
-		}
-		else
-		{
-			/// If we reach the tail, just make the tag the maximum number
-			rTag = MAX_NUMBER;	
-		}
-
-		/// Calculate overflow_density
+	/// Calculate overflow_density
+	while (overflow_density > overflow_threshold ) && enclosing_tag_range != MAX_NUMBER);
 		enclosing_tag_range = rTag - lTag;
 
 		i = ceil( log2((double)enclosing_tag_range) );
@@ -514,7 +591,6 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 
 		overflow_density = (num_elements_in_sublist) / (double)enclosing_tag_range ;
 	}
-	while ( (enclosing_tag_range == 0 || overflow_density > overflow_threshold ) && enclosing_tag_range != MAX_NUMBER);
 
 	/// This is the spacing in between tags of Bottom_Lists in between lList and rList
 	skip_size = (unsigned long int) ( enclosing_tag_range / (num_elements_in_sublist + 1) );

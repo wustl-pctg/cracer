@@ -103,11 +103,15 @@ typedef struct Top_List_s{
 #endif
 } Top_List;
 
+/// Parallel:
+void create_btree_scaffolding(Bottom_List *_x, Bottom_List *_y);
 
 /// Declarations of the OM-functions (in batchify part)
 void insert(OM_Node *x, OM_Node *y);
 void insert_internal(OM_Node * x, OM_Node *y);
-cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result);
+/*
+ *cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result);
+ */
 
 
 /// Declarations of the OM-functions
@@ -119,7 +123,7 @@ void first_insert(Top_List *, OM_Node *);
 void insert_tl(Bottom_List *x, Bottom_List *y);
 int order(OM_Node * x, OM_Node * y);
 void split_bl(Top_List * list, Bottom_List * list_to_split);
-void rebalance_tl(Top_List * list, Bottom_List * pivot);
+void rebalance_tl(Bottom_List * pivot);
 void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const long int skip_size);
 void rebalance_bls(Top_List * list);
 void print_tl(Top_List * list);

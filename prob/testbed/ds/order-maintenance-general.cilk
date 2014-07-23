@@ -25,23 +25,22 @@ static unsigned long int MAX_NUMBER = ~0;
 static int INT_BIT_SIZE = 64;
 static double OVERFLOW_CONSTANT = 1.5;
 
-cilk void insertM(OM_Node *x, OM_Node *y){
+void insertM(OM_Node *x, OM_Node *y){
 	InsertRecord *ir = malloc(sizeof(InsertRecord));
 	ir->x  = x;
 	ir->y  = y;
 	
-	Cilk_batchify(_cilk_ws, batchInsertOp ,NULL, ir, sizeof(InsertRecord *), NULL);
+	Cilk_batchify(_cilk_ws, &batchInsertOp ,NULL, ir, sizeof(InsertRecord ), NULL);
 }
 
 cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result)
 {
 	int i = 0;
-	InsertRecord ** irArray = (InsertRecord **)data,* ir;
+	InsertRecord * irArray = (InsertRecord *)data,* ir;
 	/// use a regular for loop to be sequential
 	for(; i < size; i++){
-		ir = irArray[i];	
+		ir = &irArray[i];	
 		insert_internal(ir->x, ir->y); 
-		free(ir);
 	}
 }
 
