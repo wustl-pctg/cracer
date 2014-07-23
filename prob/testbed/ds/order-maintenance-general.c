@@ -114,6 +114,7 @@ void insert (OM_Node * x, OM_Node *y, int depth)
 {
 	/// Retrieve the Bottom_List
 	Bottom_List * ds = x->ds;
+	int tempTag;
 
 #ifdef RD_DEBUG
 	/// y and ds should never be NULL
@@ -130,10 +131,10 @@ void insert (OM_Node * x, OM_Node *y, int depth)
 	if (x == ds->tail)
 	{
 		/// y's tage is the average of its neighbors
-		y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
+		tempTag = (x->tag >> 1) + (MAX_NUMBER >> 1);
 
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-		if (x->tag & 0x1 == 0x1) y->tag += 1;
+		if (x->tag & 0x1 == 0x1) tempTag += 1;
 
 		/// Check for collision
 		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag		
@@ -166,10 +167,10 @@ void insert (OM_Node * x, OM_Node *y, int depth)
 	else
 	{
 		/// y's tage is the average of its neighbors
-		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
+		tempTag = (x->tag >> 1) + (x->next->tag >> 1);
 
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-		if (x->next->tag & x->tag & 0x1 == 0x1) y->tag += 1;
+		if (x->next->tag & x->tag & 0x1 == 0x1) tempTag += 1;
 			
 
 		/// Check for collision
@@ -204,6 +205,7 @@ void insert (OM_Node * x, OM_Node *y, int depth)
 	}
 
 	/// Reassign prev/next pointers
+	y->tag = tempTag;
 	y->prev = x;
 	y->next = x->next;
 	x->next = y;
