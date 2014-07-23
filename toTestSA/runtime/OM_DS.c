@@ -255,6 +255,12 @@ void first_insert (Top_List * list, OM_Node * y)
 	first_insert_bl(list->head, y);
 }
 
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  insert
+ *  Description:  Insert y into the first Bottom_List in the Top_List specified (list)
+ * =====================================================================================
+ */
 void insert(struct CilkWorkerState_s *const ws, OM_Node *x, OM_Node *y){
 
 	InsertRecord *ir = Cilk_malloc(sizeof(InsertRecord));

@@ -2491,6 +2491,11 @@ void * RD_structure_create(CilkWorkerState * const ws, size_t size)
 	return (void *)memPtr;
 }
 
+/*! Frees the allocated memory for the RD_Memory_Struct
+  \param ws The current workerstate upon being called
+  \param mem The struct itself
+*/
+
 void RD_free(CilkWorkerState * const ws, void * mem)
 {
 	RD_Memory_Struct * memptr;
