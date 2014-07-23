@@ -1,6 +1,6 @@
-CILKC = ../../support/cilkclocal
+CC = ../../support/cilkclocal
 CFLAGS = -c
-MAKEDEPEND = $(CILKC) -MM
+MAKEDEPEND = $(CC) -MM
 # DEPS = $(wildcard util/*.h util/*.cilkh)
 #SRCS = $(wildcard *.cilk)
 
@@ -43,12 +43,12 @@ omTree: omTree.o
 $(OBJS): $<
 
 %.o: %.cilk %.cilkh
-	$(CILKC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) $< -o $@
 
 .PHONY: clean check-syntax all
 
 check-syntax:
-	$(CILKC) -o /dev/null -c ${CHK_SOURCES}
+	$(CC) -o /dev/null -c ${CHK_SOURCES}
 
 clean:
 	rm -f *.i *.cilki *.cilkc *.o

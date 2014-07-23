@@ -157,7 +157,7 @@ void insert (OM_Node * x, OM_Node *y, int depth)
 
 #endif
 			split_bl(ds->parent, ds);
-			printf ( "Depth:%i\n", depth );
+      //			printf ( "Depth:%i\n", depth );
 			insert(x, y,depth++ );
 			return;
 		}
