@@ -22,6 +22,8 @@
 /// Constants used within this source file
 static unsigned long int MAX_NUMBER = ~0;
 static int INT_BIT_SIZE = 64;
+static int HALF_INT_BIT_SIZE = 32;
+static int lg_HALF_INT_BIT_SIZE = 5;
 static double OVERFLOW_CONSTANT = 1.5;
 
 /*!
@@ -114,7 +116,7 @@ void insert (OM_Node * x, OM_Node *y, int depth)
 {
 	/// Retrieve the Bottom_List
 	Bottom_List * ds = x->ds;
-	int tempTag;
+	unsigned long int tempTag;
 
 #ifdef RD_DEBUG
 	/// y and ds should never be NULL
@@ -132,7 +134,7 @@ void insert (OM_Node * x, OM_Node *y, int depth)
 	{
 		/// y's tage is the average of its neighbors
 		tempTag = (x->tag >> 1) + (MAX_NUMBER >> 1);
-
+		
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if (x->tag & 0x1 == 0x1) tempTag += 1;
 
@@ -157,8 +159,7 @@ void insert (OM_Node * x, OM_Node *y, int depth)
 
 #endif
 			split_bl(ds->parent, ds);
-      //			printf ( "Depth:%i\n", depth );
-			insert(x, y,depth++ );
+			insert(x, y, depth++);
 			return;
 		}
 
@@ -192,12 +193,9 @@ void insert (OM_Node * x, OM_Node *y, int depth)
 				nextnode->next = NULL;
 				nextnode->data = ds->size;
 			}
-
 #endif
 
 			split_bl(ds->parent, ds);
-			
-			printf ( "Depth:%i\n", depth );
 			insert(x, y,depth++);
 			return;
 		}
@@ -363,6 +361,7 @@ int order (OM_Node * x, OM_Node * y)
 	}
 }
 
+
 /*! 
  * ===  FUNCTION  ======================================================================
  *         Name:  split_bl
@@ -370,6 +369,7 @@ int order (OM_Node * x, OM_Node * y)
  *  			  after the first in the top list.
  * =====================================================================================
  */
+/*
 void split_bl (Top_List * list, Bottom_List * list_to_split)
 {
 	OM_Node * current = list_to_split->head, *middle_node;
@@ -435,6 +435,128 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
 	/// Insert the newly created list this into the top list
 	insert_tl(list_to_split, to_add);
+}
+*/
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  split_bl
+ *  Description:  Splits the bottom list into two bottom lists. Then it inserts the second
+ *  			  after the first in the top list.
+ * =====================================================================================
+ */
+void split_bl (Top_List * list, Bottom_List * list_to_split)
+{
+	OM_Node * current = list_to_split->head, *transition_node;
+	
+	/// Create new list to add to top 
+	Bottom_List * to_add, * holder;
+	
+	/// Keep track of num nodes and lists through iterations
+	int node_count = 1, list_count = 1, num_lists_needed = (list_to_split->size >> lg_HALF_INT_BIT_SIZE);
+
+	/// Each node in the list will be spaced out by skip_size tag spaces
+	unsigned long int skip_size = MAX_NUMBER >> lg_HALF_INT_BIT_SIZE;
+
+	/// First reorganize list_to_split appropriately
+	current->tag = 0;
+	while (node_count < HALF_INT_BIT_SIZE && current->next != NULL)
+	{
+		current->next->tag = current->tag + skip_size;
+		current = current->next;
+		++node_count;
+	}
+
+	/// Finalize list_to_splits adjustments
+	list_to_split->size = node_count;
+	list_to_split->tail = current;
+	transition_node = current->next;
+	current->next = NULL;
+	list_to_split->reorder_flag = 0;
+	
+	/// Define the holder for the following lists
+	holder = list_to_split;
+
+	/// Now reorganize each set of 32 into a new Bottom_list to_add
+	while (list_count < num_lists_needed)
+	{
+		/// Update node count for current iteration
+		node_count = 1; 
+		
+		/// This particular iteration's list to be added
+		to_add = create_bl(); 
+		
+		/// Node maintenence
+		current = transition_node;
+		to_add->head = current;
+		current->prev = NULL;
+		current->tag = 0;
+
+		/// Upate the DS for the head
+		current->ds = to_add;
+		
+		/// Now iterate through the nodes for this iteration's DS
+		while ((node_count < HALF_INT_BIT_SIZE) && (current->next != NULL))
+		{
+			current = current->next;
+			current->ds = to_add;
+			current->tag = current->prev->tag + skip_size;
+			++node_count;
+		}
+		
+		/// Finalize this iteration's DS
+		to_add->tail = current;
+		transition_node = current->next; ///< Even if NULL (out of nodes), will be fine
+		current->next = NULL;
+		to_add->reorder_flag = 0;
+		to_add->size = node_count;
+
+		/// Insert the finished DS into the Top_List
+		insert_tl(holder, to_add);
+
+		/// Update place holder for next Top_List insert
+		holder = to_add;
+	    to_add = NULL;
+
+		/// Increment the list count
+		++list_count;
+	}
+
+	/// Finally, check if there are leftover elements and add to a list
+	if (transition_node != NULL)
+	{
+		node_count = 1; 
+		
+		/// This particular iteration's list to be added
+		to_add = create_bl(); 
+		
+		/// Node maintenence
+		current = transition_node;
+		to_add->head = current;
+		current->prev = NULL;
+		current->tag = 0;
+
+		/// Upate the DS for the head
+		current->ds = to_add;
+		
+		/// Now iterate through the nodes for this iteration's DS
+		while (current->next != NULL)
+		{
+			current = current->next;
+			current->ds = to_add;
+			current->tag = current->prev->tag + skip_size;
+			++node_count;
+		}
+		
+		/// Finalize this iteration's DS
+		to_add->tail = current;
+		current->next = NULL;
+		to_add->reorder_flag = 0;
+		to_add->size = node_count;
+
+		/// Insert the finished DS into the Top_List
+		insert_tl(holder, to_add);
+	}
 }
 
 /*! 

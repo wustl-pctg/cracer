@@ -44,7 +44,7 @@ cilk int main ( int argc, char *argv[] )
 	int i = 0, j;
 	#ifdef RD_STATS
 	int num_splits = 0, list_count = 1;
-	int num_rebalances = 0;
+	//int num_rebalances = 0;
 
 	Bottom_List * current_bl;
 	ll_node * current_ll_node;
@@ -93,25 +93,25 @@ cilk int main ( int argc, char *argv[] )
 	check_sub_correctness(list);
 #ifdef RD_STATS
 
-/*
- *    current_bl = list->head;
- *    printf("Size of bottom lists when split:\n");
- *    /// Calc size of bottom lists when splits occurred
- *    while (current_bl != NULL){
- *        printf("\tBottom List # %i : ", list_count++);
- *        current_ll_node = current_bl->list_of_size_of_bottom_list_when_split_head;
- *        while (	current_ll_node != NULL){
- *            num_splits++;
- *            printf("%i; ", current_ll_node->data);
- *            current_ll_node = current_ll_node->next;
- *        }
- *
- *        printf ( "\n" );
- *        current_bl = current_bl->next;
- *    }
- *
- *	printf("Total number of bottom list splits: %i\n\n", num_splits);
- */
+
+    current_bl = list->head;
+    printf("Size of bottom lists when split:\n");
+    /// Calc size of bottom lists when splits occurred
+    while (current_bl != NULL){
+        printf("\tBottom List # %i : ", list_count++);
+        current_ll_node = current_bl->list_of_size_of_bottom_list_when_split_head;
+        while (	current_ll_node != NULL){
+            num_splits++;
+            printf("%i; ", current_ll_node->data);
+            current_ll_node = current_ll_node->next;
+        }
+
+        printf ( "\n" );
+        current_bl = current_bl->next;
+    }
+
+	printf("Total number of bottom list splits: %i\n\n", num_splits);
+
 	list_count = 0;
 	current_ll_node = list->list_of_size_of_top_list_when_split_head;
 	printf("Size of top list when split: ");

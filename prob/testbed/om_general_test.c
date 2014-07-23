@@ -64,9 +64,9 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-		/*j = (rand() % i); ///< Case where each insert is random*/
+		//j = (rand() % i); ///< Case where each insert is random
 		j = i -1;     ///< Case where each insert is at the back
-		/*j = 0;        ///< Case where each insert is at the front*/
+		//j = 0;        ///< Case where each insert is at the front
 
 		insert(nodeArray[j], nodeArray[i], 0);
 
@@ -75,13 +75,15 @@ int main ( int argc, char *argv[] )
 		check_sub_correctness(list);
 		printf("..done %d\n", i);
 #endif
-	}
 
+	}
+	
 	// End clock
 	printf("Took %f s.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
 	/*order_test(nodeArray, num_nodes);*/
-	check_sub_correctness(list);
+	//check_sub_correctness(list);
+
 #ifdef RD_STATS
 	int num_splits = 0, list_count = 1;
 	int num_rebalances = 0;
@@ -111,7 +113,7 @@ int main ( int argc, char *argv[] )
 
 	/// Calc size of bottom lists when splits occurred
 	while (current_ll_node != NULL){
-		printf("%i; ", current_ll_node->data);
+		//printf("%i; ", current_ll_node->data);
 		list_count++;
 		current_ll_node = current_ll_node->next;
 	}
@@ -119,6 +121,7 @@ int main ( int argc, char *argv[] )
 
 	printf ( "Total number of top list rebalances: %i \n\n",  list_count);
 #endif
+
 	/// Free all the allocated memory
 	free_tl(list);
 
