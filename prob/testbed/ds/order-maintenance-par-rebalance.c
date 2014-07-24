@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  order-maintenance-par-rebalances
+ *       Filename:  order-maintenance-par-rebalance
  *
  *    Description:  Source file for Bender's OM-Data Structure with parallel rebalances
  *
@@ -16,7 +16,7 @@
  * =====================================================================================
  */
 
-#include "order-maintenance-par-rebalances.h"
+#include "order-maintenance-par-rebalance.h"
 
 /// Constants used within this source file
 static unsigned long int MAX_NUMBER = ~0;

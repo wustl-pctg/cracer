@@ -20,17 +20,16 @@
 #ifndef _ORDER_MAINTAIN_PAR_REBALANCE_H
 #define _ORDER_MAINTAIN_PAR_REBALANCE_H
 
-#include <cilk-lib.cilkh>
+//Parallel
+//#include <cilk-lib.cilkh>
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
 #include <math.h>
 #include <assert.h>
 
-#include "parfor.cilk"
-
 /*/// Pre-compiler macro for debugging */
-/*//#define RD_DEBUG*/
+#define RD_DEBUG
 /*#define RD_STATS*/
 
 /// FWD Declaration
@@ -79,18 +78,13 @@ typedef struct Bottom_List_s {
 
 typedef struct Internal_Node_s {
 	Bottom_List * bl;
-	unsigned int base, lvl;
+	unsigned int base, lvl, num_children;
 	struct Internal_Node_s *parent, *left, *right;
-
 } Internal_Node;
 
 typedef struct InsertRecord_s{
-
-	Bottom_List *ds;
 	OM_Node *x;
 	OM_Node *y;
-	int ID;
-
 } InsertRecord;
 
 /// Top-level LL made up of Bottom_List(s)
@@ -106,6 +100,7 @@ typedef struct Top_List_s{
 } Top_List;
 
 /// Parallel:
+Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node, unsigned int num_children);
 void create_btree_scaffolding(Bottom_List *_x, Bottom_List *_y);
 
 /// Declarations of the OM-functions (in batchify part)
@@ -135,8 +130,3 @@ void free_tl ( Top_List * list );
 void check_sub_correctness (Top_List * list);
 
 #endif 
-
-
-#endif 
-
-

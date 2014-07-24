@@ -1,7 +1,8 @@
 /*
  * =====================================================================================
  *
- *       Filename:  Bottom_List_mixed_test.c
+ *       Filename:  om_parallel_test
+ *      
  *
  *    Description:  Tests if the Top_List and Bottom_List implementation of Bender's
  *                  order-maintenance data structure is working correctly.
@@ -17,7 +18,7 @@
  * =====================================================================================
  */
 
-#include	"order-maintenance-general.h"
+#include	"order-maintenance-parallel-rebalance.h"
 #include	<stdlib.h>
 #include	<stdio.h>
 #include	<time.h>

@@ -84,7 +84,6 @@ typedef struct Top_List_s{
 
 	Bottom_List *head, *tail; /// TODO: change to Bottom_List of the sublist
 	int size;
-	int split_flag;
 #ifdef RD_STATS
 	ll_node * list_of_size_of_top_list_when_split_head, *list_of_size_of_top_list_when_split_tail;
 

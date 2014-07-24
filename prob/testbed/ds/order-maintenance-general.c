@@ -73,8 +73,6 @@ Top_List * create_tl ()
 	Bottom_List * bl = create_bl();
 	first_insert_tl(list, bl);
 
-	list->split_flag = 0;
-
 	return list;
 }
 
@@ -461,7 +459,6 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	/// Each node in the list will be spaced out by skip_size tag spaces
 	unsigned long int skip_size = MAX_NUMBER >> lg_HALF_INT_BIT_SIZE;
 
-	list->split_flag = 1;
 	/// First reorganize list_to_split appropriately
 	current->tag = 0;
 	while (node_count < HALF_INT_BIT_SIZE && current->next != NULL)
