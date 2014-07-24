@@ -20,7 +20,7 @@
 
 /// Constants used within this source file
 static unsigned /*long*/ int MAX_NUMBER = ~0;
-static int INT_BIT_SIZE = 64;
+static int INT_BIT_SIZE = 32;
 static double OVERFLOW_CONSTANT = 1.5;
 
 /* 
@@ -73,14 +73,13 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 	Internal_Node * x = _x->internal, * y = _y->internal;
 	unsigned int current_lvl = 1,
 				 xtag = _x->tag,
-				 ytag = _y->tag, 
+				 ytag = _y->tag,
 				 lvl_count = INT_BIT_SIZE,
 				 bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
 
 	/// This will get the first bit from the left in x->tag and y->tag that 
 	/// are not the same. That bit (counted from the right) will be lvl_count.
-	while ( ((!(xtag ^ ytag)) & bit_counter) == bit_counter)
-	{
+	while ( (!(xtag ^ ytag)) & bit_counter == bit_counter){
 		lvl_count--;
 		bit_counter = bit_counter >> 1;
 	}
@@ -101,7 +100,6 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 			x->parent->left = x;
 
 		x->parent->num_children += 1;
-		x = x->parent;
 
 		/// Deal with Y
 		if (!(y->parent))
@@ -114,22 +112,17 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 			y->parent->left = y;
 
 		y->parent->num_children += 1;
-		y = y->parent;
 
 		/// Update base
-		if (current_lvl = 1)
-		{
-			x->parent->base = (_x->tag >> 1) << 1;
-			y->parent->base = (_y->tag >> 1) << 1;
-		}
-		else
-		{
-			x->parent->base = (x->base >> current_lvl) << current_lvl; 
-			y->parent->base = (y->base >> current_lvl) << current_lvl; 
-		}
-
+		x->parent->base = (x->base >> current_lvl) << current_lvl; 
+		y->parent->base = (y->base >> current_lvl) << current_lvl; 
+		
 		/// Update bit_counter (move up one bit/multiply by 2)
 		bit_counter = bit_counter <<  1;
+
+		/// Move up internal node
+		x = x->parent;
+		y = y->parent;
 
 		/// Update lvl of x/y
 		x->lvl = y->lvl = ++current_lvl;
@@ -144,7 +137,7 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 			x->parent->right = y;
 			y->parent = x->parent;	
 		}
-		else if (y->parent) ///< SHOULD THIS BE ELSE IF OR JUST ANOTHER IF?
+		else 
 		{
 			y->parent->left = x;
 			y->parent->right = y;
@@ -497,7 +490,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		y->internal->lvl = 1;
 		// This is a leaf internal node, so no children. Base won't be used in leaf node.
 		y->internal->num_children = 0;
-		y->internal->base =  (y->tag >> 1) << 1; 
+		y->internal->base = y->tag; 
 		y->internal->parent = y->internal->left = y->internal->right = NULL;
 		// Give a reference to the internal node to y itself
 		y->internal->bl = y;
