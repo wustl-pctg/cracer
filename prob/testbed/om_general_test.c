@@ -66,16 +66,25 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-//			if(list->split_flag == 0) {
-//			if(i % 2 == 0)
-//				j = (rand() % i); ///< Case where each insert is random
-//			else
-//				j = i - 1;     ///< Case where each insert is at the back
-			//j = 0;        ///< Case where each insert is at the front
-//		}
-//		else if (list->split_flag == 1) {
+		/// Testing what interchanging random in appending does
+		/*
+		if(list->split_flag == 0) {
+			if(i % 2 == 0)
+				j = (rand() % i); ///< Case where each insert is random
+			else
+				j = i - 1;     ///< Case where each insert is at the back
+
+		}
+		else if (list->split_flag == 1) {
 			j = i - 1;
-//		}
+		}
+		*/
+
+		/// Options for inserting pattern
+		//j = (rand() % i); ///< Case where each insert is random
+		j = i - 1;     ///< Case where each insert is at the back
+		//j = 0;        ///< Case where each insert is at the front
+
 		insert(nodeArray[j], nodeArray[i]);
 
 #ifdef RD_DEBUG

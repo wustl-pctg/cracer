@@ -43,7 +43,7 @@ cilk int main(int argc, char *argv[])
 {
 	int n, result;
 
-	/*clock_t start;*/
+	clock_t start;
 
 	if (argc != 2) {
 	  fprintf(stderr, "Usage: fib [<cilk options>] <n>\n");
@@ -51,12 +51,12 @@ cilk int main(int argc, char *argv[])
 	}
 	n = atoi(argv[1]);
 
-	/*start = clock();*/
+	start = clock();
 
 	result = spawn fib(n);
 	sync;
 	
 
-	/*printf("Result: %d\nTime: %f seconds\n", result, ((double)clock() - start) / CLOCKS_PER_SEC);*/
+	printf("Result: %d\nTime: %f seconds\n", result, ((double)clock() - start) / CLOCKS_PER_SEC);
 	return 0;
 }

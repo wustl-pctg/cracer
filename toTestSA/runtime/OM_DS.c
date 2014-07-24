@@ -131,7 +131,6 @@ void insert_internal(OM_Node * x, OM_Node *y)
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if (x->next->tag & x->tag & 0x1 == 0x1) y->tag += 1;
 			
-
 		/// Check for collision
 		if ((x->next->tag - x->tag) <= 1)
 		{

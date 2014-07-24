@@ -133,7 +133,7 @@ void insert (OM_Node * x, OM_Node *y)
 	if (x == ds->tail)
 	{
 		/// y's tage is the average of its neighbors
-		tempTag = (x->tag >> 1) + (MAX_NUMBER >> 1);
+		tempTag = (x->tag >> 1) + (MAX_NUMBER >> 1); /// Could be why faster.
 		
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if (x->tag & 0x1 == 0x1) tempTag += 1;
@@ -173,7 +173,6 @@ void insert (OM_Node * x, OM_Node *y)
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if (x->next->tag & x->tag & 0x1 == 0x1) tempTag += 1;
 			
-
 		/// Check for collision
 		if ((x->next->tag - x->tag) <= 1)
 		{
