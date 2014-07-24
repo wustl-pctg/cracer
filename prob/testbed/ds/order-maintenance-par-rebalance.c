@@ -23,19 +23,49 @@ static unsigned long int MAX_NUMBER = ~0;
 static int INT_BIT_SIZE = 64;
 static double OVERFLOW_CONSTANT = 1.5;
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  build_array_from_rebalance_list
+ *  Description:  Gets an array of all of the nodes that need to be put in the rebalanced tree.
+ * =====================================================================================
+ */
+Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node, unsigned int num_children){
+	/// Holds pointers to all of the internal nodes needed
+	Internal_Node ** nodeArray = malloc(sizeof(Internal_Node *) * num_children)
+#ifdef RD_DEBUG
+	assert(current_node != NULL);
+#endif
+	/// Get the right most node and store it in current_node
+	while (current_node->lvl > 1){
+		if (current_node->right)
+			current_node = current_node->right;
+		else
+			current_node = current_node->left;
+	}
+	while (num_children > 0){
+	#ifdef RD_DEBUG
+		assert(current_node != NULL);
+	#endif
+		nodeArray[--num_children] = current_node;
+		current_node = current_node->bl->prev->internal;
+	}
+
+	return nodeArray;
+}
+
 /// Create the tree above x and y
 void create_btree_scaffolding(Bottom_List *_x, Bottom_List *_y){
+	/// TODO: double check validity
 	/// Get the internal node
 	Internal_Node *x = _x->internal, *y = _y->internal;
 	unsigned int current_lvl = 1,
 				 xtag = x->tag,
 				 ytag = y->tag, 
 				 lvl_count = INT_BIT_SIZE,
-				 bit_counter = (0x1) >> ( INT_BIT_SIZE - 1);
+				 bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
 
 	/// This will get the first bit from the left in x->tag and y->tag that 
 	/// are not the same. That bit (counted from the right) will be lvl_count.
-	/// TODO: double check validity
 	while ( ((!(xtag ^ ytag)) & bit_counter) == bit_counter){
 		lvl_count--;
 		bit_counter = bit_counter >> 1;
@@ -71,11 +101,15 @@ void create_btree_scaffolding(Bottom_List *_x, Bottom_List *_y){
 
 		/// Update base
 		if (current_lvl = 1 ){
-			x->parent->base =  ((_x->tag >> 1) << 1);
-			y->parent->base =  ((_y->tag >> 1) << 1);
+			x->parent->base = (_x->tag >> 1) << 1;
+			y->parent->base = (_y->tag >> 1) << 1;
 		}
-		/// Update bit_counter
-		bit_counter = bit_counter >> 1;
+		else {
+			x->parent->base = (x->base >> current_lvl) << current_lvl; 
+			y->parent->base = (y->base >> current_lvl) << current_lvl; 
+		}
+		/// Update bit_counter (move up one bit/multiply by 2)
+		bit_counter = bit_counter <<  1;
 		/// Update lvl of x/y
 		x->lvl = y->lvl = ++current_lvl;
 	}
@@ -356,9 +390,10 @@ void first_insert_tl (Top_List * list, Bottom_List * y)
 	// Base level
 	y->internal->lvl = 1;
 	// This is a leaf internal node, so no children. Base won't be used in leaf node.
-	y->internal->num_children = y->internall->base =  0; 
+	y->internal->num_children = y->internal->base =  0; 
 	y->internal->parent = y->internal->left = y->internal->right = NULL;
-	y->internal->om_node = y;
+	// Give a reference to the internal node to y itself
+	y->internal->bl = y;
 }
 
 /*! 
@@ -546,6 +581,83 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	insert_tl(list_to_split, to_add);
 }
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  rebuild_tree
+ *  Description:  Recursively calls rebuild on it's children. If lvl 2, then assign children.
+ * =====================================================================================
+ */
+void rebuild_tree(Internal_Node * current_node, Internal_Node * nodeArray, int startIndex,  int endIndex){
+	int newStartIndex, newEndIndex;
+#ifdef RD_DEBUG
+	if (current_node->lvl < 2){
+	{
+
+		printf ( "Debug: rebuild tree lvl is too small.\n" );
+		assert(0);
+	}
+#endif 
+
+	if (current_node->lvl == 2)
+	{
+		switch (endIndex - startIndex){
+			case -1:
+				current_node->left = NULL;
+				current_node->right = NULL;
+				current_node->num_children = 0;
+			case 0:
+				current_node->left = nodeArray[startIndex];
+				current_node->right = NULL;
+				current_node->num_children = 1;
+				break;
+			case 1:
+				current_node->left = nodeArray[startIndex];
+				current_node->right = nodeArray[endIndex];
+				current_node->num_children = 2;
+				break;
+			default:
+#ifdef RD_DEBUG
+				printf ( "Debug: error too many nodes given to this internal node.\n" );
+#endif
+				break;
+		}
+	}
+	else {
+		//Parallel:
+		current_node->num_children = (endIndex - startIndex) + 1;
+		// Get new start and end indexes
+		if (startIndex == endIndex){
+			startIndex = 1;
+			endIndex  = 0;
+		}
+		else {
+			//startIndex stays the same
+			//so does endIndex
+			newEndIndex = endIndex >> 1;
+			newStartIndex = newEndIndex + 1;
+
+		}
+
+		if(! (current_node->left))
+		{ //No left branch, so make one
+			current_node->left = malloc(sizeof(Internal_Node));
+			current_node->left->lvl = current_node->lvl - 1;
+			current_node->left->base = current->base;	
+		}
+
+		if(! (current_node->right))
+		{ //No right branch, so make one
+			current_node->right = malloc(sizeof(Internal_Node));
+			current_node->right->lvl = current_node->lvl - 1;
+			//Append a 1 onto the base
+			current_node->right->base = current->base + (0x1 << (current_node->right->lvl - 1 ));	
+		}
+		rebuild_tree(current_node->left, nodeArray, startIndex, newEndIndex);
+		rebuild_tree(current_node->right, nodeArray, newStartIndex, endIndex);
+	}
+
+}
+
 /*! 
  * ===  FUNCTION  ======================================================================
  *         Name:  rebalance_tl
@@ -553,8 +665,8 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
  *  			  algorithm.
  * =====================================================================================
  */
-void rebalance_tl (Bottom_List * pivot)
-
+void rebalance_tl (Bottom_List * pivot){
+			///TODO: degug logically
 #ifdef RD_STATS
 			
 			if (list->list_of_size_of_top_list_when_split_head == NULL)
@@ -578,32 +690,52 @@ void rebalance_tl (Bottom_List * pivot)
 	
 	/// Constants used to calculate when to rebalance
 	double overflow_density, overflow_threshold, i = -1;
-	unsigned long int enclosing_tag_range, lTag, rTag, num_elements_in_sublist = 2, skip_size;
-
+	unsigned int current_tag_range = 1, current_tree_lvl = 1;
 	/// Check if range is in overflow
 	/// Calculate overflow_density
-	while (overflow_density > overflow_threshold ) && enclosing_tag_range != MAX_NUMBER);
-		enclosing_tag_range = rTag - lTag;
+	//
+	do 
+	{	
+		if (current_node->parent)
+			current_node = current_node->parent;
+		else //For whatever reason, the existing scaffolding is not large enough
+			 //to hold the nodes and still be under the threshold.
+		{
+			//TODO: figure if this ever happens and how to deal with it.
+			assert(0);
+			current_node->parent = malloc(sizeof(Internal_Node));
+			//if the ith bit is 1, it's parent should look to it as the right node
+			if (current_node & current_tag_range == current_tag_range)
+				current_node->parent->right = current_node;
+			else
+				current_node->parent->left = current_node;
+			current_node = current->node;
 
-		i = ceil( log2((double)enclosing_tag_range) );
+		}
+		///Double tag range
+		current_tag_range = current_tag_range << 1;
 
-		overflow_threshold = pow(OVERFLOW_CONSTANT, -1.0 * i); 
+		/// This would have current_tree_lvl -1 if the current_tree_lvl++ were before this line.	
+		overflow_threshold = pow(OVERFLOW_CONSTANT, -1.0 * (current_tree_lvl));
+	
+		overflow_density = ((double)current_node->num_children) / ((double)current_tag_range);
 
-		overflow_density = (num_elements_in_sublist) / (double)enclosing_tag_range ;
+		/// Increase the tree level
+		current_tree_lvl++;
 	}
+	while ( (overflow_density > overflow_threshold ) && (current_node->lvl < INT_BIT_SIZE) );
+	//TODO: put list into array
+	Internal_Node ** nodeArray = build_array_from_rebalance_list(current_node);
 
-	/// This is the spacing in between tags of Bottom_Lists in between lList and rList
-	skip_size = (unsigned long int) ( enclosing_tag_range / (num_elements_in_sublist + 1) );
-
+	
+	//Parallel: rebuild left and right part of tree
+	//TODO: make parallel
 #ifdef RD_DEBUG
-	if (rTag != MAX_NUMBER)
-		assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= rList->tag ));
-	else
-		assert(skip_size>0 && ((skip_size * (num_elements_in_sublist - 1)) + lList->tag <= MAX_NUMBER ));		
+	assert(current_node->num_children > 0);
 #endif
-
-	/// Relabel the tag range
-	relabel_tl_tag_range(lList, rList, skip_size);
+	rebuild_tree(current_node->left, nodeArray, 0, (signed)(current_node->num_children / 2));
+	rebuild_tree(current_node->right,  nodeArray, (signed)(current_node->num_children / 2) + 1, (signed)current_node->num_children);
+	free(nodeArray);
 }
 
 /*! 

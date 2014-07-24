@@ -67,6 +67,8 @@ typedef struct Bottom_List_s {
 	struct Bottom_List_s *prev;
 	unsigned long int tag;
 
+	Internal_Node * internal;
+
 #ifdef RD_STATS
 	ll_node * list_of_size_of_bottom_list_when_split_head, *list_of_size_of_bottom_list_when_split_tail;
 
@@ -76,7 +78,7 @@ typedef struct Bottom_List_s {
 } Bottom_List;
 
 typedef struct Internal_Node_s {
-	OM_Node *om_node;
+	Bottom_List * bl;
 	unsigned int base, lvl;
 	struct Internal_Node_s *parent, *left, *right;
 
