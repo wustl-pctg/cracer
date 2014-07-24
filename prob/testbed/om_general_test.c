@@ -41,12 +41,13 @@ int main ( int argc, char *argv[] )
 {
 	/// User specifies the number of nodes to insert
 	int num_nodes = atoi(argv[1]);
-	int i = 0, j;
+	int i = 0, j, split_flag = 0;
 
 	OM_Node ** nodeArray = malloc(num_nodes * sizeof(OM_Node *));
 	
 	/// Create the list
  	Top_List * list = create_tl(); 
+
 
 	/// Assign memory to all the nodes to be inserted
 	for (;i < num_nodes; i++)
@@ -64,10 +65,16 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-		//j = (rand() % i); ///< Case where each insert is random
-		j = i -1;     ///< Case where each insert is at the back
-		//j = 0;        ///< Case where each insert is at the front
-
+//			if(list->split_flag == 0) {
+//			if(i % 2 == 0)
+//				j = (rand() % i); ///< Case where each insert is random
+//			else
+//				j = i - 1;     ///< Case where each insert is at the back
+			//j = 0;        ///< Case where each insert is at the front
+//		}
+//		else if (list->split_flag == 1) {
+			j = i - 1;
+//		}
 		insert(nodeArray[j], nodeArray[i], 0);
 
 #ifdef RD_DEBUG
@@ -82,7 +89,7 @@ int main ( int argc, char *argv[] )
 	printf("Took %f s.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
 	/*order_test(nodeArray, num_nodes);*/
-	//check_sub_correctness(list);
+	check_sub_correctness(list);
 
 #ifdef RD_STATS
 	int num_splits = 0, list_count = 1;
@@ -90,18 +97,18 @@ int main ( int argc, char *argv[] )
 
 	Bottom_List * current_bl = list->head;
 	ll_node * current_ll_node;
-	printf("Size of bottom lists when split:\n");
+//	printf("Size of bottom lists when split:\n");
 	/// Calc size of bottom lists when splits occurred
 	while (current_bl != NULL){
-		printf("\tBottom List # %i : ", list_count++);
+//		printf("\tBottom List # %i : ", list_count++);
 		current_ll_node = current_bl->list_of_size_of_bottom_list_when_split_head;
 		while (	current_ll_node != NULL){
 			num_splits++;
-			printf("%i; ", current_ll_node->data);
+//			printf("%i; ", current_ll_node->data);
 			current_ll_node = current_ll_node->next;
 		}
 
-		printf ( "\n" );
+//		printf ( "\n" );
 		current_bl = current_bl->next;
 	}
 
@@ -109,7 +116,7 @@ int main ( int argc, char *argv[] )
 
 	list_count = 0;
 	current_ll_node = list->list_of_size_of_top_list_when_split_head;
-	printf("Size of top list when split: ");
+//	printf("Size of top list when split: ");
 
 	/// Calc size of bottom lists when splits occurred
 	while (current_ll_node != NULL){
@@ -117,7 +124,7 @@ int main ( int argc, char *argv[] )
 		list_count++;
 		current_ll_node = current_ll_node->next;
 	}
-	printf ( "\n" );
+//	printf ( "\n" );
 
 	printf ( "Total number of top list rebalances: %i \n\n",  list_count);
 #endif

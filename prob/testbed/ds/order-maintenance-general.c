@@ -73,6 +73,8 @@ Top_List * create_tl ()
 	Bottom_List * bl = create_bl();
 	first_insert_tl(list, bl);
 
+	list->split_flag = 0;
+
 	return list;
 }
 
@@ -362,7 +364,7 @@ int order (OM_Node * x, OM_Node * y)
 }
 
 
-/*! 
+/*! OLD VERSION 
  * ===  FUNCTION  ======================================================================
  *         Name:  split_bl
  *  Description:  Splits the bottom list into two bottom lists. Then it inserts the second
@@ -438,13 +440,14 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 }
 */
 
-/*! 
+/*! KUNAL'S VERSION
  * ===  FUNCTION  ======================================================================
  *         Name:  split_bl
  *  Description:  Splits the bottom list into two bottom lists. Then it inserts the second
  *  			  after the first in the top list.
  * =====================================================================================
  */
+
 void split_bl (Top_List * list, Bottom_List * list_to_split)
 {
 	OM_Node * current = list_to_split->head, *transition_node;
@@ -458,6 +461,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	/// Each node in the list will be spaced out by skip_size tag spaces
 	unsigned long int skip_size = MAX_NUMBER >> lg_HALF_INT_BIT_SIZE;
 
+	list->split_flag = 1;
 	/// First reorganize list_to_split appropriately
 	current->tag = 0;
 	while (node_count < HALF_INT_BIT_SIZE && current->next != NULL)
