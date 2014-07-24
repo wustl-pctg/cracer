@@ -76,7 +76,7 @@ int main ( int argc, char *argv[] )
 //		else if (list->split_flag == 1) {
 			j = i - 1;
 //		}
-		insert(nodeArray[j], nodeArray[i], 0);
+		insert(nodeArray[j], nodeArray[i]);
 
 #ifdef RD_DEBUG
 		printf("Check for correctness..");

@@ -205,8 +205,7 @@ void insert_internal(OM_Node *x, OM_Node *y){
 
 #endif
 			split_bl(ds->parent, ds);
-			printf ( "Depth:%i\n", depth );
-			insert(x, y,depth++ );
+			insert(x, y );
 			return;
 		}
 
@@ -245,8 +244,7 @@ void insert_internal(OM_Node *x, OM_Node *y){
 
 			split_bl(ds->parent, ds);
 			
-			printf ( "Depth:%i\n", depth );
-			insert(x, y,depth++);
+			insert(x, y);
 			return;
 		}
 
