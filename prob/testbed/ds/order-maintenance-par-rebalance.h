@@ -43,7 +43,8 @@ typedef struct OM_Node_s{
 
 	struct OM_Node_s *next;
 	struct OM_Node_s *prev;
-	unsigned long int tag;
+	unsigned /*long*/ int tag;
+	int ID;
 	struct Bottom_List_s * ds;
 
 } OM_Node;
@@ -64,7 +65,7 @@ typedef struct Bottom_List_s {
 	int reorder_flag;
 	struct Bottom_List_s *next;
 	struct Bottom_List_s *prev;
-	unsigned long int tag;
+	unsigned /*long*/ int tag;
 
 	struct Internal_Node_s * internal;
 
@@ -121,7 +122,7 @@ void insert_tl(Bottom_List *x, Bottom_List *y);
 int order(OM_Node * x, OM_Node * y);
 void split_bl(Top_List * list, Bottom_List * list_to_split);
 void rebalance_tl(Bottom_List * pivot);
-void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const long int skip_size);
+void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const /*long*/ int skip_size);
 void rebalance_bls(Top_List * list);
 void print_tl(Top_List * list);
 void print_bl(Bottom_List * list);

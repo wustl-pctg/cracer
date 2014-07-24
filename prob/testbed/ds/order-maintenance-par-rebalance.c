@@ -19,7 +19,7 @@
 #include "order-maintenance-par-rebalance.h"
 
 /// Constants used within this source file
-static unsigned long int MAX_NUMBER = ~0;
+static unsigned /*long*/ int MAX_NUMBER = ~0;
 static int INT_BIT_SIZE = 64;
 static double OVERFLOW_CONSTANT = 1.5;
 
@@ -470,6 +470,15 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		list->size += 1;
 
 		///Parallel: Create binary tree scaffolding
+		y->internal = malloc(sizeof(Internal_Node));
+		// Base level
+		y->internal->lvl = 1;
+		// This is a leaf internal node, so no children. Base won't be used in leaf node.
+		y->internal->num_children = 0;
+		y->internal->base =  (y->tag >> 1) << 1; 
+		y->internal->parent = y->internal->left = y->internal->right = NULL;
+		// Give a reference to the internal node to y itself
+		y->internal->bl = y;
 		///TODO: Make this parallel
 		create_btree_scaffolding(x, y);
 	}
@@ -526,7 +535,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
 	/// Each node in the list will be spaced out by skip_size tag spaces
 	/// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
-	unsigned long int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
+	unsigned /*long*/ int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
 
 	/// Iterate to the middle updating tags along the way
 	while (node_count < (list_to_split->size >> 1))
@@ -589,9 +598,8 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex){
 	int newStartIndex, newEndIndex;
 #ifdef RD_DEBUG
-	if (current_node->lvl < 2){
+	if (current_node->lvl < 2)
 	{
-
 		printf ( "Debug: rebuild tree lvl is too small.\n" );
 		assert(0);
 	}
@@ -733,8 +741,8 @@ void rebalance_tl (Bottom_List * pivot){
 #ifdef RD_DEBUG
 	assert(current_node->num_children > 0);
 #endif
-	rebuild_tree(current_node->left, nodeArray, 0, (signed)(current_node->num_children / 2));
-	rebuild_tree(current_node->right,  nodeArray, (signed)(current_node->num_children / 2) + 1, (signed)current_node->num_children);
+	rebuild_tree(current_node->left, nodeArray, 0, (signed int)(current_node->num_children / 2));
+	rebuild_tree(current_node->right,  nodeArray, (signed int)(current_node->num_children / 2) + 1, (signed int)current_node->num_children);
 	free(nodeArray);
 }
 
@@ -744,7 +752,7 @@ void rebalance_tl (Bottom_List * pivot){
  *  Description:  Relabels the range of tags from list start to end using a distance of skip_size.
  * =====================================================================================
  */
-void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const long int  skip_size)
+void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const /*long*/ int  skip_size)
 {
 	Bottom_List * current = start;
 	current->tag = start->tag;
