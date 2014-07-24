@@ -29,24 +29,34 @@ static double OVERFLOW_CONSTANT = 1.5;
  *  Description:  Gets an array of all of the nodes that need to be put in the rebalanced tree.
  * =====================================================================================
  */
-Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node){
+Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
+{
 	int num_children = (signed int)current_node->num_children;
+
 	/// Holds pointers to all of the internal nodes needed
 	Internal_Node ** nodeArray = malloc(sizeof(Internal_Node *) * num_children);
+
 #ifdef RD_DEBUG
 	assert(current_node != NULL);
 #endif
-	/// Get the right most node and store it in current_node
-	while (current_node->lvl > 1){
+
+	/// Get the right most base node and store it in current_node
+	while (current_node->lvl > 1)
+	{
 		if (current_node->right)
 			current_node = current_node->right;
 		else
 			current_node = current_node->left;
 	}
-	while (num_children > 0){
+
+	/// Iterate from the last Bottom_List storing the internal nodes in nodeArray
+	while (num_children > 0)
+	{
+
 	#ifdef RD_DEBUG
 		assert(current_node != NULL);
 	#endif
+
 		nodeArray[--num_children] = current_node;
 		current_node = current_node->bl->prev->internal;
 	}
@@ -55,10 +65,12 @@ Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node){
 }
 
 /// Create the tree above x and y
-void create_btree_scaffolding(Bottom_List *_x, Bottom_List *_y){
+void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
+{
 	/// TODO: double check validity
+
 	/// Get the internal node
-	Internal_Node *x = _x->internal, *y = _y->internal;
+	Internal_Node * x = _x->internal, * y = _y->internal;
 	unsigned int current_lvl = 1,
 				 xtag = _x->tag,
 				 ytag = _y->tag, 
@@ -67,7 +79,8 @@ void create_btree_scaffolding(Bottom_List *_x, Bottom_List *_y){
 
 	/// This will get the first bit from the left in x->tag and y->tag that 
 	/// are not the same. That bit (counted from the right) will be lvl_count.
-	while ( ((!(xtag ^ ytag)) & bit_counter) == bit_counter){
+	while ( ((!(xtag ^ ytag)) & bit_counter) == bit_counter)
+	{
 		lvl_count--;
 		bit_counter = bit_counter >> 1;
 	}
@@ -75,55 +88,64 @@ void create_btree_scaffolding(Bottom_List *_x, Bottom_List *_y){
 	bit_counter = 0x1;
 
 	// This is lvl_count -1 because at lvl count we want to create the same node
-	while (current_lvl < lvl_count-1){
+	while (current_lvl < lvl_count-1)
+	{
 		/// Deal with X
 		if (!(x->parent))
 				x->parent = malloc(sizeof(Internal_Node));
+
 		/// Assign x->parent's reference to x (left if bit is 0, right if bit is 1)
 		if (xtag & bit_counter == bit_counter)
 			x->parent->right = x;
 		else
 			x->parent->left = x;
 
-		x->parent->num_children++;
+		x->parent->num_children += 1;
 		x = x->parent;
 
 		/// Deal with Y
 		if (!(y->parent))
 				y->parent = malloc(sizeof(Internal_Node));
+
 		/// Assign y->parent's reference to y (left if bit is 0, right if bit is 1)
 		if (ytag & bit_counter == bit_counter)
 			y->parent->right = y;
 		else
 			y->parent->left = y;
 
-		y->parent->num_children++;
+		y->parent->num_children += 1;
 		y = y->parent;
 
 		/// Update base
-		if (current_lvl = 1 ){
+		if (current_lvl = 1)
+		{
 			x->parent->base = (_x->tag >> 1) << 1;
 			y->parent->base = (_y->tag >> 1) << 1;
 		}
-		else {
+		else
+		{
 			x->parent->base = (x->base >> current_lvl) << current_lvl; 
 			y->parent->base = (y->base >> current_lvl) << current_lvl; 
 		}
+
 		/// Update bit_counter (move up one bit/multiply by 2)
 		bit_counter = bit_counter <<  1;
+
 		/// Update lvl of x/y
 		x->lvl = y->lvl = ++current_lvl;
 	}
 
 	//Now current_lvl == lvl_count-1
-	if (x->parent || y->parent){
+	if (x->parent || y->parent)
+	{
 		if (x->parent)
 		{
 			x->parent->left = x;
 			x->parent->right = y;
 			y->parent = x->parent;	
 		}
-		else if (y->parent) {
+		else if (y->parent) ///< SHOULD THIS BE ELSE IF OR JUST ANOTHER IF?
+		{
 			y->parent->left = x;
 			y->parent->right = y;
 			x->parent = y->parent;
