@@ -147,7 +147,10 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 	else
 	{
 		x->parent = y->parent = malloc(sizeof(Internal_Node));
-		x->parent->lvl = ++current_lvl;
+		x->parent->lvl = current_lvl + 1;
+		/// Update shared parent's reference to x/y
+		x->parent->left = x;
+		y->parent->right = y;
 	}
 
 	x->parent->num_children = x->num_children + y->num_children;
@@ -712,12 +715,15 @@ void rebalance_tl (Bottom_List * pivot){
 	
 	/// Constants used to calculate when to rebalance
 	double overflow_density, overflow_threshold, i = -1;
-	unsigned int current_tag_range = 1, current_tree_lvl = 1;
+	unsigned int current_tag_range = 1, current_tree_lvl = 0;
 	/// Check if range is in overflow
 	/// Calculate overflow_density
 	//
 	do 
 	{	
+		/// Increase the tree level
+		current_tree_lvl++;
+
 		if (current_node->parent)
 			current_node = current_node->parent;
 		else //For whatever reason, the existing scaffolding is not large enough
@@ -740,10 +746,9 @@ void rebalance_tl (Bottom_List * pivot){
 		/// This would have current_tree_lvl -1 if the current_tree_lvl++ were before this line.	
 		overflow_threshold = pow(OVERFLOW_CONSTANT, -1.0 * (current_tree_lvl));
 	
-		overflow_density = ((double)current_node->num_children) / ((double)current_tag_range);
+		//This is +1 because we still need to insert the needed node in the tag range
+		overflow_density = ((double)current_node->num_children + 1) / ((double)current_tag_range);
 
-		/// Increase the tree level
-		current_tree_lvl++;
 	}
 	while ( (overflow_density > overflow_threshold ) && (current_node->lvl < INT_BIT_SIZE) );
 
