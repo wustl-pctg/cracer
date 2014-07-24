@@ -35,6 +35,7 @@
 /// FWD Declaration
 struct Bottom_List_s;
 struct Top_List_s;
+struct Internal_Node_s; 
 
 
 /*/// The Node that makes up Bottom_Lists*/
@@ -42,7 +43,6 @@ typedef struct OM_Node_s{
 
 	struct OM_Node_s *next;
 	struct OM_Node_s *prev;
-	int ID;
 	unsigned long int tag;
 	struct Bottom_List_s * ds;
 
@@ -66,7 +66,7 @@ typedef struct Bottom_List_s {
 	struct Bottom_List_s *prev;
 	unsigned long int tag;
 
-	Internal_Node * internal;
+	struct Internal_Node_s * internal;
 
 #ifdef RD_STATS
 	ll_node * list_of_size_of_bottom_list_when_split_head, *list_of_size_of_bottom_list_when_split_tail;
@@ -100,7 +100,7 @@ typedef struct Top_List_s{
 } Top_List;
 
 /// Parallel:
-Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node, unsigned int num_children);
+Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node);
 void create_btree_scaffolding(Bottom_List *_x, Bottom_List *_y);
 
 /// Declarations of the OM-functions (in batchify part)

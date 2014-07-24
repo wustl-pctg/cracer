@@ -29,9 +29,10 @@ static double OVERFLOW_CONSTANT = 1.5;
  *  Description:  Gets an array of all of the nodes that need to be put in the rebalanced tree.
  * =====================================================================================
  */
-Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node, unsigned int num_children){
+Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node){
+	int num_children = (signed int)current_node->num_children;
 	/// Holds pointers to all of the internal nodes needed
-	Internal_Node ** nodeArray = malloc(sizeof(Internal_Node *) * num_children)
+	Internal_Node ** nodeArray = malloc(sizeof(Internal_Node *) * num_children);
 #ifdef RD_DEBUG
 	assert(current_node != NULL);
 #endif
@@ -59,8 +60,8 @@ void create_btree_scaffolding(Bottom_List *_x, Bottom_List *_y){
 	/// Get the internal node
 	Internal_Node *x = _x->internal, *y = _y->internal;
 	unsigned int current_lvl = 1,
-				 xtag = x->tag,
-				 ytag = y->tag, 
+				 xtag = _x->tag,
+				 ytag = _y->tag, 
 				 lvl_count = INT_BIT_SIZE,
 				 bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
 
@@ -585,7 +586,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
  *  Description:  Recursively calls rebuild on it's children. If lvl 2, then assign children.
  * =====================================================================================
  */
-void rebuild_tree(Internal_Node * current_node, Internal_Node * nodeArray, int startIndex,  int endIndex){
+void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex){
 	int newStartIndex, newEndIndex;
 #ifdef RD_DEBUG
 	if (current_node->lvl < 2){
@@ -640,7 +641,7 @@ void rebuild_tree(Internal_Node * current_node, Internal_Node * nodeArray, int s
 		{ //No left branch, so make one
 			current_node->left = malloc(sizeof(Internal_Node));
 			current_node->left->lvl = current_node->lvl - 1;
-			current_node->left->base = current->base;	
+			current_node->left->base = current_node->base;	
 		}
 
 		if(! (current_node->right))
@@ -648,7 +649,7 @@ void rebuild_tree(Internal_Node * current_node, Internal_Node * nodeArray, int s
 			current_node->right = malloc(sizeof(Internal_Node));
 			current_node->right->lvl = current_node->lvl - 1;
 			//Append a 1 onto the base
-			current_node->right->base = current->base + (0x1 << (current_node->right->lvl - 1 ));	
+			current_node->right->base = current_node->base + (0x1 << (current_node->right->lvl - 1 ));	
 		}
 		rebuild_tree(current_node->left, nodeArray, startIndex, newEndIndex);
 		rebuild_tree(current_node->right, nodeArray, newStartIndex, endIndex);
@@ -701,13 +702,13 @@ void rebalance_tl (Bottom_List * pivot){
 		{
 			//TODO: figure if this ever happens and how to deal with it.
 			assert(0);
-			current_node->parent = malloc(sizeof(Internal_Node));
-			//if the ith bit is 1, it's parent should look to it as the right node
-			if (current_node & current_tag_range == current_tag_range)
-				current_node->parent->right = current_node;
-			else
-				current_node->parent->left = current_node;
-			current_node = current->node;
+			/*current_node->parent = malloc(sizeof(Internal_Node));*/
+			/*//if the ith bit is 1, it's parent should look to it as the right node*/
+			/*if (current_ & current_tag_range == current_tag_range)*/
+				/*current_node->parent->right = current_node;*/
+			/*else*/
+				/*current_node->parent->left = current_node;*/
+			/*current_node = current->node;*/
 
 		}
 		///Double tag range
@@ -722,7 +723,8 @@ void rebalance_tl (Bottom_List * pivot){
 		current_tree_lvl++;
 	}
 	while ( (overflow_density > overflow_threshold ) && (current_node->lvl < INT_BIT_SIZE) );
-	//TODO: put list into array
+
+	/// Gets the 
 	Internal_Node ** nodeArray = build_array_from_rebalance_list(current_node);
 
 	
