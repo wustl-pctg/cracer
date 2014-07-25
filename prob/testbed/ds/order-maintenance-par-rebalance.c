@@ -19,8 +19,8 @@
 #include "order-maintenance-par-rebalance.h"
 
 /// Constants used within this source file
-static unsigned /*long*/ int MAX_NUMBER = ~0;
-static int INT_BIT_SIZE = 32;
+static unsigned /*long*/ int MAX_NUMBER = 255;
+static int INT_BIT_SIZE = 8;
 static double OVERFLOW_CONSTANT = 1.5;
 
 /* 
@@ -67,6 +67,92 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 /// Create the tree above x and y
 void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 {
+
+	Internal_Node * x = _x->internal, 
+				  * y = _y->internal; 
+
+	unsigned int current_lvl = 1,
+		xtag = _x->tag,
+		ytag = _y->tag,
+		lvl_count = 1,
+		bit_counter = (0x1),/* << ( INT_BIT_SIZE - 1), */
+		tag_difference = ytag - xtag;
+
+
+	if (_y->next)
+	{
+		/// Difference between y and y->next is less than distance from x to y (tags)
+		if ((_y->next->tag - ytag) < (ytag - xtag))
+		{
+			tag_difference = _y->next->tag - ytag;
+			//
+			x = _y->next->internal;
+		}
+		/// Otherwise the tag_difference was set correctly upon initialization
+	}
+	// if y has no next, it was set correctly
+	unsigned int x_parent_base = 0, y_parent_base = 1;
+
+	while (y_parent_base != x_parent_base)
+	{
+#ifdef RD_DEBUG
+		assert(bit_counter != 0 );
+		assert(current_lvl <= 64);
+#endif
+		x = x->parent;	
+		x_parent_base = x->base;
+
+		/// Inc current lvl
+		current_lvl++;
+
+		y_parent_base = (y->base >> current_lvl ) << current_lvl;
+
+		// IF the have the same base, link current y to x->parent
+		if (x_parent_base == y_parent_base){
+			y->parent = x;	
+		
+			/// Link the common ancestor of _x and _y together, with left/right depending on if we swapped x with y->next or not
+			if (tag_difference < (ytag - xtag))
+				x->left = y;
+			else
+				x->right = y;
+
+			/// Add one child to x->parent
+			x->num_children += 1;
+
+		}
+		else {
+			y->parent = malloc(sizeof(Internal_Node));
+
+			/// Assign y->parent's reference to y (left if bit is 0, right if bit is 1)
+			if (ytag & bit_counter == bit_counter)
+				y->parent->right = y;
+			else
+				y->parent->left = y;
+
+			y->parent->num_children = 1;
+
+			/// Update base
+			y->parent->base = y_parent_base;
+
+			/// Update lvl of y
+			y->parent->lvl = current_lvl;
+		}
+		// Move y up
+		y = y->parent;
+
+		// Move bit counter up one slot
+		bit_counter = bit_counter << 1;
+
+
+	} // end while
+	
+
+	
+
+
+}
+/*{
 	/// TODO: double check validity
 
 	/// Get the internal node
@@ -166,7 +252,7 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 
 	x->parent->num_children = x->num_children + y->num_children;
 
-}
+}*/
 
 void insert(OM_Node *x, OM_Node *y){
 	/*InsertRecord *ir = malloc(sizeof(InsertRecord));*/
@@ -386,14 +472,15 @@ void first_insert_bl (Bottom_List * ds, OM_Node * y)
  *  Description:  Insert y into list and initialize the necessary parameters of each.
  * =====================================================================================
  */
-void first_insert_tl (Top_List * list, Bottom_List * y)
+void first_insert_tl (Top_List * list, Bottom_List * _y)
 {
+	Internal_Node *y;
 	int i = 1;
 #ifdef RD_DEBUG
 	/// Make sure they're not NULL
-	if ( !(list && y) )
+	if ( !(list && _y) )
 	{
-		printf("First node or ds null: ds: %p y: %p\n", list, y);
+		printf("First node or ds null: ds: %p _y: %p\n", list, _y);
 		assert(0);
 	}
 	
@@ -404,30 +491,37 @@ void first_insert_tl (Top_List * list, Bottom_List * y)
 	}
 #endif
 	
-	/// Update necessary parameters
-	y->parent = list;
-	list->head = list->tail = y;	
-	y->tag = 0;
+	/// Update necessar__y parameters
+	_y->parent = list;
+	list->head = list->tail = _y;	
+	_y->tag = 0;
 
-	y->reorder_flag = 0;
-	y->next = y->prev = NULL;
+	_y->reorder_flag = 0;
+	_y->next = _y->prev = NULL;
 	list->size += 1;
 
-	/// Parallel: Binary tree internal node
-	y->internal = malloc(sizeof(Internal_Node));
+	/// Parallel: Binar_y tree internal node
+	_y->internal = y = malloc(sizeof(Internal_Node));
 	// Base level
-	y->internal->lvl = 1;
+	_y->internal->lvl = 1;
 	// This is a leaf internal node, so no children. Base won't be used in leaf node.
-	y->internal->num_children = y->internal->base =  0; 
-	y->internal->parent = y->internal->left = y->internal->right = NULL;
-	// Give a reference to the internal node to y itself
-	y->internal->bl = y;
+	_y->internal->num_children = _y->internal->base =  0; 
+	// Give a reference to the internal node to _y itself
+	_y->internal->bl = _y;
 
 	i = 2;
-	while ( i < INT_BIT_SIZE){
-		y->parent = malloc(sizeof(Internal_Node))	
-		
-		y->lvl = i++;
+	/// Make scaffolding from tag 0 all the way to the root.
+	while ( i <= INT_BIT_SIZE){
+		y->parent = malloc(sizeof(Internal_Node));
+		y->parent->num_children = 1;
+		y->parent->base = 0;
+		/// Set parent references to left/right
+		y->parent->left = y;
+		y->parent->right = NULL;
+		/// Increment lvl	
+		y->parent->lvl = i++;
+		/// Move up
+		y= y->parent;
 	}
 }
 
@@ -631,8 +725,36 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
  *  Description:  Recursively calls rebuild on it's children. If lvl 2, then assign children.
  * =====================================================================================
  */
-void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex){
+void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal_Node ** nodeArray, int startIndex,  int endIndex){
 	int newStartIndex, newEndIndex;
+
+	if (LEFT_OR_RIGHT == LEFT){
+		if (current_node->left)
+			current_node = current_node->left;
+		else {
+			/// We need to create this node
+			current_node->left = malloc(sizeof(Internal_Node));
+			current_node->left->parent = current_node;
+			current_node = current_node->left;
+			current_node->lvl = current_node->parent->lvl - 1;
+			current_node->base = current_node->parent->base; // left so it is the same base
+		}
+	}
+	else //RIGHT
+	{
+		if (current_node->right)
+			current_node = current_node->right;
+		else {
+			/// We need to create this node
+			current_node->right = malloc(sizeof(Internal_Node));
+			current_node->right->parent = current_node;
+			current_node = current_node->right;
+			current_node->lvl = current_node->parent->lvl - 1;
+			current_node->base = current_node->parent->base + (0x1 << (current_node->lvl -1) ); // right so it is the same base with a 1 in the next digit spot available
+		}
+
+	}
+
 #ifdef RD_DEBUG
 	if (current_node->lvl < 2)
 	{
@@ -669,18 +791,22 @@ void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int 
 		//Parallel:
 		current_node->num_children = (endIndex - startIndex) + 1;
 		// Get new start and end indexes
-		if (startIndex == endIndex){
+		if (startIndex >= endIndex){
 			startIndex = 1;
 			endIndex  = 0;
 		}
 		else {
 			//startIndex stays the same
 			//so does endIndex
-			newEndIndex = endIndex >> 1;
+			newEndIndex = (endIndex - startIndex + 1) / 2; 
 			newStartIndex = newEndIndex + 1;
+			#ifdef RD_DEBUG
+				assert(startIndex <= newEndIndex);
+				assert(newEndIndex <= endIndex);
+			#endif
 
 		}
-
+/*
 		if(! (current_node->left))
 		{ //No left branch, so make one
 			current_node->left = malloc(sizeof(Internal_Node));
@@ -694,9 +820,9 @@ void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int 
 			current_node->right->lvl = current_node->lvl - 1;
 			//Append a 1 onto the base
 			current_node->right->base = current_node->base + (0x1 << (current_node->right->lvl - 1 ));	
-		}
-		rebuild_tree(current_node->left, nodeArray, startIndex, newEndIndex);
-		rebuild_tree(current_node->right, nodeArray, newStartIndex, endIndex);
+		}*/
+		rebuild_tree(current_node, LEFT, nodeArray, startIndex, newEndIndex);
+		rebuild_tree(current_node, RIGHT, nodeArray, newStartIndex, endIndex);
 	}
 
 }
@@ -779,8 +905,8 @@ void rebalance_tl (Bottom_List * pivot){
 #ifdef RD_DEBUG
 	assert(current_node->num_children > 0);
 #endif
-	rebuild_tree(current_node->left, nodeArray, 0, (signed int)(current_node->num_children / 2));
-	rebuild_tree(current_node->right,  nodeArray, (signed int)(current_node->num_children / 2) + 1, (signed int)current_node->num_children);
+	rebuild_tree(current_node, LEFT,   nodeArray, 0, (signed int)((current_node->num_children) / 2));
+	rebuild_tree(current_node, RIGHT,  nodeArray, (signed int)((current_node->num_children) / 2) + 1, (signed int)current_node->num_children - 1);
 	free(nodeArray);
 }
 

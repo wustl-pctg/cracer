@@ -32,6 +32,9 @@
 #define RD_DEBUG
 /*#define RD_STATS*/
 
+#define LEFT 0
+#define RIGHT 1
+
 /// FWD Declaration
 struct Bottom_List_s;
 struct Top_List_s;
