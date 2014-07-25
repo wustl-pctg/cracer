@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 # libtoolT - Provide generalized library-building support services.
 # Generated automatically by  (GNU cilk 5.4.6)
@@ -44,10 +44,10 @@ available_tags=" CXX F77"
 
 # ### BEGIN LIBTOOL CONFIG
 
-# Libtool was configured on host austen.cse.wustl.edu:
+# Libtool was configured on host dickens:
 
 # Shell to use when invoking shell scripts.
-SHELL="/bin/sh"
+SHELL="/bin/bash"
 
 # Whether or not to build shared libraries.
 build_libtool_libs=yes
@@ -171,7 +171,7 @@ dlopen_self=unknown
 dlopen_self_static=unknown
 
 # Compiler flag to prevent dynamic linking.
-link_static_flag=""
+link_static_flag="-static"
 
 # Compiler flag to turn off builtin functions.
 no_builtin_flag=" -fno-builtin"
@@ -325,10 +325,10 @@ variables_saved_for_relink="PATH LD_LIBRARY_PATH LD_RUN_PATH GCC_EXEC_PREFIX COM
 link_all_deplibs=no
 
 # Compile-time system search path for libraries
-sys_lib_search_path_spec=" /usr/lib/gcc/x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../x86_64-redhat-linux/lib/x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../x86_64-redhat-linux/lib/../lib64/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../lib64/ /lib/x86_64-redhat-linux/4.4.6/ /lib/../lib64/ /usr/lib/x86_64-redhat-linux/4.4.6/ /usr/lib/../lib64/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../x86_64-redhat-linux/lib/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../ /lib/ /usr/lib/"
+sys_lib_search_path_spec=" /usr/lib/gcc/x86_64-linux-gnu/4.6/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/x86_64-linux-gnu/4.6/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/x86_64-linux-gnu/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/../lib/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu/4.6/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../lib/ /lib/x86_64-linux-gnu/4.6/ /lib/x86_64-linux-gnu/ /lib/../lib/ /usr/lib/x86_64-linux-gnu/4.6/ /usr/lib/x86_64-linux-gnu/ /usr/lib/../lib/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../ /lib/ /usr/lib/"
 
 # Run-time system search path for libraries
-sys_lib_dlsearch_path_spec="/lib /usr/lib /usr/lib64/R/lib /usr/lib64/alliance/lib /usr/lib64/atlas hwcap 1 nosegneg hwcap 1 nosegneg /usr/lib64/kicad /usr/lib64/mysql /usr/lib64/octave/3.4.3 /usr/lib64/qt-3.3/lib /usr/lib64/tcl8.5/tclx8.4 /usr/lib64/tcl8.5 /usr/lib64/xulrunner "
+sys_lib_dlsearch_path_spec="/lib /usr/lib /usr/local/lib /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu/mesa /lib32 /usr/lib32 "
 
 # Fix the shell variable $srcfile for the compiler.
 fix_srcfile_path=""
@@ -7223,10 +7223,10 @@ disable_libs=static
 # End:
 # ### BEGIN LIBTOOL TAG CONFIG: CXX
 
-# Libtool was configured on host austen.cse.wustl.edu:
+# Libtool was configured on host dickens:
 
 # Shell to use when invoking shell scripts.
-SHELL="/bin/sh"
+SHELL="/bin/bash"
 
 # Whether or not to build shared libraries.
 build_libtool_libs=yes
@@ -7350,7 +7350,7 @@ dlopen_self=unknown
 dlopen_self_static=unknown
 
 # Compiler flag to prevent dynamic linking.
-link_static_flag=""
+link_static_flag="-static"
 
 # Compiler flag to turn off builtin functions.
 no_builtin_flag=" -fno-builtin"
@@ -7405,11 +7405,11 @@ striplib="strip --strip-unneeded"
 
 # Dependencies to place before the objects being linked to create a
 # shared library.
-predep_objects="/usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../lib64/crti.o /usr/lib/gcc/x86_64-redhat-linux/4.4.6/crtbeginS.o"
+predep_objects="/usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/4.6/crtbeginS.o"
 
 # Dependencies to place after the objects being linked to create a
 # shared library.
-postdep_objects="/usr/lib/gcc/x86_64-redhat-linux/4.4.6/crtendS.o /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../lib64/crtn.o"
+postdep_objects="/usr/lib/gcc/x86_64-linux-gnu/4.6/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu/crtn.o"
 
 # Dependencies to place before the objects being linked to create a
 # shared library.
@@ -7421,7 +7421,7 @@ postdeps="-lstdc++ -lm -lgcc_s -lc -lgcc_s"
 
 # The library search path used internally by the compiler when linking
 # a shared library.
-compiler_lib_search_path="-L/usr/lib/gcc/x86_64-redhat-linux/4.4.6 -L/usr/lib/gcc/x86_64-redhat-linux/4.4.6 -L/usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../.."
+compiler_lib_search_path="-L/usr/lib/gcc/x86_64-linux-gnu/4.6 -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../.."
 
 # Method to check whether dependent libraries are shared objects.
 deplibs_check_method="pass_all"
@@ -7501,10 +7501,10 @@ variables_saved_for_relink="PATH LD_LIBRARY_PATH LD_RUN_PATH GCC_EXEC_PREFIX COM
 link_all_deplibs=no
 
 # Compile-time system search path for libraries
-sys_lib_search_path_spec=" /usr/lib/gcc/x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../x86_64-redhat-linux/lib/x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../x86_64-redhat-linux/lib/../lib64/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../lib64/ /lib/x86_64-redhat-linux/4.4.6/ /lib/../lib64/ /usr/lib/x86_64-redhat-linux/4.4.6/ /usr/lib/../lib64/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../x86_64-redhat-linux/lib/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../ /lib/ /usr/lib/"
+sys_lib_search_path_spec=" /usr/lib/gcc/x86_64-linux-gnu/4.6/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/x86_64-linux-gnu/4.6/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/x86_64-linux-gnu/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/../lib/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu/4.6/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../lib/ /lib/x86_64-linux-gnu/4.6/ /lib/x86_64-linux-gnu/ /lib/../lib/ /usr/lib/x86_64-linux-gnu/4.6/ /usr/lib/x86_64-linux-gnu/ /usr/lib/../lib/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../ /lib/ /usr/lib/"
 
 # Run-time system search path for libraries
-sys_lib_dlsearch_path_spec="/lib /usr/lib /usr/lib64/R/lib /usr/lib64/alliance/lib /usr/lib64/atlas hwcap 1 nosegneg hwcap 1 nosegneg /usr/lib64/kicad /usr/lib64/mysql /usr/lib64/octave/3.4.3 /usr/lib64/qt-3.3/lib /usr/lib64/tcl8.5/tclx8.4 /usr/lib64/tcl8.5 /usr/lib64/xulrunner "
+sys_lib_dlsearch_path_spec="/lib /usr/lib /usr/local/lib /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu/mesa /lib32 /usr/lib32 "
 
 # Fix the shell variable $srcfile for the compiler.
 fix_srcfile_path=""
@@ -7528,10 +7528,10 @@ include_expsyms=""
 
 # ### BEGIN LIBTOOL TAG CONFIG: F77
 
-# Libtool was configured on host austen.cse.wustl.edu:
+# Libtool was configured on host dickens:
 
 # Shell to use when invoking shell scripts.
-SHELL="/bin/sh"
+SHELL="/bin/bash"
 
 # Whether or not to build shared libraries.
 build_libtool_libs=yes
@@ -7655,7 +7655,7 @@ dlopen_self=unknown
 dlopen_self_static=unknown
 
 # Compiler flag to prevent dynamic linking.
-link_static_flag=""
+link_static_flag="-static"
 
 # Compiler flag to turn off builtin functions.
 no_builtin_flag=""
@@ -7809,10 +7809,10 @@ variables_saved_for_relink="PATH LD_LIBRARY_PATH LD_RUN_PATH GCC_EXEC_PREFIX COM
 link_all_deplibs=no
 
 # Compile-time system search path for libraries
-sys_lib_search_path_spec=" /usr/lib/gcc/x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../x86_64-redhat-linux/lib/x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../x86_64-redhat-linux/lib/../lib64/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../x86_64-redhat-linux/4.4.6/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../lib64/ /lib/x86_64-redhat-linux/4.4.6/ /lib/../lib64/ /usr/lib/x86_64-redhat-linux/4.4.6/ /usr/lib/../lib64/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../../x86_64-redhat-linux/lib/ /usr/lib/gcc/x86_64-redhat-linux/4.4.6/../../../ /lib/ /usr/lib/"
+sys_lib_search_path_spec=" /usr/lib/gcc/x86_64-linux-gnu/4.6/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/x86_64-linux-gnu/4.6/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/x86_64-linux-gnu/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/../lib/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu/4.6/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../lib/ /lib/x86_64-linux-gnu/4.6/ /lib/x86_64-linux-gnu/ /lib/../lib/ /usr/lib/x86_64-linux-gnu/4.6/ /usr/lib/x86_64-linux-gnu/ /usr/lib/../lib/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../x86_64-linux-gnu/lib/ /usr/lib/gcc/x86_64-linux-gnu/4.6/../../../ /lib/ /usr/lib/"
 
 # Run-time system search path for libraries
-sys_lib_dlsearch_path_spec="/lib /usr/lib /usr/lib64/R/lib /usr/lib64/alliance/lib /usr/lib64/atlas hwcap 1 nosegneg hwcap 1 nosegneg /usr/lib64/kicad /usr/lib64/mysql /usr/lib64/octave/3.4.3 /usr/lib64/qt-3.3/lib /usr/lib64/tcl8.5/tclx8.4 /usr/lib64/tcl8.5 /usr/lib64/xulrunner "
+sys_lib_dlsearch_path_spec="/lib /usr/lib /usr/local/lib /lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu/mesa /lib32 /usr/lib32 "
 
 # Fix the shell variable $srcfile for the compiler.
 fix_srcfile_path=""
