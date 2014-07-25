@@ -79,7 +79,7 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 
 	/// This will get the first bit from the left in x->tag and y->tag that 
 	/// are not the same. That bit (counted from the right) will be lvl_count.
-	while ( (!(xtag ^ ytag)) & bit_counter == bit_counter){
+	while ( ((~(xtag ^ ytag)) & bit_counter) == bit_counter){
 		lvl_count--;
 		bit_counter = bit_counter >> 1;
 	}
@@ -91,19 +91,24 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 	{
 		/// Deal with X
 		if (!(x->parent))
-				x->parent = malloc(sizeof(Internal_Node));
-
+		{
+		x->parent = malloc(sizeof(Internal_Node));
 		/// Assign x->parent's reference to x (left if bit is 0, right if bit is 1)
 		if (xtag & bit_counter == bit_counter)
 			x->parent->right = x;
 		else
 			x->parent->left = x;
-
+		
 		x->parent->num_children += 1;
+
+		/// Update base
+		x->parent->base = (x->base >> current_lvl) << current_lvl; 
+		}
 
 		/// Deal with Y
 		if (!(y->parent))
-				y->parent = malloc(sizeof(Internal_Node));
+		{
+		y->parent = malloc(sizeof(Internal_Node));
 
 		/// Assign y->parent's reference to y (left if bit is 0, right if bit is 1)
 		if (ytag & bit_counter == bit_counter)
@@ -112,10 +117,10 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 			y->parent->left = y;
 
 		y->parent->num_children += 1;
-
 		/// Update base
-		x->parent->base = (x->base >> current_lvl) << current_lvl; 
 		y->parent->base = (y->base >> current_lvl) << current_lvl; 
+		}
+
 		
 		/// Update bit_counter (move up one bit/multiply by 2)
 		bit_counter = bit_counter <<  1;
