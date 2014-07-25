@@ -53,9 +53,9 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 	while (num_children > 0)
 	{
 
-	#ifdef RD_DEBUG
+#ifdef RD_DEBUG
 		assert(current_node != NULL);
-	#endif
+#endif
 
 		nodeArray[--num_children] = current_node;
 		current_node = current_node->bl->prev->internal;
@@ -72,10 +72,10 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 	/// Get the internal node
 	Internal_Node * x = _x->internal, * y = _y->internal;
 	unsigned int current_lvl = 1,
-				 xtag = _x->tag,
-				 ytag = _y->tag,
-				 lvl_count = INT_BIT_SIZE,
-				 bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
+		xtag = _x->tag,
+		ytag = _y->tag,
+		lvl_count = INT_BIT_SIZE,
+		bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
 
 	/// This will get the first bit from the left in x->tag and y->tag that 
 	/// are not the same. That bit (counted from the right) will be lvl_count.
@@ -92,36 +92,42 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 		/// Deal with X
 		if (!(x->parent))
 		{
-		x->parent = malloc(sizeof(Internal_Node));
-		/// Assign x->parent's reference to x (left if bit is 0, right if bit is 1)
-		if (xtag & bit_counter == bit_counter)
-			x->parent->right = x;
-		else
-			x->parent->left = x;
+			x->parent = malloc(sizeof(Internal_Node));
+			/// Assign x->parent's reference to x (left if bit is 0, right if bit is 1)
+			if (xtag & bit_counter == bit_counter)
+				x->parent->right = x;
+			else
+				x->parent->left = x;
 		
-		x->parent->num_children += 1;
+			x->parent->num_children += 1;
 
-		/// Update base
-		x->parent->base = (x->base >> current_lvl) << current_lvl; 
+			/// Update base
+			x->parent->base = (x->base >> current_lvl) << current_lvl; 
+
+			/// Update lvl of x
+			x->lvl = current_lvl + 1;
 		}
 
 		/// Deal with Y
 		if (!(y->parent))
 		{
-		y->parent = malloc(sizeof(Internal_Node));
+			y->parent = malloc(sizeof(Internal_Node));
 
-		/// Assign y->parent's reference to y (left if bit is 0, right if bit is 1)
-		if (ytag & bit_counter == bit_counter)
-			y->parent->right = y;
-		else
-			y->parent->left = y;
+			/// Assign y->parent's reference to y (left if bit is 0, right if bit is 1)
+			if (ytag & bit_counter == bit_counter)
+				y->parent->right = y;
+			else
+				y->parent->left = y;
 
-		y->parent->num_children += 1;
-		/// Update base
-		y->parent->base = (y->base >> current_lvl) << current_lvl; 
+			y->parent->num_children += 1;
+
+			/// Update base
+			y->parent->base = (y->base >> current_lvl) << current_lvl; 
+
+			/// Update lvl of y
+			y->lvl = current_lvl + 1;
 		}
 
-		
 		/// Update bit_counter (move up one bit/multiply by 2)
 		bit_counter = bit_counter <<  1;
 
@@ -129,8 +135,8 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 		x = x->parent;
 		y = y->parent;
 
-		/// Update lvl of x/y
-		x->lvl = y->lvl = ++current_lvl;
+		/// Increment the size of the current level
+		++current_lvl;
 	}
 
 	//Now current_lvl == lvl_count-1
@@ -175,13 +181,13 @@ void insert(OM_Node *x, OM_Node *y){
 //This is for the cilk version 
 /*cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result)*/
 /*{*/
-	/*int i = 0;*/
-	/*InsertRecord * irArray = (InsertRecord *)data,* ir;*/
-	/*/// use a regular for loop to be sequential*/
-	/*for(; i < size; i++){*/
-		/*ir = &irArray[i];	*/
-		/*insert_internal(ir->x, ir->y); */
-	/*}*/
+/*int i = 0;*/
+/*InsertRecord * irArray = (InsertRecord *)data,* ir;*/
+/*/// use a regular for loop to be sequential*/
+/*for(; i < size; i++){*/
+/*ir = &irArray[i];	*/
+/*insert_internal(ir->x, ir->y); */
+/*}*/
 /*}*/
 
 void insert_internal(OM_Node *x, OM_Node *y){
@@ -382,7 +388,7 @@ void first_insert_bl (Bottom_List * ds, OM_Node * y)
  */
 void first_insert_tl (Top_List * list, Bottom_List * y)
 {
-
+	int i = 1;
 #ifdef RD_DEBUG
 	/// Make sure they're not NULL
 	if ( !(list && y) )
@@ -416,13 +422,20 @@ void first_insert_tl (Top_List * list, Bottom_List * y)
 	y->internal->parent = y->internal->left = y->internal->right = NULL;
 	// Give a reference to the internal node to y itself
 	y->internal->bl = y;
+
+	i = 2;
+	while ( i < INT_BIT_SIZE){
+		y->parent = malloc(sizeof(Internal_Node))	
+		
+		y->lvl = i++;
+	}
 }
 
 /*! 
  * ===  FUNCTION  ======================================================================
  *         Name:  first_insert
  *  Description:  Insert y into the first Bottom_List in the Top_List specified (list)
- * =====================================================================================
+ * =====RR==============================================================================
  */
 void first_insert (Top_List * list, OM_Node * y)
 {
@@ -631,25 +644,25 @@ void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int 
 	if (current_node->lvl == 2)
 	{
 		switch (endIndex - startIndex){
-			case -1:
-				current_node->left = NULL;
-				current_node->right = NULL;
-				current_node->num_children = 0;
-			case 0:
-				current_node->left = nodeArray[startIndex];
-				current_node->right = NULL;
-				current_node->num_children = 1;
-				break;
-			case 1:
-				current_node->left = nodeArray[startIndex];
-				current_node->right = nodeArray[endIndex];
-				current_node->num_children = 2;
-				break;
-			default:
+		case -1:
+			current_node->left = NULL;
+			current_node->right = NULL;
+			current_node->num_children = 0;
+		case 0:
+			current_node->left = nodeArray[startIndex];
+			current_node->right = NULL;
+			current_node->num_children = 1;
+			break;
+		case 1:
+			current_node->left = nodeArray[startIndex];
+			current_node->right = nodeArray[endIndex];
+			current_node->num_children = 2;
+			break;
+		default:
 #ifdef RD_DEBUG
-				printf ( "Debug: error too many nodes given to this internal node.\n" );
+			printf ( "Debug: error too many nodes given to this internal node.\n" );
 #endif
-				break;
+			break;
 		}
 	}
 	else {
@@ -696,23 +709,23 @@ void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int 
  * =====================================================================================
  */
 void rebalance_tl (Bottom_List * pivot){
-			///TODO: degug logically
+	///TODO: degug logically
 #ifdef RD_STATS
 			
-			if (list->list_of_size_of_top_list_when_split_head == NULL)
-			{
-				list->list_of_size_of_top_list_when_split_head = malloc(sizeof(ll_node));
-				list->list_of_size_of_top_list_when_split_tail = list->list_of_size_of_top_list_when_split_head;
-				list->list_of_size_of_top_list_when_split_head->data = list->size;
-			}
-			else
-			{
-				ll_node * nextnode = malloc(sizeof(ll_node));
-				list->list_of_size_of_top_list_when_split_tail->next = nextnode;
-				list->list_of_size_of_top_list_when_split_tail = nextnode;
-				nextnode->next = NULL;
-				nextnode->data = list->size;
-			}
+	if (list->list_of_size_of_top_list_when_split_head == NULL)
+	{
+		list->list_of_size_of_top_list_when_split_head = malloc(sizeof(ll_node));
+		list->list_of_size_of_top_list_when_split_tail = list->list_of_size_of_top_list_when_split_head;
+		list->list_of_size_of_top_list_when_split_head->data = list->size;
+	}
+	else
+	{
+		ll_node * nextnode = malloc(sizeof(ll_node));
+		list->list_of_size_of_top_list_when_split_tail->next = nextnode;
+		list->list_of_size_of_top_list_when_split_tail = nextnode;
+		nextnode->next = NULL;
+		nextnode->data = list->size;
+	}
 
 #endif
 	/// Temp current internal node
@@ -739,9 +752,9 @@ void rebalance_tl (Bottom_List * pivot){
 			/*current_node->parent = malloc(sizeof(Internal_Node));*/
 			/*//if the ith bit is 1, it's parent should look to it as the right node*/
 			/*if (current_ & current_tag_range == current_tag_range)*/
-				/*current_node->parent->right = current_node;*/
+			/*current_node->parent->right = current_node;*/
 			/*else*/
-				/*current_node->parent->left = current_node;*/
+			/*current_node->parent->left = current_node;*/
 			/*current_node = current->node;*/
 
 		}

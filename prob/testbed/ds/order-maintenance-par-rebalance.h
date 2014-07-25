@@ -71,8 +71,6 @@ typedef struct Bottom_List_s {
 
 #ifdef RD_STATS
 	ll_node * list_of_size_of_bottom_list_when_split_head, *list_of_size_of_bottom_list_when_split_tail;
-
-
 #endif
 
 } Bottom_List;
@@ -96,8 +94,8 @@ typedef struct Top_List_s{
 
 #ifdef RD_STATS
 	ll_node * list_of_size_of_top_list_when_split_head, *list_of_size_of_top_list_when_split_tail;
-
 #endif
+
 } Top_List;
 
 /// Parallel:
