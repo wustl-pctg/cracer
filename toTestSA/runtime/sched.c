@@ -2129,40 +2129,40 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 	/// Retrieve Top_Lists
 	Top_List * english_tl = context->Cilk_global_state->englishOM_DS;
 	Top_List * hebrew_tl = context->Cilk_global_state->hebrewOM_DS;
-	unsigned int node_count = 0;
-	Bottom_List * current_bl = english_tl->head;
-	OM_Node * current_node = english_tl->head->head;
-	printf("Debug: Global Node count: %i\n English/Hebrew Size:%i/%i\n", global_node_count, english_tl->size, hebrew_tl->size);
+	/* unsigned int node_count = 0; */
+	/* Bottom_List * current_bl = english_tl->head; */
+	/* OM_Node * current_node = english_tl->head->head; */
+  //	printf("Debug: Global Node count: %i\n English/Hebrew Size:%i/%i\n", global_node_count, english_tl->size, hebrew_tl->size);
 
-	while (current_bl != NULL){
-		while (current_node != NULL){
-			node_count++;
-			current_node = current_node->next;
-		}
-		current_bl = current_bl->next;
-		if (current_bl)
-			current_node = current_bl->head;
+	/* while (current_bl != NULL){ */
+	/* 	while (current_node != NULL){ */
+	/* 		node_count++; */
+	/* 		current_node = current_node->next; */
+	/* 	} */
+	/* 	current_bl = current_bl->next; */
+	/* 	if (current_bl) */
+	/* 		current_node = current_bl->head; */
 
-	}
+	/* } */
 	
-	printf ( "Num nodes (counted) in english: %i\n", node_count );
+  //	printf ( "Num nodes (counted) in english: %i\n", node_count );
 
-	node_count = 0;
-	current_bl = hebrew_tl->head;
-	current_node = current_bl->head;
+	/* node_count = 0; */
+	/* current_bl = hebrew_tl->head; */
+	/* current_node = current_bl->head; */
 	
-	while (current_bl != NULL){
-		while (current_node != NULL){
-			node_count++;
-			current_node = current_node->next;
-		}
-		current_bl = current_bl->next;
-		if (current_bl)
-			current_node = current_bl->head;
+	/* while (current_bl != NULL){ */
+	/* 	while (current_node != NULL){ */
+	/* 		node_count++; */
+	/* 		current_node = current_node->next; */
+	/* 	} */
+	/* 	current_bl = current_bl->next; */
+	/* 	if (current_bl) */
+	/* 		current_node = current_bl->head; */
 
-	}
+	/* } */
 	
-	printf ( "Num nodes (counted) in hebrew: %i\n", node_count );
+  //	printf ( "Num nodes (counted) in hebrew: %i\n", node_count );
 
 
 	/// Free each and all their contents
@@ -2227,7 +2227,7 @@ inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame,
 		OM_Node * first_node_e = Cilk_malloc(sizeof(OM_Node)), *first_node_h  = Cilk_malloc(sizeof(OM_Node));
 		ws->current_node = frame->current_node = Cilk_malloc(sizeof(Runtime_node));
 	
-		printf("Debug: Current node is null, this should only be when calling before spawn in invoke main slow\n");
+    //		printf("Debug: Current node is null, this should only be when calling before spawn in invoke main slow\n");
 		/// Setup frame nodes
 		setup_runtime_node(frame->current_node, first_node_e, first_node_h);
 
@@ -2336,7 +2336,7 @@ inline void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// For debug
 	if (frame->current_node == NULL){
 	
-		printf ( "DEBUG: Current node is null when calling OM_DS_sync_slow, should be in invoke main slow\n" );
+    //		printf ( "DEBUG: Current node is null when calling OM_DS_sync_slow, should be in invoke main slow\n" );
 
 	}
 	else
@@ -2369,7 +2369,7 @@ inline void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// For debug
 	if (frame->current_node == NULL){
 	
-		printf ( "DEBUG: Current node is null when calling OM_DS_sync_slow, should be in invoke main slow\n" );
+    //		printf ( "DEBUG: Current node is null when calling OM_DS_sync_slow, should be in invoke main slow\n" );
 
 	}
 	else
