@@ -801,6 +801,7 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 		{
 			newEndIndex = startIndex -1;
 			newStartIndex = endIndex;
+			current_node->num_children = 1;
 		}
 		else {
 			//startIndex stays the same
