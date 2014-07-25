@@ -21,7 +21,7 @@
 /// Constants used within this source file
 static unsigned /*long*/ int MAX_NUMBER = 255;
 static int INT_BIT_SIZE = 8;
-static double OVERFLOW_CONSTANT = 1.5;
+static double OVERFLOW_CONSTANT = 1.1;
 
 /* 
  * ===  FUNCTION  ======================================================================
