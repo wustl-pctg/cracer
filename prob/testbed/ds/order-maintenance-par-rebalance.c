@@ -723,6 +723,8 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
  * ===  FUNCTION  ======================================================================
  *         Name:  rebuild_tree
  *  Description:  Recursively calls rebuild on it's children. If lvl 2, then assign children.
+ *  			  If in the right, start counting from the startIndex.
+ *  			  If in the left, stop counting 1 before the endIndex.
  * =====================================================================================
  */
 void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal_Node ** nodeArray, int startIndex,  int endIndex){
@@ -789,38 +791,27 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 	}
 	else {
 		//Parallel:
-		current_node->num_children = (endIndex - startIndex) + 1;
 		// Get new start and end indexes
-		if (startIndex >= endIndex){
+		if (startIndex > endIndex){
 			startIndex = 1;
 			endIndex  = 0;
+			current_node->num_children = 0;
+		}
+		else if (startIndex == endIndex)
+		{
+			newEndIndex = startIndex -1;
+			newStartIndex = endIndex;
 		}
 		else {
 			//startIndex stays the same
 			//so does endIndex
 			newEndIndex = (endIndex - startIndex + 1) / 2; 
 			newStartIndex = newEndIndex + 1;
-			#ifdef RD_DEBUG
-				assert(startIndex <= newEndIndex);
-				assert(newEndIndex <= endIndex);
-			#endif
 
-		}
-/*
-		if(! (current_node->left))
-		{ //No left branch, so make one
-			current_node->left = malloc(sizeof(Internal_Node));
-			current_node->left->lvl = current_node->lvl - 1;
-			current_node->left->base = current_node->base;	
+		// Don't add one, we don't use the upper index.
+		current_node->num_children = 1 + (endIndex - startIndex);
 		}
 
-		if(! (current_node->right))
-		{ //No right branch, so make one
-			current_node->right = malloc(sizeof(Internal_Node));
-			current_node->right->lvl = current_node->lvl - 1;
-			//Append a 1 onto the base
-			current_node->right->base = current_node->base + (0x1 << (current_node->right->lvl - 1 ));	
-		}*/
 		rebuild_tree(current_node, LEFT, nodeArray, startIndex, newEndIndex);
 		rebuild_tree(current_node, RIGHT, nodeArray, newStartIndex, endIndex);
 	}
@@ -905,8 +896,8 @@ void rebalance_tl (Bottom_List * pivot){
 #ifdef RD_DEBUG
 	assert(current_node->num_children > 0);
 #endif
-	rebuild_tree(current_node, LEFT,   nodeArray, 0, (signed int)((current_node->num_children) / 2));
-	rebuild_tree(current_node, RIGHT,  nodeArray, (signed int)((current_node->num_children) / 2) + 1, (signed int)current_node->num_children - 1);
+	rebuild_tree(current_node, LEFT,   nodeArray, 0, (signed int)((current_node->num_children -1) / 2));
+	rebuild_tree(current_node, RIGHT,  nodeArray, (signed int)((current_node->num_children - 1) / 2) + 1, (signed int)current_node->num_children - 1);
 	free(nodeArray);
 }
 
