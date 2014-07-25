@@ -2093,7 +2093,7 @@ void OM_DS_init(CilkContext *const context){
 
 	// If Batchify works
 	//#define BATCHIFY_WORKING
-#define RD_DEBUG
+//#define RD_DEBUG
 
 	if (context->Cilk_global_state){
 		/// Debug message
@@ -2129,41 +2129,59 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 	/// Retrieve Top_Lists
 	Top_List * english_tl = context->Cilk_global_state->englishOM_DS;
 	Top_List * hebrew_tl = context->Cilk_global_state->hebrewOM_DS;
-	/* unsigned int node_count = 0; */
-	/* Bottom_List * current_bl = english_tl->head; */
-	/* OM_Node * current_node = english_tl->head->head; */
-  //	printf("Debug: Global Node count: %i\n English/Hebrew Size:%i/%i\n", global_node_count, english_tl->size, hebrew_tl->size);
+	Bottom_List * current_bl = english_tl->head;
+	OM_Node * current_node = english_tl->head->head;
 
-	/* while (current_bl != NULL){ */
-	/* 	while (current_node != NULL){ */
-	/* 		node_count++; */
-	/* 		current_node = current_node->next; */
-	/* 	} */
-	/* 	current_bl = current_bl->next; */
-	/* 	if (current_bl) */
-	/* 		current_node = current_bl->head; */
+#ifdef RD_STATS
+	unsigned int node_count = 0;
+	printf("Debug: Global Node count: %i\n English/Hebrew Size:%i/%i\n", global_node_count, english_tl->size, hebrew_tl->size);
+#endif
 
-	/* } */
+	while (current_bl != NULL)
+	{
+		while (current_node != NULL)
+		{
+
+#ifdef RD_STATS
+			node_count++;
+#endif
+
+			current_node = current_node->next;
+		}
+		current_bl = current_bl->next;
+		if (current_bl)
+			current_node = current_bl->head;
+
+	}
+
+#ifdef RD_STATS
+	printf ( "Num nodes (counted) in english: %i\n", node_count );
+	node_count = 0;
+#endif
+
+	current_bl = hebrew_tl->head;
+	current_node = current_bl->head;
 	
-  //	printf ( "Num nodes (counted) in english: %i\n", node_count );
+	while (current_bl != NULL)
+	{
+		while (current_node != NULL)
+		{
 
-	/* node_count = 0; */
-	/* current_bl = hebrew_tl->head; */
-	/* current_node = current_bl->head; */
-	
-	/* while (current_bl != NULL){ */
-	/* 	while (current_node != NULL){ */
-	/* 		node_count++; */
-	/* 		current_node = current_node->next; */
-	/* 	} */
-	/* 	current_bl = current_bl->next; */
-	/* 	if (current_bl) */
-	/* 		current_node = current_bl->head; */
+#ifdef RD_STATS
+			node_count++;
+#endif
 
-	/* } */
-	
-  //	printf ( "Num nodes (counted) in hebrew: %i\n", node_count );
+			current_node = current_node->next;
+		}
+		current_bl = current_bl->next;
+		if (current_bl)
+			current_node = current_bl->head;
 
+	}
+
+#ifdef RD_STATS	
+	printf ( "Num nodes (counted) in hebrew: %i\n", node_count );
+#endif
 
 	/// Free each and all their contents
 	free_tl(english_tl);
@@ -2227,7 +2245,9 @@ inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame,
 		OM_Node * first_node_e = Cilk_malloc(sizeof(OM_Node)), *first_node_h  = Cilk_malloc(sizeof(OM_Node));
 		ws->current_node = frame->current_node = Cilk_malloc(sizeof(Runtime_node));
 	
-    //		printf("Debug: Current node is null, this should only be when calling before spawn in invoke main slow\n");
+#ifdef RD_DEBUG
+		printf("Debug: Current node is null, this should only be when calling before spawn in invoke main slow\n");
+#endif
 		/// Setup frame nodes
 		setup_runtime_node(frame->current_node, first_node_e, first_node_h);
 
@@ -2333,17 +2353,14 @@ inline void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 		return; //then in batcher
 	}
 
-	/// For debug
-	if (frame->current_node == NULL){
-	
-    //		printf ( "DEBUG: Current node is null when calling OM_DS_sync_slow, should be in invoke main slow\n" );
-
-	}
-	else
-		;//printf("Debug: OM_DS_sync_slow, current frame id: %d\n",  frame->current_node->english->ID );
+#ifdef RD_DEBUG
+	if (frame->current_node == NULL)
+		printf ( "DEBUG: Current node is null when calling OM_DS_sync_slow, should be in invoke main slow\n" );
 
 	/// If the sync was legitimate, then reset frame and worker state to post_sync_node.
-	/// TODO: fix when current frame is the invoke main slow frame - > CILK_ASSERT(ws, frame->post_sync_node != NULL);
+	CILK_ASSERT(ws, frame->post_sync_node != NULL);
+#endif
+
 
 	/// Assign frame/worker state's current node to the post sync node
 	frame->current_node = ws->current_node = frame->post_sync_node;
@@ -2366,17 +2383,13 @@ inline void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 		return;
 	}
 
-	/// For debug
-	if (frame->current_node == NULL){
-	
-    //		printf ( "DEBUG: Current node is null when calling OM_DS_sync_slow, should be in invoke main slow\n" );
-
-	}
-	else
-		;//printf("Debug: OM_DS_sync_fast, current frame id: %d\n",  frame->current_node->english->ID );
+#ifdef RD_DEBUG
+	if (frame->current_node == NULL)
+		printf ( "DEBUG: Current node is null when calling OM_DS_sync_fast, should be in invoke main slow\n" );
 
 	/// If the sync was legitimate, then reset frame and worker state to post_sync_node.
 	CILK_ASSERT(ws, frame->post_sync_node != NULL);
+#endif
 
 	/// Assign frame/worker state's current node to the post sync node
 	frame->current_node = ws->current_node = frame->post_sync_node;
