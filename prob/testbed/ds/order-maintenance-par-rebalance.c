@@ -559,6 +559,10 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if (x->tag & 0x1 == 0x1) y->tag++;
+		/// Make the last number the MAX_NUMBER
+		if (MAX_NUMBER -  x->tag == 1)
+			y->tag = MAX_NUMBER;
+		
 	}
 	else /// Not tail
 	{		
@@ -570,7 +574,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 	}
 			
 	/// See if there is a "collision" of tags
-	if (    (x == list->tail && (MAX_NUMBER - x->tag <= 1)  ) || ///< If x is tail, use MAX_NUMBER instead of x->next->tag
+	if (    (x == list->tail && (MAX_NUMBER == x->tag )  ) || ///< If x is tail, use MAX_NUMBER instead of x->next->tag
 			(x != list->tail && (x->next->tag - x->tag <= 1)) )
 	{
 		/// Thin out the list - make room for y
@@ -774,12 +778,18 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			current_node->num_children = 0;
 		case 0:
 			current_node->left = nodeArray[startIndex];
+			current_node->left->parent = current_node;
 			current_node->right = NULL;
 			current_node->num_children = 1;
 			break;
 		case 1:
+			/// Left node
 			current_node->left = nodeArray[startIndex];
+			current_node->left->parent = current_node;
+			/// Right node
 			current_node->right = nodeArray[endIndex];
+			current_node->right->parent = current_node;
+			/// Num of children is 2
 			current_node->num_children = 2;
 			break;
 		default:
