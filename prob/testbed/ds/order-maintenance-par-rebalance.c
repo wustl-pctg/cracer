@@ -74,27 +74,50 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 	unsigned int current_lvl = 1,
 		xtag = _x->tag,
 		ytag = _y->tag,
-		lvl_count = 1,
-		bit_counter = (0x1),/* << ( INT_BIT_SIZE - 1), */
+		ztag = ytag,//Just a tmp variable
+		lvl_count = INT_BIT_SIZE,
+		bit_counter = (0x1) << ( INT_BIT_SIZE - 1),
 		tag_difference = ytag - xtag;
 
 
-	if (_y->next)
+	/// Find whether y->prev or y->next  has a closer common ancestor to x.
+	/// If y has no next, then use x.
+	if ((_y->next))
 	{
-		/// Difference between y and y->next is less than distance from x to y (tags)
-		if ((_y->next->tag - ytag) < (ytag - xtag))
-		{
-			tag_difference = _y->next->tag - ytag;
-			//
-			x = _y->next->internal;
+		ztag = _y->next->tag;
+		while (bit_counter != 0) {
+			if ( ((~(xtag ^ ytag)) & bit_counter) == bit_counter) 
+			{
+				break;
+			}
+			else if ( ((~(ztag ^ ytag)) & bit_counter) == bit_counter) 
+			{
+				y = _y->next->internal;
+				//Use y->next as x
+				xtag = ztag;
+				break;
+			}
+			lvl_count--;
+			bit_counter = bit_counter >> 1;
 		}
-		/// Otherwise the tag_difference was set correctly upon initialization
 	}
+	else{
+		while (bit_counter != 0) {
+			if ( ((~(xtag ^ ytag)) & bit_counter) == bit_counter) 
+			{
+				break;
+			}
+			lvl_count--;
+			bit_counter = bit_counter >> 1;
+		}
+	}
+
+	bit_counter = 0x1;
 	// if y has no next, it was set correctly
 	unsigned int x_parent_base = 0, y_parent_base = 1;
 
 	/*while (y_parent_base != x_parent_base)*/
-	while(1) // Taken care of in break
+	while(current_lvl < lvl_count) // Taken care of in break
 	{
 #ifdef RD_DEBUG
 		assert(bit_counter != 0 );
@@ -115,13 +138,13 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 			y->parent = x;	
 		
 			/// Link the common ancestor of _x and _y together, with left/right depending on if we swapped x with y->next or not
-			if (tag_difference < (ytag - xtag))
-				x->left = y;
-			else
+			if (xtag != ztag)
 				x->right = y;
+			else
+				x->left = y;
 
 			/// Add one child to x->parent
-			x->num_children += 1;
+			x->num_children += x->left->num_children + x->right->num_children;
 			return;
 
 		}
