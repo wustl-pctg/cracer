@@ -19,8 +19,8 @@
 #include "order-maintenance-par-rebalance.h"
 
 /// Constants used within this source file
-static unsigned /*long*/ int MAX_NUMBER = ~0;
-static int INT_BIT_SIZE = 32;
+static unsigned /*long*/ int MAX_NUMBER = 255;
+static int INT_BIT_SIZE = 8;
 static double OVERFLOW_CONSTANT = 1.7;
 
 /* 
@@ -122,7 +122,7 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 
 			/// Add one child to x->parent
 			x->num_children += 1;
-			break;
+			return;
 
 		}
 		else {
@@ -738,10 +738,10 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal_Node ** nodeArray, int startIndex,  int endIndex){
 	int newStartIndex, newEndIndex;
 
-	if (LEFT_OR_RIGHT == LEFT){
+	if (LEFT_OR_RIGHT == LEFT) {
 		if (current_node->left)
 			current_node = current_node->left;
-		else {
+		else if (startIndex <= endIndex){ // i.e. this node has children
 			/// We need to create this node
 			current_node->left = malloc(sizeof(Internal_Node));
 			current_node->left->parent = current_node;
@@ -749,18 +749,26 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			current_node->lvl = current_node->parent->lvl - 1;
 			current_node->base = current_node->parent->base; // left so it is the same base
 		}
+		else {
+			//There are no children and this node is null, leave it alone.
+			return;
+		}
 	}
 	else //RIGHT
 	{
 		if (current_node->right)
 			current_node = current_node->right;
-		else {
+		else if (startIndex <= endIndex){ // i.e. this node has children
 			/// We need to create this node
 			current_node->right = malloc(sizeof(Internal_Node));
 			current_node->right->parent = current_node;
 			current_node = current_node->right;
 			current_node->lvl = current_node->parent->lvl - 1;
 			current_node->base = current_node->parent->base + (0x1 << (current_node->lvl -1) ); // right so it is the same base with a 1 in the next digit spot available
+		}
+		else {
+			//There are no children and this node is null, leave it alone.
+			return;
 		}
 
 	}
