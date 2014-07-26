@@ -19,9 +19,9 @@
 #include "order-maintenance-par-rebalance.h"
 
 /// Constants used within this source file
-static unsigned /*long*/ int MAX_NUMBER = 255;
-static int INT_BIT_SIZE = 8;
-static double OVERFLOW_CONSTANT = 1.1;
+static unsigned /*long*/ int MAX_NUMBER = ~0;
+static int INT_BIT_SIZE = 32;
+static double OVERFLOW_CONSTANT = 1.7;
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -93,11 +93,12 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 	// if y has no next, it was set correctly
 	unsigned int x_parent_base = 0, y_parent_base = 1;
 
-	while (y_parent_base != x_parent_base)
+	/*while (y_parent_base != x_parent_base)*/
+	while(1) // Taken care of in break
 	{
 #ifdef RD_DEBUG
 		assert(bit_counter != 0 );
-		assert(current_lvl <= 64);
+		assert(current_lvl <= INT_BIT_SIZE);
 #endif
 		x = x->parent;	
 		x_parent_base = x->base;
@@ -105,10 +106,12 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 		/// Inc current lvl
 		current_lvl++;
 
+
 		y_parent_base = (y->base >> current_lvl ) << current_lvl;
+	
 
 		// IF the have the same base, link current y to x->parent
-		if (x_parent_base == y_parent_base){
+		if (current_lvl == INT_BIT_SIZE || x_parent_base == y_parent_base){
 			y->parent = x;	
 		
 			/// Link the common ancestor of _x and _y together, with left/right depending on if we swapped x with y->next or not
@@ -119,6 +122,7 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 
 			/// Add one child to x->parent
 			x->num_children += 1;
+			break;
 
 		}
 		else {
@@ -779,6 +783,7 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 		case 0:
 			current_node->left = nodeArray[startIndex];
 			current_node->left->parent = current_node;
+			current_node->left->base = current_node->left->bl->tag = current_node->base;
 			current_node->right = NULL;
 			current_node->num_children = 1;
 			break;
@@ -786,9 +791,11 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			/// Left node
 			current_node->left = nodeArray[startIndex];
 			current_node->left->parent = current_node;
+			current_node->left->base = current_node->base;
 			/// Right node
 			current_node->right = nodeArray[endIndex];
 			current_node->right->parent = current_node;
+			current_node->right->base = current_node->right->bl->tag = current_node->base + 1;
 			/// Num of children is 2
 			current_node->num_children = 2;
 			break;
@@ -1060,6 +1067,8 @@ void check_sub_correctness (Top_List * list)
 				printf("Node tags are out of order\n");
 			cur_node = cur_node->next;
 		}
+		if (current->next && current->tag >=current->next->tag )
+			printf ( "Bottom list tags are out of place\n" );
 		current = current->next;
 	}
 }

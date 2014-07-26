@@ -90,7 +90,7 @@ int main ( int argc, char *argv[] )
 	printf("Took %f s.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
 	/*order_test(nodeArray, num_nodes);*/
-	/*check_sub_correctness(list);*/
+	check_sub_correctness(list);
 
 #ifdef RD_STATS
 	int num_splits = 0, list_count = 1;
