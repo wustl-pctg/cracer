@@ -21,7 +21,7 @@
 /// Constants used within this source file
 static unsigned /*long*/ int MAX_NUMBER = 255;
 static int INT_BIT_SIZE = 8;
-static double OVERFLOW_CONSTANT = 1.7;
+static double OVERFLOW_CONSTANT = 1.2;
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -75,7 +75,7 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 		xtag = _x->tag,
 		ytag = _y->tag,
 		ztag = ytag,//Just a tmp variable
-		lvl_count = INT_BIT_SIZE,
+		lvl_count = INT_BIT_SIZE + 1, // This represents the lvl where x and y have their most recent common ancestor
 		bit_counter = (0x1) << ( INT_BIT_SIZE - 1),
 		tag_difference = ytag - xtag;
 
@@ -128,20 +128,21 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 #endif
 		x = x->parent;	
 		x_parent_base = x->base;
+	
+		
+		if (current_lvl == INT_BIT_SIZE)
+			y_parent_base = 0x0;
+		else // This is not current_lvl -1 because we are assigning y's parent base.
+			y_parent_base = (y->base >> current_lvl ) << current_lvl;
 
-		/// Inc current lvl
+	/// Inc current lvl
 		current_lvl++;
 
 
-		if (current_lvl == INT_BIT_SIZE)
-			y_parent_base = 0x0;
-		else
-			y_parent_base = (y->base >> current_lvl ) << current_lvl;
 
-	
 
 		// IF the have the same base, link current y to x->parent
-		if (current_lvl == INT_BIT_SIZE || x_parent_base == y_parent_base){
+		if ( x_parent_base == y_parent_base){
 			y->parent = x;	
 		
 			/// Link the common ancestor of _x and _y together, with left/right depending on if we swapped x with y->next or not
