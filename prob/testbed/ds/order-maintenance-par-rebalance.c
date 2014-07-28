@@ -796,13 +796,16 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
  *  			  If in the left, stop counting 1 before the endIndex.
  * =====================================================================================
  */
-void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal_Node ** nodeArray, int startIndex,  int endIndex){
+void rebuild_tree(Internal_Node * current_node, const int LEFT_OR_RIGHT, Internal_Node ** nodeArray, int startIndex,  int endIndex)
+{
 	int newStartIndex, newEndIndex;
 
-	if (LEFT_OR_RIGHT == LEFT) {
+	if (LEFT_OR_RIGHT == LEFT)
+	{
 		if (current_node->left)
 			current_node = current_node->left;
-		else if (startIndex <= endIndex){ // i.e. this node has children
+		else if (startIndex <= endIndex)
+		{ // i.e. this node has children
 			/// We need to create this node
 			current_node->left = malloc(sizeof(Internal_Node));
 			current_node->left->parent = current_node;
@@ -810,7 +813,8 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			current_node->lvl = current_node->parent->lvl - 1;
 			current_node->base = current_node->parent->base; // left so it is the same base
 		}
-		else {
+		else
+		{
 			//There are no children and this node is null, leave it alone.
 			return;
 		}
@@ -819,7 +823,8 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 	{
 		if (current_node->right)
 			current_node = current_node->right;
-		else if (startIndex <= endIndex){ // i.e. this node has children
+		else if (startIndex <= endIndex)
+		{ // i.e. this node has children
 			/// We need to create this node
 			current_node->right = malloc(sizeof(Internal_Node));
 			current_node->right->parent = current_node;
@@ -827,7 +832,8 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			current_node->lvl = current_node->parent->lvl - 1;
 			current_node->base = current_node->parent->base + (0x1 << (current_node->lvl -1) ); // right so it is the same base with a 1 in the next digit spot available
 		}
-		else {
+		else
+		{
 			//There are no children and this node is null, leave it alone.
 			return;
 		}
@@ -889,7 +895,8 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			newStartIndex = endIndex;
 			current_node->num_children = 1;
 		}
-		else {
+		else
+		{
 			//startIndex stays the same
 			//so does endIndex
 			newEndIndex = (endIndex - startIndex + 1) / 2; 
