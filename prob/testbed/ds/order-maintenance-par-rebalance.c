@@ -886,9 +886,8 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 		}
 
 
-		//Parallel:
-		// Get new start and end indexes
-		if (startIndex > endIndex){
+		//Parallel: Get new start and end indexes
+		if (startIndex > endIndex){ // no children
 			// Left subarray
 			startIndex = 1;
 			newEndIndex = 0;
@@ -897,20 +896,21 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			endIndex  = 0;
 			current_node->num_children = 0;
 		}
-		else if (startIndex == endIndex)
+		else if (startIndex == endIndex) // one child
 		{
-			newEndIndex = startIndex -1;
-			newStartIndex = endIndex;
+			newEndIndex = endIndex;
+			//Dont use right sub array
+			newStartIndex = 1;
+			endIndex = 0;
 			current_node->num_children = 1;
 		}
 		else {
 			//startIndex stays the same
 			//so does endIndex
-			newEndIndex = (endIndex - startIndex + 1) / 2; 
+			newEndIndex = startIndex + ((endIndex - startIndex + 1) / 2 );
 			newStartIndex = newEndIndex + 1;
 
-		// Don't add one, we don't use the upper index.
-		current_node->num_children = 1 + (endIndex - startIndex);
+			current_node->num_children = 1 + (endIndex - startIndex);
 		}
 
 		rebuild_tree(current_node, LEFT, nodeArray, startIndex, newEndIndex);
