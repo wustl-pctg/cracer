@@ -889,7 +889,11 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 		//Parallel:
 		// Get new start and end indexes
 		if (startIndex > endIndex){
+			// Left subarray
 			startIndex = 1;
+			newEndIndex = 0;
+			// Right subarray
+			newStartIndex = 1;
 			endIndex  = 0;
 			current_node->num_children = 0;
 		}
