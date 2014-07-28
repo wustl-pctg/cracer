@@ -1101,7 +1101,7 @@ void rebalance_tl (Bottom_List * pivot){
 	int leftStart = 0;
 	int leftEnd = (signed int)((current_node->num_children - 1 ) / 2);
 	int rightStart = leftEnd+1;
-	int rightEnd = current_node->num_children;
+	int rightEnd = current_node->num_children -1;
 	
 	if (leftStart <= leftEnd)
 	{
