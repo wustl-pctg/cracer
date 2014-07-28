@@ -350,7 +350,7 @@ void insert_internal(OM_Node *x, OM_Node *y){
 		y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
 
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-		if (x->tag & 0x1 == 0x1) y->tag += 1;
+		if ((x->tag & 0x1) == 0x1) y->tag += 1;
 
 		/// Check for collision
 		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag		
@@ -385,7 +385,7 @@ void insert_internal(OM_Node *x, OM_Node *y){
 		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
 
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-		if (x->next->tag & x->tag & 0x1 == 0x1) y->tag += 1;
+		if ((x->next->tag & x->tag & 0x1) == 0x1) y->tag += 1;
 			
 
 		/// Check for collision
@@ -610,7 +610,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
 
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-		if (x->tag & 0x1 == 0x1) y->tag++;
+		if ((x->tag & 0x1) == 0x1) y->tag++;
 		/// Make the last number the MAX_NUMBER
 		if (MAX_NUMBER -  x->tag == 1)
 			y->tag = MAX_NUMBER;
@@ -622,7 +622,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
 
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-		if (x->next->tag & x->tag & 0x1 == 0x1) y->tag++;
+		if ((x->next->tag & x->tag & 0x1) == 0x1) y->tag++;
 	}
 			
 	/// See if there is a "collision" of tags
@@ -1009,7 +1009,10 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 		else {
 			//startIndex stays the same
 			//so does endIndex
-			newEndIndex = startIndex + ((endIndex - startIndex + 1) / 2 );
+			if ( (startIndex & 0x1 ) == 0x1) // if start index even
+				newEndIndex = startIndex + ((endIndex - startIndex + 2) / 2 );
+			else 
+				newEndIndex = startIndex + ((endIndex - startIndex + 1) / 2 );
 			newStartIndex = newEndIndex + 1;
 
 			current_node->num_children = 1 + (endIndex - startIndex);
@@ -1099,11 +1102,10 @@ void rebalance_tl (Bottom_List * pivot){
 #ifdef RD_DEBUG
 	assert(current_node->num_children > 0);
 #endif
-	/// Took out +1
-	rebuild_tree(current_node, LEFT,   nodeArray, 0, (signed int)((current_node->num_children /*- 1 */) / 2));
-	rebuild_tree(current_node, RIGHT,  nodeArray, (signed int)((current_node->num_children /*-1*/ ) / 2) + 1, (signed int)current_node->num_children /*- 1*/);
-	// Update num of children
 	current_node->num_children += 1;
+	rebuild_tree(current_node, LEFT,   nodeArray, 0, (signed int)((current_node->num_children - 1 ) / 2));
+	rebuild_tree(current_node, RIGHT,  nodeArray, (signed int)((current_node->num_children -1 ) / 2) + 1, (signed int)current_node->num_children - 1);
+	// Update num of children
 	free(nodeArray);
 }
 
