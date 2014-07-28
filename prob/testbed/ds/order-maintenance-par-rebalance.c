@@ -1010,7 +1010,7 @@ void print_tl (Top_List * list)
 	printf ( "(size = %i) Head->", list->size );
 	while (current != NULL)
 	{
-		printf ( "(%lu)->", current->tag);
+		printf ( "(%u)->", current->tag);
 		current = current->next;
 	}
 	printf ( "Tail\n" );
@@ -1029,7 +1029,7 @@ void print_bl (Bottom_List * list)
 	printf ( "(size = %i) Head->", list->size );
 	while (current != NULL)
 	{
-		printf ( "(%i | %lu)->", current->ID, current->tag);
+		printf ( "(%i | %u)->", current->ID, current->tag);
 		current = current->next;
 	}
 	printf ( "Tail\n" );
@@ -1111,56 +1111,31 @@ void check_sub_correctness (Top_List * list)
 }
 
 
-int _print_t(Internal_Node * tree, int is_left, int offset, int depth, char s[20][255])
+void LNR (Internal_Node * current, int level)
 {
-    char b[20];
-    int width = 5;
-int i;
-
-    if (!tree) return 0;
-
-    printf("(%i, %p, %p, %p)", tree->base, tree->left, tree->right, tree);
-
-    int left  = _print_t(tree->left,  1, offset,                depth + 1, s);
-    int right = _print_t(tree->right, 0, offset + left + width, depth + 1, s);
-
-    for (i = 0; i < width; i++)
-        s[2 * depth][offset + left + i] = b[i];
-
-    if (depth && is_left) {
-
-        for (i = 0; i < width + right; i++)
-            s[2 * depth - 1][offset + left + width/2 + i] = '-';
-
-        s[2 * depth - 1][offset + left + width/2] = '+';
-        s[2 * depth - 1][offset + left + width + right + width/2] = '+';
-
-    } else if (depth && !is_left) {
-
-        for (i = 0; i < left + width; i++)
-            s[2 * depth - 1][offset - width/2 + i] = '-';
-
-        s[2 * depth - 1][offset + left + width/2] = '+';
-        s[2 * depth - 1][offset - width/2 - 1] = '+';
-    }
-
-    return left + width + right;
+	int temp = 9-level;
+	if (current != NULL)
+	{
+		LNR(current->left, level-1);
+		while (temp > 0)
+		{
+			printf("\t");
+			--temp;
+		}
+		printf("Level: %i [%i, mem: %p, L: %p, R: %p]\n", level, current->base, current, current->left, current->right);
+		LNR(current->right, level-1);
+	}
 }
 
-int print_t(Top_List * tree)
+void print_tree (Top_List * list)
 {
-	Internal_Node * current = tree->head->internal;
-    char s[20][255];
-    int i;
-    for (i = 0; i < 20; i++)
-        sprintf(s[i], "%80s", " ");
+	Internal_Node * current = list->head->internal;
+	int level = 9;
 
-	/// Get to the root
-	while (current != NULL)
+	/// Get Current = root
+	while (current->parent != NULL)
 		current = current->parent;
 
-    _print_t(current, 0, 0, 0, s);
-
-    for (i = 0; i < 20; i++)
-        printf("%s\n", s[i]);
+	LNR(current, level);
+	
 }
