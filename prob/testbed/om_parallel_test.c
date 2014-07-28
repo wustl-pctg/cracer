@@ -68,13 +68,13 @@ int main ( int argc, char *argv[] )
 	{
 //			if(list->split_flag == 0) {
 //			if(i % 2 == 0)
-//				j = (rand() % i); ///< Case where each insert is random
+				j = (rand() % i); ///< Case where each insert is random
 //			else
 //				j = i - 1;     ///< Case where each insert is at the back
 			//j = 0;        ///< Case where each insert is at the front
 //		}
 //		else if (list->split_flag == 1) {
-			j = i - 1;
+			/*j = i - 1;*/
 //		}
 		insert(nodeArray[j], nodeArray[i]);
 

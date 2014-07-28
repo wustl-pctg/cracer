@@ -135,9 +135,9 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 		else // This is not current_lvl -1 because we are assigning y's parent base.
 			y_parent_base = (y->base >> current_lvl ) << current_lvl;
 
-	/// Inc current lvl
-		current_lvl++;
 
+		/// Inc current lvl
+		current_lvl++;
 
 
 
@@ -163,7 +163,7 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 			y->parent = malloc(sizeof(Internal_Node));
 
 			/// Assign y->parent's reference to y (left if bit is 0, right if bit is 1)
-			if (ytag & bit_counter == bit_counter)
+			if ((ytag & bit_counter) == bit_counter)
 				y->parent->right = y;
 			else
 				y->parent->left = y;
@@ -940,7 +940,7 @@ void rebalance_tl (Bottom_List * pivot){
 		overflow_density = ((double)current_node->num_children + 1) / ((double)current_tag_range);
 
 	}
-	while ( (overflow_density > overflow_threshold ) && (current_node->lvl < INT_BIT_SIZE) );
+	while ( (overflow_density > overflow_threshold ) && (current_node->lvl <= INT_BIT_SIZE) );
 
 	/// Gets the 
 	Internal_Node ** nodeArray = build_array_from_rebalance_list(current_node);
