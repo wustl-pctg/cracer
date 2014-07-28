@@ -31,34 +31,51 @@ static double OVERFLOW_CONSTANT = 1.2;
  */
 Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 {
-	int num_children = (signed int)current_node->num_children;
+	/// +1 because we want to include the new node
+	int num_children = (signed int)current_node->num_children + 1, i=0;
 
 	/// Holds pointers to all of the internal nodes needed
 	Internal_Node ** nodeArray = malloc(sizeof(Internal_Node *) * num_children);
 
 #ifdef RD_DEBUG
 	assert(current_node != NULL);
+	assert(num_children > 1);
 #endif
 
-	/// Get the right most base node and store it in current_node
+	/// Get the left most base node and store it in current_node
 	while (current_node->lvl > 1)
 	{
-		if (current_node->right)
-			current_node = current_node->right;
-		else
+		if (current_node->left)
 			current_node = current_node->left;
+		else
+			current_node = current_node->right;
 	}
 
+	nodeArray[i++] = current_node;
 	/// Iterate from the last Bottom_List storing the internal nodes in nodeArray
-	while (num_children > 0)
+	while (i < num_children)
 	{
 
 #ifdef RD_DEBUG
 		assert(current_node != NULL);
 #endif
 
-		nodeArray[--num_children] = current_node;
-		current_node = current_node->bl->prev->internal;
+		// IF this was the node that we inserted that has no place to fit in the tags
+		if (!(current_node->bl->next->internal) )
+			//We need to allocate space for it's internal node
+		{
+#ifdef RD_DEBUG		
+			printf ( "Allocating space for node to be inserted (in build array)\n" );
+#endif
+			current_node->bl->next->internal = malloc(sizeof(Internal_Node));
+			// We dont need a base, that will be assigned in rebuiild_tree
+			// Same for parent, left, right 
+			current_node->bl->next->internal->lvl = 1;
+			// Assign the internal node's bl pointer to the bl to be inserted
+			current_node->bl->next->internal->bl = current_node->bl->next;
+		}
+		current_node = current_node->bl->next->internal;
+		nodeArray[i++] = current_node;
 	}
 
 	return nodeArray;
@@ -610,6 +627,22 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 	if (    (x == list->tail && (MAX_NUMBER == x->tag )  ) || ///< If x is tail, use MAX_NUMBER instead of x->next->tag
 			(x != list->tail && (x->next->tag - x->tag <= 1)) )
 	{
+		//Link y in the linked list.
+
+		/// Reassign prev/next pointers
+		y->prev = x;
+		y->next = x->next;
+		x->next = y;
+		if (y->next != NULL)
+			y->next->prev = y; ///< If not null, the we can update the next nodes prev reference
+		else 
+			list->tail = y; ///< If x was the previous tail, y->next is NULL and is new tail 
+
+		/// Assign the parent of y to the list
+		y->parent = list;
+		list->size += 1;
+
+
 		/// Thin out the list - make room for y
 		rebalance_tl(x);
 
@@ -617,7 +650,6 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		/*spawn rebalance_tl(x);sync;*/
 
 		/// Dont assign pointers, call insert again to put y after x
-		insert_tl(x, y);
 	}
 	else /// No collision
 	{
@@ -951,8 +983,9 @@ void rebalance_tl (Bottom_List * pivot){
 #ifdef RD_DEBUG
 	assert(current_node->num_children > 0);
 #endif
-	rebuild_tree(current_node, LEFT,   nodeArray, 0, (signed int)((current_node->num_children -1) / 2));
-	rebuild_tree(current_node, RIGHT,  nodeArray, (signed int)((current_node->num_children - 1) / 2) + 1, (signed int)current_node->num_children - 1);
+	/// Took out +1
+	rebuild_tree(current_node, LEFT,   nodeArray, 0, (signed int)((current_node->num_children /*- 1 */) / 2));
+	rebuild_tree(current_node, RIGHT,  nodeArray, (signed int)((current_node->num_children /*-1*/ ) / 2) + 1, (signed int)current_node->num_children /*- 1*/);
 	free(nodeArray);
 }
 
