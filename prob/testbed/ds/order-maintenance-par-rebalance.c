@@ -838,7 +838,7 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			/// Left node
 			current_node->left = nodeArray[startIndex];
 			current_node->left->parent = current_node;
-			current_node->left->base = current_node->base;
+			current_node->left->base = current_node->left->bl->tag = current_node->base;
 			/// Right node
 			current_node->right = nodeArray[endIndex];
 			current_node->right->parent = current_node;
