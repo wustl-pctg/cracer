@@ -130,5 +130,5 @@ void print_bl(Bottom_List * list);
 void free_bl (Bottom_List * list);
 void free_tl ( Top_List * list );
 void check_sub_correctness (Top_List * list);
-
+void print_tree (Top_List * list);
 #endif 

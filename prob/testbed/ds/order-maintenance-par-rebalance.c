@@ -21,7 +21,7 @@
 /// Constants used within this source file
 static unsigned /*long*/ int MAX_NUMBER = 255;
 static int INT_BIT_SIZE = 8;
-static double OVERFLOW_CONSTANT = 1.2;
+static double OVERFLOW_CONSTANT = 1.05;
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -643,9 +643,19 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		list->size += 1;
 
 
+#ifdef RD_DEBUG
+		
+		printf ( "Before rebalance\n" );
+		print_tree(list);
+#endif
 		/// Thin out the list - make room for y
 		rebalance_tl(x);
 
+#ifdef RD_DEBUG
+
+		printf ( "After rebalance\n" );
+		print_tree(list);
+#endif
 		/// PARALLEL:
 		/*spawn rebalance_tl(x);sync;*/
 
