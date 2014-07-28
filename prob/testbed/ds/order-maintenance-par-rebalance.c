@@ -648,7 +648,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 #ifdef RD_DEBUG
 		
 		printf ( "Before rebalance\n" );
-		/*print_tree(list);*/
+		print_tree(list);
 #endif
 		/// Thin out the list - make room for y
 		rebalance_tl(x);
@@ -656,7 +656,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 #ifdef RD_DEBUG
 
 		printf ( "After rebalance\n" );
-		/*print_tree(list);*/
+		print_tree(list);
 #endif
 		/// PARALLEL:
 		/*spawn rebalance_tl(x);sync;*/
