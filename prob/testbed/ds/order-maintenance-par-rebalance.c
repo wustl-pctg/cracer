@@ -646,7 +646,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 #ifdef RD_DEBUG
 		
 		printf ( "Before rebalance\n" );
-		print_tree(list);
+		/*print_tree(list);*/
 #endif
 		/// Thin out the list - make room for y
 		rebalance_tl(x);
@@ -654,7 +654,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 #ifdef RD_DEBUG
 
 		printf ( "After rebalance\n" );
-		print_tree(list);
+		/*print_tree(list);*/
 #endif
 		/// PARALLEL:
 		/*spawn rebalance_tl(x);sync;*/
@@ -807,7 +807,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
  * =====================================================================================
  */
 void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal_Node ** nodeArray, int startIndex,  int endIndex){
-	int newStartIndex, newEndIndex;
+	int newStartIndex, newEndIndex, diff = endIndex - startIndex;
 
 #ifdef RD_DEBUG
 	if (current_node->lvl < 2)
@@ -819,19 +819,22 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 
 	if (current_node->lvl == 2)
 	{
-		switch (endIndex - startIndex){
-		case -1:
+		if (diff == -1)
+		{
 			current_node->left = NULL;
 			current_node->right = NULL;
 			current_node->num_children = 0;
-		case 0:
+		}
+		else if (diff == 0)
+		{
 			current_node->left = nodeArray[startIndex];
 			current_node->left->parent = current_node;
 			current_node->left->base = current_node->left->bl->tag = current_node->base;
 			current_node->right = NULL;
 			current_node->num_children = 1;
-			break;
-		case 1:
+		}
+		else if (diff == 1)
+		{
 			/// Left node
 			current_node->left = nodeArray[startIndex];
 			current_node->left->parent = current_node;
@@ -842,12 +845,12 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			current_node->right->base = current_node->right->bl->tag = current_node->base + 1;
 			/// Num of children is 2
 			current_node->num_children = 2;
-			break;
-		default:
+		}
+		else
+		{
 #ifdef RD_DEBUG
 			printf ( "Debug: error too many nodes given to this internal node.\n" );
 #endif
-			break;
 		}
 	}
 	else {
