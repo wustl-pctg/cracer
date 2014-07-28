@@ -908,7 +908,6 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal_Node ** nodeArray, int startIndex,  int endIndex){
 	int newStartIndex, newEndIndex, diff = endIndex - startIndex;
 
-	current_node->num_children = diff + 1;
 #ifdef RD_DEBUG
 	if (current_node->lvl < 2)
 	{
@@ -921,6 +920,7 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 	{
 		
 		printf ( "In a lvl 2 node\n" );
+		current_node->num_children = diff + 1;
 		if (diff == -1)
 		{
 			current_node->left = NULL;
@@ -988,6 +988,8 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			}
 		}
 
+		// Update num of children
+		current_node->num_children = diff + 1;
 
 		printf ( "Indexes before rebuild calls (num_child: %i lvl: %i) : [%i %i]", current_node->num_children,current_node->lvl, startIndex, endIndex);
 		//Parallel: Get new start and end indexes
