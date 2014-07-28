@@ -908,6 +908,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal_Node ** nodeArray, int startIndex,  int endIndex){
 	int newStartIndex, newEndIndex, diff = endIndex - startIndex;
 
+	current_node->num_children = diff + 1;
 #ifdef RD_DEBUG
 	if (current_node->lvl < 2)
 	{
@@ -918,11 +919,12 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 
 	if (current_node->lvl == 2)
 	{
+		
+		printf ( "In a lvl 2 node\n" );
 		if (diff == -1)
 		{
 			current_node->left = NULL;
 			current_node->right = NULL;
-			current_node->num_children = 0;
 		}
 		else if (diff == 0)
 		{
@@ -930,7 +932,6 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			current_node->left->parent = current_node;
 			current_node->left->base = current_node->left->bl->tag = current_node->base;
 			current_node->right = NULL;
-			current_node->num_children = 1;
 		}
 		else if (diff == 1)
 		{
@@ -942,8 +943,6 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			current_node->right = nodeArray[endIndex];
 			current_node->right->parent = current_node;
 			current_node->right->base = current_node->right->bl->tag = current_node->base + 1;
-			/// Num of children is 2
-			current_node->num_children = 2;
 		}
 		else
 		{
@@ -951,6 +950,9 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			printf ( "Debug: error too many nodes given to this internal node.\n" );
 #endif
 		}
+
+		printf ( "My num children %i, my indexes [%i %i].\n", current_node->num_children, startIndex, endIndex );
+		return;
 	}
 	else {
 		if (LEFT_OR_RIGHT == LEFT) {
@@ -982,12 +984,12 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			}
 			else {
 				//There are no children and this node is null, leave it alone.
-				current_node->num_children = 0;
 				return;
 			}
 		}
 
 
+		printf ( "Indexes before rebuild calls (num_child: %i lvl: %i) : [%i %i]", current_node->num_children,current_node->lvl, startIndex, endIndex);
 		//Parallel: Get new start and end indexes
 		if (startIndex > endIndex){ // no children
 			// Left subarray
@@ -996,7 +998,6 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			// Right subarray
 			newStartIndex = 1;
 			endIndex  = 0;
-			current_node->num_children = 0;
 		}
 		else if (startIndex == endIndex) // one child
 		{
@@ -1004,21 +1005,20 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			//Dont use right sub array
 			newStartIndex = 1;
 			endIndex = 0;
-			current_node->num_children = 1;
 		}
 		else {
 			//startIndex stays the same
 			//so does endIndex
 			if ( (diff & 0x1 ) == 0x1) // if endIndex - startIndex is odd
 				newEndIndex = startIndex + ((endIndex - startIndex ) / 2 );
-			else 
+			else
 				newEndIndex = startIndex + ((endIndex - startIndex + 1) / 2 );
 
 			newStartIndex = newEndIndex + 1;
-
-			current_node->num_children = 1 + (endIndex - startIndex);
 		}
-		current_node->num_children = diff + 1;
+
+		printf ( "After: [%i %i] [%i %i]\n", startIndex,newEndIndex,newStartIndex, endIndex );
+
 		rebuild_tree(current_node, LEFT, nodeArray, startIndex, newEndIndex);
 		rebuild_tree(current_node, RIGHT, nodeArray, newStartIndex, endIndex);
 	}
