@@ -86,15 +86,18 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 	{
 		ztag = _y->next->tag;
 		while (bit_counter != 0) {
-			if ( ((~(xtag ^ ytag)) & bit_counter) == bit_counter) 
+			if ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
 			{
-				break;
-			}
-			else if ( ((~(ztag ^ ytag)) & bit_counter) == bit_counter) 
-			{
-				y = _y->next->internal;
+				/// If x and y bit are not the same at the bit_counter, then Z will be the closer node. 
+				/// We then assign z to x.
+				x = _y->next->internal;
 				//Use y->next as x
 				xtag = ztag;
+				break;
+			}
+			else if ( (((ztag ^ ytag)) & bit_counter) == bit_counter) 
+			{
+				/// If z and y bit are different, then x will be closer to y. Use x.
 				break;
 			}
 			lvl_count--;
@@ -103,7 +106,7 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 	}
 	else{
 		while (bit_counter != 0) {
-			if ( ((~(xtag ^ ytag)) & bit_counter) == bit_counter) 
+			if ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
 			{
 				break;
 			}
@@ -117,7 +120,7 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 	unsigned int x_parent_base = 0, y_parent_base = 1;
 
 	/*while (y_parent_base != x_parent_base)*/
-	while(current_lvl < lvl_count) // Taken care of in break
+	while(1) // Taken care of in break
 	{
 #ifdef RD_DEBUG
 		assert(bit_counter != 0 );
@@ -130,7 +133,11 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 		current_lvl++;
 
 
-		y_parent_base = (y->base >> current_lvl ) << current_lvl;
+		if (current_lvl == INT_BIT_SIZE)
+			y_parent_base = 0x0;
+		else
+			y_parent_base = (y->base >> current_lvl ) << current_lvl;
+
 	
 
 		// IF the have the same base, link current y to x->parent
@@ -140,11 +147,14 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 			/// Link the common ancestor of _x and _y together, with left/right depending on if we swapped x with y->next or not
 			if (xtag != ztag)
 				x->right = y;
-			else
+			else //if we did swap
 				x->left = y;
 
-			/// Add one child to x->parent
-			x->num_children += x->left->num_children + x->right->num_children;
+			/// Add one child to x->parent and all parents above it
+			while (x != NULL){
+				x->num_children += 1;
+				x = x->parent;
+			}
 			return;
 
 		}
@@ -173,11 +183,6 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 
 
 	} // end while
-	
-
-	
-
-
 }
 /*{
 	/// TODO: double check validity
@@ -537,8 +542,8 @@ void first_insert_tl (Top_List * list, Bottom_List * _y)
 	_y->internal->bl = _y;
 
 	i = 2;
-	/// Make scaffolding from tag 0 all the way to the root.
-	while ( i <= INT_BIT_SIZE){
+	/// Make scaffolding from tag 0 all the way to the root. (Lvl 1 - INT_BIT_SIZE + 1)
+	while ( i <= INT_BIT_SIZE + 1){
 		y->parent = malloc(sizeof(Internal_Node));
 		y->parent->num_children = 1;
 		y->parent->base = 0;
