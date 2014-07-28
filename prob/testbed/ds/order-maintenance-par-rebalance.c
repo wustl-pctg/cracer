@@ -648,7 +648,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 #ifdef RD_DEBUG
 		
 		printf ( "Before rebalance\n" );
-		print_tree(list);
+		/*print_tree(list);*/
 #endif
 		/// Thin out the list - make room for y
 		rebalance_tl(x);
@@ -656,7 +656,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 #ifdef RD_DEBUG
 
 		printf ( "After rebalance\n" );
-		print_tree(list);
+		/*print_tree(list);*/
 #endif
 		/// PARALLEL:
 		/*spawn rebalance_tl(x);sync;*/
@@ -1102,6 +1102,8 @@ void rebalance_tl (Bottom_List * pivot){
 	/// Took out +1
 	rebuild_tree(current_node, LEFT,   nodeArray, 0, (signed int)((current_node->num_children /*- 1 */) / 2));
 	rebuild_tree(current_node, RIGHT,  nodeArray, (signed int)((current_node->num_children /*-1*/ ) / 2) + 1, (signed int)current_node->num_children /*- 1*/);
+	// Update num of children
+	current_node->num_children += 1;
 	free(nodeArray);
 }
 
