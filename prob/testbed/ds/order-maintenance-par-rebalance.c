@@ -21,6 +21,8 @@
 /// Constants used within this source file
 static unsigned /*long*/ int MAX_NUMBER = 255;
 static int INT_BIT_SIZE = 8;
+static int HALF_INT_BIT_SIZE = 4;
+static int lg_HALF_INT_BIT_SIZE = 2;
 static double OVERFLOW_CONSTANT = 1.05;
 
 /* 
@@ -541,7 +543,7 @@ void first_insert_tl (Top_List * list, Bottom_List * _y)
 	}
 #endif
 	
-	/// Update necessar__y parameters
+	/// Update necessary _y parameters
 	_y->parent = list;
 	list->head = list->tail = _y;	
 	_y->tag = 0;
@@ -733,69 +735,166 @@ int order (OM_Node * x, OM_Node * y)
  */
 void split_bl (Top_List * list, Bottom_List * list_to_split)
 {
+	/* PREVIOUS VERSION
 	OM_Node * current = list_to_split->head, *middle_node;
-	
 	/// Create new list to add to top 
 	Bottom_List * to_add = create_bl();
-	
-	
 	/// Keep track of num  nodes visited
 	int node_count = 1;
-
 	/// Each node in the list will be spaced out by skip_size tag spaces
 	/// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
-	unsigned /*long*/ int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
-
+	unsigned int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
 	/// Iterate to the middle updating tags along the way
-	while (node_count < (list_to_split->size >> 1))
-	{
+	while (node_count < (list_to_split->size >> 1)){
 		current->next->tag = current->tag + skip_size;
 		current = current->next;	
-		node_count++;
-	}
-
+		node_count++;}
 	/// Update sizes of the lists
 	to_add->size = list_to_split->size - node_count;
 	list_to_split->size = node_count;
-	
 	/// Make current the end of the original list and save the middle
 	list_to_split->tail = current;
 	middle_node = current->next;
 	current->next = NULL;
-
 	/// Get current node back;
 	current = middle_node;
-
 	/// Set the head of the new list to middle node
 	to_add->head = middle_node;
-
 	/// Nullify prev of the middle node since it's the head
 	middle_node->prev = NULL;
-
 	/// Assign 0 to first tag of to_add list
 	current->tag = 0;
-
 	/// Reassign current ds
 	current->ds = to_add;
-
 	/// Iterate through remaining nodes updating tags and their ds
-	while (current->next != NULL)
-	{
+	while (current->next != NULL){
 		current = current->next;	
 		current->ds = to_add;
-		current->tag = current->prev->tag + skip_size;
-	}
-
+		current->tag = current->prev->tag + skip_size;}
 	/// Make the last node the tail of the to_add list
 	to_add->tail = current;
 	current->next = NULL;
-
 	/// No longer need reordered
 	list_to_split->reorder_flag = to_add->reorder_flag = 0;
-
-
 	/// Insert the newly created list this into the top list
 	insert_tl(list_to_split, to_add);
+	*/
+	OM_Node * current = list_to_split->head, *transition_node;
+	
+	/// Create new list to add to top 
+	Bottom_List * to_add, * holder;
+	
+	/// Keep track of num nodes and lists through iterations
+	int node_count = 1, list_count = 1, num_lists_needed = (list_to_split->size >> lg_HALF_INT_BIT_SIZE);
+
+	/// Each node in the list will be spaced out by skip_size tag spaces
+	unsigned long int skip_size = MAX_NUMBER >> lg_HALF_INT_BIT_SIZE;
+
+#ifdef RD_DEBUG
+	printf("In New version of split.\n");
+#endif
+
+	/// First reorganize list_to_split appropriately
+	current->tag = 0;
+	while (node_count < HALF_INT_BIT_SIZE && current->next != NULL)
+	{
+		current->next->tag = current->tag + skip_size;
+		current = current->next;
+		++node_count;
+	}
+
+	/// Finalize list_to_splits adjustments
+	list_to_split->size = node_count;
+	list_to_split->tail = current;
+	transition_node = current->next;
+	current->next = NULL;
+	list_to_split->reorder_flag = 0;
+	
+	/// Define the holder for the following lists
+	holder = list_to_split;
+
+	/// Now reorganize each set of 32 into a new Bottom_list to_add
+	while (list_count < num_lists_needed)
+	{
+		/// Update node count for current iteration
+		node_count = 1; 
+		
+		/// This particular iteration's list to be added
+		to_add = create_bl(); 
+		
+		/// Node maintenence
+		current = transition_node;
+		to_add->head = current;
+		current->prev = NULL;
+		current->tag = 0;
+
+		/// Upate the DS for the head
+		current->ds = to_add;
+		
+		/// Now iterate through the nodes for this iteration's DS
+		while ((node_count < HALF_INT_BIT_SIZE) && (current->next != NULL))
+		{
+			current = current->next;
+			current->ds = to_add;
+			current->tag = current->prev->tag + skip_size;
+			++node_count;
+		}
+		
+		/// Finalize this iteration's DS
+		to_add->tail = current;
+		transition_node = current->next; ///< Even if NULL (out of nodes), will be fine
+		current->next = NULL;
+		to_add->reorder_flag = 0;
+		to_add->size = node_count;
+
+		/// Insert the finished DS into the Top_List
+		insert_tl(holder, to_add);
+
+		/// Update place holder for next Top_List insert
+		holder = to_add;
+	    to_add = NULL;
+
+		/// Increment the list count
+		++list_count;
+	}
+
+	/// Finally, check if there are leftover elements and add to a list
+	if (transition_node != NULL)
+	{
+		node_count = 1; 
+		
+		/// This particular iteration's list to be added
+		to_add = create_bl(); 
+		
+		/// Node maintenence
+		current = transition_node;
+		to_add->head = current;
+		current->prev = NULL;
+		current->tag = 0;
+
+		/// Upate the DS for the head
+		current->ds = to_add;
+		
+		/// Now iterate through the nodes for this iteration's DS
+		while (current->next != NULL)
+		{
+			current = current->next;
+			current->ds = to_add;
+			current->tag = current->prev->tag + skip_size;
+			++node_count;
+		}
+		
+		/// Finalize this iteration's DS
+		to_add->tail = current;
+		current->next = NULL;
+		to_add->reorder_flag = 0;
+		to_add->size = node_count;
+
+		/// Insert the finished DS into the Top_List
+		insert_tl(holder, to_add);
+	}
+
+
 }
 
 /* 
