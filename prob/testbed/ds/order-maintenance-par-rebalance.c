@@ -1009,10 +1009,11 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 		else {
 			//startIndex stays the same
 			//so does endIndex
-			if ( (startIndex & 0x1 ) == 0x1) // if start index even
-				newEndIndex = startIndex + ((endIndex - startIndex + 2) / 2 );
+			if ( (diff & 0x1 ) == 0x1) // if endIndex - startIndex is odd
+				newEndIndex = startIndex + ((endIndex - startIndex ) / 2 );
 			else 
 				newEndIndex = startIndex + ((endIndex - startIndex + 1) / 2 );
+
 			newStartIndex = newEndIndex + 1;
 
 			current_node->num_children = 1 + (endIndex - startIndex);
