@@ -965,7 +965,6 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 				current_node->base = current_node->parent->base; // left so it is the same base
 			}
 			else {
-				//There are no children and this node is null, leave it alone.
 				return;
 			}
 		}
@@ -983,6 +982,7 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 			}
 			else {
 				//There are no children and this node is null, leave it alone.
+				current_node->num_children = 0;
 				return;
 			}
 		}
@@ -1018,7 +1018,7 @@ void rebuild_tree(Internal_Node * current_node,const int LEFT_OR_RIGHT, Internal
 
 			current_node->num_children = 1 + (endIndex - startIndex);
 		}
-
+		current_node->num_children = diff + 1;
 		rebuild_tree(current_node, LEFT, nodeArray, startIndex, newEndIndex);
 		rebuild_tree(current_node, RIGHT, nodeArray, newStartIndex, endIndex);
 	}
