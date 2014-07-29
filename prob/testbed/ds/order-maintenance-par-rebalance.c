@@ -54,6 +54,7 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 	}
 
 	nodeArray[i++] = current_node;
+
 	/// Iterate from the last Bottom_List storing the internal nodes in nodeArray
 	while (i < num_children)
 	{
@@ -64,18 +65,20 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 
 		// IF this was the node that we inserted that has no place to fit in the tags
 		if (!(current_node->bl->next->internal) )
-			//We need to allocate space for it's internal node
 		{
 #ifdef RD_DEBUG		
 			printf ( "Allocating space for node to be inserted (in build array)\n" );
 #endif
+			//We need to allocate space for it's internal node
 			current_node->bl->next->internal = malloc(sizeof(Internal_Node));
-			// We dont need a base, that will be assigned in rebuiild_tree
-			// Same for parent, left, right 
 			current_node->bl->next->internal->lvl = 1;
+
 			// Assign the internal node's bl pointer to the bl to be inserted
 			current_node->bl->next->internal->bl = current_node->bl->next;
+
+			/// NOTE: Bases updated in rebuild tree
 		}
+
 		current_node = current_node->bl->next->internal;
 		nodeArray[i++] = current_node;
 	}
@@ -883,8 +886,10 @@ void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int 
 
 	if (current_node->lvl == 2)
 	{
-		
+#ifdef RD_DEBUG		
 		printf ( "In a lvl 2 node\n" );
+#endif
+
 		if (diff == -1)
 		{
 			current_node->left = NULL;
@@ -914,12 +919,17 @@ void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int 
 			printf ( "Debug: error too many nodes given to this internal node.\n" );
 #endif
 		}
-
+#ifdef RD_DEBUG
 		printf ( "My num children %i, my indexes [%i %i].\n", current_node->num_children, startIndex, endIndex );
+#endif
+
 		return;
 	}
 	else { // lvl > 2
+#ifdef RD_DEBUG
 		printf ( "Indexes before rebuild calls (num_child: %i lvl: %i) : [%i %i]", current_node->num_children,current_node->lvl, startIndex, endIndex);
+#endif
+
 		//Parallel: Get new start and end indexes
 		if (startIndex > endIndex){ // no children
 			// Left subarray
@@ -946,8 +956,9 @@ void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int 
 
 			newStartIndex = newEndIndex + 1;
 		}
-
+#ifdef RD_DEBUG
 		printf ( "After: [%i %i] [%i %i]\n", startIndex,newEndIndex,newStartIndex, endIndex );
+#endif
 		if (startIndex <= newEndIndex)
 		{
 			if (!(current_node->left))
@@ -985,7 +996,7 @@ void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int 
  * =====================================================================================
  */
 void rebalance_tl (Bottom_List * pivot){
-	///TODO: degug logically
+
 #ifdef RD_STATS
 			
 	if (list->list_of_size_of_top_list_when_split_head == NULL)
@@ -1002,8 +1013,8 @@ void rebalance_tl (Bottom_List * pivot){
 		nextnode->next = NULL;
 		nextnode->data = list->size;
 	}
-
 #endif
+
 	/// Temp current internal node
 	Internal_Node *current_node = pivot->internal;
 	
@@ -1011,9 +1022,7 @@ void rebalance_tl (Bottom_List * pivot){
 	double overflow_density, overflow_threshold, i = -1;
 	unsigned int current_tag_range = 1, current_tree_lvl = 0, lvl_dif = 0;
 
-	/// Check if range is in overflow
-	/// Calculate overflow_density
-	//
+	/// Continually iterate up levels until threshold passes for space needed
 	do 
 	{	
 		if (current_node->parent) 
@@ -1026,10 +1035,8 @@ void rebalance_tl (Bottom_List * pivot){
 			/// Update the lvl difference
 			lvl_dif = current_tree_lvl - lvl_dif;
 		}
-		else //For whatever reason, the existing scaffolding is not large enough
-			 //to hold the nodes and still be under the threshold.
+		else ///< Really, really shouldn't happen
 		{
-			//TODO: figure if this ever happens and how to deal with it.
 			assert(0);
 			/*current_node->parent = malloc(sizeof(Internal_Node));*/
 			/*//if the ith bit is 1, it's parent should look to it as the right node*/
@@ -1042,29 +1049,28 @@ void rebalance_tl (Bottom_List * pivot){
 		}
 
 		/// Bit Shift same number of places as level changes 
-		current_tag_range = current_tag_range << lvl_dif;
+		current_tag_range = current_tag_range << lvl_dif; ///< Same as doubling once for every level upward
 
-		/// This would have current_tree_lvl -1 if the current_tree_lvl++ were before this line.	
+		/// NOTE: This would have current_tree_lvl -1 if the current_tree_lvl++ were before this line.	
 		overflow_threshold = pow(OVERFLOW_CONSTANT, -1.0 * (current_tree_lvl));
 	
-		//This is +1 because we still need to insert the needed node in the tag range
+		/// NOTE: This is +1 because we still need to insert the needed node in the tag range
 		overflow_density = ((double)current_node->num_children + 1) / ((double)current_tag_range);
 
 	}
 	while ( (overflow_density > overflow_threshold ) && (current_node->lvl <= INT_BIT_SIZE) );
 
-	/// Gets the 
+	/// Get the array of nodes to be rebalanced
 	Internal_Node ** nodeArray = build_array_from_rebalance_list(current_node);
-
 	
-	//Parallel: rebuild left and right part of tree
-	//TODO: make parallel
 	// Include the extra node
 	current_node->num_children += 1;
 
 #ifdef RD_DEBUG
 	assert(current_node->num_children > 1);
 #endif
+
+	//TODO: Parallelize this
 
 	int leftStart = 0;
 	int leftEnd = (signed int)((current_node->num_children - 1 ) / 2);
