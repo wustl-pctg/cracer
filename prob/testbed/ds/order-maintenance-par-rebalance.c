@@ -87,58 +87,60 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 {
 	unsigned int 
-			xtag = x->bl->tag,
-			ytag = y->bl->tag,
-			ztag = ytag,//Just a tmp variable
-			lvl_count = INT_BIT_SIZE, // This represents the lvl where x and y have their most recent common ancestor
-			bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
+		xtag = x->bl->tag,
+		ytag = y->bl->tag,
+		ztag = ytag,//Just a tmp variable
+		lvl_count = INT_BIT_SIZE, // This represents the lvl where x and y have their most recent common ancestor
+		bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
 
 
 	/// Find whether y->prev or y->next  has a closer common ancestor to x.
-	/// If y has no next, then use x.
 	if ((y->bl->next))
 	{
 		ztag = y->bl->next->tag;
 		while (bit_counter != 0)
 		{
+			/// If z and y bit are different, then x will be closer to y. Use x.
 			if ( (((ztag ^ ytag)) & bit_counter) == bit_counter) 
 			{
-				/// If z and y bit are different, then x will be closer to y. Use x.
-				/// Find the right lvl
 				while ( ((~(xtag ^ ytag)) & bit_counter) == bit_counter) 
 				{
+					/// Must find the right lvl first
 					lvl_count--;
 					bit_counter = bit_counter >> 1;
 				}
 				break;
 			}
+			/// If x and y bit are not the same at the bit_counter, then Z will be the closer node. 
 			else if ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
 			{
-				/// If x and y bit are not the same at the bit_counter, then Z will be the closer node. 
-				/// We then assign z to x.
-				/// Before that find the right lvl
 				while ( ((~(ztag ^ ytag)) & bit_counter) == bit_counter) 
 				{
+					/// Must find the right lvl first
 					lvl_count--;
 					bit_counter = bit_counter >> 1;
 				}
-				x = y->bl->next->internal;
 				//Use y->next as x
+				x = y->bl->next->internal;
+
+				/// We then assign z to x.
 				xtag = ztag;
 				break;
 			}
+
+			/// Otherwise keep iterating until a bit match
 			lvl_count--;
 			bit_counter = bit_counter >> 1;
 		}
 	}
-	else
+	else ///< If here, y has no next, so use x.
 	{
 		while (bit_counter != 0)
 		{
 			if ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
-			{
 				break;
-			}
+
+			/// Need to update the level count
 			lvl_count--;
 			bit_counter = bit_counter >> 1;
 		}
@@ -152,6 +154,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 #ifdef RD_DEBUG
 		printf ( "Debug: Create scaffold - old parent below new parent\n" );
 #endif
+
  		new_parent = x->parent;
 
  		while (new_parent->lvl < lvl_count)
@@ -165,7 +168,8 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		assert(new_parent->lvl == lvl_count);
 #endif
 
-		if (xtag != ztag) // if x/z not swapped
+		/// We know the direction of the child based on if z was changed
+		if (xtag != ztag)
 		{
 			/*new_parent->left = iter_node;*/
 			new_parent->right = y;
@@ -175,6 +179,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 			/*new_parent->right = iter_node;*/
 			new_parent->left = y;
 		}
+
 		y->parent = new_parent;
 
 		/// Assign lvl to new parent
@@ -197,22 +202,21 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		// DOING THIS AT END OF FUNCTION
 		/*x->parent->num_children++;*/
 
-		if (xtag != ztag) // if x/z not swapped
+		/// We know the direction of the child based on if z was changed
+		if (xtag != ztag)
 		{
-			new_parent->left = x;
 			new_parent->right = y;
+			new_parent->left = x; ///< Also update left in this case
 		}
 		else
 		{
 			new_parent->left = y;
-			new_parent->right = x;
+			new_parent->right = x; ///< Also update right in this case
 		}
 
 		//Reassign the old parent's left/right references
 		if (x->parent->left == x)
-		{
 			x->parent->left = new_parent;
-		}
 		else if (x->parent->right == x)
 			x->parent->right = new_parent;
 		else
@@ -223,12 +227,14 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 
 		//Assign x/y parent
 		x->parent = y->parent = new_parent;
+
 		/// Assign lvl to new parent
 		new_parent->lvl = lvl_count;
+
 		// This is a new node with just 2 children
 		new_parent->num_children = 2;
 	}
-	else //they are equal, i.e. the same node 
+	else ///< They are equal, i.e. the same node 
 	{
 #ifdef RD_DEBUG
 		printf ("Debug : Create scaffolding - Old and new parent of x are the same\n" );
@@ -237,8 +243,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		new_parent = malloc(sizeof(Internal_Node));
 		new_parent->parent = x->parent;
 		new_parent->lvl = lvl_count;
-		// Is this right?
-		new_parent->num_children = 2;
+		new_parent->num_children = 2; //TODO Is this right?
 
 		//Reassign the old parent's left/right references
 		if (x->parent->left == x)
@@ -251,14 +256,12 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 			assert(0);
 		}
 
-		if (xtag != ztag) // if x and z not swapped	
-		{
+		/// We know the direction of the child based on if z was changed
+		if (xtag != ztag) 
 			new_parent->right = y;		
-		}
 		else
-		{
 			new_parent->left = y;
-		}
+
 		y->parent = x->parent = new_parent;
 	}
 
@@ -693,48 +696,48 @@ int order (OM_Node * x, OM_Node * y)
 void split_bl (Top_List * list, Bottom_List * list_to_split)
 {
 	/* PREVIOUS VERSION
-	OM_Node * current = list_to_split->head, *middle_node;
-	/// Create new list to add to top 
-	Bottom_List * to_add = create_bl();
-	/// Keep track of num  nodes visited
-	int node_count = 1;
-	/// Each node in the list will be spaced out by skip_size tag spaces
-	/// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
-	unsigned int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
-	/// Iterate to the middle updating tags along the way
-	while (node_count < (list_to_split->size >> 1)){
-		current->next->tag = current->tag + skip_size;
-		current = current->next;	
-		node_count++;}
-	/// Update sizes of the lists
-	to_add->size = list_to_split->size - node_count;
-	list_to_split->size = node_count;
-	/// Make current the end of the original list and save the middle
-	list_to_split->tail = current;
-	middle_node = current->next;
-	current->next = NULL;
-	/// Get current node back;
-	current = middle_node;
-	/// Set the head of the new list to middle node
-	to_add->head = middle_node;
-	/// Nullify prev of the middle node since it's the head
-	middle_node->prev = NULL;
-	/// Assign 0 to first tag of to_add list
-	current->tag = 0;
-	/// Reassign current ds
-	current->ds = to_add;
-	/// Iterate through remaining nodes updating tags and their ds
-	while (current->next != NULL){
-		current = current->next;	
-		current->ds = to_add;
-		current->tag = current->prev->tag + skip_size;}
-	/// Make the last node the tail of the to_add list
-	to_add->tail = current;
-	current->next = NULL;
-	/// No longer need reordered
-	list_to_split->reorder_flag = to_add->reorder_flag = 0;
-	/// Insert the newly created list this into the top list
-	insert_tl(list_to_split, to_add);
+	   OM_Node * current = list_to_split->head, *middle_node;
+	   /// Create new list to add to top 
+	   Bottom_List * to_add = create_bl();
+	   /// Keep track of num  nodes visited
+	   int node_count = 1;
+	   /// Each node in the list will be spaced out by skip_size tag spaces
+	   /// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
+	   unsigned int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
+	   /// Iterate to the middle updating tags along the way
+	   while (node_count < (list_to_split->size >> 1)){
+	   current->next->tag = current->tag + skip_size;
+	   current = current->next;	
+	   node_count++;}
+	   /// Update sizes of the lists
+	   to_add->size = list_to_split->size - node_count;
+	   list_to_split->size = node_count;
+	   /// Make current the end of the original list and save the middle
+	   list_to_split->tail = current;
+	   middle_node = current->next;
+	   current->next = NULL;
+	   /// Get current node back;
+	   current = middle_node;
+	   /// Set the head of the new list to middle node
+	   to_add->head = middle_node;
+	   /// Nullify prev of the middle node since it's the head
+	   middle_node->prev = NULL;
+	   /// Assign 0 to first tag of to_add list
+	   current->tag = 0;
+	   /// Reassign current ds
+	   current->ds = to_add;
+	   /// Iterate through remaining nodes updating tags and their ds
+	   while (current->next != NULL){
+	   current = current->next;	
+	   current->ds = to_add;
+	   current->tag = current->prev->tag + skip_size;}
+	   /// Make the last node the tail of the to_add list
+	   to_add->tail = current;
+	   current->next = NULL;
+	   /// No longer need reordered
+	   list_to_split->reorder_flag = to_add->reorder_flag = 0;
+	   /// Insert the newly created list this into the top list
+	   insert_tl(list_to_split, to_add);
 	*/
 	OM_Node * current = list_to_split->head, *transition_node;
 	
@@ -1123,27 +1126,27 @@ void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const /*long*/ 
  *         Name:  rebalance_bls
  *  Description:  Rebalance all bottom lists with the reorder flag.
  e/
-void rebalance_bls (Top_List * list)
-{
-	/// The Iterators
-	Bottom_List * current, * current_h;
-	current = list->head;
+ void rebalance_bls (Top_List * list)
+ {
+ /// The Iterators
+ Bottom_List * current, * current_h;
+ current = list->head;
 
-	while(current != NULL)
-	{
-		if(current->reorder_flag == 1) ///< If 1, then needs split
-			split_bl(list, current);
-		current = current->next;
-	}
-}
+ while(current != NULL)
+ {
+ if(current->reorder_flag == 1) ///< If 1, then needs split
+ split_bl(list, current);
+ current = current->next;
+ }
+ }
 
 
 /*! 
- * ===  FUNCTION  ======================================================================
- *         Name:  print_tl
- *  Description:  Print all the tags of the "nodes" in Top_List list.
- * =====================================================================================
- */
+* ===  FUNCTION  ======================================================================
+*         Name:  print_tl
+*  Description:  Print all the tags of the "nodes" in Top_List list.
+* =====================================================================================
+*/
 void print_tl (Top_List * list)
 {
 	Bottom_List * current = list->head;
