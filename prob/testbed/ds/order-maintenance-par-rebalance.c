@@ -918,7 +918,6 @@ void rebalance_tl (Bottom_List * pivot){
 
 		/// Update the tree level
 		current_tree_lvl = current_node->lvl;
-
 		
 		/// Bit Shift same number of places as level changes 
 		current_tag_range = current_tag_range << lvl_dif; ///< Same as doubling once for every level upward
@@ -972,8 +971,7 @@ void rebalance_tl (Bottom_List * pivot){
 		// num children taken care of in rebuild
 	}
 	/// else current->left is already as desired
-	assert(0);
-	/*rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);*/
+	rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
 
 	/// Rebuild right half of tree portion needing rebalanced
 	if( !(current_node->right) )
@@ -997,8 +995,7 @@ void rebalance_tl (Bottom_List * pivot){
 		// num children taken care of in rebuild
 	}
 	/// else current->right is already as desired
-	assert(0);
-	/*rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);*/
+	rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);
 
 	/// Free the array we created
 	free(nodeArray);
