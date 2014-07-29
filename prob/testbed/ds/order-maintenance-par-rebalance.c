@@ -913,11 +913,12 @@ void rebalance_tl (Bottom_List * pivot){
 
 		current_node = current_node->parent;
 
+		/// Update the lvl difference
+		lvl_dif = current_node->lvl - current_tree_lvl;
+
 		/// Update the tree level
 		current_tree_lvl = current_node->lvl;
 
-		/// Update the lvl difference
-		lvl_dif = current_tree_lvl - lvl_dif;
 		
 		/// Bit Shift same number of places as level changes 
 		current_tag_range = current_tag_range << lvl_dif; ///< Same as doubling once for every level upward
