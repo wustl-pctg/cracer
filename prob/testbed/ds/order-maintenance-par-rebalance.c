@@ -1339,7 +1339,7 @@ void print_tree (Top_List * list)
 			left->data = current->data->left;
 			append_and_sort(current, left);
 		}
-		if (current->data->right)
+else if (current->data->right)
 		{
 			print_node *right = malloc(sizeof(Internal_Node));
 			right->data = current->data->right;
