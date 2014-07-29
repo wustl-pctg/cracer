@@ -129,39 +129,51 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		}
 	}
 
-	Internal_Node * new_parent;
+	Internal_Node * new_parent, * iter_node;
+
 	/// The old parent is below the new parent that is to be created
  	if (x->parent->lvl < lvl_count){
 		printf ( "Debug: Create scaffold - old parent below new parent\n" );
- 		new_parent = malloc(sizeof(Internal_Node));
+ 		new_parent = x->parent;
+
+ 		while (new_parent->lvl < lvl_count)
+		{
+			/// Iter node follows new parent
+			iter_node = new_parent;
+			new_parent = new_parent->parent;
+		}
+#ifdef RD_DEBUG
+		assert(new_parent->lvl == lvl_count);
+#endif
+		
 
 		if (xtag != ztag) // if x/z not swapped
 		{
-			new_parent->left = x->parent;
+			new_parent->left = iter_node;
 			new_parent->right = y;
 		}
 		else {
-			new_parent->right = x->parent;
+			new_parent->right = iter_node;
 			new_parent->left = y;
 		}
 		y->parent = new_parent;
 		/// Assign lvl to new parent
 		new_parent->lvl = lvl_count;
-		if (x->parent->parent)
-		{
-			if (x->parent->parent->left == x->parent->parent)
-			{
-				x->parent->parent->left = new_parent;
-			}
-			else if (x->parent->parent->right == x->parent->parent)
-			{
-				x->parent->parent->right = new_parent;
-			}
-			else{
-				printf ( "Debug: Error old parent's parent has incorrect left//right references\n" );
-			}
-			new_parent->parent = x->parent->parent;
-		}
+		/*if (x->parent->parent)*/
+		/*{*/
+			/*if (x->parent->parent->left == x->parent->parent)*/
+			/*{*/
+				/*x->parent->parent->left = new_parent;*/
+			/*}*/
+			/*else if (x->parent->parent->right == x->parent->parent)*/
+			/*{*/
+				/*x->parent->parent->right = new_parent;*/
+			/*}*/
+			/*else{*/
+				/*printf ( "Debug: Error old parent's parent has incorrect left//right references\n" );*/
+			/*}*/
+			/*new_parent->parent = x->parent->parent;*/
+		/*}*/
 
 		new_parent->lvl = lvl_count;
 		new_parent->num_children = x->parent->num_children + 1;
@@ -217,7 +229,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 	}
 
     // Update number of children
-	Internal_Node *iter_node = new_parent->parent;
+	iter_node = new_parent->parent;
 	while (iter_node != NULL)
 	{
 		iter_node->num_children += 1;
