@@ -86,14 +86,12 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 /// Create the tree above x and y
 void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 {
-
-
-	unsigned int current_lvl = 1,
-		xtag = x->bl->tag,
-		ytag = y->bl->tag,
-		ztag = ytag,//Just a tmp variable
-		lvl_count = INT_BIT_SIZE + 1, // This represents the lvl where x and y have their most recent common ancestor
-		bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
+	unsigned int 
+			xtag = x->bl->tag,
+			ytag = y->bl->tag,
+			ztag = ytag,//Just a tmp variable
+			lvl_count = INT_BIT_SIZE, // This represents the lvl where x and y have their most recent common ancestor
+			bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
 
 
 	/// Find whether y->prev or y->next  has a closer common ancestor to x.
@@ -131,9 +129,66 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		}
 	}
 
+	Internal_Node * new_parent;
+	/// The old parent is below the new parent that is to be created
  	if (x->parent->lvl < lvl_count){
+		printf ( "Debug: Create scaffold - old parent below new parent\n" );
+ 		new_parent = malloc(sizeof(Internal_Node));
+
+		if (xtag != ztag) // if x/z not swapped
+		{
+			new_parent->left = x->parent;
+			new_parent->right = y;
+		}
+		else {
+			new_parent->right = x->parent;
+			new_parent->left = y;
+		}
+		/// Assign lvl to new parent
+		new_parent->lvl = lvl_count;
+		if (x->parent->parent)
+		{
+			new_parent->parent = x->parent->parent;
+			if (xtag != ztag)
+			{
+				x->parent->parent->left 
+				x->parent->parent->right = 
+			}
+			else
+			{
+			}
+		}
+
+		new_parent->lvl = lvl_count;
+		new_parent->num_children = x->parent + 1;
 	}
+	/// The old parent is above new parent that is to be created
 	else if (x->parent->lvl > lvl_count){
+		printf ( "Debug: Create scaffold - old parent above new parent\n" );
+ 		new_parent = malloc(sizeof(Internal_Node));
+
+		// Assign x's old parent to new_parent's parent
+		new_parent->parent = x->parent;
+		//Increase children count of old parent
+		x->parent->num_children++;
+
+		if (xtag != ztag) // if x/z not swapped
+		{
+			//TODO: may be right?
+			new_parent->parent->left = new_parent;
+			new_parent->left = x;
+			new_parent->right = y;
+		}
+		else {
+			new_parent->parent->right = new_parent;
+			new_parent->left = y;
+			new_parent->right = x;
+		}
+		/// Assign lvl to new parent
+		new_parent->lvl = lvl_count;
+		// This is a new node with just 2 children
+		new_parent->num_children = 2;
+	}
 	}
 	else //they are equal
 	{
