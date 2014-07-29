@@ -894,7 +894,7 @@ void rebalance_tl (Bottom_List * pivot){
 #endif
 
 	/// Temp current internal node
-	Internal_Node *current_node = pivot->internal;
+	Internal_Node *current_node = pivot->internal, * temp; ///< temp for rebuild set-up
 	
 	/// Constants used to calculate when to rebalance
 	double overflow_density, overflow_threshold, i = -1;
@@ -903,36 +903,26 @@ void rebalance_tl (Bottom_List * pivot){
 	/// Continually iterate up levels until threshold passes for space needed
 	do 
 	{	
-		if (current_node->parent) 
-		{
-			current_node = current_node->parent;
+#ifdef RD_DEBUG
+		printf("Threshold not surpassed before running out of parents....\ncurrent_node->lvl: %i\n", current_node->lvl);
+		assert(current_node->parent != NULL);
+#endif
 
-			/// Update the tree level
-			current_tree_lvl = current_node->lvl;
+		current_node = current_node->parent;
 
-			/// Update the lvl difference
-			lvl_dif = current_tree_lvl - lvl_dif;
-		}
-		else ///< Really, really shouldn't happen
-		{
-			assert(0);
-			/*current_node->parent = malloc(sizeof(Internal_Node));*/
-			/*//if the ith bit is 1, it's parent should look to it as the right node*/
-			/*if (current_ & current_tag_range == current_tag_range)*/
-			/*current_node->parent->right = current_node;*/
-			/*else*/
-			/*current_node->parent->left = current_node;*/
-			/*current_node = current->node;*/
+		/// Update the tree level
+		current_tree_lvl = current_node->lvl;
 
-		}
-
+		/// Update the lvl difference
+		lvl_dif = current_tree_lvl - lvl_dif;
+		
 		/// Bit Shift same number of places as level changes 
 		current_tag_range = current_tag_range << lvl_dif; ///< Same as doubling once for every level upward
 
-		/// NOTE: This would have current_tree_lvl -1 if the current_tree_lvl++ were before this line.	
+		/// NOTE: This would have current_tree_lvl - 1 if the current_tree_lvl++ were before this line.	
 		overflow_threshold = pow(OVERFLOW_CONSTANT, -1.0 * (current_tree_lvl));
 	
-		/// NOTE: This is +1 because we still need to insert the needed node in the tag range
+		/// NOTE: This is + 1 because we still need to insert the needed node in the tag range
 		overflow_density = ((double)current_node->num_children + 1) / ((double)current_tag_range);
 
 	}
@@ -945,43 +935,66 @@ void rebalance_tl (Bottom_List * pivot){
 	Internal_Node ** nodeArray = build_array_from_rebalance_list(current_node);
 	
 #ifdef RD_DEBUG
-	assert(current_node->num_children > 1);
+	assert(current_node->num_children > 1); ///< Minimum is 2 nodes
 #endif
 
 	//TODO: Parallelize this
 
-	int leftStart = 0;
-	int leftEnd = (signed int)((current_node->num_children - 1 ) / 2);
-	int rightStart = leftEnd+1;
-	int rightEnd = current_node->num_children -1;
-	
-	if (leftStart <= leftEnd)
+	/// Going to get intial indices for the recursive split
+	int leftStart = 0; ///< 0 is the first index in the array
+	int leftEnd = (current_node->num_children - 1) >> 1; ///< If odd, will be floor of half the index range
+	int rightStart = leftEnd + 1; ///< RightHalf starts immediately after LeftHalf ends
+	int rightEnd = current_node->num_children - 1; ///< Index of last Internal_Node in array
+
+	/// Rebuild left half of tree portion needing rebalanced
+	if ( !(current_node->left) )
 	{
-		if (!(current_node->left))
-		{
-			current_node->left = malloc(sizeof(Internal_Node));
-			current_node->left->base = current_node->base;
-			current_node->left->parent = current_node;
+		/// Node at lvl - 1 is optimal, so we create it if not present
+		current_node->left = malloc(sizeof(Internal_Node));
+		current_node->left->parent = current_node;
 
-			current_node->left->lvl = current_node->lvl -1;
-			// num children taken care of in rebuild
-		}
-
-		rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
+		current_node->left->lvl = current_node->lvl -1;
+		// num children taken care of in rebuild
 	}
-	if (rightStart <= rightEnd ){
-		if(!(current_node->right) )
-		{
-			current_node->right = malloc(sizeof(Internal_Node));
-			current_node->right->base = current_node->base;
-			current_node->right->parent = current_node;
+	else if (current_node->left->lvl != current_node->lvl - 1)
+	{
+		/// New current_node->left is temp
+		temp = malloc(sizeof(Internal_Node));
 
-			current_node->right->lvl = current_node->lvl -1;
-			// num children taken care of in rebuild
-		}
-		rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);
+		current_node->left->parent = temp;
+		current_node->left = temp;
+		current_node->left->parent = current_node;
+		current_node->left->lvl = current_node->lvl -1;
+		// num children taken care of in rebuild
 	}
+	/// else current->left is already as desired
+	rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
 
+	/// Rebuild right half of tree portion needing rebalanced
+	if( !(current_node->right) )
+	{
+		/// Node at lvl - 1 is optimal, so we create it if not present
+		current_node->right = malloc(sizeof(Internal_Node));
+		current_node->right->parent = current_node;
+
+		current_node->right->lvl = current_node->lvl -1;
+		// num children taken care of in rebuild
+	}
+	else if (current_node->left->lvl != current_node->lvl - 1)
+	{
+		/// New current_node->right is temp
+		temp = malloc(sizeof(Internal_Node));
+
+		current_node->right->parent = temp;
+		current_node->right = temp;
+		current_node->right->parent = current_node;
+		current_node->right->lvl = current_node->lvl -1;
+		// num children taken care of in rebuild
+	}
+	/// else current->right is already as desired
+	rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);
+
+	/// Free the array we created
 	free(nodeArray);
 }
 
