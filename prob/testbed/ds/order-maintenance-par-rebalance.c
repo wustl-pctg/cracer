@@ -100,18 +100,31 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 	{
 		ztag = y->bl->next->tag;
 		while (bit_counter != 0) {
-			if ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
+			if ( (((ztag ^ ytag)) & bit_counter) == bit_counter) 
+			{
+				/// If z and y bit are different, then x will be closer to y. Use x.
+				/// Find the right lvl
+				while ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
+				{
+					lvl_count--;
+					bit_counter = bit_counter >> 1;
+				}
+				break;
+			}
+
+			else if ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
 			{
 				/// If x and y bit are not the same at the bit_counter, then Z will be the closer node. 
 				/// We then assign z to x.
+				/// Before that find the right lvl
+				while ( (((ztag ^ ytag)) & bit_counter) == bit_counter) 
+				{
+					lvl_count--;
+					bit_counter = bit_counter >> 1;
+				}
 				x = y->bl->next->internal;
 				//Use y->next as x
 				xtag = ztag;
-				break;
-			}
-			else if ( (((ztag ^ ytag)) & bit_counter) == bit_counter) 
-			{
-				/// If z and y bit are different, then x will be closer to y. Use x.
 				break;
 			}
 			lvl_count--;
@@ -184,12 +197,14 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 
 		//Reassign the old parent's left/right references
 		if (x->parent->left == x)
+		{
 			x->parent->left = new_parent;
+		}
 		else if (x->parent->right == x)
 			x->parent->right = new_parent;
 		else
-		{
-			printf ( "Debug: Create scaffolding - new_parent->parent has two children already, or no children.\n" );
+			{
+			printf ( "Debug: Create scaffolding -x->parent has two children already, or no children.\n" );
 			assert(0);
 		}
 
@@ -201,23 +216,33 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		new_parent->num_children = 2;
 	}
 	else //they are equal, i.e. the same node 
-	/// SHOULD THIS HAPPEN?
 	{
 		printf ("Debug : Create scaffolding - Old and new parent of x are the same\n" );
-		assert(0); // this shouldnt happen?
-		new_parent = x->parent;
-#ifdef RD_DEBUG
-		// if both are not null, then we have an issue
-		assert (new_parent->left == NULL || new_parent->right == NULL);
-#endif
+		new_parent = malloc(sizeof(Internal_Node));
+		new_parent->parent = x->parent;
+		new_parent->lvl = lvl_count;
+		// Is this right?
+		new_parent->num_children = 2;
+
+		//Reassign the old parent's left/right references
+		if (x->parent->left == x)
+			x->parent->left = new_parent;
+		else if (x->parent->right == x)
+			x->parent->right = new_parent;
+		else
+			{
+			printf ( "Debug: Create scaffolding -x->parent has two children already, or no children.\n" );
+			assert(0);
+		}
 
 		if (xtag != ztag) // if x and z not swapped	
 		{
-				
+			new_parent->right = y;		
 		}
 		else{
+			new_parent->left = y;
 		}
-		new_parent->num_children++;
+		y->parent = x->parent = new_parent;
 	}
 
     // Update number of children
