@@ -1034,7 +1034,7 @@ void rebalance_tl (Bottom_List * pivot){
 			current_node = current_node->parent;
 
 			/// Update the tree level
-			current_tree_lvl = currennt_node->lvl;
+			current_tree_lvl = current_node->lvl;
 
 			/// Update the lvl difference
 			lvl_dif = current_tree_lvl - lvl_dif;
