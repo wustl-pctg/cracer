@@ -149,34 +149,17 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 
 		if (xtag != ztag) // if x/z not swapped
 		{
-			new_parent->left = iter_node;
+			/*new_parent->left = iter_node;*/
 			new_parent->right = y;
 		}
 		else {
-			new_parent->right = iter_node;
+			/*new_parent->right = iter_node;*/
 			new_parent->left = y;
 		}
 		y->parent = new_parent;
 		/// Assign lvl to new parent
 		new_parent->lvl = lvl_count;
-		/*if (x->parent->parent)*/
-		/*{*/
-			/*if (x->parent->parent->left == x->parent->parent)*/
-			/*{*/
-				/*x->parent->parent->left = new_parent;*/
-			/*}*/
-			/*else if (x->parent->parent->right == x->parent->parent)*/
-			/*{*/
-				/*x->parent->parent->right = new_parent;*/
-			/*}*/
-			/*else{*/
-				/*printf ( "Debug: Error old parent's parent has incorrect left//right references\n" );*/
-			/*}*/
-			/*new_parent->parent = x->parent->parent;*/
-		/*}*/
-
-		new_parent->lvl = lvl_count;
-		new_parent->num_children = x->parent->num_children + 1;
+		new_parent->num_children = iter_node->num_children + 1;
 	}
 	/// The old parent is above new parent that is to be created
 	else if (x->parent->lvl > lvl_count){
@@ -191,17 +174,26 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 
 		if (xtag != ztag) // if x/z not swapped
 		{
-			//TODO: may be right?
-			new_parent->parent->left = new_parent;
 			new_parent->left = x;
 			new_parent->right = y;
 		}
 		else {
-			new_parent->parent->right = new_parent;
 			new_parent->left = y;
 			new_parent->right = x;
 		}
 
+		//Reassign the old parent's left/right references
+		if (x->parent->left == x)
+			x->parent->left = new_parent;
+		else if (x->parent->right == x)
+			x->parent->right = new_parent;
+		else
+		{
+			printf ( "Debug: Create scaffolding - new_parent->parent has two children already, or no children.\n" );
+			assert(0);
+		}
+
+		//Assign x/y parent
 		x->parent = y->parent = new_parent;
 		/// Assign lvl to new parent
 		new_parent->lvl = lvl_count;
