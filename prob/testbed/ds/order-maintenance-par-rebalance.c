@@ -971,7 +971,8 @@ void rebalance_tl (Bottom_List * pivot){
 		// num children taken care of in rebuild
 	}
 	/// else current->left is already as desired
-	rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
+	assert(0);
+	/*rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);*/
 
 	/// Rebuild right half of tree portion needing rebalanced
 	if( !(current_node->right) )
@@ -995,7 +996,8 @@ void rebalance_tl (Bottom_List * pivot){
 		// num children taken care of in rebuild
 	}
 	/// else current->right is already as desired
-	rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);
+	assert(0);
+	/*rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);*/
 
 	/// Free the array we created
 	free(nodeArray);
