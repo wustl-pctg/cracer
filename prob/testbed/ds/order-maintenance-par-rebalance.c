@@ -144,6 +144,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 			new_parent->right = x->parent;
 			new_parent->left = y;
 		}
+		y->parent = new_parent;
 		/// Assign lvl to new parent
 		new_parent->lvl = lvl_count;
 		if (x->parent->parent)
@@ -188,6 +189,8 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 			new_parent->left = y;
 			new_parent->right = x;
 		}
+
+		x->parent = y->parent = new_parent;
 		/// Assign lvl to new parent
 		new_parent->lvl = lvl_count;
 		// This is a new node with just 2 children
@@ -218,7 +221,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 	while (iter_node != NULL)
 	{
 		iter_node->num_children += 1;
-		iter_node = new_parent->parent;
+		iter_node = iter_node->parent;
 	}
 }
 
@@ -481,6 +484,7 @@ void first_insert_tl (Top_List * list, Bottom_List * _y)
 	y->parent = root;
 	//Top lvl node
 	root->lvl = INT_BIT_SIZE;
+	root->num_children = 1;
 }
 
 /*! 
