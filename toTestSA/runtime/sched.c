@@ -2092,8 +2092,9 @@ void OM_DS_init(CilkContext *const context){
 	/// Define CILK running parameters
 
 	// If Batchify works
-	//#define BATCHIFY_WORKING
+//#define BATCHIFY_WORKING
 //#define RD_DEBUG
+//#define RD_STATS
 
 	if (context->Cilk_global_state){
 		/// Debug message
@@ -2198,10 +2199,11 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
  */
 inline void OM_DS_insert(CilkWorkerState *const ws, Runtime_node * x, Runtime_node *y, const int ID){
 
+  // ws is only for batchified inserts - so comment out when non-batchified inserts testing
 	if (ID == ENGLISH_ID)
-		return insert(ws, x->english, y->english);
+	  return insert(ws, x->english, y->english);
 	else if (ID == HEBREW_ID)
-		return insert(ws, x->hebrew, y->hebrew);
+	  return insert(ws, x->hebrew, y->hebrew);
 	else
 	{
 		printf("Incorrect ID specified in OM_DS_insert. Exit.\n");
