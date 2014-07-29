@@ -148,19 +148,22 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		new_parent->lvl = lvl_count;
 		if (x->parent->parent)
 		{
+			if (x->parent->parent->left == x->parent->parent)
+			{
+				x->parent->parent->left = new_parent;
+			}
+			else if (x->parent->parent->right == x->parent->parent)
+			{
+				x->parent->parent->right = new_parent;
+			}
+			else{
+				printf ( "Debug: Error old parent's parent has incorrect left//right references\n" );
+			}
 			new_parent->parent = x->parent->parent;
-			if (xtag != ztag)
-			{
-				x->parent->parent->left 
-				x->parent->parent->right = 
-			}
-			else
-			{
-			}
 		}
 
 		new_parent->lvl = lvl_count;
-		new_parent->num_children = x->parent + 1;
+		new_parent->num_children = x->parent->num_children + 1;
 	}
 	/// The old parent is above new parent that is to be created
 	else if (x->parent->lvl > lvl_count){
@@ -170,7 +173,8 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		// Assign x's old parent to new_parent's parent
 		new_parent->parent = x->parent;
 		//Increase children count of old parent
-		x->parent->num_children++;
+		// DOING THIS AT END OF FUNCTION
+		/*x->parent->num_children++;*/
 
 		if (xtag != ztag) // if x/z not swapped
 		{
@@ -189,9 +193,32 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		// This is a new node with just 2 children
 		new_parent->num_children = 2;
 	}
-	}
-	else //they are equal
+	else //they are equal, i.e. the same node 
+	/// SHOULD THIS HAPPEN?
 	{
+		printf ("Debug : Create scaffolding - Old and new parent of x are the same\n" );
+		assert(0); // this shouldnt happen?
+		new_parent = x->parent;
+#ifdef RD_DEBUG
+		// if both are not null, then we have an issue
+		assert (new_parent->left == NULL || new_parent->right == NULL);
+#endif
+
+		if (xtag != ztag) // if x and z not swapped	
+		{
+				
+		}
+		else{
+		}
+		new_parent->num_children++;
+	}
+
+    // Update number of children
+	Internal_Node *iter_node = new_parent->parent;
+	while (iter_node != NULL)
+	{
+		iter_node->num_children += 1;
+		iter_node = new_parent->parent;
 	}
 }
 
@@ -218,12 +245,10 @@ void insert(OM_Node *x, OM_Node *y){
 /*}*/
 
 void insert_internal(OM_Node *x, OM_Node *y){
-	/// Retrieve the Bottom_List
-	Bottom_List * ds = x->ds;
-
+	Bottom_List *ds = x->ds;
 #ifdef RD_DEBUG
 	/// y and ds should never be NULL
-	if ( !(x && y && ds) )
+	if ( !(x && y) )
 	{
 		printf("Some node or ds is null, skipping insert; x(%d) and y(%d)\n", x->ID, y->ID);
 		assert(0);
@@ -1082,6 +1107,8 @@ void print_tl (Top_List * list)
 void print_bl (Bottom_List * list)
 {
 	OM_Node * current = list->head;
+
+	printf ( "(size = %i) Head->", list->size );
 
 	printf ( "(size = %i) Head->", list->size );
 	while (current != NULL)
