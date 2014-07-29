@@ -1011,96 +1011,42 @@ void rebalance_tl (Bottom_List * pivot){
  *  			  If in the left, stop counting 1 before the endIndex.
  * =====================================================================================
  */
-void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex){
-/* OLD REBUILD
-	int newStartIndex, newEndIndex, diff = endIndex - startIndex;
-	if (current_node == NULL )
-		return;
-	else
-		current_node->num_children = diff + 1;
-#ifdef RD_DEBUG
-	if (current_node->lvl < 2){
-		printf ( "Debug: rebuild tree lvl is too small.\n" );
-		assert(0);}
-#endif 
-	if (current_node->lvl == 2){
-#ifdef RD_DEBUG		
-		printf ( "In a lvl 2 node\n" );
-#endif
-		if (diff == -1){
-			current_node->left = NULL;
-			current_node->right = NULL;}
-		else if (diff == 0){
-			current_node->left = nodeArray[startIndex];
-			current_node->left->parent = current_node;
-			current_node->left->base = current_node->left->bl->tag = current_node->base;
-			current_node->right = NULL;}
-		else if (diff == 1){
-			/// Left node
-			current_node->left = nodeArray[startIndex];
-			current_node->left->parent = current_node;
-			current_node->left->base = current_node->left->bl->tag = current_node->base;
-			/// Right node
-			current_node->right = nodeArray[endIndex];
-			current_node->right->parent = current_node;
-			current_node->right->base = current_node->right->bl->tag = current_node->base + 1;}
-		else{
-#ifdef RD_DEBUG
-			printf ( "Debug: error too many nodes given to this internal node.\n" );
-#endif
-		}
-#ifdef RD_DEBUG
-		printf ( "My num children %i, my indexes [%i %i].\n", current_node->num_children, startIndex, endIndex );
-#endif
-		return;}
-	else { // lvl > 2
-#ifdef RD_DEBUG
-		printf ( "Indexes before rebuild calls (num_child: %i lvl: %i) : [%i %i]", current_node->num_children,current_node->lvl, startIndex, endIndex);
-#endif
-		//Parallel: Get new start and end indexes
-		if (startIndex > endIndex){ // no children
-			// Left subarray
-			startIndex = 1;
-			newEndIndex = 0;
-			// Right subarray
-			newStartIndex = 1;
-			endIndex  = 0;}
-		else if (startIndex == endIndex) // one child{
-			newEndIndex = endIndex;
-			//Dont use right sub array
-			newStartIndex = 1;
-			endIndex = 0;}
-		else {
-			//startIndex stays the same
-			//so does endIndex
-			if ( (diff & 0x1 ) == 0x1) // if endIndex - startIndex is odd
-				newEndIndex = startIndex + ((endIndex - startIndex ) / 2 );
-			else
-				newEndIndex = startIndex + ((endIndex - startIndex + 1) / 2 );
-			newStartIndex = newEndIndex + 1;}
-#ifdef RD_DEBUG
-		printf ( "After: [%i %i] [%i %i]\n", startIndex,newEndIndex,newStartIndex, endIndex );
-#endif
-		if (startIndex <= newEndIndex){
-			if (!(current_node->left)){
-				current_node->left = malloc(sizeof(Internal_Node));
-				current_node->left->base = current_node->base;
-				current_node->left->parent = current_node;
-				current_node->left->lvl = current_node->lvl -1;
-				// num children taken care of in rebuild}
-			rebuild_tree(current_node->left, nodeArray, startIndex, newEndIndex);}
-		if (newStartIndex <= endIndex ){
-			if(!(current_node->right) ){
-				current_node->right = malloc(sizeof(Internal_Node));
-				current_node->right->base = current_node->base;
-				current_node->right->parent = current_node;
-				current_node->right->lvl = current_node->lvl -1;
-				// num children taken care of in rebuild}
-			rebuild_tree(current_node->right, nodeArray, newStartIndex, endIndex);}} //end else
-*/
+void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex)
+{
+/////////////////////////// OLD REBUILD AT BOTTOM
+	Internal_Node * new_child;
+	int num_children = (endIndex - startIndex) + 1;
 
+	/// If there is only one node, simply make it the left child of the current_node
+	if (num_children == 1)
+	{
+		/* 
+		 * If there are already left and right children, it is because they are Internal_Nodes
+		 * in the array that will be moved. So don't worry about them, and update the children
+		 * accordingly
+		 */
 
+		current_node->left = nodeArray[startIndex];
 
+		/// Make sure this node is at the correct level
+		current_node->left->lvl = 0;
+
+		/// Make sure num_children is correct
+		current_node->num_children = num_children;
+		current_node->left->num_children = num_children;
+
+		/// NOTE: Don't need to free the node already there - will be moved through array
+		current_node->right = NULL;
+
+	}
+	else if (num_children == 2)
+	{
+
+	}
+	else ///< num_children >= 3 => split and recurse
+	{
+
+	}
 
 
 }
@@ -1391,3 +1337,114 @@ void print_tree (Top_List * list)
 	printf ( "\n\nEND TREE\n" );
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* OLD REBUILD
+	int newStartIndex, newEndIndex, diff = endIndex - startIndex;
+	if (current_node == NULL )
+		return;
+	else
+		current_node->num_children = diff + 1;
+#ifdef RD_DEBUG
+	if (current_node->lvl < 2){
+		printf ( "Debug: rebuild tree lvl is too small.\n" );
+		assert(0);}
+#endif 
+	if (current_node->lvl == 2){
+#ifdef RD_DEBUG		
+		printf ( "In a lvl 2 node\n" );
+#endif
+		if (diff == -1){
+			current_node->left = NULL;
+			current_node->right = NULL;}
+		else if (diff == 0){
+			current_node->left = nodeArray[startIndex];
+			current_node->left->parent = current_node;
+			current_node->left->base = current_node->left->bl->tag = current_node->base;
+			current_node->right = NULL;}
+		else if (diff == 1){
+			/// Left node
+			current_node->left = nodeArray[startIndex];
+			current_node->left->parent = current_node;
+			current_node->left->base = current_node->left->bl->tag = current_node->base;
+			/// Right node
+			current_node->right = nodeArray[endIndex];
+			current_node->right->parent = current_node;
+			current_node->right->base = current_node->right->bl->tag = current_node->base + 1;}
+		else{
+#ifdef RD_DEBUG
+			printf ( "Debug: error too many nodes given to this internal node.\n" );
+#endif
+		}
+#ifdef RD_DEBUG
+		printf ( "My num children %i, my indexes [%i %i].\n", current_node->num_children, startIndex, endIndex );
+#endif
+		return;}
+	else { // lvl > 2
+#ifdef RD_DEBUG
+		printf ( "Indexes before rebuild calls (num_child: %i lvl: %i) : [%i %i]", current_node->num_children,current_node->lvl, startIndex, endIndex);
+#endif
+		//Parallel: Get new start and end indexes
+		if (startIndex > endIndex){ // no children
+			// Left subarray
+			startIndex = 1;
+			newEndIndex = 0;
+			// Right subarray
+			newStartIndex = 1;
+			endIndex  = 0;}
+		else if (startIndex == endIndex) // one child{
+			newEndIndex = endIndex;
+			//Dont use right sub array
+			newStartIndex = 1;
+			endIndex = 0;}
+		else {
+			//startIndex stays the same
+			//so does endIndex
+			if ( (diff & 0x1 ) == 0x1) // if endIndex - startIndex is odd
+				newEndIndex = startIndex + ((endIndex - startIndex ) / 2 );
+			else
+				newEndIndex = startIndex + ((endIndex - startIndex + 1) / 2 );
+			newStartIndex = newEndIndex + 1;}
+#ifdef RD_DEBUG
+		printf ( "After: [%i %i] [%i %i]\n", startIndex,newEndIndex,newStartIndex, endIndex );
+#endif
+		if (startIndex <= newEndIndex){
+			if (!(current_node->left)){
+				current_node->left = malloc(sizeof(Internal_Node));
+				current_node->left->base = current_node->base;
+				current_node->left->parent = current_node;
+				current_node->left->lvl = current_node->lvl -1;
+				// num children taken care of in rebuild}
+			rebuild_tree(current_node->left, nodeArray, startIndex, newEndIndex);}
+		if (newStartIndex <= endIndex ){
+			if(!(current_node->right) ){
+				current_node->right = malloc(sizeof(Internal_Node));
+				current_node->right->base = current_node->base;
+				current_node->right->parent = current_node;
+				current_node->right->lvl = current_node->lvl -1;
+				// num children taken care of in rebuild}
+			rebuild_tree(current_node->right, nodeArray, newStartIndex, endIndex);}} //end else
+*/
