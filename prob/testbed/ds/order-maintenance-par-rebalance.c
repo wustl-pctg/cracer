@@ -104,7 +104,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 			{
 				/// If z and y bit are different, then x will be closer to y. Use x.
 				/// Find the right lvl
-				while ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
+				while ( ((~(xtag ^ ytag)) & bit_counter) == bit_counter) 
 				{
 					lvl_count--;
 					bit_counter = bit_counter >> 1;
@@ -117,7 +117,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 				/// If x and y bit are not the same at the bit_counter, then Z will be the closer node. 
 				/// We then assign z to x.
 				/// Before that find the right lvl
-				while ( (((ztag ^ ytag)) & bit_counter) == bit_counter) 
+				while ( ((~(ztag ^ ytag)) & bit_counter) == bit_counter) 
 				{
 					lvl_count--;
 					bit_counter = bit_counter >> 1;
