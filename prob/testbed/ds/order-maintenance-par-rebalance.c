@@ -97,6 +97,9 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
 
 
+	printf ( "Printing tree before scaffolding\n" );
+	print_tree(x->bl->parent);
+
 	/// Find whether y->prev or y->next  has a closer common ancestor to x.
 	if ((y->bl->next))
 	{
@@ -655,6 +658,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		y->internal->bl = y;
 		///TODO: Make this parallel
 		create_btree_scaffolding(x->internal, y->internal);
+
 	}
 }
 
@@ -1278,16 +1282,89 @@ void LNR (Internal_Node * current, int level)
 		LNR(current->right, level-1);
 	}
 }
+typedef struct print_node_s{
+	Internal_Node *data;
+	struct	print_node_s *next;
+}print_node;
 
+void append_and_sort(print_node * current, print_node *to_add)
+{
+	print_node *trailing;
+
+	while ((current != NULL) && (current->data->lvl >= to_add->data->lvl)){
+		trailing = current;
+		current = current->next;
+
+	}
+	to_add->next = trailing->next;
+	trailing->next = to_add;
+}
+print_node * pop_print_node(print_node ** head){
+	print_node *tmp = *head;
+	if(!tmp)
+		printf ( "No node to pop!\n" );
+	// move head
+	*head = (*head)->next;
+	free(tmp);
+
+	return *head;
+}
 void print_tree (Top_List * list)
 {
-	Internal_Node * current = list->head->internal;
-	int level = 9;
+	print_node *head, *current = malloc(sizeof(print_node));
+	Internal_Node *iter, *trailing;
 
-	/// Get Current = root
-	while (current->parent != NULL)
-		current = current->parent;
+	int i = 0, tailIndex = 1, current_lvl;
 
-	LNR(current, level);
+	iter = list->head->internal;
+	while (iter!= NULL){
+		trailing = iter;
+		iter = iter->parent;
+	}
+	current->data = trailing;
+	current->next = NULL;
+	current_lvl = trailing->lvl;
+	head = current;
+
+
+	//head/current are the root
 	
+
+	printf ( "\n\nLevel: %i ", current_lvl );
+	while (current)
+	{
+		if (current->data->left)
+		{
+			print_node *left = malloc(sizeof(Internal_Node));
+			left->data = current->data->left;
+			append_and_sort(current, left);
+		}
+		if (current->data->right)
+		{
+			print_node *right = malloc(sizeof(Internal_Node));
+			right->data = current->data->right;
+			append_and_sort(current, right);
+		}
+
+		printf(" --- (loc: %p| P: %p| Lvl:%i|L:%p R:%p) ---", current->data, current->data->parent, current->data->lvl, current->data->left, current->data->right);
+		current = pop_print_node(&current);
+
+		if (current == NULL)
+			break;
+		if (current->data->lvl != current_lvl)
+		{
+			current_lvl = current->data->lvl;
+			printf ( "\nLevel: %i", current_lvl );
+		}
+
+	}
+
+	/*//free print nodes*/
+	/*while (head != NULL){*/
+		/*print_node *next = head->next;*/
+		/*free(head);*/
+		/*head = next;*/
+	/*}*/
+	printf ( "\n\nEND TREE\n" );
+
 }
