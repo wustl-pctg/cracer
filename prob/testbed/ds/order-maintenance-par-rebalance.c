@@ -99,7 +99,8 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 	if ((y->bl->next))
 	{
 		ztag = y->bl->next->tag;
-		while (bit_counter != 0) {
+		while (bit_counter != 0)
+		{
 			if ( (((ztag ^ ytag)) & bit_counter) == bit_counter) 
 			{
 				/// If z and y bit are different, then x will be closer to y. Use x.
@@ -111,7 +112,6 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 				}
 				break;
 			}
-
 			else if ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
 			{
 				/// If x and y bit are not the same at the bit_counter, then Z will be the closer node. 
@@ -131,8 +131,10 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 			bit_counter = bit_counter >> 1;
 		}
 	}
-	else{
-		while (bit_counter != 0) {
+	else
+	{
+		while (bit_counter != 0)
+		{
 			if ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
 			{
 				break;
@@ -145,8 +147,11 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 	Internal_Node * new_parent, * iter_node;
 
 	/// The old parent is below the new parent that is to be created
- 	if (x->parent->lvl < lvl_count){
+ 	if (x->parent->lvl < lvl_count)
+	{
+#ifdef RD_DEBUG
 		printf ( "Debug: Create scaffold - old parent below new parent\n" );
+#endif
  		new_parent = x->parent;
 
  		while (new_parent->lvl < lvl_count)
@@ -155,32 +160,39 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 			iter_node = new_parent;
 			new_parent = new_parent->parent;
 		}
+
 #ifdef RD_DEBUG
 		assert(new_parent->lvl == lvl_count);
 #endif
-		
 
 		if (xtag != ztag) // if x/z not swapped
 		{
 			/*new_parent->left = iter_node;*/
 			new_parent->right = y;
 		}
-		else {
+		else
+		{
 			/*new_parent->right = iter_node;*/
 			new_parent->left = y;
 		}
 		y->parent = new_parent;
+
 		/// Assign lvl to new parent
 		new_parent->lvl = lvl_count;
 		new_parent->num_children = iter_node->num_children + 1;
 	}
 	/// The old parent is above new parent that is to be created
-	else if (x->parent->lvl > lvl_count){
+	else if (x->parent->lvl > lvl_count)
+	{
+#ifdef RD_DEBUG
 		printf ( "Debug: Create scaffold - old parent above new parent\n" );
+#endif
+
  		new_parent = malloc(sizeof(Internal_Node));
 
 		// Assign x's old parent to new_parent's parent
 		new_parent->parent = x->parent;
+
 		//Increase children count of old parent
 		// DOING THIS AT END OF FUNCTION
 		/*x->parent->num_children++;*/
@@ -190,7 +202,8 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 			new_parent->left = x;
 			new_parent->right = y;
 		}
-		else {
+		else
+		{
 			new_parent->left = y;
 			new_parent->right = x;
 		}
@@ -203,7 +216,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		else if (x->parent->right == x)
 			x->parent->right = new_parent;
 		else
-			{
+		{
 			printf ( "Debug: Create scaffolding -x->parent has two children already, or no children.\n" );
 			assert(0);
 		}
@@ -217,7 +230,10 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 	}
 	else //they are equal, i.e. the same node 
 	{
+#ifdef RD_DEBUG
 		printf ("Debug : Create scaffolding - Old and new parent of x are the same\n" );
+#endif
+
 		new_parent = malloc(sizeof(Internal_Node));
 		new_parent->parent = x->parent;
 		new_parent->lvl = lvl_count;
@@ -230,7 +246,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		else if (x->parent->right == x)
 			x->parent->right = new_parent;
 		else
-			{
+		{
 			printf ( "Debug: Create scaffolding -x->parent has two children already, or no children.\n" );
 			assert(0);
 		}
@@ -239,7 +255,8 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		{
 			new_parent->right = y;		
 		}
-		else{
+		else
+		{
 			new_parent->left = y;
 		}
 		y->parent = x->parent = new_parent;
@@ -247,6 +264,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 
     // Update number of children
 	iter_node = new_parent->parent;
+
 	while (iter_node != NULL)
 	{
 		iter_node->num_children += 1;
@@ -988,17 +1006,23 @@ void rebalance_tl (Bottom_List * pivot){
 	
 	/// Constants used to calculate when to rebalance
 	double overflow_density, overflow_threshold, i = -1;
-	unsigned int current_tag_range = 1, current_tree_lvl = 0;
+	unsigned int current_tag_range = 1, current_tree_lvl = 0, lvl_dif = 0;
+
 	/// Check if range is in overflow
 	/// Calculate overflow_density
 	//
 	do 
 	{	
-		/// Increase the tree level
-		current_tree_lvl++;
-
-		if (current_node->parent)
+		if (current_node->parent) 
+		{
 			current_node = current_node->parent;
+
+			/// Update the tree level
+			current_tree_lvl = currennt_node->lvl;
+
+			/// Update the lvl difference
+			lvl_dif = current_tree_lvl - lvl_dif;
+		}
 		else //For whatever reason, the existing scaffolding is not large enough
 			 //to hold the nodes and still be under the threshold.
 		{
@@ -1013,8 +1037,9 @@ void rebalance_tl (Bottom_List * pivot){
 			/*current_node = current->node;*/
 
 		}
-		///Double tag range
-		current_tag_range = current_tag_range << 1;
+
+		/// Bit Shift same number of places as level changes 
+		current_tag_range = current_tag_range << lvl_dif;
 
 		/// This would have current_tree_lvl -1 if the current_tree_lvl++ were before this line.	
 		overflow_threshold = pow(OVERFLOW_CONSTANT, -1.0 * (current_tree_lvl));
@@ -1033,6 +1058,7 @@ void rebalance_tl (Bottom_List * pivot){
 	//TODO: make parallel
 	// Include the extra node
 	current_node->num_children += 1;
+
 #ifdef RD_DEBUG
 	assert(current_node->num_children > 1);
 #endif
