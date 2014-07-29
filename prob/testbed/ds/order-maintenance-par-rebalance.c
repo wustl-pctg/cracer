@@ -25,67 +25,6 @@ static int HALF_INT_BIT_SIZE = 4;
 static int lg_HALF_INT_BIT_SIZE = 2;
 static double OVERFLOW_CONSTANT = 1.05;
 
-/* 
- * ===  FUNCTION  ======================================================================
- *         Name:  build_array_from_rebalance_list
- *  Description:  Gets an array of all of the nodes that need to be put in the rebalanced tree.
- * =====================================================================================
- */
-Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
-{
-	/// +1 because we want to include the new node
-	int num_children = (signed int)current_node->num_children + 1, i=0;
-
-	/// Holds pointers to all of the internal nodes needed
-	Internal_Node ** nodeArray = malloc(sizeof(Internal_Node *) * num_children);
-
-#ifdef RD_DEBUG
-	assert(current_node != NULL);
-	assert(num_children > 1);
-#endif
-
-	/// Get the left most base node and store it in current_node
-	while (current_node->lvl > 1)
-	{
-		if (current_node->left)
-			current_node = current_node->left;
-		else
-			current_node = current_node->right;
-	}
-
-	nodeArray[i++] = current_node;
-
-	/// Iterate from the last Bottom_List storing the internal nodes in nodeArray
-	while (i < num_children)
-	{
-
-#ifdef RD_DEBUG
-		assert(current_node != NULL);
-#endif
-
-		// IF this was the node that we inserted that has no place to fit in the tags
-		if (!(current_node->bl->next->internal) )
-		{
-#ifdef RD_DEBUG		
-			printf ( "Allocating space for node to be inserted (in build array)\n" );
-#endif
-			//We need to allocate space for it's internal node
-			current_node->bl->next->internal = malloc(sizeof(Internal_Node));
-			current_node->bl->next->internal->lvl = 1;
-
-			// Assign the internal node's bl pointer to the bl to be inserted
-			current_node->bl->next->internal->bl = current_node->bl->next;
-
-			/// NOTE: Bases updated in rebuild tree
-		}
-
-		current_node = current_node->bl->next->internal;
-		nodeArray[i++] = current_node;
-	}
-
-	return nodeArray;
-}
-
 /// Create the tree above x and y
 void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 {
@@ -860,136 +799,71 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		/// Insert the finished DS into the Top_List
 		insert_tl(holder, to_add);
 	}
-
-
 }
 
-/* 
+/*! 
  * ===  FUNCTION  ======================================================================
- *         Name:  rebuild_tree
- *  Description:  Recursively calls rebuild on it's children. If lvl 2, then assign children.
- *  			  If in the right, start counting from the startIndex.
- *  			  If in the left, stop counting 1 before the endIndex.
+ *         Name:  build_array_from_rebalance_list
+ *  Description:  Gets an array of all of the nodes that need to be put in the rebalanced tree.
  * =====================================================================================
  */
-void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex){
-	int newStartIndex, newEndIndex, diff = endIndex - startIndex;
-	
-	if (current_node == NULL )
-		return;
-	else
-		current_node->num_children = diff + 1;
-	
-#ifdef RD_DEBUG
-	if (current_node->lvl < 2)
-	{
-		printf ( "Debug: rebuild tree lvl is too small.\n" );
-		assert(0);
-	}
-#endif 
+Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
+{
+	/// +1 because we want to include the new node
+	int num_children = (signed int)current_node->num_children, i=0;
 
-	if (current_node->lvl == 2)
-	{
-#ifdef RD_DEBUG		
-		printf ( "In a lvl 2 node\n" );
+	/// Holds pointers to all of the internal nodes needed
+	Internal_Node ** nodeArray = malloc(sizeof(Internal_Node *) * num_children);
+
+#ifdef RD_DEBUG
+	assert(current_node != NULL);
+	assert(num_children > 1);
 #endif
 
-		if (diff == -1)
-		{
-			current_node->left = NULL;
-			current_node->right = NULL;
-		}
-		else if (diff == 0)
-		{
-			current_node->left = nodeArray[startIndex];
-			current_node->left->parent = current_node;
-			current_node->left->base = current_node->left->bl->tag = current_node->base;
-			current_node->right = NULL;
-		}
-		else if (diff == 1)
-		{
-			/// Left node
-			current_node->left = nodeArray[startIndex];
-			current_node->left->parent = current_node;
-			current_node->left->base = current_node->left->bl->tag = current_node->base;
-			/// Right node
-			current_node->right = nodeArray[endIndex];
-			current_node->right->parent = current_node;
-			current_node->right->base = current_node->right->bl->tag = current_node->base + 1;
-		}
+	/// Get the left most base node and store it in current_node
+	while (current_node->lvl > 0)
+	{
+		if (current_node->left)
+			current_node = current_node->left;
 		else
-		{
-#ifdef RD_DEBUG
-			printf ( "Debug: error too many nodes given to this internal node.\n" );
-#endif
-		}
-#ifdef RD_DEBUG
-		printf ( "My num children %i, my indexes [%i %i].\n", current_node->num_children, startIndex, endIndex );
-#endif
-
-		return;
+			current_node = current_node->right;
 	}
-	else { // lvl > 2
+
+	/// Add leftmost node to the array
+	nodeArray[i++] = current_node;
+
+	/// Iterate from the last Bottom_List storing the internal nodes in nodeArray
+	while (i < num_children)
+	{
+
 #ifdef RD_DEBUG
-		printf ( "Indexes before rebuild calls (num_child: %i lvl: %i) : [%i %i]", current_node->num_children,current_node->lvl, startIndex, endIndex);
+		assert(current_node != NULL);
 #endif
 
-		//Parallel: Get new start and end indexes
-		if (startIndex > endIndex){ // no children
-			// Left subarray
-			startIndex = 1;
-			newEndIndex = 0;
-			// Right subarray
-			newStartIndex = 1;
-			endIndex  = 0;
-		}
-		else if (startIndex == endIndex) // one child
+		/// If new Bottom_List doesn't yet have an Internal_Node
+		if ( !(current_node->bl->next->internal) )
 		{
-			newEndIndex = endIndex;
-			//Dont use right sub array
-			newStartIndex = 1;
-			endIndex = 0;
-		}
-		else {
-			//startIndex stays the same
-			//so does endIndex
-			if ( (diff & 0x1 ) == 0x1) // if endIndex - startIndex is odd
-				newEndIndex = startIndex + ((endIndex - startIndex ) / 2 );
-			else
-				newEndIndex = startIndex + ((endIndex - startIndex + 1) / 2 );
-
-			newStartIndex = newEndIndex + 1;
-		}
-#ifdef RD_DEBUG
-		printf ( "After: [%i %i] [%i %i]\n", startIndex,newEndIndex,newStartIndex, endIndex );
+#ifdef RD_DEBUG		
+			printf ( "Allocating space for node to be inserted (in build array)\n" );
 #endif
-		if (startIndex <= newEndIndex)
-		{
-			if (!(current_node->left))
-			{
-				current_node->left = malloc(sizeof(Internal_Node));
-				current_node->left->base = current_node->base;
-				current_node->left->parent = current_node;
+			//We need to allocate space for it's internal node
+			current_node->bl->next->internal = malloc(sizeof(Internal_Node));
+			current_node->bl->next->internal->lvl = 0;
 
-				current_node->left->lvl = current_node->lvl -1;
-				// num children taken care of in rebuild
-			}
+			// Assign the internal node's bl pointer to the bl to be inserted
+			current_node->bl->next->internal->bl = current_node->bl->next;
 
-			rebuild_tree(current_node->left, nodeArray, startIndex, newEndIndex);
+			/// NOTE: Bases updated in rebuild tree
 		}
-		if (newStartIndex <= endIndex ){
-			if(!(current_node->right) )
-			{
-				current_node->right = malloc(sizeof(Internal_Node));
-				current_node->right->base = current_node->base;
-				current_node->right->parent = current_node;
 
-				current_node->right->lvl = current_node->lvl -1;
-				// num children taken care of in rebuild
-			}
-			rebuild_tree(current_node->right, nodeArray, newStartIndex, endIndex);
-		}
-	} //end else
+		/// Update the current node to iterate horizontally through base nodes
+		current_node = current_node->bl->next->internal;
+
+		/// Add node to the array and increment i
+		nodeArray[i++] = current_node;
+	}
+
+	return nodeArray;
 }
 
 /*! 
@@ -1064,12 +938,12 @@ void rebalance_tl (Bottom_List * pivot){
 	}
 	while ( (overflow_density > overflow_threshold ) && (current_node->lvl <= INT_BIT_SIZE) );
 
-	/// Get the array of nodes to be rebalanced
-	Internal_Node ** nodeArray = build_array_from_rebalance_list(current_node);
-	
 	// Include the extra node
 	current_node->num_children += 1;
 
+	/// Get the array of nodes to be rebalanced
+	Internal_Node ** nodeArray = build_array_from_rebalance_list(current_node);
+	
 #ifdef RD_DEBUG
 	assert(current_node->num_children > 1);
 #endif
@@ -1110,6 +984,109 @@ void rebalance_tl (Bottom_List * pivot){
 
 	free(nodeArray);
 }
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  rebuild_tree
+ *  Description:  Recursively calls rebuild on it's children. If lvl 2, then assign children.
+ *  			  If in the right, start counting from the startIndex.
+ *  			  If in the left, stop counting 1 before the endIndex.
+ * =====================================================================================
+ */
+void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex){
+/* OLD REBUILD
+	int newStartIndex, newEndIndex, diff = endIndex - startIndex;
+	if (current_node == NULL )
+		return;
+	else
+		current_node->num_children = diff + 1;
+#ifdef RD_DEBUG
+	if (current_node->lvl < 2){
+		printf ( "Debug: rebuild tree lvl is too small.\n" );
+		assert(0);}
+#endif 
+	if (current_node->lvl == 2){
+#ifdef RD_DEBUG		
+		printf ( "In a lvl 2 node\n" );
+#endif
+		if (diff == -1){
+			current_node->left = NULL;
+			current_node->right = NULL;}
+		else if (diff == 0){
+			current_node->left = nodeArray[startIndex];
+			current_node->left->parent = current_node;
+			current_node->left->base = current_node->left->bl->tag = current_node->base;
+			current_node->right = NULL;}
+		else if (diff == 1){
+			/// Left node
+			current_node->left = nodeArray[startIndex];
+			current_node->left->parent = current_node;
+			current_node->left->base = current_node->left->bl->tag = current_node->base;
+			/// Right node
+			current_node->right = nodeArray[endIndex];
+			current_node->right->parent = current_node;
+			current_node->right->base = current_node->right->bl->tag = current_node->base + 1;}
+		else{
+#ifdef RD_DEBUG
+			printf ( "Debug: error too many nodes given to this internal node.\n" );
+#endif
+		}
+#ifdef RD_DEBUG
+		printf ( "My num children %i, my indexes [%i %i].\n", current_node->num_children, startIndex, endIndex );
+#endif
+		return;}
+	else { // lvl > 2
+#ifdef RD_DEBUG
+		printf ( "Indexes before rebuild calls (num_child: %i lvl: %i) : [%i %i]", current_node->num_children,current_node->lvl, startIndex, endIndex);
+#endif
+		//Parallel: Get new start and end indexes
+		if (startIndex > endIndex){ // no children
+			// Left subarray
+			startIndex = 1;
+			newEndIndex = 0;
+			// Right subarray
+			newStartIndex = 1;
+			endIndex  = 0;}
+		else if (startIndex == endIndex) // one child{
+			newEndIndex = endIndex;
+			//Dont use right sub array
+			newStartIndex = 1;
+			endIndex = 0;}
+		else {
+			//startIndex stays the same
+			//so does endIndex
+			if ( (diff & 0x1 ) == 0x1) // if endIndex - startIndex is odd
+				newEndIndex = startIndex + ((endIndex - startIndex ) / 2 );
+			else
+				newEndIndex = startIndex + ((endIndex - startIndex + 1) / 2 );
+			newStartIndex = newEndIndex + 1;}
+#ifdef RD_DEBUG
+		printf ( "After: [%i %i] [%i %i]\n", startIndex,newEndIndex,newStartIndex, endIndex );
+#endif
+		if (startIndex <= newEndIndex){
+			if (!(current_node->left)){
+				current_node->left = malloc(sizeof(Internal_Node));
+				current_node->left->base = current_node->base;
+				current_node->left->parent = current_node;
+				current_node->left->lvl = current_node->lvl -1;
+				// num children taken care of in rebuild}
+			rebuild_tree(current_node->left, nodeArray, startIndex, newEndIndex);}
+		if (newStartIndex <= endIndex ){
+			if(!(current_node->right) ){
+				current_node->right = malloc(sizeof(Internal_Node));
+				current_node->right->base = current_node->base;
+				current_node->right->parent = current_node;
+				current_node->right->lvl = current_node->lvl -1;
+				// num children taken care of in rebuild}
+			rebuild_tree(current_node->right, nodeArray, newStartIndex, endIndex);}} //end else
+*/
+
+
+
+
+
+}
+
 
 /*! 
  * ===  FUNCTION  ======================================================================
