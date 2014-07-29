@@ -84,32 +84,29 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 }
 
 /// Create the tree above x and y
-void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
+void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 {
 
-	Internal_Node * x = _x->internal, 
-				  * y = _y->internal; 
 
 	unsigned int current_lvl = 1,
-		xtag = _x->tag,
-		ytag = _y->tag,
+		xtag = x->bl->tag,
+		ytag = y->bl->tag,
 		ztag = ytag,//Just a tmp variable
 		lvl_count = INT_BIT_SIZE + 1, // This represents the lvl where x and y have their most recent common ancestor
-		bit_counter = (0x1) << ( INT_BIT_SIZE - 1),
-		tag_difference = ytag - xtag;
+		bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
 
 
 	/// Find whether y->prev or y->next  has a closer common ancestor to x.
 	/// If y has no next, then use x.
-	if ((_y->next))
+	if ((y->bl->next))
 	{
-		ztag = _y->next->tag;
+		ztag = y->bl->next->tag;
 		while (bit_counter != 0) {
 			if ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
 			{
 				/// If x and y bit are not the same at the bit_counter, then Z will be the closer node. 
 				/// We then assign z to x.
-				x = _y->next->internal;
+				x = y->bl->next->internal;
 				//Use y->next as x
 				xtag = ztag;
 				break;
@@ -134,177 +131,14 @@ void create_btree_scaffolding (Bottom_List *_x, Bottom_List *_y)
 		}
 	}
 
-	bit_counter = 0x1;
-	// if y has no next, it was set correctly
-	unsigned int x_parent_base = 0, y_parent_base = 1;
-
-	/*while (y_parent_base != x_parent_base)*/
-	while(1) // Taken care of in break
+ 	if (x->parent->lvl < lvl_count){
+	}
+	else if (x->parent->lvl > lvl_count){
+	}
+	else //they are equal
 	{
-#ifdef RD_DEBUG
-		assert(bit_counter != 0 );
-		assert(current_lvl <= INT_BIT_SIZE);
-#endif
-		x = x->parent;	
-		x_parent_base = x->base;
-	
-		
-		if (current_lvl == INT_BIT_SIZE)
-			y_parent_base = 0x0;
-		else // This is not current_lvl -1 because we are assigning y's parent base.
-			y_parent_base = (y->base >> current_lvl ) << current_lvl;
-
-
-		/// Inc current lvl
-		current_lvl++;
-
-
-
-		// IF the have the same base, link current y to x->parent
-		if ( x_parent_base == y_parent_base){
-			y->parent = x;	
-		
-			/// Link the common ancestor of _x and _y together, with left/right depending on if we swapped x with y->next or not
-			if (xtag != ztag)
-				x->right = y;
-			else //if we did swap
-				x->left = y;
-
-			/// Add one child to x->parent and all parents above it
-			while (x != NULL){
-				x->num_children += 1;
-				x = x->parent;
-			}
-			return;
-
-		}
-		else {
-			y->parent = malloc(sizeof(Internal_Node));
-
-			/// Assign y->parent's reference to y (left if bit is 0, right if bit is 1)
-			if ((ytag & bit_counter) == bit_counter)
-				y->parent->right = y;
-			else
-				y->parent->left = y;
-
-			y->parent->num_children = 1;
-
-			/// Update base
-			y->parent->base = y_parent_base;
-
-			/// Update lvl of y
-			y->parent->lvl = current_lvl;
-		}
-		// Move y up
-		y = y->parent;
-
-		// Move bit counter up one slot
-		bit_counter = bit_counter << 1;
-
-
-	} // end while
+	}
 }
-/*{
-	/// TODO: double check validity
-
-	/// Get the internal node
-	Internal_Node * x = _x->internal, * y = _y->internal;
-	unsigned int current_lvl = 1,
-		xtag = _x->tag,
-		ytag = _y->tag,
-		lvl_count = INT_BIT_SIZE,
-		bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
-
-	/// This will get the first bit from the left in x->tag and y->tag that 
-	/// are not the same. That bit (counted from the right) will be lvl_count.
-	while ( ((~(xtag ^ ytag)) & bit_counter) == bit_counter){
-		lvl_count--;
-		bit_counter = bit_counter >> 1;
-	}
-
-	bit_counter = 0x1;
-
-	// This is lvl_count -1 because at lvl count we want to create the same node
-	while (current_lvl < lvl_count-1)
-	{
-		/// Deal with X
-		if (!(x->parent))
-		{
-			x->parent = malloc(sizeof(Internal_Node));
-			/// Assign x->parent's reference to x (left if bit is 0, right if bit is 1)
-			if (xtag & bit_counter == bit_counter)
-				x->parent->right = x;
-			else
-				x->parent->left = x;
-		
-			x->parent->num_children += 1;
-
-			/// Update base
-			x->parent->base = (x->base >> current_lvl) << current_lvl; 
-
-			/// Update lvl of x
-			x->lvl = current_lvl + 1;
-		}
-
-		/// Deal with Y
-		if (!(y->parent))
-		{
-			y->parent = malloc(sizeof(Internal_Node));
-
-			/// Assign y->parent's reference to y (left if bit is 0, right if bit is 1)
-			if (ytag & bit_counter == bit_counter)
-				y->parent->right = y;
-			else
-				y->parent->left = y;
-
-			y->parent->num_children += 1;
-
-			/// Update base
-			y->parent->base = (y->base >> current_lvl) << current_lvl; 
-
-			/// Update lvl of y
-			y->lvl = current_lvl + 1;
-		}
-
-		/// Update bit_counter (move up one bit/multiply by 2)
-		bit_counter = bit_counter <<  1;
-
-		/// Move up internal node
-		x = x->parent;
-		y = y->parent;
-
-		/// Increment the size of the current level
-		++current_lvl;
-	}
-
-	//Now current_lvl == lvl_count-1
-	if (x->parent || y->parent)
-	{
-		if (x->parent)
-		{
-			x->parent->left = x;
-			x->parent->right = y;
-			y->parent = x->parent;	
-		}
-		else 
-		{
-			y->parent->left = x;
-			y->parent->right = y;
-			x->parent = y->parent;
-		}
-	}
-	else
-	{
-		x->parent = y->parent = malloc(sizeof(Internal_Node));
-		x->parent->lvl = current_lvl + 1;
-		/// Update shared parent's reference to x/y
-		x->parent->left = x;
-		y->parent->right = y;
-	}
-
-	x->parent->num_children = x->num_children + y->num_children;
-
-}*/
 
 void insert(OM_Node *x, OM_Node *y){
 	/*InsertRecord *ir = malloc(sizeof(InsertRecord));*/
@@ -555,26 +389,18 @@ void first_insert_tl (Top_List * list, Bottom_List * _y)
 	/// Parallel: Binar_y tree internal node
 	_y->internal = y = malloc(sizeof(Internal_Node));
 	// Base level
-	_y->internal->lvl = 1;
+	y->lvl = 0;
 	// This is a leaf internal node, so no children. Base won't be used in leaf node.
-	_y->internal->num_children = _y->internal->base =  0; 
+	y->num_children = y->base =  0; 
 	// Give a reference to the internal node to _y itself
-	_y->internal->bl = _y;
+	y->bl = _y;
 
-	i = 2;
-	/// Make scaffolding from tag 0 all the way to the root. (Lvl 1 - INT_BIT_SIZE + 1)
-	while ( i <= INT_BIT_SIZE + 1){
-		y->parent = malloc(sizeof(Internal_Node));
-		y->parent->num_children = 1;
-		y->parent->base = 0;
-		/// Set parent references to left/right
-		y->parent->left = y;
-		y->parent->right = NULL;
-		/// Increment lvl	
-		y->parent->lvl = i++;
-		/// Move up
-		y= y->parent;
-	}
+
+	Internal_Node * root = malloc(sizeof(Internal_Node));
+	root->left = y;
+	y->parent = root;
+	//Top lvl node
+	root->lvl = INT_BIT_SIZE;
 }
 
 /*! 
@@ -683,7 +509,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		///Parallel: Create binary tree scaffolding
 		y->internal = malloc(sizeof(Internal_Node));
 		// Base level
-		y->internal->lvl = 1;
+		y->internal->lvl = 0;
 		// This is a leaf internal node, so no children. Base won't be used in leaf node.
 		y->internal->num_children = 0;
 		y->internal->base = y->tag; 
@@ -691,7 +517,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		// Give a reference to the internal node to y itself
 		y->internal->bl = y;
 		///TODO: Make this parallel
-		create_btree_scaffolding(x, y);
+		create_btree_scaffolding(x->internal, y->internal);
 	}
 }
 
