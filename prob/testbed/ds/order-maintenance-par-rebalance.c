@@ -23,7 +23,7 @@ static unsigned /*long*/ int MAX_NUMBER = 255;
 static int INT_BIT_SIZE = 8;
 static int HALF_INT_BIT_SIZE = 4;
 static int lg_HALF_INT_BIT_SIZE = 2;
-static double OVERFLOW_CONSTANT = 1.05;
+static double OVERFLOW_CONSTANT = 1.40;
 
 void check_subtree_correctness( Internal_Node *x){
 
@@ -1023,8 +1023,11 @@ void rebalance_tl (Bottom_List * pivot){
 		assert(current_node != NULL);
 
 		if (current_node->parent == NULL)
+		{
 			printf("Threshold not surpassed before running out of parents....\ncurrent_node->lvl: %i\n", current_node->lvl);
-		assert(current_node->parent != NULL);
+		break;
+		}
+		/*assert(current_node->parent != NULL);*/
 #endif
 
 		current_node = current_node->parent;
