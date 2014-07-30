@@ -847,7 +847,10 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 		if (current_node->left)
 		    current_node = current_node->left;
 		else
+		{
+			printf ( "Debug: our two child invariant failed!\n" );
 		    current_node = current_node->right;
+		}
     }
 
     /// Add leftmost node to the array
