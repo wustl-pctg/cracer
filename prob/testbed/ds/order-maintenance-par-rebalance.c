@@ -89,7 +89,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
     }
 
     Internal_Node * new_parent, * iter_node;
-
+	
     /// The old parent is below the new parent that is to be created
     if (x->parent->lvl < lvl_count)
     {
@@ -126,6 +126,14 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 
 		/// Assign lvl to new parent
 		new_parent->lvl = lvl_count;
+
+		/// Update new parent bas
+ 		if (lvl_count == INT_BIT_SIZE)
+ 			new_parent->base =0x0;
+		else
+			new_parent->base = (xtag >> lvl_count) << lvl_count;
+
+		// Update new_parent children
 		new_parent->num_children = iter_node->num_children + 1;
     }
     /// The old parent is above new parent that is to be created
@@ -136,14 +144,9 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 #endif
 
 		new_parent = malloc(sizeof(Internal_Node));
-		new_parent->base = 0;
 
 		// Assign x's old parent to new_parent's parent
 		new_parent->parent = x->parent;
-
-		//Increase children count of old parent
-		// DOING THIS AT END OF FUNCTION
-		/*x->parent->num_children++;*/
 
 		/// We know the direction of the child based on if z was changed
 		if (xtag != ztag)
@@ -174,6 +177,12 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		/// Assign lvl to new parent
 		new_parent->lvl = lvl_count;
 
+		/// Update new parent bas
+ 		if (lvl_count == INT_BIT_SIZE)
+ 			new_parent->base =0x0;
+		else
+			new_parent->base = (xtag >> lvl_count) << lvl_count;
+
 		// This is a new node with just 2 children
 		new_parent->num_children = 2;
     }
@@ -184,7 +193,13 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 #endif
 
 		new_parent = malloc(sizeof(Internal_Node));
-		new_parent->base = 0;
+
+		/// Update new parent bas
+ 		if (lvl_count == INT_BIT_SIZE)
+ 			new_parent->base =0x0;
+		else
+			new_parent->base = (xtag >> lvl_count) << lvl_count;
+
 		new_parent->parent = x->parent;
 		new_parent->lvl = lvl_count;
 		new_parent->num_children = 2; //TODO Is this right?
@@ -1106,17 +1121,39 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    /// Need a new Internal_Node
 				    new_child = malloc(sizeof(Internal_Node));
 
-				    /// Update the pointers
+				    /// Update the pointers to the left
 				    current_node->left->parent = new_child;
 				    new_child->left = current_node->left;
 				    current_node->left = new_child;
 				    new_child->parent = current_node;
+
+					//Alex's try: since num_children_left is >1, we can create a right node 
+					//Give the new_child a dummy right_node
+					if (new_child->lvl >= 2) //i.e. does it have room to make an internal node below it.
+					{
+						new_child->right = malloc(sizeof(Internal_Node));
+						new_child->right->parent = new_child;
+						new_child-right->lvl = new_child->lvl - 1;
+					}
+#ifdef RD_DEBUG
+
+					else
+					{
+						printf ( "Num children left > 1(=%i) and current_node->left->lvl == 0\n", num_children_left );
+					}
+#endif
+				
+
+
 
 				    /// Update the new Internal_Node's level
 				    new_child->lvl = current_node->lvl - 1;
 
 				    /// Update this new node's num_children
 				    current_node->left->num_children = num_children_left;
+
+				    /// Update the new node's base
+				    new_child->base = current_node->base;
 				}
 		    }
 		    else ///<If the cur->left is more than one level below cur and cur->left is an internal node
@@ -1150,13 +1187,30 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    current_node->right->parent = new_child;
 				    new_child->right = current_node->right;
 				    current_node->right = new_child;
-				    new_child->parent = current_node;
+					new_child->parent = current_node;
+
+					if (new_child->lvl >= 2) //i.e. does it have room to make an internal node below it.
+					{
+						new_child->left = malloc(sizeof(Internal_Node));
+						new_child->left->parent = new_child;
+						new_child-left->lvl = new_child->lvl - 1;
+					}
+#ifdef RD_DEBUG
+					else
+					{
+						printf ( "Num children right > 1(= %i) and current_node->right->lvl == 0\n", num_children_right);
+					}
+#endif
 
 				    /// Update the new Internal_Node's level
 				    new_child->lvl = current_node->lvl - 1;
 
 				    /// Update this new node's num_children
 				    current_node->right->num_children = num_children_right;
+
+				    /// Update the new node's base
+				    /// TODO;  is this right?
+				    new_child->base = current_node->base + (0x1 << (new_child->lvl));
 				}
 		    }
 		    else///<If the cur->right is more than one level below cur and cur->right is an internal node
