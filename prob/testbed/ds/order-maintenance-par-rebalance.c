@@ -1127,13 +1127,19 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    current_node->left = new_child;
 				    new_child->parent = current_node;
 
+				    /// Update the new Internal_Node's level
+				    new_child->lvl = current_node->lvl - 1;
+
+				    /// Update this new node's num_children
+				    current_node->left->num_children = num_children_left;
+
 					//Alex's try: since num_children_left is >1, we can create a right node 
 					//Give the new_child a dummy right_node
 					if (new_child->lvl >= 2) //i.e. does it have room to make an internal node below it.
 					{
 						new_child->right = malloc(sizeof(Internal_Node));
 						new_child->right->parent = new_child;
-						new_child-right->lvl = new_child->lvl - 1;
+						new_child->right->lvl = new_child->lvl - 1;
 					}
 #ifdef RD_DEBUG
 
@@ -1142,16 +1148,6 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 						printf ( "Num children left > 1(=%i) and current_node->left->lvl == 0\n", num_children_left );
 					}
 #endif
-				
-
-
-
-				    /// Update the new Internal_Node's level
-				    new_child->lvl = current_node->lvl - 1;
-
-				    /// Update this new node's num_children
-				    current_node->left->num_children = num_children_left;
-
 				    /// Update the new node's base
 				    new_child->base = current_node->base;
 				}
@@ -1189,11 +1185,17 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    current_node->right = new_child;
 					new_child->parent = current_node;
 
+									    /// Update the new Internal_Node's level
+				    new_child->lvl = current_node->lvl - 1;
+
+				    /// Update this new node's num_children
+				    current_node->right->num_children = num_children_right;
+
 					if (new_child->lvl >= 2) //i.e. does it have room to make an internal node below it.
 					{
 						new_child->left = malloc(sizeof(Internal_Node));
 						new_child->left->parent = new_child;
-						new_child-left->lvl = new_child->lvl - 1;
+						new_child->left->lvl = new_child->lvl - 1;
 					}
 #ifdef RD_DEBUG
 					else
@@ -1202,11 +1204,6 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 					}
 #endif
 
-				    /// Update the new Internal_Node's level
-				    new_child->lvl = current_node->lvl - 1;
-
-				    /// Update this new node's num_children
-				    current_node->right->num_children = num_children_right;
 
 				    /// Update the new node's base
 				    /// TODO;  is this right?
