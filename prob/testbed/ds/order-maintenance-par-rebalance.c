@@ -1110,8 +1110,40 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		assert(num_children_left >= 1 && num_children_right >= 1);
 #endif
 
+		// Make a left node if it is null
+		if (current_node->left == NULL){
+			if (num_children_left == 1){///< Connect this node to the leaf
+				/// Assign the left child from the node array
+				current_node->left = nodeArray[leftStart];
+
+				/// Assign the cur node to the left child as its parent
+				current_node->left->parent = current_node;
+
+				/// Assign its base/tag -- fill the remaining spaces with 1's
+				current_node->left->base = current_node->left->bl->tag = current_node->base;
+			}
+			else { // We need an internal node to contain more than 1 node
+#ifdef RD_DEBUG
+				/// If we have lvl 1 or 0, then we messed up because we have 3 children
+				assert(current_node->lvl > 1);
+#endif
+				/// Allocate space for left internal node
+				current_node->left = malloc(sizeof(Internal_Node));
+
+				/// Update the new child lvl
+				current_node->left->lvl = current_node->lvl -1;
+
+				/// Update the base
+				current_node->left->base = current_node->base;
+
+				/// Update cur node->left parent reference
+				current_node->left->parent = current_node;
+
+				current_node->left->left = current_node->left->right = NULL;
+			}
+		}
 		/// Now set-up the left-half and rebuild
-		if ((current_node->lvl - current_node->left->lvl) != 1) ///< If the cur->left isn't one level below it
+		else if ((current_node->lvl - current_node->left->lvl) != 1) ///< If the cur->left isn't one level below it
 		{
 		    if (current_node->left->lvl == 0)
 		    {
@@ -1119,7 +1151,9 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				{
 				    current_node->left = nodeArray[leftStart];
 				    current_node->left->parent = current_node;
-				    /// TODO: Update the tag ==========================
+
+				    /// Update base/tags
+				    current_node->left->base = current_node->left->bl->tag = current_node->base;
 				}
 				else ///< The number of children on the left is > 1
 				{
@@ -1132,27 +1166,15 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    current_node->left = new_child;
 				    new_child->parent = current_node;
 
+					// Null the pointer to the right
+				    new_child->right = NULL;
+
 				    /// Update the new Internal_Node's level
 				    new_child->lvl = current_node->lvl - 1;
 
 				    /// Update this new node's num_children
 				    current_node->left->num_children = num_children_left;
 
-					//Alex's try: since num_children_left is >1, we can create a right node 
-					//Give the new_child a dummy right_node
-					if (new_child->lvl >= 2) //i.e. does it have room to make an internal node below it.
-					{
-						new_child->right = malloc(sizeof(Internal_Node));
-						new_child->right->parent = new_child;
-						new_child->right->lvl = new_child->lvl - 1;
-					}
-#ifdef RD_DEBUG
-
-					else
-					{
-						printf ( "Num children left > 1(=%i) and current_node->left->lvl == 0\n", num_children_left );
-					}
-#endif
 				    /// Update the new node's base
 				    new_child->base = current_node->base;
 				}
@@ -1169,8 +1191,41 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 		rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
 
+		if (current_node->right == NULL){
+			if (num_children_right == 1){///< Connect this node to the leaf
+				/// Assign the right child from the node array
+				current_node->right = nodeArray[rightStart];
+
+				/// Assign the cur node to the right child as its parent
+				current_node->right->parent = current_node;
+
+				/// Assign its base/tag -- fill the remaining spaces with 1's
+				current_node->right->base = current_node->right->bl->tag = (current_node->base | ((1 << current_node->lvl) -1) );
+
+			}
+			else { // We need an internal node to contain more than 1 node
+#ifdef RD_DEBUG
+				/// If we have lvl 1 or 0, then we messed up because we have 3 children
+				assert(current_node->lvl > 1);
+#endif
+				/// Allocate space for right internal node
+				current_node->right = malloc(sizeof(Internal_Node));
+
+				/// Update the new child lvl
+				current_node->right->lvl = current_node->lvl -1;
+
+				/// Update the base
+				current_node->right->base = current_node->base + (1 << current_node->right->lvl);
+
+				/// Update cur node->right parent reference
+				current_node->right->parent = current_node;
+
+				// Nullify cur->right pointers
+				current_node->right->left = current_node->right->right = NULL;
+			}
+		}
 		/// Now set-up the right-half and rebuild
-		if ((current_node->lvl - current_node->right->lvl) != 1) ///< If the cur->right isn't one level below it
+		else if ((current_node->lvl - current_node->right->lvl) != 1) ///< If the cur->right isn't one level below it
 		{
 		    if (current_node->right->lvl == 0)
 		    {
@@ -1178,7 +1233,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				{
 				    current_node->right = nodeArray[rightStart];
 				    current_node->right->parent = current_node;
-				    /// TODO: Update the tag ==========================
+				    /// Update the tag /base
+				    current_node->right->base = current_node->right->bl->tag = current_node->base | ((1 << current_node->lvl) -1);
 				}
 				else ///< The number of children on the right is > 1
 				{
@@ -1191,28 +1247,16 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    current_node->right = new_child;
 					new_child->parent = current_node;
 
-									    /// Update the new Internal_Node's level
+					// Nullify new child->left
+					new_child->left = NULL;
+
+					/// Update the new Internal_Node's level
 				    new_child->lvl = current_node->lvl - 1;
 
 				    /// Update this new node's num_children
 				    current_node->right->num_children = num_children_right;
 
-					if (new_child->lvl >= 2) //i.e. does it have room to make an internal node below it.
-					{
-						new_child->left = malloc(sizeof(Internal_Node));
-						new_child->left->parent = new_child;
-						new_child->left->lvl = new_child->lvl - 1;
-					}
-#ifdef RD_DEBUG
-					else
-					{
-						printf ( "Num children right > 1(= %i) and current_node->right->lvl == 0\n", num_children_right);
-					}
-#endif
-
-
-				    /// Update the new node's base
-				    /// TODO;  is this right?
+					/// Update the new node's base
 				    new_child->base = current_node->base + (0x1 << (new_child->lvl));
 				}
 		    }
