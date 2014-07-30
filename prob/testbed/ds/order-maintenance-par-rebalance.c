@@ -299,6 +299,8 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
     printf ( "Printing tree after scaffolding\n" );
     print_tree(x->bl->parent);
 
+	if (x->bl->parent->size > 1)
+	check_tree_correctness(x);
 }
 
 void insert(OM_Node *x, OM_Node *y){
