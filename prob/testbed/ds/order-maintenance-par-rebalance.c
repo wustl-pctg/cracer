@@ -296,8 +296,8 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		iter_node = iter_node->parent;
     }
 
-    printf ( "Printing tree after scaffolding\n" );
-    print_tree(x->bl->parent);
+//    printf ( "Printing tree after scaffolding\n" );
+//    print_tree(x->bl->parent);
 
 	if (x->bl->parent->size > 1)
 	check_tree_correctness(x);
@@ -635,7 +635,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 
 #ifdef RD_DEBUG
 
-		printf ( "=== Before rebalance ===\n" );
+		printf ( "\n\n=== Before rebalance ===\n" );
 		print_tree(list);
 #endif
 		/// Thin out the list - make room for y
@@ -643,7 +643,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 
 #ifdef RD_DEBUG
 
-		printf ( "=== After rebalance ===\n" );
+		printf ( "\n\n=== After rebalance ===\n" );
 		print_tree(list);
 #endif
 		/// PARALLEL:
@@ -781,8 +781,9 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
     /// Each node in the list will be spaced out by skip_size tag spaces
     unsigned long int skip_size = MAX_NUMBER >> lg_HALF_INT_BIT_SIZE;
 
+
 #ifdef RD_DEBUG
-    //printf("In New version of split.\n");
+	printf(" ========= Split ========= \n");
 #endif
 
     /// First reorganize list_to_split appropriately
@@ -1015,6 +1016,10 @@ void rebalance_tl (Bottom_List * pivot){
     {
 
 #ifdef RD_DEBUG
+		if (current_node == NULL)
+			printf("Pivot is NULL\n");
+		assert(current_node != NULL);
+
 		if (current_node->parent == NULL)
 			printf("Threshold not surpassed before running out of parents....\ncurrent_node->lvl: %i\n", current_node->lvl);
 		assert(current_node->parent != NULL);
@@ -1148,6 +1153,9 @@ void remove_scaffolding(Internal_Node * node){
  */
 void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex)
 {
+#ifdef RD_DEBUG
+	printf("rebuild_tree(%p, nodeArray, %i, %i)\n", current_node, startIndex, endIndex);
+#endif
 	/////////////////////////// OLD REBUILD AT BOTTOM
     Internal_Node * new_child;
     int num_children = (endIndex - startIndex) + 1;
@@ -1574,11 +1582,11 @@ void check_sub_correctness (Top_List * list)
 		while(cur_node != current->tail)
 		{
 		    if ( !(cur_node->tag < cur_node->next->tag) )
-				printf("Node tags are out of order\n");
+				printf("Node tags are out of order; cur:[%p|%i] cur->next:[%p|%i]\n", cur_node, cur_node->tag, cur_node->next,  cur_node->next->tag);
 		    cur_node = cur_node->next;
 		}
 		if (current->next && current->tag >=current->next->tag )
-		    printf ( "Bottom list tags are out of place\n" );
+		    printf ( "Bottom list tags are out of place; cur:[B:%p|I:%p|%i] cur->next:[B:%p|I:%p|%i]\n", current, current->internal, current->tag, current->next, current->next->internal, current->next->tag );
 		current = current->next;
     }
 }

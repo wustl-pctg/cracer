@@ -81,7 +81,7 @@ int main ( int argc, char *argv[] )
 #ifdef RD_DEBUG
 		printf("Check for correctness..");
 		check_sub_correctness(list);
-		printf("..done %d\n", i);
+		printf("..done %d\n", i-1);
 #endif
 
 	}
