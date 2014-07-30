@@ -932,31 +932,38 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 		/// If new Bottom_List doesn't yet have an Internal_Node
 		if ( !(current_node->bl->next->internal) )
 		{
-		    //We need to allocate space for it's internal node
-		    current_node->bl->next->internal = malloc(sizeof(Internal_Node));
-		    current_node->bl->next->internal->lvl = 0;
+			Internal_Node * new_node = malloc(sizeof(Internal_Node));
 
+		    //We need to allocate space for it's internal node
+		    current_node->bl->next->internal = new_node;
+		    new_node->lvl = 0;
+			new_node->left = new_node->right = NULL;
+			new_node->base = current_node->bl->next->tag;
+			
 #ifdef RD_DEBUG
-		    printf ( "Allocating space for node to be inserted (in build array): %p\n", current_node->bl->next->internal);
+		    printf ( "Allocating space for node to be inserted (in build array): %p\n", new_node);
 #endif
 
 		    // Assign the internal node's bl pointer to the bl to be inserted
-		    current_node->bl->next->internal->bl = current_node->bl->next;
+		    new_node->bl = current_node->bl->next;
 
-		    /// NOTE: Bases updated in rebuild tree
+			current_node = new_node;
 		}
-
-		/// Update the current node to iterate horizontally through base nodes
-		current_node = current_node->bl->next->internal;
+		else 
+		{
+			/// Update the current node to iterate horizontally through base nodes
+			current_node = current_node->bl->next->internal;
+		}
 
 		/// Add node to the array and increment i
 		nodeArray[i++] = current_node;
 
 #ifdef RD_DEBUG
 		assert(current_node->lvl == 0);
-		
 #endif
+
     }
+
 #ifdef RD_DEBUG
 
 	/// Going to print the array
