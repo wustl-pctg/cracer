@@ -1261,7 +1261,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				current_node->right->parent = current_node;
 
 				/// Assign its base/tag -- fill the remaining spaces with 1's
-				current_node->right->base = current_node->right->bl->tag = current_node->base;
+				current_node->right->base = current_node->right->bl->tag = current_node->base | ((1 << current_node->lvl) -1);
 
 				//We can stop the rebuild:
 				rebuild_right_flag = 0;
@@ -1278,7 +1278,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				current_node->right->lvl = current_node->lvl -1;
 
 				/// Update the base
-				current_node->right->base = current_node->base;
+				current_node->right->base = current_node->base + (1 << current_node->right->lvl);
 
 				/// Update cur node->right parent reference
 				current_node->right->parent = current_node;
@@ -1297,7 +1297,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    current_node->right->parent = current_node;
 
 				    /// Update base/tags
-				    current_node->right->base = current_node->right->bl->tag = current_node->base;
+				    current_node->right->base = current_node->right->bl->tag = current_node->base | ((1 << current_node->lvl) -1);
 
 				    //Alex: no need to rebuild
 					rebuild_right_flag = 0;
@@ -1323,7 +1323,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    current_node->right->num_children = num_children_right;
 
 				    /// Update the new node's base
-				    new_child->base = current_node->base;
+				    new_child->base = current_node->base | (1 << new_child->lvl);
 				}
 		    }
 		    else ///<If the cur->right is more than one level below cur and cur->right is an internal node
@@ -1331,7 +1331,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				/// We Need to move up the right node
 				/// Update lvl
 				current_node->right->lvl = current_node->lvl - 1;
-				current_node->right->base = current_node->base;
+				current_node->right->base = current_node->base = (1 << current_node->right->lvl);
 		    }
 		}
 
