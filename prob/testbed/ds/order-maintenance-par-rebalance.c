@@ -955,6 +955,8 @@ void rebalance_tl (Bottom_List * pivot){
 		/// Node at lvl - 1 is optimal, so we create it if not present
 		current_node->left = malloc(sizeof(Internal_Node));
 		current_node->left->parent = current_node;
+		// Initialize to null
+		current_node->left->left = current_node->left->right = NULL;
 
 		current_node->left->lvl = current_node->lvl -1;
 		// num children taken care of in rebuild
@@ -979,6 +981,8 @@ void rebalance_tl (Bottom_List * pivot){
 		/// Node at lvl - 1 is optimal, so we create it if not present
 		current_node->right = malloc(sizeof(Internal_Node));
 		current_node->right->parent = current_node;
+		// Initialize to null
+		current_node->right->right = current_node->right->left = NULL;
 
 		current_node->right->lvl = current_node->lvl -1;
 		// num children taken care of in rebuild
@@ -1025,13 +1029,18 @@ void rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int 
 		 */
 
 		current_node->left = nodeArray[startIndex];
-
+#ifdef RD_DEBUG
+		/// This should be a leaf node
+		assert(current_node->left->lvl == 0);
+#endif
 		/// Make sure this node is at the correct level
-		current_node->left->lvl = 0;
+		/*current_node->left->lvl = 0;*/
 
 		/// Make sure num_children is correct
-		current_node->num_children = num_children;
-		current_node->left->num_children = num_children;
+		// Alex: can we just make these 1?
+		current_node->num_children = 1;
+		// Alex: this should be 0, as it is a leaf node
+		current_node->left->num_children = 0;
 
 		/// NOTE: Don't need to free the node already there - will be moved through array
 		current_node->right = NULL;
