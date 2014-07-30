@@ -1032,6 +1032,21 @@ current_node->right->lvl = current_node->lvl -1;
     free(nodeArray);
 }
 
+void remove_scaffolding(Internal_Node * node){
+
+	if (node->left && node->left->lvl > 0)
+	{
+		//parallel
+		remove_scaffolding(node->left);
+	}
+	if (node->right && node->right->lvl > 0)
+	{
+	// parallel:
+		remove_scaffolding(node->right);
+	}
+	// sync;
+}
+
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  rebuild_tree
@@ -1054,6 +1069,19 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		 * in the array that will be moved. So don't worry about them, and update the children
 		 * accordingly
 		 */
+		//ALEX: remove any remaining internal nodes that are in between current node and lvl 0.
+		if (current_node->left && current_node->left->lvl > 0)
+		{
+			//parallel
+			remove_scaffolding(current_node->left);
+		}
+		if (current_node->right && current_node->right->lvl > 0)
+		{
+			// parallel:
+			remove_scaffolding(current_node->right);
+		}
+		//sync
+		
 
 		current_node->left = nodeArray[startIndex];
 
@@ -1078,6 +1106,20 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		 * and endIndex respectively.
 		 */
 
+		//ALEX: remove any remaining internal nodes that are in between current node and lvl 0.
+		//parallel:
+		if (current_node->left && current_node->left->lvl > 0)
+		{
+			//parallel
+			remove_scaffolding(current_node->left);
+		}
+		if (current_node->right && current_node->right->lvl > 0)
+		{
+			// parallel:
+			remove_scaffolding(current_node->right);
+		}
+		//sync
+		
 		current_node->left = nodeArray[startIndex];
 		current_node->right = nodeArray[endIndex];
 
@@ -1094,6 +1136,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
     }
     else ///< num_children >= 3 => split and recurse
     {
+    	/// Flags
+    	int rebuild_left_flag = 1, rebuild_right_flag = 1;
 		/// First get the new indices of the split
 		int leftStart = startIndex; ///< 0 is the first index in the array
 		int leftEnd = startIndex + ((num_children - 1) >> 1); ///< If odd, will be floor of half the index range
@@ -1106,7 +1150,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		current_node->num_children = num_children;
 
 #ifdef RD_DEBUG
-		assert(current_node->left != NULL && current_node->right != NULL);
+		/*assert(current_node->left != NULL && current_node->right != NULL);*/
 		assert(num_children_left >= 1 && num_children_right >= 1);
 #endif
 
@@ -1121,6 +1165,9 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 				/// Assign its base/tag -- fill the remaining spaces with 1's
 				current_node->left->base = current_node->left->bl->tag = current_node->base;
+
+				//We can stop the rebuild:
+				rebuild_left_flag = 0;
 			}
 			else { // We need an internal node to contain more than 1 node
 #ifdef RD_DEBUG
@@ -1188,8 +1235,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		    }
 		}
 		///< If the left node is already one level below the current_node, do nothing.
-
-		rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
+		if (rebuild_left_flag)
+			rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
 
 		if (current_node->right == NULL){
 			if (num_children_right == 1){///< Connect this node to the leaf
@@ -1201,6 +1248,9 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 				/// Assign its base/tag -- fill the remaining spaces with 1's
 				current_node->right->base = current_node->right->bl->tag = (current_node->base | ((1 << current_node->lvl) -1) );
+
+				/// We can stop the rebuild
+				rebuild_right_flag = 0;
 
 			}
 			else { // We need an internal node to contain more than 1 node
@@ -1269,8 +1319,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		    }
 		}
 		///< If the right node is already one level below the current_node, do nothing.
-
-		rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);
+		if (rebuild_right_flag)
+			rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);
     }
 }
 
