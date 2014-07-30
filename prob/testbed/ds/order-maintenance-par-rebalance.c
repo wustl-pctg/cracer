@@ -659,50 +659,53 @@ int order (OM_Node * x, OM_Node * y)
  */
 void split_bl (Top_List * list, Bottom_List * list_to_split)
 {
-    /* PREVIOUS VERSION
-       OM_Node * current = list_to_split->head, *middle_node;
-       /// Create new list to add to top
-       Bottom_List * to_add = create_bl();
-       /// Keep track of num  nodes visited
-       int node_count = 1;
-       /// Each node in the list will be spaced out by skip_size tag spaces
-       /// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
-       unsigned int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2);
-       /// Iterate to the middle updating tags along the way
-       while (node_count < (list_to_split->size >> 1)){
-       current->next->tag = current->tag + skip_size;
-       current = current->next;
-       node_count++;}
-       /// Update sizes of the lists
-       to_add->size = list_to_split->size - node_count;
-       list_to_split->size = node_count;
-       /// Make current the end of the original list and save the middle
-       list_to_split->tail = current;
-       middle_node = current->next;
-       current->next = NULL;
-       /// Get current node back;
-       current = middle_node;
-       /// Set the head of the new list to middle node
-       to_add->head = middle_node;
-       /// Nullify prev of the middle node since it's the head
-       middle_node->prev = NULL;
-       /// Assign 0 to first tag of to_add list
-       current->tag = 0;
-       /// Reassign current ds
-       current->ds = to_add;
-       /// Iterate through remaining nodes updating tags and their ds
-       while (current->next != NULL){
-       current = current->next;
-       current->ds = to_add;
-       current->tag = current->prev->tag + skip_size;}
-       /// Make the last node the tail of the to_add list
-       to_add->tail = current;
-       current->next = NULL;
-       /// No longer need reordered
-       list_to_split->reorder_flag = to_add->reorder_flag = 0;
-       /// Insert the newly created list this into the top list
-       insert_tl(list_to_split, to_add);
-    */
+	//PREVIOUS VERSION
+	   OM_Node * current = list_to_split->head, *middle_node;
+	   /// Create new list to add to top
+	   Bottom_List * to_add = create_bl();
+	   /// Keep track of num  nodes visited
+	   int node_count = 1;
+	   /// Each node in the list will be spaced out by skip_size tag spaces
+	   /// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
+	   unsigned int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2);
+	   /// Iterate to the middle updating tags along the way
+	   while (node_count < (list_to_split->size >> 1)){
+	   current->next->tag = current->tag + skip_size;
+	   current = current->next;
+	   node_count++;}
+	   /// Update sizes of the lists
+	   to_add->size = list_to_split->size - node_count;
+	   list_to_split->size = node_count;
+	   /// Make current the end of the original list and save the middle
+	   list_to_split->tail = current;
+	   middle_node = current->next;
+	   current->next = NULL;
+	   /// Get current node back;
+	   current = middle_node;
+	   /// Set the head of the new list to middle node
+	   to_add->head = middle_node;
+	   /// Nullify prev of the middle node since it's the head
+	   middle_node->prev = NULL;
+	   /// Assign 0 to first tag of to_add list
+	   current->tag = 0;
+	   /// Reassign current ds
+	   current->ds = to_add;
+	   /// Iterate through remaining nodes updating tags and their ds
+	   while (current->next != NULL){
+	   current = current->next;
+	   current->ds = to_add;
+	   current->tag = current->prev->tag + skip_size;}
+	   /// Make the last node the tail of the to_add list
+	   to_add->tail = current;
+	   current->next = NULL;
+	   /// No longer need reordered
+	   list_to_split->reorder_flag = to_add->reorder_flag = 0;
+	   /// Insert the newly created list this into the top list
+	   insert_tl(list_to_split, to_add);
+  
+  	   ///NEW VERSION
+
+    /*
     OM_Node * current = list_to_split->head, *transition_node;
 
     /// Create new list to add to top
@@ -817,6 +820,8 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		/// Insert the finished DS into the Top_List
 		insert_tl(holder, to_add);
     }
+
+    */
 }
 
 /*!
@@ -956,9 +961,13 @@ void rebalance_tl (Bottom_List * pivot){
     }
     while ( (overflow_density > overflow_threshold ) && (current_node->lvl <= INT_BIT_SIZE) );
 
-    // Include the extra node
-    current_node->num_children += 1;
-
+    // Include the extra node in all the parents and their ancestors
+    temp = current_node;
+    while (temp != NULL){
+    	temp->num_children += 1;
+    	temp = temp->parent;
+	}
+	
     /// Get the array of nodes to be rebalanced
     Internal_Node ** nodeArray = build_array_from_rebalance_list(current_node);
 
@@ -1044,6 +1053,7 @@ void remove_scaffolding(Internal_Node * node){
 	// parallel:
 		remove_scaffolding(node->right);
 	}
+	free(node);
 	// sync;
 }
 
@@ -1128,8 +1138,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		current_node->right->parent = current_node;
 
 		/// Update the bases of the children/leaves
-		current_node->left->base =current_node->left->bl->tag = current_node->base;
-		current_node->right->base=current_node->right->bl->tag  = current_node->base + 1;
+		current_node->left->base  = current_node->left->bl->tag = current_node->base;
+		current_node->right->base = current_node->right->bl->tag  = current_node->base + 1;
 		
 		/// Update current_node's children
 		current_node->num_children = 2;
@@ -1201,6 +1211,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 				    /// Update base/tags
 				    current_node->left->base = current_node->left->bl->tag = current_node->base;
+				    //Alex: no need to rebuild
+					rebuild_left_flag = 0;
 				}
 				else ///< The number of children on the left is > 1
 				{
@@ -1285,6 +1297,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    current_node->right->parent = current_node;
 				    /// Update the tag /base
 				    current_node->right->base = current_node->right->bl->tag = current_node->base | ((1 << current_node->lvl) -1);
+				    //Alex: no need to rebuild
+					rebuild_right_flag = 0;
 				}
 				else ///< The number of children on the right is > 1
 				{
