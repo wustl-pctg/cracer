@@ -1640,22 +1640,7 @@ int print_nodes_in_order(print_node * first, print_node *second){
     if (first->data->lvl < second->data->lvl)
 		return 0;
     else if (first->data->lvl == second->data->lvl){
-		Internal_Node *tmp_first = first->data, *tmp_second = second->data;
-		while ((tmp_first->left || tmp_first->right))
-		{
-		    if (tmp_first->left)
-				tmp_first = tmp_first->left;
-		    else
-				tmp_first = tmp_first->right;
-		}
-		while ((tmp_second->left || tmp_second->right))
-		{
-		    if (tmp_second->left)
-				tmp_second = tmp_second->left;
-		    else
-				tmp_second = tmp_second->right;
-		}
-		return (tmp_first->bl->tag < tmp_second->bl->tag);
+    	return first->data->base < second->data->base;
     }
     else // >
     {
