@@ -104,6 +104,7 @@ typedef struct Top_List_s{
 /// Parallel:
 Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node);
 void create_btree_scaffolding(Internal_Node *, Internal_Node *);
+void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
 
 /// Declarations of the OM-functions (in batchify part)
 void insert(OM_Node *x, OM_Node *y);
