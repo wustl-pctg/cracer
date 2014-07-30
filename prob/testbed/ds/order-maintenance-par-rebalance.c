@@ -28,7 +28,7 @@ static double OVERFLOW_CONSTANT = 1.05;
 /// Create the tree above x and y
 void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 {
-    unsigned int 
+    unsigned int
 		xtag = x->bl->tag,
 		ytag = y->bl->tag,
 		ztag = ytag,//Just a tmp variable
@@ -43,9 +43,9 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		while (bit_counter != 0)
 		{
 		    /// If z and y bit are different, then x will be closer to y. Use x.
-		    if ( (((ztag ^ ytag)) & bit_counter) == bit_counter) 
+		    if ( (((ztag ^ ytag)) & bit_counter) == bit_counter)
 		    {
-				while ( ((~(xtag ^ ytag)) & bit_counter) == bit_counter) 
+				while ( ((~(xtag ^ ytag)) & bit_counter) == bit_counter)
 				{
 				    /// Must find the right lvl first
 				    lvl_count--;
@@ -53,10 +53,10 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 				}
 				break;
 		    }
-		    /// If x and y bit are not the same at the bit_counter, then Z will be the closer node. 
-		    else if ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
+		    /// If x and y bit are not the same at the bit_counter, then Z will be the closer node.
+		    else if ( (((xtag ^ ytag)) & bit_counter) == bit_counter)
 		    {
-				while ( ((~(ztag ^ ytag)) & bit_counter) == bit_counter) 
+				while ( ((~(ztag ^ ytag)) & bit_counter) == bit_counter)
 				{
 				    /// Must find the right lvl first
 				    lvl_count--;
@@ -79,7 +79,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
     {
 		while (bit_counter != 0)
 		{
-		    if ( (((xtag ^ ytag)) & bit_counter) == bit_counter) 
+		    if ( (((xtag ^ ytag)) & bit_counter) == bit_counter)
 				break;
 
 		    /// Need to update the level count
@@ -177,7 +177,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		// This is a new node with just 2 children
 		new_parent->num_children = 2;
     }
-    else ///< They are equal, i.e. the same node 
+    else ///< They are equal, i.e. the same node
     {
 #ifdef RD_DEBUG
 		printf ("Debug : Create scaffolding - Old and new parent of x are the same\n" );
@@ -201,8 +201,8 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		}
 
 		/// We know the direction of the child based on if z was changed
-		if (xtag != ztag) 
-		    new_parent->right = y;								
+		if (xtag != ztag)
+		    new_parent->right = y;
 		else
 		    new_parent->left = y;
 
@@ -227,13 +227,13 @@ void insert(OM_Node *x, OM_Node *y){
     /*InsertRecord *ir = malloc(sizeof(InsertRecord));*/
     /*ir->x  = x;*/
     /*ir->y  = y;*/
-				
+
     /*Cilk_batchify(_cilk_ws, &batchInsertOp ,NULL, ir, sizeof(InsertRecord), NULL);*/
     /// This is the C (non cilk) version
     insert_internal(x, y);
 }
 
-//This is for the cilk version 
+//This is for the cilk version
 /*cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result)*/
 /*{*/
 /*int i = 0;*/
@@ -256,7 +256,7 @@ void insert_internal(OM_Node *x, OM_Node *y){
     }
 #endif
 
-    /// Update the ds y is in 
+    /// Update the ds y is in
     y->ds = ds;
 
     if (x == ds->tail)
@@ -268,7 +268,7 @@ void insert_internal(OM_Node *x, OM_Node *y){
 		if ((x->tag & 0x1) == 0x1) y->tag += 1;
 
 		/// Check for collision
-		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag								
+		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag
 		{
 #ifdef RD_STATS
 		    if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
@@ -301,13 +301,13 @@ void insert_internal(OM_Node *x, OM_Node *y){
 
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if ((x->next->tag & x->tag & 0x1) == 0x1) y->tag += 1;
-												
+
 
 		/// Check for collision
 		if ((x->next->tag - x->tag) <= 1)
 		{
 #ifdef RD_STATS
-												
+
 		    if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
 		    {
 				ds->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
@@ -326,7 +326,7 @@ void insert_internal(OM_Node *x, OM_Node *y){
 #endif
 
 		    split_bl(ds->parent, ds);
-												
+
 		    insert(x, y);
 		    return;
 		}
@@ -365,7 +365,7 @@ Bottom_List * create_bl ()
     Bottom_List * list = malloc(sizeof(*list));
 
     /// Assign correct vals to head and tail pointers
-    list->head = list->tail = NULL; 
+    list->head = list->tail = NULL;
 
     /// Reset size and reorder flag
     list->size = list->reorder_flag = 0;
@@ -403,7 +403,7 @@ Top_List * create_tl ()
     return list;
 }
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  first_insert_bl
  *  Description:  Insert the first OM_Node y into the Bottom_List ds.
@@ -418,7 +418,7 @@ void first_insert_bl (Bottom_List * ds, OM_Node * y)
 		printf("First node or ds null: ds: %p y:(%d) %p\n", ds, y->ID, y);
 		assert(0);
     }
-				
+
     if (ds->size != 0)
     {
 		printf("Size was not 0. Improper call to first_insert_bl\n");
@@ -433,7 +433,7 @@ void first_insert_bl (Bottom_List * ds, OM_Node * y)
     y->tag = 0;
 }
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  first_insert_tl
  *  Description:  Insert y into list and initialize the necessary parameters of each.
@@ -450,17 +450,17 @@ void first_insert_tl (Top_List * list, Bottom_List * _y)
 		printf("First node or ds null: ds: %p _y: %p\n", list, _y);
 		assert(0);
     }
-				
+
     if (list->size != 0)
     {
 		printf("Size was not 0. Improper call to first_insert_tl\n");
 		assert(0);
     }
 #endif
-				
+
     /// Update necessary _y parameters
     _y->parent = list;
-    list->head = list->tail = _y;				
+    list->head = list->tail = _y;
     _y->tag = 0;
 
     _y->reorder_flag = 0;
@@ -472,7 +472,7 @@ void first_insert_tl (Top_List * list, Bottom_List * _y)
     // Base level
     y->lvl = 0;
     // This is a leaf internal node, so no children. Base won't be used in leaf node.
-    y->num_children = y->base =  0; 
+    y->num_children = y->base =  0;
     // Give a reference to the internal node to _y itself
     y->bl = _y;
 
@@ -485,7 +485,7 @@ void first_insert_tl (Top_List * list, Bottom_List * _y)
     root->num_children = 1;
 }
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  first_insert
  *  Description:  Insert y into the first Bottom_List in the Top_List specified (list)
@@ -497,7 +497,7 @@ void first_insert (Top_List * list, OM_Node * y)
     first_insert_bl(list->head, y);
 }
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  insert_tl
  *  Description:  Insert list y after list x in Top_List list.
@@ -511,7 +511,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 #ifdef RD_DEBUG
     assert( (list->size == 0 || x != NULL) && (y != NULL) && (list != NULL) );
 #endif
-				
+
     if (x == list->tail)
     {
 		/// y's tag is the average of the max and the prior tag
@@ -522,17 +522,17 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		/// Make the last number the MAX_NUMBER
 		if (MAX_NUMBER -  x->tag == 1)
 		    y->tag = MAX_NUMBER;
-								
+
     }
     else /// Not tail
-    {								
+    {
 		/// y's tag is the average of the next and prior tags
 		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
 
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if ((x->next->tag & x->tag & 0x1) == 0x1) y->tag++;
     }
-												
+
     /// See if there is a "collision" of tags
     if (    (x == list->tail && (MAX_NUMBER == x->tag )  ) || ///< If x is tail, use MAX_NUMBER instead of x->next->tag
 		    (x != list->tail && (x->next->tag - x->tag <= 1)) )
@@ -545,8 +545,8 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		x->next = y;
 		if (y->next != NULL)
 		    y->next->prev = y; ///< If not null, the we can update the next nodes prev reference
-		else 
-		    list->tail = y; ///< If x was the previous tail, y->next is NULL and is new tail 
+		else
+		    list->tail = y; ///< If x was the previous tail, y->next is NULL and is new tail
 
 		/// Assign the parent of y to the list
 		y->parent = list;
@@ -554,7 +554,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 
 
 #ifdef RD_DEBUG
-								
+
 		printf ( "Before rebalance\n" );
 		/*print_tree(list);*/
 #endif
@@ -581,8 +581,8 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		x->next = y;
 		if (y->next != NULL)
 		    y->next->prev = y; ///< If not null, the we can update the next nodes prev reference
-		else 
-		    list->tail = y; ///< If x was the previous tail, y->next is NULL and is new tail 
+		else
+		    list->tail = y; ///< If x was the previous tail, y->next is NULL and is new tail
 
 		/// Assign the parent of y to the list
 		y->parent = list;
@@ -594,7 +594,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		y->internal->lvl = 0;
 		// This is a leaf internal node, so no children. Base won't be used in leaf node.
 		y->internal->num_children = 0;
-		y->internal->base = y->tag; 
+		y->internal->base = y->tag;
 		y->internal->parent = y->internal->left = y->internal->right = NULL;
 		// Give a reference to the internal node to y itself
 		y->internal->bl = y;
@@ -605,13 +605,13 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 }
 
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  order
  *  Description:  Determines the total ordering (that is top and bottom ordering) of nodes x and y.
  *  												  Returns 1 if x < y
  *  												  Returns 0 if x > y
- *                
+ *
  * =====================================================================================
  */
 int order (OM_Node * x, OM_Node * y)
@@ -621,10 +621,10 @@ int order (OM_Node * x, OM_Node * y)
     {
 		if (x->tag < y->tag)
 		    return 1;
-		else 
+		else
 		    return 0;
     }
-				
+
     /// Otherwise, compare their lists' tags
     else
     {
@@ -635,7 +635,7 @@ int order (OM_Node * x, OM_Node * y)
     }
 }
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  split_bl
  *  Description:  Splits the bottom list into two bottom lists. Then it inserts the second
@@ -646,17 +646,17 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 {
     /* PREVIOUS VERSION
        OM_Node * current = list_to_split->head, *middle_node;
-       /// Create new list to add to top 
+       /// Create new list to add to top
        Bottom_List * to_add = create_bl();
        /// Keep track of num  nodes visited
        int node_count = 1;
        /// Each node in the list will be spaced out by skip_size tag spaces
        /// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
-       unsigned int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2); 
+       unsigned int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2);
        /// Iterate to the middle updating tags along the way
        while (node_count < (list_to_split->size >> 1)){
        current->next->tag = current->tag + skip_size;
-       current = current->next;				
+       current = current->next;
        node_count++;}
        /// Update sizes of the lists
        to_add->size = list_to_split->size - node_count;
@@ -677,7 +677,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
        current->ds = to_add;
        /// Iterate through remaining nodes updating tags and their ds
        while (current->next != NULL){
-       current = current->next;				
+       current = current->next;
        current->ds = to_add;
        current->tag = current->prev->tag + skip_size;}
        /// Make the last node the tail of the to_add list
@@ -689,10 +689,10 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
        insert_tl(list_to_split, to_add);
     */
     OM_Node * current = list_to_split->head, *transition_node;
-				
-    /// Create new list to add to top 
+
+    /// Create new list to add to top
     Bottom_List * to_add, * holder;
-				
+
     /// Keep track of num nodes and lists through iterations
     int node_count = 1, list_count = 1, num_lists_needed = (list_to_split->size >> lg_HALF_INT_BIT_SIZE);
 
@@ -718,7 +718,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
     transition_node = current->next;
     current->next = NULL;
     list_to_split->reorder_flag = 0;
-				
+
     /// Define the holder for the following lists
     holder = list_to_split;
 
@@ -726,11 +726,11 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
     while (list_count < num_lists_needed)
     {
 		/// Update node count for current iteration
-		node_count = 1; 
-								
+		node_count = 1;
+
 		/// This particular iteration's list to be added
-		to_add = create_bl(); 
-								
+		to_add = create_bl();
+
 		/// Node maintenence
 		current = transition_node;
 		to_add->head = current;
@@ -739,7 +739,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
 		/// Upate the DS for the head
 		current->ds = to_add;
-								
+
 		/// Now iterate through the nodes for this iteration's DS
 		while ((node_count < HALF_INT_BIT_SIZE) && (current->next != NULL))
 		{
@@ -748,7 +748,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		    current->tag = current->prev->tag + skip_size;
 		    ++node_count;
 		}
-								
+
 		/// Finalize this iteration's DS
 		to_add->tail = current;
 		transition_node = current->next; ///< Even if NULL (out of nodes), will be fine
@@ -770,11 +770,11 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
     /// Finally, check if there are leftover elements and add to a list
     if (transition_node != NULL)
     {
-		node_count = 1; 
-								
+		node_count = 1;
+
 		/// This particular iteration's list to be added
-		to_add = create_bl(); 
-								
+		to_add = create_bl();
+
 		/// Node maintenence
 		current = transition_node;
 		to_add->head = current;
@@ -783,7 +783,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
 		/// Upate the DS for the head
 		current->ds = to_add;
-								
+
 		/// Now iterate through the nodes for this iteration's DS
 		while (current->next != NULL)
 		{
@@ -792,7 +792,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		    current->tag = current->prev->tag + skip_size;
 		    ++node_count;
 		}
-								
+
 		/// Finalize this iteration's DS
 		to_add->tail = current;
 		current->next = NULL;
@@ -804,7 +804,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
     }
 }
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  build_array_from_rebalance_list
  *  Description:  Gets an array of all of the nodes that need to be put in the rebalanced tree.
@@ -850,7 +850,7 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 		/// If new Bottom_List doesn't yet have an Internal_Node
 		if ( !(current_node->bl->next->internal) )
 		{
-#ifdef RD_DEBUG								
+#ifdef RD_DEBUG
 		    printf ( "Allocating space for node to be inserted (in build array)\n" );
 #endif
 		    //We need to allocate space for it's internal node
@@ -873,23 +873,23 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 		assert(current_node->lvl == 0);
 #endif
 
-								
+
     }
 
     return nodeArray;
 }
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  rebalance_tl
- *  Description:  Rebalances the top list around a pivot node according to Bender's 
+ *  Description:  Rebalances the top list around a pivot node according to Bender's
  *  												  algorithm.
  * =====================================================================================
  */
 void rebalance_tl (Bottom_List * pivot){
 
 #ifdef RD_STATS
-												
+
     if (list->list_of_size_of_top_list_when_split_head == NULL)
     {
 		list->list_of_size_of_top_list_when_split_head = malloc(sizeof(ll_node));
@@ -908,14 +908,14 @@ void rebalance_tl (Bottom_List * pivot){
 
     /// Temp current internal node
     Internal_Node *current_node = pivot->internal, * temp; ///< temp for rebuild set-up
-		
+
     /// Constants used to calculate when to rebalance
     double overflow_density, overflow_threshold, i = -1;
     unsigned int current_tag_range = 1, current_tree_lvl = 0, lvl_dif = 0;
 
     /// Continually iterate up levels until threshold passes for space needed
-    do 
-    {		
+    do
+    {
 #ifdef RD_DEBUG
 		printf("Threshold not surpassed before running out of parents....\ncurrent_node->lvl: %i\n", current_node->lvl);
 		assert(current_node->parent != NULL);
@@ -928,13 +928,13 @@ void rebalance_tl (Bottom_List * pivot){
 
 		/// Update the tree level
 		current_tree_lvl = current_node->lvl;
-				
-		/// Bit Shift same number of places as level changes 
+
+		/// Bit Shift same number of places as level changes
 		current_tag_range = current_tag_range << lvl_dif; ///< Same as doubling once for every level upward
 
-		/// NOTE: This would have current_tree_lvl - 1 if the current_tree_lvl++ were before this line.		
+		/// NOTE: This would have current_tree_lvl - 1 if the current_tree_lvl++ were before this line.
 		overflow_threshold = pow(OVERFLOW_CONSTANT, -1.0 * (current_tree_lvl));
-		
+
 		/// NOTE: This is + 1 because we still need to insert the needed node in the tag range
 		overflow_density = ((double)current_node->num_children + 1) / ((double)current_tag_range);
 
@@ -946,7 +946,7 @@ void rebalance_tl (Bottom_List * pivot){
 
     /// Get the array of nodes to be rebalanced
     Internal_Node ** nodeArray = build_array_from_rebalance_list(current_node);
-		
+
 #ifdef RD_DEBUG
     assert(current_node->num_children > 1); ///< Minimum is 2 nodes
 #endif
@@ -965,7 +965,7 @@ if ( !(current_node->left) )
 /// Node at lvl - 1 is optimal, so we create it if not present
 current_node->left = malloc(sizeof(Internal_Node));
 current_node->left->parent = current_node;
-		
+
 // Initialize to null
 current_node->left->left = current_node->left->right = NULL;
 
@@ -1011,13 +1011,13 @@ current_node->right->lvl = current_node->lvl -1;
 // num children taken care of in rebuild
 }
 /// else current->right is already as desired
-		
+
 */
     /// Free the array we created
     free(nodeArray);
 }
 
-/* 
+/*
  * ===  FUNCTION  ======================================================================
  *         Name:  rebuild_tree
  *  Description:  Recursively calls rebuild on it's children. If lvl 2, then assign children.
@@ -1027,14 +1027,14 @@ current_node->right->lvl = current_node->lvl -1;
  */
 void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex)
 {
-/////////////////////////// OLD REBUILD AT BOTTOM
+	/////////////////////////// OLD REBUILD AT BOTTOM
     Internal_Node * new_child;
     int num_children = (endIndex - startIndex) + 1;
 
     /// If there is only one node, simply make it the left child of the current_node
     if (num_children == 1)
     {
-		/* 
+		/*
 		 * If there are already left and right children, it is because they are Internal_Nodes
 		 * in the array that will be moved. So don't worry about them, and update the children
 		 * accordingly
@@ -1051,7 +1051,6 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 		/// NOTE: Don't need to free the node already there - will be moved through array
 		current_node->right = NULL;
-
     }
     else if (num_children == 2)
     {
@@ -1061,7 +1060,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		 * we can simply make the left and right children of current_node the startIndex
 		 * and endIndex respectively.
 		 */
-				
+
 		current_node->left = nodeArray[startIndex];
 		current_node->right = nodeArray[endIndex];
 
@@ -1070,21 +1069,19 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		current_node->right->parent = current_node;
 
 		/// TODO: Update the tag =============================================================
-
 		/// Update current_node's children
 		current_node->num_children = 2;
-
     }
     else ///< num_children >= 3 => split and recurse
     {
 		/// First get the new indices of the split
 		int leftStart = startIndex; ///< 0 is the first index in the array
 		int leftEnd = startIndex + ((num_children - 1) >> 1); ///< If odd, will be floor of half the index range
-		int rightStart = leftEnd + 1; ///< RightHalf starts immediately after LeftHalf 
+		int rightStart = leftEnd + 1; ///< RightHalf starts immediately after LeftHalf
 		int rightEnd = endIndex; ///< Index of last Internal_Node in array
 
 		int num_children_left = (leftEnd - leftStart) + 1, num_children_right = (rightEnd - rightStart) + 1; ///< For this case (num_children >= 3)
-				
+
 		/// Update the number of children for the current_node
 		current_node->num_children = num_children;
 
@@ -1114,26 +1111,25 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    new_child->left = current_node->left;
 				    current_node->left = new_child;
 				    new_child->parent = current_node;
-										
+
 				    /// Update the new Internal_Node's level
 				    new_child->lvl = current_node->lvl - 1;
 
 				    /// Update this new node's num_children
 				    current_node->left->num_children = num_children_left;
 				}
-		    }//end if current_node->left->lvl == 0
-		    else///<If the cur->left is more than one level below cur and cur->left is an internal node
-		    {
-			/// We Need to move up the left node
-			/// Update lvl
-			current_node->left->lvl = current_node->lvl - 1;
 		    }
-		}//end first if
+		    else ///<If the cur->left is more than one level below cur and cur->left is an internal node
+		    {
+				/// We Need to move up the left node
+				/// Update lvl
+				current_node->left->lvl = current_node->lvl - 1;
+		    }
+		}
 		///< If the left node is already one level below the current_node, do nothing.
 
 		rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
 
-		
 		/// Now set-up the right-half and rebuild
 		if ((current_node->lvl - current_node->right->lvl) != 1) ///< If the cur->right isn't one level below it
 		{
@@ -1155,35 +1151,32 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    new_child->right = current_node->right;
 				    current_node->right = new_child;
 				    new_child->parent = current_node;
-										
+
 				    /// Update the new Internal_Node's level
 				    new_child->lvl = current_node->lvl - 1;
 
 				    /// Update this new node's num_children
 				    current_node->right->num_children = num_children_right;
 				}
-		    }//end if current_node->right->lvl == 0
+		    }
 		    else///<If the cur->right is more than one level below cur and cur->right is an internal node
 		    {
-			/// We Need to move up the right node
-			/// Update lvl
-			current_node->right->lvl = current_node->lvl - 1;
+				/// We Need to move up the right node
+				/// Update lvl
+				current_node->right->lvl = current_node->lvl - 1;
 		    }
-		}//end first if
+		}
 		///< If the right node is already one level below the current_node, do nothing.
 
-
 		rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);
-
-    }//end esle num_children >= 3
-				
+    }
 }
 
 
 
 
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  relabel_tl_tag_range
  *  Description:  Relabels the range of tags from list start to end using a distance of skip_size.
@@ -1193,7 +1186,7 @@ void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const /*long*/ 
 {
     Bottom_List * current = start;
     current->tag = start->tag;
-		
+
     /// Iterate through and update tags
     do
     {
@@ -1203,7 +1196,7 @@ void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const /*long*/ 
     while (current != end);
 }
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  rebalance_bls
  *  Description:  Rebalance all bottom lists with the reorder flag.
@@ -1223,7 +1216,7 @@ void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const /*long*/ 
  }
 
 
-/*! 
+/*!
 * ===  FUNCTION  ======================================================================
 *         Name:  print_tl
 *  Description:  Print all the tags of the "nodes" in Top_List list.
@@ -1242,7 +1235,7 @@ void print_tl (Top_List * list)
     printf ( "Tail\n" );
 }
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  print_bl
  *  Description:  Print all the ID's of the nodes in the Bottom_List list.
@@ -1264,7 +1257,7 @@ void print_bl (Bottom_List * list)
 }
 
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  free_bl
  *  Description:  Free all nodes in bottom list and the list itself
@@ -1276,7 +1269,7 @@ void free_bl (Bottom_List * list)
 
     /// Iterate through and free the OM_Node's membory
     while (current != NULL){
-		next = current->next;		
+		next = current->next;
 		free(current);
 		current = NULL; ///< Prevent dangling pointers
 		current = next;
@@ -1287,7 +1280,7 @@ void free_bl (Bottom_List * list)
     list = NULL; ///< Prevent dangling pointers
 }
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  free_tl
  *  Description:  Free all Bottom_Lists in Top_List list and the list itself.
@@ -1299,7 +1292,7 @@ void free_tl (Top_List * list)
 
     /// Iterate through and call free_bl on the Bottom_List current
     while (current != NULL){
-		next = current->next;		
+		next = current->next;
 		free_bl(current); ///< Implicitly prevents dangling pointers
 		current = NULL; ///< Prevent dangling pointers
 		current = next;
@@ -1310,7 +1303,7 @@ void free_tl (Top_List * list)
     list = NULL; ///< Prevent dangling pointers
 }
 
-/*! 
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  check_sub_correctness
  *  Description:  Checks the list so each node's tag is less than the next node's.
@@ -1327,7 +1320,7 @@ void check_sub_correctness (Top_List * list)
 		/// Iterate through the OM_Node(s) in each Bottom_List
 		cur_node = current->head;
 		while(cur_node != current->tail)
-		{		
+		{
 		    if ( !(cur_node->tag < cur_node->next->tag) )
 				printf("Node tags are out of order\n");
 		    cur_node = cur_node->next;
@@ -1380,7 +1373,7 @@ int print_nodes_in_order(print_node * first, print_node *second){
 		}
 		return (tmp_first->bl->tag < tmp_second->bl->tag);
     }
-    else // > 
+    else // >
     {
 		return 1;
     }
@@ -1396,7 +1389,7 @@ void append_and_sort(print_node * current, print_node *to_add)
 
     to_add->next = trailing->next;
     trailing->next = to_add;
-		
+
 }
 print_node * pop_print_node(print_node ** head){
     print_node *tmp = *head;
@@ -1428,7 +1421,7 @@ void print_tree (Top_List * list)
 
 
     //head/current are the root
-		
+
 
     printf ( "\n\nLevel: %i ", current_lvl );
     while (current)
@@ -1503,9 +1496,9 @@ void print_tree (Top_List * list)
    if (current_node->lvl < 2){
    printf ( "Debug: rebuild tree lvl is too small.\n" );
    assert(0);}
-   #endif 
+   #endif
    if (current_node->lvl == 2){
-   #ifdef RD_DEBUG				
+   #ifdef RD_DEBUG
    printf ( "In a lvl 2 node\n" );
    #endif
    if (diff == -1){
