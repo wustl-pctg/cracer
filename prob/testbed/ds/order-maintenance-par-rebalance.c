@@ -45,8 +45,7 @@ void check_subtree_correctness( Internal_Node *x){
 	}
 	if (x->left->lvl != 0 && x->right->lvl != 0){
 		//already checked
-		
-	assert(x->left->num_children + x->right->num_children == x->num_children);
+		assert(x->left->num_children + x->right->num_children == x->num_children);
 	}
 	else if ((x->left->lvl != 0) ^ (x->right->lvl != 0)){
 		if (x->left->lvl == 0){
@@ -73,7 +72,6 @@ void check_tree_correctness (Internal_Node * x){
 	}
 	assert(x->left);
 	assert(x->right);
-	assert(x->left->num_children + x->right->num_children == x->num_children);
 	assert(x->left->base == x->base);
 	assert(x->right->base == x->base | ((1 << x->lvl) -1));
 	assert(x->left->parent ==x);
@@ -81,6 +79,17 @@ void check_tree_correctness (Internal_Node * x){
 	if (x->num_children == 2){
 		assert(x->left->lvl == 0);
 		assert(x->right->lvl == 0);
+	}if (x->left->lvl != 0 && x->right->lvl != 0){
+		//already checked
+		assert(x->left->num_children + x->right->num_children == x->num_children);
+	}
+	else if ((x->left->lvl != 0) ^ (x->right->lvl != 0)){
+		if (x->left->lvl == 0){
+			assert(x->right->num_children + 1 == x->num_children);
+		}
+		if (x->right->lvl == 0){
+			assert(x->left->num_children + 1 == x->num_children);
+		}
 	}
 	assert(x->num_children != 1);
 	check_subtree_correctness(x->left);
@@ -205,7 +214,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 #ifdef RD_DEBUG
 		//printf ( "Debug: Create scaffold - old parent above new parent\n" );
 #endif
-
+		
 		new_parent = malloc(sizeof(Internal_Node));
 
 		// Assign x's old parent to new_parent's parent
@@ -249,10 +258,22 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 		// This is a new node with just 2 children
 		new_parent->num_children = 2;
     }
+    ///TODO: remove this and fix one after
+	else if (lvl_count == INT_BIT_SIZE) // root is already made)
+	{
+#ifdef RD_DEBUG
+	printf ( "======= This should only be made once, second insert\n" );
+	new_parent = x->parent;
+	assert(new_parent->lvl == INT_BIT_SIZE);
+	new_parent->num_children = 2;
+	new_parent->right = y;
+	y->parent = new_parent;
+#endif
+	}
     else ///< They are equal, i.e. the same node
     {
 #ifdef RD_DEBUG
-		//printf ("Debug : Create scaffolding - Old and new parent of x are the same\n" );
+		printf ("Debug : Create scaffolding - Old and new parent of x are the same\n" );
 #endif
 
 		new_parent = malloc(sizeof(Internal_Node));
@@ -555,6 +576,7 @@ void first_insert_tl (Top_List * list, Bottom_List * _y)
     y->num_children = y->base =  0;
     // Give a reference to the internal node to _y itself
     y->bl = _y;
+    
 
 
     Internal_Node * root = malloc(sizeof(Internal_Node));
@@ -595,7 +617,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
     if (x == list->tail)
     {
 		/// y's tag is the average of the max and the prior tag
-		y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
+		y->tag = (x->tag >> 1) + (1 << (INT_BIT_SIZE - 1));
 
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if ((x->tag & 0x1) == 0x1) y->tag++;
