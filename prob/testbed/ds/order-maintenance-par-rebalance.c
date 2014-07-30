@@ -25,6 +25,69 @@ static int HALF_INT_BIT_SIZE = 4;
 static int lg_HALF_INT_BIT_SIZE = 2;
 static double OVERFLOW_CONSTANT = 1.05;
 
+void check_subtree_correctness( Internal_Node *x){
+
+	if (x->lvl == 0){
+		assert(x->bl != NULL);
+		assert(x->left == NULL);
+		assert(x->base <= x->parent->right->base);
+		assert(x->base >= x->parent->left->base);
+		assert(x->bl->tag == x->base);
+		return;
+	}
+	assert(x->left->base == x->base);
+	assert(x->right->base == x->base | ((1 << x->lvl) -1));
+	assert(x->left->parent ==x);
+	assert(x->right->parent == x);
+	if (x->num_children == 2){
+		assert(x->left->lvl == 0);
+		assert(x->right->lvl == 0);
+	}
+	if (x->left->lvl != 0 && x->right->lvl != 0){
+		//already checked
+		
+	assert(x->left->num_children + x->right->num_children == x->num_children);
+	}
+	else if ((x->left->lvl != 0) ^ (x->right->lvl != 0)){
+		if (x->left->lvl == 0){
+			assert(x->right->num_children + 1 == x->num_children);
+		}
+		if (x->right->lvl == 0){
+			assert(x->left->num_children + 1 == x->num_children);
+		}
+	}
+	assert(x->num_children != 1);
+	return;
+}
+void check_tree_correctness (Internal_Node * x){
+	while (x->parent){
+		x = x->parent;
+	}
+	if (x->lvl == 0){
+		assert(x->bl != NULL);
+		assert(x->left == NULL);
+		assert(x->base <= x->parent->right->base);
+		assert(x->base >= x->parent->left->base);
+		assert(x->bl->tag == x->base);
+		return;
+	}
+	assert(x->left);
+	assert(x->right);
+	assert(x->left->num_children + x->right->num_children == x->num_children);
+	assert(x->left->base == x->base);
+	assert(x->right->base == x->base | ((1 << x->lvl) -1));
+	assert(x->left->parent ==x);
+	assert(x->right->parent == x);
+	if (x->num_children == 2){
+		assert(x->left->lvl == 0);
+		assert(x->right->lvl == 0);
+	}
+	assert(x->num_children != 1);
+	check_subtree_correctness(x->left);
+	check_subtree_correctness(x->right);
+	
+	return;
+}
 /// Create the tree above x and y
 void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
 {
@@ -993,6 +1056,10 @@ void rebalance_tl (Bottom_List * pivot){
     //TODO: Parallelize this
 
     rebuild_tree(current_node, nodeArray, 0, current_node->num_children - 1);
+#ifdef RD_DEBUG
+	check_tree_correctness(current_node);
+	printf ( "===========> Passed tree correctness.\n" );
+#endif
 
 /*
 /// Rebuild left half of tree portion needing rebalanced
