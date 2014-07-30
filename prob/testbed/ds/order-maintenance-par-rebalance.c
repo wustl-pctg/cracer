@@ -571,7 +571,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 #ifdef RD_DEBUG
 
 		printf ( "Before rebalance\n" );
-		/*print_tree(list);*/
+		print_tree(list);
 #endif
 		/// Thin out the list - make room for y
 		rebalance_tl(x);
@@ -579,7 +579,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 #ifdef RD_DEBUG
 
 		printf ( "After rebalance\n" );
-		/*print_tree(list);*/
+		print_tree(list);
 #endif
 		/// PARALLEL:
 		/*spawn rebalance_tl(x);sync;*/
@@ -1060,7 +1060,9 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		/// Update the parent pointer
 		current_node->left->parent = current_node;
 
+
 		/// TODO: Update the tag =============================================================
+		current_node->left->base = current_node->left->bl->tag = current_node->base;
 		/// Make sure num_children is correct
 		current_node->num_children = 1;
 
@@ -1083,7 +1085,10 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		current_node->left->parent = current_node;
 		current_node->right->parent = current_node;
 
-		/// TODO: Update the tag =============================================================
+		/// Update the bases of the children/leaves
+		current_node->left->base =current_node->left->bl->tag = current_node->base;
+		current_node->right->base=current_node->right->bl->tag  = current_node->base + 1;
+		
 		/// Update current_node's children
 		current_node->num_children = 2;
     }
@@ -1157,6 +1162,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				/// We Need to move up the left node
 				/// Update lvl
 				current_node->left->lvl = current_node->lvl - 1;
+				current_node->left->base = current_node->base;
 		    }
 		}
 		///< If the left node is already one level below the current_node, do nothing.
@@ -1215,6 +1221,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				/// We Need to move up the right node
 				/// Update lvl
 				current_node->right->lvl = current_node->lvl - 1;
+				current_node->right->base = current_node->base + (0x1 << current_node->right->lvl);
 		    }
 		}
 		///< If the right node is already one level below the current_node, do nothing.
