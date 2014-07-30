@@ -94,7 +94,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
     if (x->parent->lvl < lvl_count)
     {
 #ifdef RD_DEBUG
-		printf ( "Debug: Create scaffold - old parent below new parent\n" );
+		//printf ( "Debug: Create scaffold - old parent below new parent\n" );
 #endif
 
 		new_parent = x->parent;
@@ -140,7 +140,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
     else if (x->parent->lvl > lvl_count)
     {
 #ifdef RD_DEBUG
-		printf ( "Debug: Create scaffold - old parent above new parent\n" );
+		//printf ( "Debug: Create scaffold - old parent above new parent\n" );
 #endif
 
 		new_parent = malloc(sizeof(Internal_Node));
@@ -189,7 +189,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
     else ///< They are equal, i.e. the same node
     {
 #ifdef RD_DEBUG
-		printf ("Debug : Create scaffolding - Old and new parent of x are the same\n" );
+		//printf ("Debug : Create scaffolding - Old and new parent of x are the same\n" );
 #endif
 
 		new_parent = malloc(sizeof(Internal_Node));
@@ -570,7 +570,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 
 #ifdef RD_DEBUG
 
-		printf ( "Before rebalance\n" );
+		printf ( "=== Before rebalance ===\n" );
 		print_tree(list);
 #endif
 		/// Thin out the list - make room for y
@@ -578,7 +578,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 
 #ifdef RD_DEBUG
 
-		printf ( "After rebalance\n" );
+		printf ( "=== After rebalance ===\n" );
 		print_tree(list);
 #endif
 		/// PARALLEL:
@@ -717,7 +717,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
     unsigned long int skip_size = MAX_NUMBER >> lg_HALF_INT_BIT_SIZE;
 
 #ifdef RD_DEBUG
-    printf("In New version of split.\n");
+    //printf("In New version of split.\n");
 #endif
 
     /// First reorganize list_to_split appropriately
@@ -871,12 +871,13 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 		/// If new Bottom_List doesn't yet have an Internal_Node
 		if ( !(current_node->bl->next->internal) )
 		{
-#ifdef RD_DEBUG
-		    printf ( "Allocating space for node to be inserted (in build array)\n" );
-#endif
 		    //We need to allocate space for it's internal node
 		    current_node->bl->next->internal = malloc(sizeof(Internal_Node));
 		    current_node->bl->next->internal->lvl = 0;
+
+#ifdef RD_DEBUG
+		    printf ( "Allocating space for node to be inserted (in build array): %p\n", current_node->bl->next->internal);
+#endif
 
 		    // Assign the internal node's bl pointer to the bl to be inserted
 		    current_node->bl->next->internal->bl = current_node->bl->next;
@@ -892,10 +893,20 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 
 #ifdef RD_DEBUG
 		assert(current_node->lvl == 0);
+		
 #endif
-
-
     }
+#ifdef RD_DEBUG
+
+	/// Going to print the array
+	i = 0;
+	printf("nodeArray: [");
+	while (i < num_children)
+	{
+		printf(" %p ", nodeArray[i++]);
+	}
+	printf(" ]\n");
+#endif
 
     return nodeArray;
 }
@@ -937,8 +948,10 @@ void rebalance_tl (Bottom_List * pivot){
     /// Continually iterate up levels until threshold passes for space needed
     do
     {
+
 #ifdef RD_DEBUG
-		printf("Threshold not surpassed before running out of parents....\ncurrent_node->lvl: %i\n", current_node->lvl);
+		if (current_node->parent == NULL)
+			printf("Threshold not surpassed before running out of parents....\ncurrent_node->lvl: %i\n", current_node->lvl);
 		assert(current_node->parent != NULL);
 #endif
 
@@ -979,9 +992,6 @@ void rebalance_tl (Bottom_List * pivot){
 
     //TODO: Parallelize this
 
-/*
-/// Going to get intial indices for the recursive split
-*/
     rebuild_tree(current_node, nodeArray, 0, current_node->num_children - 1);
 
 /*
