@@ -29,6 +29,7 @@ void check_subtree_correctness( Internal_Node *x){
 
 	if (x->lvl == 0){
 		assert(x->bl != NULL);
+		assert(x->bl->internal == x);
 		assert(x->left == NULL);
 		assert(x->base <= x->parent->right->base);
 		assert(x->base >= x->parent->left->base);
@@ -58,6 +59,7 @@ void check_subtree_correctness( Internal_Node *x){
 	assert(x->num_children != 1);
 	return;
 }
+
 void check_tree_correctness (Internal_Node * x){
 	while (x->parent){
 		x = x->parent;
@@ -859,6 +861,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		to_add->reorder_flag = 0;
 		to_add->size = node_count;
 
+		printf("Split insert 1\n");
 		/// Insert the finished DS into the Top_List
 		insert_tl(holder, to_add);
 
@@ -902,6 +905,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		to_add->reorder_flag = 0;
 		to_add->size = node_count;
 
+		printf("split insert 2\n");
 		/// Insert the finished DS into the Top_List
 		insert_tl(holder, to_add);
     }
