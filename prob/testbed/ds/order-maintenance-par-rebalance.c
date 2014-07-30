@@ -214,7 +214,7 @@ void create_btree_scaffolding (Internal_Node *x, Internal_Node *y)
     else if (x->parent->lvl > lvl_count)
     {
 #ifdef RD_DEBUG
-		//printf ( "Debug: Create scaffold - old parent above new parent\n" );
+		printf ( "Debug: Create scaffold - old parent above new parent\n" );
 #endif
 		
 		new_parent = malloc(sizeof(Internal_Node));
@@ -472,9 +472,13 @@ Bottom_List * create_bl ()
 
     /// Reset size and reorder flag
     list->size = list->reorder_flag = 0;
+
 #ifdef RD_STATS
     list->list_of_size_of_bottom_list_when_split_head = list->list_of_size_of_bottom_list_when_split_head = NULL;
 #endif
+
+	/// Make sure the internal node is NULL
+	list->internal = NULL;
 
     return list;
 }
@@ -613,6 +617,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
     Top_List * list = x->parent;
 
 #ifdef RD_DEBUG
+	printf("Insert_tl\n");
     assert( (list->size == 0 || x != NULL) && (y != NULL) && (list != NULL) );
 #endif
 
@@ -701,6 +706,10 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		// Give a reference to the internal node to y itself
 		y->internal->bl = y;
 		///TODO: Make this parallel
+
+#ifdef RD_DEBUG
+		printf("Calling scaffolding in insert_tl\n");
+#endif
 		create_btree_scaffolding(x->internal, y->internal);
 
     }
@@ -746,52 +755,7 @@ int order (OM_Node * x, OM_Node * y)
  */
 void split_bl (Top_List * list, Bottom_List * list_to_split)
 {
-	/*//PREVIOUS VERSION
-	   OM_Node * current = list_to_split->head, *middle_node;
-	   /// Create new list to add to top
-	   Bottom_List * to_add = create_bl();
-	   /// Keep track of num  nodes visited
-	   int node_count = 1;
-	   /// Each node in the list will be spaced out by skip_size tag spaces
-	   /// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
-	   unsigned int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2);
-	   /// Iterate to the middle updating tags along the way
-	   while (node_count < (list_to_split->size >> 1)){
-	   current->next->tag = current->tag + skip_size;
-	   current = current->next;
-	   node_count++;}
-	   /// Update sizes of the lists
-	   to_add->size = list_to_split->size - node_count;
-	   list_to_split->size = node_count;
-	   /// Make current the end of the original list and save the middle
-	   list_to_split->tail = current;
-	   middle_node = current->next;
-	   current->next = NULL;
-	   /// Get current node back;
-	   current = middle_node;
-	   /// Set the head of the new list to middle node
-	   to_add->head = middle_node;
-	   /// Nullify prev of the middle node since it's the head
-	   middle_node->prev = NULL;
-	   /// Assign 0 to first tag of to_add list
-	   current->tag = 0;
-	   /// Reassign current ds
-	   current->ds = to_add;
-	   /// Iterate through remaining nodes updating tags and their ds
-	   while (current->next != NULL){
-	   current = current->next;
-	   current->ds = to_add;
-	   current->tag = current->prev->tag + skip_size;}
-	   /// Make the last node the tail of the to_add list
-	   to_add->tail = current;
-	   current->next = NULL;
-	   /// No longer need reordered
-	   list_to_split->reorder_flag = to_add->reorder_flag = 0;
-	   /// Insert the newly created list this into the top list
-	   insert_tl(list_to_split, to_add);
-  */
   	   ///NEW VERSION
-
     OM_Node * current = list_to_split->head, *transition_node;
 
     /// Create new list to add to top
@@ -861,7 +825,11 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		to_add->reorder_flag = 0;
 		to_add->size = node_count;
 
+#ifdef RD_DEBUG
+		assert(to_add->internal == NULL);
+#endif
 		printf("Split insert 1\n");
+
 		/// Insert the finished DS into the Top_List
 		insert_tl(holder, to_add);
 
@@ -905,6 +873,9 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		to_add->reorder_flag = 0;
 		to_add->size = node_count;
 
+#ifdef RD_DEBUG
+		assert(to_add->internal == NULL);
+#endif
 		printf("split insert 2\n");
 		/// Insert the finished DS into the Top_List
 		insert_tl(holder, to_add);
@@ -1841,3 +1812,48 @@ void print_tree (Top_List * list)
    // num children taken care of in rebuild}
    rebuild_tree(current_node->right, nodeArray, newStartIndex, endIndex);}} //end else
 */
+
+	/*//PREVIOUS VERSION of SPLIT_BL
+	   OM_Node * current = list_to_split->head, *middle_node;
+	   /// Create new list to add to top
+	   Bottom_List * to_add = create_bl();
+	   /// Keep track of num  nodes visited
+	   int node_count = 1;
+	   /// Each node in the list will be spaced out by skip_size tag spaces
+	   /// NOTE: +2 needed instead of +1 to ensure small enough skip size for odd-sized lists
+	   unsigned int skip_size = MAX_NUMBER / ((list_to_split->size >> 1) + 2);
+	   /// Iterate to the middle updating tags along the way
+	   while (node_count < (list_to_split->size >> 1)){
+	   current->next->tag = current->tag + skip_size;
+	   current = current->next;
+	   node_count++;}
+	   /// Update sizes of the lists
+	   to_add->size = list_to_split->size - node_count;
+	   list_to_split->size = node_count;
+	   /// Make current the end of the original list and save the middle
+	   list_to_split->tail = current;
+	   middle_node = current->next;
+	   current->next = NULL;
+	   /// Get current node back;
+	   current = middle_node;
+	   /// Set the head of the new list to middle node
+	   to_add->head = middle_node;
+	   /// Nullify prev of the middle node since it's the head
+	   middle_node->prev = NULL;
+	   /// Assign 0 to first tag of to_add list
+	   current->tag = 0;
+	   /// Reassign current ds
+	   current->ds = to_add;
+	   /// Iterate through remaining nodes updating tags and their ds
+	   while (current->next != NULL){
+	   current = current->next;
+	   current->ds = to_add;
+	   current->tag = current->prev->tag + skip_size;}
+	   /// Make the last node the tail of the to_add list
+	   to_add->tail = current;
+	   current->next = NULL;
+	   /// No longer need reordered
+	   list_to_split->reorder_flag = to_add->reorder_flag = 0;
+	   /// Insert the newly created list this into the top list
+	   insert_tl(list_to_split, to_add);
+  */
