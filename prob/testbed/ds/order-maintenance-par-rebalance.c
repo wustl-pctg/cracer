@@ -619,8 +619,6 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		/// y's tag is the average of the max and the prior tag
 		y->tag = (x->tag >> 1) + (1 << (INT_BIT_SIZE - 1));
 
-		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-		if ((x->tag & 0x1) == 0x1) y->tag++;
 		/// Make the last number the MAX_NUMBER
 		if (MAX_NUMBER -  x->tag == 1)
 		    y->tag = MAX_NUMBER;
