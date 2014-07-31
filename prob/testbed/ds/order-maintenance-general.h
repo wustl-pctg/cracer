@@ -97,7 +97,7 @@ Top_List * create_tl();
 void first_insert_bl(Bottom_List * ds, OM_Node * y);
 void first_insert_tl(Top_List * list, Bottom_List * y);
 void first_insert(Top_List *, OM_Node *);
-void insert(OM_Node * x, OM_Node *y, int depth);
+void insert(OM_Node * x, OM_Node *y);
 void insert_tl(Bottom_List *x, Bottom_List *y);
 int order(OM_Node * x, OM_Node * y);
 void split_bl(Top_List * list, Bottom_List * list_to_split);

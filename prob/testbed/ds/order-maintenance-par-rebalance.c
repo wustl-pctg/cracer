@@ -36,8 +36,13 @@ void check_subtree_correctness( Internal_Node *x){
 		assert(x->bl->tag == x->base);
 		return;
 	}
+	else {
+		assert(x->left);
+		assert(x->right);
+	}
 	assert(x->left->base == x->base);
-	assert(x->right->base == x->base | ((1 << x->lvl) -1));
+	//TODO: fix below
+	assert(x->right->base > x->base);// | ((1 << x->lvl) )) ); // new try
 	assert(x->left->parent ==x);
 	assert(x->right->parent == x);
 	if (x->num_children == 2){
@@ -75,7 +80,8 @@ void check_tree_correctness (Internal_Node * x){
 	assert(x->left);
 	assert(x->right);
 	assert(x->left->base == x->base);
-	assert(x->right->base == x->base | ((1 << x->lvl) -1));
+	//TODO: ?
+	//assert(x->right->base == x->base | ((1 << x->lvl) -1));
 	assert(x->left->parent ==x);
 	assert(x->right->parent == x);
 	if (x->num_children == 2){
@@ -263,7 +269,9 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
     ///TODO: remove this and fix one after
 	else if (lvl_count == INT_BIT_SIZE) // root is already made)
 	{
+#ifdef RD_DEBUG
 		printf ( "======= This should only be made once, second insert\n" );
+#endif
 		new_parent = x->parent;
 		assert(new_parent->lvl == INT_BIT_SIZE);
 		new_parent->num_children = 2;
@@ -661,7 +669,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 #ifdef RD_DEBUG
 
 		printf ( "\n\n=== Before rebalance ===\n" );
-		print_tree(list);
+		/*print_tree(list);*/
 #endif
 		/// Thin out the list - make room for y
 		rebalance_tl(x);
@@ -669,7 +677,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 #ifdef RD_DEBUG
 
 		printf ( "\n\n=== After rebalance ===\n" );
-		print_tree(list);
+		/*print_tree(list);*/
 #endif
 		/// PARALLEL:
 		/*spawn rebalance_tl(x);sync;*/
@@ -825,8 +833,8 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
 #ifdef RD_DEBUG
 		assert(to_add->internal == NULL);
-#endif
 		printf("Split insert 1\n");
+#endif
 
 		/// Insert the finished DS into the Top_List
 		insert_tl(holder, to_add);
@@ -873,8 +881,8 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
 #ifdef RD_DEBUG
 		assert(to_add->internal == NULL);
-#endif
 		printf("split insert 2\n");
+#endif
 		/// Insert the finished DS into the Top_List
 		insert_tl(holder, to_add);
     }
@@ -1231,7 +1239,12 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 		/// Update the bases of the children/leaves
 		current_node->left->base  = current_node->left->bl->tag = current_node->base;
-		current_node->right->base = current_node->right->bl->tag  = current_node->base + ((1 << current_node->lvl ) - 1);
+
+		//If int bit size is the highest size, then we can't shift over that many levels or we lose all data
+		if (current_node->lvl == INT_BIT_SIZE)
+			current_node->right->base = current_node->right->bl->tag  = (1 << (INT_BIT_SIZE -1));
+		else
+			current_node->right->base = current_node->right->bl->tag  = current_node->base + ((1 << current_node->lvl ) - 1);
 		
 		/// Update current_node's children
 		current_node->num_children = 2;
@@ -1354,7 +1367,11 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				current_node->right->parent = current_node;
 
 				/// Assign its base/tag -- fill the remaining spaces with 1's
-				current_node->right->base = current_node->right->bl->tag = current_node->base | ((1 << current_node->lvl) -1);
+				if (current_node->lvl == INT_BIT_SIZE){
+					current_node->right->base = current_node->right->bl->tag = (1 << (INT_BIT_SIZE - 1));
+				}
+				else
+					current_node->right->base = current_node->right->bl->tag = current_node->base | ((1 << current_node->lvl) -1);
 
 				//We can stop the rebuild:
 				rebuild_right_flag = 0;
@@ -1370,7 +1387,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				/// Update the new child lvl
 				current_node->right->lvl = current_node->lvl -1;
 
-				/// Update the base
+				/// Update the base (since current_node->right->lvl is less than INT_BIT_SIZE we won't lose all this information if we shift left)
 				current_node->right->base = current_node->base + (1 << current_node->right->lvl);
 
 				/// Update cur node->right parent reference
@@ -1389,8 +1406,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    current_node->right = nodeArray[rightStart];
 				    current_node->right->parent = current_node;
 
-				    /// Update base/tags
-				    current_node->right->base = current_node->right->bl->tag = current_node->base | ((1 << current_node->lvl) -1);
+				    /// Update base/tags  (make the child the furthest left child of the right subtree)
+					current_node->right->base = current_node->right->bl->tag = current_node->base + (1 << (current_node->lvl -1));
 
 				    //Alex: no need to rebuild
 					rebuild_right_flag = 0;
@@ -1687,7 +1704,7 @@ void print_tree (Top_List * list)
 		    append_and_sort(current, right);
 		}
 
-		printf(" --- (loc: %p|p: %p|lvl:%i|L:%p R:%p|base:%i) ---", current->data, current->data->parent, current->data->lvl, current->data->left, current->data->right, current->data->base);
+		printf(" --- (loc: %p|p: %p|lvl:%i|L:%p R:%p|base:%u) ---", current->data, current->data->parent, current->data->lvl, current->data->left, current->data->right, current->data->base);
 		current = pop_print_node(&current);
 
 		if (current == NULL)

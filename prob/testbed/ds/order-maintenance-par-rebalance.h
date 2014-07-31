@@ -30,7 +30,7 @@
 
 /*/// Pre-compiler macro for debugging */
 //#define RD_DEBUG
-/*#define RD_STATS*/
+//#define RD_STATS
 
 #define LEFT 0
 #define RIGHT 1
