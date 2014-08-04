@@ -345,7 +345,7 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 #ifdef RD_DEBUG
 	if (x->bl->parent->size > 1)
 	spawn check_tree_correctness(x);
-	#endif
+#endif
 }
 
 cilk void insert(OM_Node *x, OM_Node *y){
@@ -1171,19 +1171,16 @@ current_node->right->lvl = current_node->lvl -1;
     free(nodeArray);
 }
 
-cilk void remove_scaffolding(Internal_Node * node){
+void remove_scaffolding(Internal_Node * node){
 
 	if (node->left && node->left->lvl > 0)
 	{
-		//parallel
-		spawn remove_scaffolding(node->left);
+		remove_scaffolding(node->left);
 	}
 	if (node->right && node->right->lvl > 0)
 	{
-		// parallel:
-		spawn remove_scaffolding(node->right);
+		remove_scaffolding(node->right);
 	}
-	sync;
 	free(node);
 }
 
@@ -1216,12 +1213,12 @@ cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray
 		if (current_node->left && current_node->left->lvl > 0)
 		{
 			//parallel
-			spawn remove_scaffolding(current_node->left);
+			remove_scaffolding(current_node->left);
 		}
 		if (current_node->right && current_node->right->lvl > 0)
 		{
 			// parallel:
-			spawn remove_scaffolding(current_node->right);
+			remove_scaffolding(current_node->right);
 		}
 		sync;
 
@@ -1254,12 +1251,12 @@ cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray
 		if (current_node->left && current_node->left->lvl > 0)
 		{
 			//parallel
-			spawn remove_scaffolding(current_node->left);
+			remove_scaffolding(current_node->left);
 		}
 		if (current_node->right && current_node->right->lvl > 0)
 		{
 			// parallel:
-			spawn remove_scaffolding(current_node->right);
+			remove_scaffolding(current_node->right);
 		}
 		/*Do i need this?*/
 		/*sync;*/
@@ -1308,7 +1305,7 @@ cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray
 				//Clear scaffolding
 				if (current_node->right && current_node->right->lvl > 0)
 				{
-					spawn remove_scaffolding(current_node->right);
+					remove_scaffolding(current_node->right);
 					/*sync; I dont need this?*/
 				}
 
@@ -1404,7 +1401,7 @@ cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray
 		if (num_children_right == 1){///< Connect this node to the leaf
 				//clear scaffolding
 				if (current_node->right && current_node->right->lvl > 0)
-					spawn remove_scaffolding(current_node->right);
+					remove_scaffolding(current_node->right);
 
 
 				/// Assign the right child from the node array

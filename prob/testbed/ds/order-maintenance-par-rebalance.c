@@ -1215,7 +1215,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 	/////////////////////////// OLD REBUILD AT BOTTOM
     Internal_Node * new_child;
     int num_children = (endIndex - startIndex) + 1;
-	rebuild_tree_count++;
+    rebuild_tree_count++;
 
     /// If there is only one node, simply make it the left child of the current_node
     if (num_children == 1)
