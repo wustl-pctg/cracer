@@ -76,9 +76,9 @@ int main ( int argc, char *argv[] )
 //		else if (list->split_flag == 1) {
 			/*j =i - 1;*/
 //		}
-//		j = 0;
+		/*j = 0;*/
 		j = i-1;
-//		j = (rand() % i);
+		/*j = (rand() % i);*/
 		insert(nodeArray[j], nodeArray[i]);
 
 #ifdef RD_DEBUG

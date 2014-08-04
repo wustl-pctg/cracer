@@ -19,10 +19,10 @@
 #include "order-maintenance-par-rebalance.h"
 
 /// Constants used within this source file
-static unsigned /*long*/ int MAX_NUMBER = 255;
-static int INT_BIT_SIZE = 8;
-static int HALF_INT_BIT_SIZE = 4;
-static int lg_HALF_INT_BIT_SIZE = 2;
+static unsigned /*long*/ int MAX_NUMBER = ~0;
+static int INT_BIT_SIZE = 32;
+static int HALF_INT_BIT_SIZE = 16;
+static int lg_HALF_INT_BIT_SIZE = 4;
 static double OVERFLOW_CONSTANT = 1.40;
 
 void check_subtree_correctness( Internal_Node *x){
@@ -1092,12 +1092,6 @@ void rebalance_tl (Bottom_List * pivot){
 #endif
 
     //TODO: Parallelize this
-#ifdef RD_DEBUG
-	check_tree_correctness(current_node);
-	printf ( "===========> Passed tree correctness before rebuild.\n" );
-#endif
-
-
     rebuild_tree(current_node, nodeArray, 0, current_node->num_children - 1);
 #ifdef RD_DEBUG
 	check_tree_correctness(current_node);
@@ -1272,7 +1266,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		if (current_node->lvl == INT_BIT_SIZE)
 			current_node->right->base = current_node->right->bl->tag  = (1 << (INT_BIT_SIZE -1));
 		else
-			current_node->right->base = current_node->right->bl->tag  = current_node->base + ((1 << current_node->lvl ) - 1);
+			current_node->right->base = current_node->right->bl->tag  = current_node->base | (1 << (current_node->lvl - 1));
 
 		/// Update current_node's children
 		current_node->num_children = 2;
@@ -1298,8 +1292,11 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 #endif
 
 		// Make a left node if it is null
-		if (current_node->left == NULL){
-			if (num_children_left == 1){///< Connect this node to the leaf
+		if (num_children_left == 1){///< Connect this node to the leaf
+				//Clear scaffolding
+				if (current_node->right && current_node->right->lvl > 0)
+					remove_scaffolding(current_node->right);
+
 				/// Assign the left child from the node array
 				current_node->left = nodeArray[leftStart];
 
@@ -1312,7 +1309,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				//We can stop the rebuild:
 				rebuild_left_flag = 0;
 			}
-			else { // We need an internal node to contain more than 1 node
+		else if (current_node->left == NULL)
+			 { // We need an internal node to contain more than 1 node
 #ifdef RD_DEBUG
 				/// If we have lvl 1 or 0, then we messed up because we have 3 children
 				assert(current_node->lvl > 1);
@@ -1322,6 +1320,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 				/// Update the new child lvl
 				current_node->left->lvl = current_node->lvl -1;
+				//no bl
+				current_node->left->bl = NULL;
 
 				/// Update the base
 				current_node->left->base = current_node->base;
@@ -1331,7 +1331,6 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 				current_node->left->left = current_node->left->right = NULL;
 			}
-		}
 		/// Now set-up the left-half and rebuild
 		else if ((current_node->lvl - current_node->left->lvl) != 1) ///< If the cur->left isn't one level below it
 		{
@@ -1354,13 +1353,14 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    new_child = malloc(sizeof(Internal_Node));
 
 				    /// Update the pointers to the left
-				    current_node->left->parent = new_child;
-				    new_child->left = current_node->left;
 				    current_node->left = new_child;
 				    new_child->parent = current_node;
 
-					// Null the pointer to the right
-				    new_child->right = NULL;
+					// Null the pointer to the right and left
+					// Since the old left node was a leaf node, we won't lose track of it
+					// also nullify bl
+				    new_child->left = new_child->right = NULL;
+				    new_child->bl = NULL;
 
 				    /// Update the new Internal_Node's level
 				    new_child->lvl = current_node->lvl - 1;
@@ -1386,25 +1386,29 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 
 		// Make a right node if it is null
-		if (current_node->right == NULL){
-			if (num_children_right == 1){///< Connect this node to the leaf
+		if (num_children_right == 1){///< Connect this node to the leaf
+				//clear scaffolding
+				if (current_node->right && current_node->right->lvl > 0)
+					remove_scaffolding(current_node->right);
+
 				/// Assign the right child from the node array
 				current_node->right = nodeArray[rightStart];
 
 				/// Assign the cur node to the right child as its parent
 				current_node->right->parent = current_node;
 
-				/// Assign its base/tag -- fill the remaining spaces with 1's
+				/// Assign its base/tag -- fill the next space with a 1
 				if (current_node->lvl == INT_BIT_SIZE){
 					current_node->right->base = current_node->right->bl->tag = (1 << (INT_BIT_SIZE - 1));
 				}
 				else
-					current_node->right->base = current_node->right->bl->tag = current_node->base | ((1 << current_node->lvl) -1);
+					current_node->right->base = current_node->right->bl->tag = current_node->base | (1 << (current_node->lvl-1));
 
 				//We can stop the rebuild:
 				rebuild_right_flag = 0;
 			}
-			else { // We need an internal node to contain more than 1 node
+		else if (current_node->right == NULL)
+		{ // We need an internal node to contain more than 1 node
 #ifdef RD_DEBUG
 				/// If we have lvl 1 or 0, then we messed up because we have 3 children
 				assert(current_node->lvl > 1);
@@ -1416,13 +1420,13 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				current_node->right->lvl = current_node->lvl -1;
 
 				/// Update the base (since current_node->right->lvl is less than INT_BIT_SIZE we won't lose all this information if we shift left)
-				current_node->right->base = current_node->base + (1 << current_node->right->lvl);
+				current_node->right->base = current_node->base | (1 << current_node->right->lvl);
 
 				/// Update cur node->right parent reference
 				current_node->right->parent = current_node;
 
 				current_node->right->right = current_node->right->left = NULL;
-			}
+				current_node->right->bl =  NULL;
 		}
 		/// Now set-up the right-half and rebuild
 		else if ((current_node->lvl - current_node->right->lvl) != 1) ///< If the cur->right isn't one level below it
@@ -1435,7 +1439,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    current_node->right->parent = current_node;
 
 				    /// Update base/tags  (make the child the furthest left child of the right subtree)
-					current_node->right->base = current_node->right->bl->tag = current_node->base + (1 << (current_node->lvl -1));
+					current_node->right->base = current_node->right->bl->tag = current_node->base | (1 << (current_node->lvl -1));
 
 				    //Alex: no need to rebuild
 					rebuild_right_flag = 0;
@@ -1446,19 +1450,18 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    new_child = malloc(sizeof(Internal_Node));
 
 				    /// Update the pointers to the right
-				    current_node->right->parent = new_child;
-				    new_child->right = current_node->right;
 				    current_node->right = new_child;
 				    new_child->parent = current_node;
 
-					// Null the pointer to the left
-				    new_child->left = NULL;
+					// Null the pointer to the left/right/it's bl
+				    new_child->left = new_child->right = NULL;
+				    new_child->bl = NULL;
 
 				    /// Update the new Internal_Node's level
 				    new_child->lvl = current_node->lvl - 1;
 
 				    /// Update this new node's num_children
-				    current_node->right->num_children = num_children_right;
+				    new_child->num_children = num_children_right;
 
 				    /// Update the new node's base
 				    new_child->base = current_node->base | (1 << new_child->lvl);
@@ -1469,7 +1472,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				/// We Need to move up the right node
 				/// Update lvl
 				current_node->right->lvl = current_node->lvl - 1;
-				current_node->right->base = current_node->base = (1 << current_node->right->lvl);
+				current_node->right->base = current_node->base | (1 << current_node->right->lvl);
 		    }
 		}
 

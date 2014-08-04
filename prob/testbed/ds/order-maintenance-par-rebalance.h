@@ -29,7 +29,7 @@
 #include <assert.h>
 
 /*/// Pre-compiler macro for debugging */
-#define RD_DEBUG
+//#define RD_DEBUG
 //#define RD_STATS
 
 #define LEFT 0
