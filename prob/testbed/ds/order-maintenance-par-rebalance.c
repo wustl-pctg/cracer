@@ -102,7 +102,7 @@ void check_tree_correctness (Internal_Node * x){
 	assert(x->num_children != 1);
 	check_subtree_correctness(x->left);
 	check_subtree_correctness(x->right);
-	
+
 	return;
 }
 /// Create the tree above x and y
@@ -169,7 +169,7 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
     }
 
     Internal_Node * new_parent, * iter_node;
-	
+
     /// The old parent is below the new parent that is to be created
     if (x->parent->lvl < lvl_count)
     {
@@ -222,7 +222,7 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 #ifdef RD_DEBUG
 		printf ( "Debug: Create scaffold - old parent above new parent\n" );
 #endif
-		
+
 		new_parent = malloc(sizeof(Internal_Node));
 
 		// Assign x's old parent to new_parent's parent
@@ -329,7 +329,7 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 //    print_tree(x->bl->parent);
 
 //	if (x->bl->parent->size > 1)
-		//check_tree_correctness(x);
+	//check_tree_correctness(x);
 }
 
 void insert(OM_Node *x, OM_Node *y){
@@ -588,7 +588,7 @@ void first_insert_tl (Top_List * list, Bottom_List * _y)
     y->num_children = y->base =  0;
     // Give a reference to the internal node to _y itself
     y->bl = _y;
-    
+
 
 
     Internal_Node * root = malloc(sizeof(Internal_Node));
@@ -945,7 +945,7 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 		    new_node->lvl = 0;
 			new_node->left = new_node->right = NULL;
 			new_node->base = current_node->bl->next->tag;
-			
+
 #ifdef RD_DEBUG
 		    printf ( "Allocating space for node to be inserted (in build array): %p\n", new_node);
 #endif
@@ -955,7 +955,7 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 
 			current_node = new_node;
 		}
-		else 
+		else
 		{
 			/// Update the current node to iterate horizontally through base nodes
 			current_node = current_node->bl->next->internal;
@@ -1028,13 +1028,14 @@ void rebalance_tl (Bottom_List * pivot){
 			printf("Pivot is NULL\n");
 		assert(current_node != NULL);
 
-		if (current_node->parent == NULL)
-		{
-			printf("Threshold not surpassed before running out of parents....\ncurrent_node->lvl: %i\n", current_node->lvl);
-			break;
-		}
 		/*assert(current_node->parent != NULL);*/
 #endif
+		if (current_node->lvl == INT_BIT_SIZE)
+		{
+		    /// Need to break because it has reached the root
+		    break;
+		}
+
 
 		current_node = current_node->parent;
 
@@ -1063,7 +1064,7 @@ void rebalance_tl (Bottom_List * pivot){
     	temp->num_children += 1;
     	temp = temp->parent;
 	}
-	
+
     /// Get the array of nodes to be rebalanced
     Internal_Node ** nodeArray = build_array_from_rebalance_list(current_node);
 
@@ -1191,7 +1192,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 			remove_scaffolding(current_node->right);
 		}
 		//sync
-		
+
 
 		current_node->left = nodeArray[startIndex];
 
@@ -1229,7 +1230,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 			remove_scaffolding(current_node->right);
 		}
 		//sync
-		
+
 		current_node->left = nodeArray[startIndex];
 		current_node->right = nodeArray[endIndex];
 
@@ -1245,7 +1246,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 			current_node->right->base = current_node->right->bl->tag  = (1 << (INT_BIT_SIZE -1));
 		else
 			current_node->right->base = current_node->right->bl->tag  = current_node->base + ((1 << current_node->lvl ) - 1);
-		
+
 		/// Update current_node's children
 		current_node->num_children = 2;
     }
