@@ -24,7 +24,10 @@ static int INT_BIT_SIZE = 32;
 static int HALF_INT_BIT_SIZE = 16;
 static int lg_HALF_INT_BIT_SIZE = 4;
 static double OVERFLOW_CONSTANT = 1.40;
-
+static unsigned int rebuild_tree_count = 0;
+void print_rebuild_tree(){
+	printf ( "Rebuld tree count: %i\n", rebuild_tree_count );
+}
 void check_subtree_correctness( Internal_Node *x){
 
 	if (x->lvl == 0){
@@ -903,7 +906,10 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
     }
 
 }
-
+static unsigned int rebuild_skip_count= 0;
+void print_rebuild_count(){
+	printf ( "rebuild count: %i\n", rebuild_skip_count );
+}
 /*!
  * ===  FUNCTION  ======================================================================
  *         Name:  build_array_from_rebalance_list
@@ -945,7 +951,7 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
     /// Iterate from the last Bottom_List storing the internal nodes in nodeArray
     while (i < num_children)
     {
-
+	rebuild_skip_count++;
 #ifdef RD_DEBUG
 		assert(current_node != NULL);
 #endif
@@ -999,7 +1005,11 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 
     return nodeArray;
 }
+static int rebalance_count = 0;
+void print_rebalance_count(){
 
+	printf ( "Rebalance count:%i\n", rebalance_count );
+}
 /*!
  * ===  FUNCTION  ======================================================================
  *         Name:  rebalance_tl
@@ -1008,6 +1018,7 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
  * =====================================================================================
  */
 void rebalance_tl (Bottom_List * pivot){
+
 
 #ifdef RD_STATS
 
@@ -1034,6 +1045,7 @@ void rebalance_tl (Bottom_List * pivot){
     double overflow_density, overflow_threshold, i = -1;
     unsigned int current_tag_range = 1, current_tree_lvl = 0, lvl_dif = 0;
 
+	rebalance_count++;
 #ifdef RD_DEBUG
 	/// Make sure the bottom_lists are in order before everything
 	check_sub_correctness(pivot->parent);
@@ -1094,7 +1106,10 @@ void rebalance_tl (Bottom_List * pivot){
 #endif
 
     //TODO: Parallelize this
+	i = rebuild_tree_count;
     rebuild_tree(current_node, nodeArray, 0, current_node->num_children - 1);
+
+	/*printf ( "Diff in rebuild tree count(%i) for tree of size %i\n", (rebuild_tree_count - 1), current_node->num_children );*/
 #ifdef RD_DEBUG
 	check_tree_correctness(current_node);
 	printf ( "===========> Passed tree correctness after rebuild.\n" );
@@ -1161,8 +1176,12 @@ current_node->right->lvl = current_node->lvl -1;
     /// Free the array we created
     free(nodeArray);
 }
-
+static unsigned int remove_scaffolding_count = 0;
+void print_remove_count(){
+	printf ( "Remove scaffolding: %i\n", remove_scaffolding_count );
+}
 void remove_scaffolding(Internal_Node * node){
+	remove_scaffolding_count++;
 
 	if (node->left && node->left->lvl > 0)
 	{
@@ -1178,6 +1197,7 @@ void remove_scaffolding(Internal_Node * node){
 	// sync;
 }
 
+
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  rebuild_tree
@@ -1188,12 +1208,14 @@ void remove_scaffolding(Internal_Node * node){
  */
 void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex)
 {
+
 #ifdef RD_DEBUG
 	printf("rebuild_tree(%p, nodeArray, %i, %i)\n", current_node, startIndex, endIndex);
 #endif
 	/////////////////////////// OLD REBUILD AT BOTTOM
     Internal_Node * new_child;
     int num_children = (endIndex - startIndex) + 1;
+	rebuild_tree_count++;
 
     /// If there is only one node, simply make it the left child of the current_node
     if (num_children == 1)
