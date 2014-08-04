@@ -19,10 +19,10 @@
 #include "order-maintenance-par-rebalance.h"
 
 /// Constants used within this source file
-static unsigned /*long*/ int MAX_NUMBER = 65535;
-static int INT_BIT_SIZE = 16;
-static int HALF_INT_BIT_SIZE = 8;
-static int lg_HALF_INT_BIT_SIZE = 3;
+static unsigned /*long*/ int MAX_NUMBER = 255;
+static int INT_BIT_SIZE = 8;
+static int HALF_INT_BIT_SIZE = 4;
+static int lg_HALF_INT_BIT_SIZE = 2;
 static double OVERFLOW_CONSTANT = 1.40;
 
 void check_subtree_correctness( Internal_Node *x){
@@ -215,6 +215,8 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 		/// Assign lvl to new parent
 		new_parent->lvl = lvl_count;
 
+		new_parent->bl = NULL;
+
 		/// Update new parent bas
  		if (lvl_count == INT_BIT_SIZE)
  			new_parent->base =0x0;
@@ -232,6 +234,8 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 #endif
 
 		new_parent = malloc(sizeof(Internal_Node));
+		//nullify the base
+		new_parent->bl = NULL;
 
 		// Assign x's old parent to new_parent's parent
 		new_parent->parent = x->parent;
@@ -303,6 +307,7 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 		new_parent->parent = x->parent;
 		new_parent->lvl = lvl_count;
 		new_parent->num_children = 2; //TODO Is this right?
+		new_parent->bl = NULL;
 
 		//Reassign the old parent's left/right references
 		if (x->parent->left == x)
@@ -336,8 +341,8 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 //    printf ( "Printing tree after scaffolding\n" );
 //    print_tree(x->bl->parent);
 
-//	if (x->bl->parent->size > 1)
-	//check_tree_correctness(x);
+	if (x->bl->parent->size > 1)
+	check_tree_correctness(x);
 }
 
 void insert(OM_Node *x, OM_Node *y){
@@ -1087,11 +1092,16 @@ void rebalance_tl (Bottom_List * pivot){
 #endif
 
     //TODO: Parallelize this
+#ifdef RD_DEBUG
+	check_tree_correctness(current_node);
+	printf ( "===========> Passed tree correctness before rebuild.\n" );
+#endif
+
 
     rebuild_tree(current_node, nodeArray, 0, current_node->num_children - 1);
 #ifdef RD_DEBUG
 	check_tree_correctness(current_node);
-	printf ( "===========> Passed tree correctness.\n" );
+	printf ( "===========> Passed tree correctness after rebuild.\n" );
 	printf(".... now subtree....\n");
 	check_sub_correctness(pivot->parent);
 	
