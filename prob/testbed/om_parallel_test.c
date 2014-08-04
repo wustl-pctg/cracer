@@ -71,15 +71,18 @@ int main ( int argc, char *argv[] )
 				/*j = (rand() % i); ///< Case where each insert is random*/
 //			else
 //				j = i - 1;     ///< Case where each insert is at the back
-			j = 0;        ///< Case where each insert is at the front
+//			j = 0;        ///< Case where each insert is at the front
 //		}
 //		else if (list->split_flag == 1) {
 			/*j =i - 1;*/
 //		}
+//		j = 0;
+		j = i-1;
+//		j = (rand() % i);
 		insert(nodeArray[j], nodeArray[i]);
 
 #ifdef RD_DEBUG
-		printf("Check for correctness..");
+		printf("Check for correctness of Bottom_lists..");
 		check_sub_correctness(list);
 		printf("..done %d\n", i-1);
 #endif

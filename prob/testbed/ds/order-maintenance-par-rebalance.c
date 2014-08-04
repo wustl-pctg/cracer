@@ -19,10 +19,10 @@
 #include "order-maintenance-par-rebalance.h"
 
 /// Constants used within this source file
-static unsigned /*long*/ int MAX_NUMBER = ~0;
-static int INT_BIT_SIZE = 32;
-static int HALF_INT_BIT_SIZE = 16;
-static int lg_HALF_INT_BIT_SIZE = 4;
+static unsigned /*long*/ int MAX_NUMBER = 65535;
+static int INT_BIT_SIZE = 16;
+static int HALF_INT_BIT_SIZE = 8;
+static int lg_HALF_INT_BIT_SIZE = 3;
 static double OVERFLOW_CONSTANT = 1.40;
 
 void check_subtree_correctness( Internal_Node *x){
@@ -31,6 +31,7 @@ void check_subtree_correctness( Internal_Node *x){
 		assert(x->bl != NULL);
 		assert(x->bl->internal == x);
 		assert(x->left == NULL);
+		assert(x->right == NULL);
 		assert(x->base <= x->parent->right->base);
 		assert(x->base >= x->parent->left->base);
 		assert(x->bl->tag == x->base);
@@ -39,30 +40,36 @@ void check_subtree_correctness( Internal_Node *x){
 	else {
 		assert(x->left);
 		assert(x->right);
-	}
-	assert(x->left->base == x->base);
-	//TODO: fix below
-	assert(x->right->base > x->base);// | ((1 << x->lvl) )) ); // new try
-	assert(x->left->parent ==x);
-	assert(x->right->parent == x);
-	if (x->num_children == 2){
-		assert(x->left->lvl == 0);
-		assert(x->right->lvl == 0);
-	}
-	if (x->left->lvl != 0 && x->right->lvl != 0){
-		//already checked
-		assert(x->left->num_children + x->right->num_children == x->num_children);
-	}
-	else if ((x->left->lvl != 0) ^ (x->right->lvl != 0)){
-		if (x->left->lvl == 0){
-			assert(x->right->num_children + 1 == x->num_children);
+	
+		assert(x->left->base == x->base);
+		//TODO: fix below
+		assert(x->right->base > x->base);// | ((1 << x->lvl) )) ); // new try
+		assert(x->left->parent == x);
+		assert(x->right->parent == x);
+		if (x->num_children == 2){
+			assert(x->left->lvl == 0);
+			assert(x->right->lvl == 0);
 		}
-		if (x->right->lvl == 0){
-			assert(x->left->num_children + 1 == x->num_children);
+		if (x->left->lvl != 0 && x->right->lvl != 0){
+			//already checked
+			assert(x->left->num_children + x->right->num_children == x->num_children);
 		}
+		else if ((x->left->lvl != 0) ^ (x->right->lvl != 0)){
+			if (x->left->lvl == 0){
+				assert(x->right->num_children + 1 == x->num_children);
+			}
+			if (x->right->lvl == 0){
+				assert(x->left->num_children + 1 == x->num_children);
+			}
+		}
+		assert(x->num_children != 1);
+
+		/// Now recurse down the tree
+		check_subtree_correctness(x->left);
+		check_subtree_correctness(x->right);
+
+		return;
 	}
-	assert(x->num_children != 1);
-	return;
 }
 
 void check_tree_correctness (Internal_Node * x){
@@ -72,6 +79,7 @@ void check_tree_correctness (Internal_Node * x){
 	if (x->lvl == 0){
 		assert(x->bl != NULL);
 		assert(x->left == NULL);
+		assert(x->right == NULL);
 		assert(x->base <= x->parent->right->base);
 		assert(x->base >= x->parent->left->base);
 		assert(x->bl->tag == x->base);
@@ -1019,11 +1027,17 @@ void rebalance_tl (Bottom_List * pivot){
     double overflow_density, overflow_threshold, i = -1;
     unsigned int current_tag_range = 1, current_tree_lvl = 0, lvl_dif = 0;
 
+#ifdef RD_DEBUG
+	/// Make sure the bottom_lists are in order before everything
+	check_sub_correctness(pivot->parent);
+#endif
+
     /// Continually iterate up levels until threshold passes for space needed
     do
     {
 
 #ifdef RD_DEBUG
+
 		if (current_node == NULL)
 			printf("Pivot is NULL\n");
 		assert(current_node != NULL);
@@ -1078,6 +1092,9 @@ void rebalance_tl (Bottom_List * pivot){
 #ifdef RD_DEBUG
 	check_tree_correctness(current_node);
 	printf ( "===========> Passed tree correctness.\n" );
+	printf(".... now subtree....\n");
+	check_sub_correctness(pivot->parent);
+	
 #endif
 
 /*
