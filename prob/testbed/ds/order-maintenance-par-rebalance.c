@@ -1155,7 +1155,7 @@ void rebalance_tl (Bottom_List * pivot){
 #endif
 
 #ifdef RD_SIZE_REBALANCE
-	printf("Current size of subtree to rebalance: %i\n",current_node->num_children);
+	printf("%i\n",current_node->num_children);
 #endif
     //TODO: Parallelize this
 	i = rebuild_tree_count;
