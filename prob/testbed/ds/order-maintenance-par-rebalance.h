@@ -28,9 +28,11 @@
 #include <math.h>
 #include <assert.h>
 
+#include	<time.h>
 /*/// Pre-compiler macro for debugging */
 //#define RD_DEBUG
 //#define RD_STATS
+#define RD_TIMING
 
 #define LEFT 0
 #define RIGHT 1

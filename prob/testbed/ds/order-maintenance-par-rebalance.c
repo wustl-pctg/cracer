@@ -17,6 +17,7 @@
  */
 
 #include "order-maintenance-par-rebalance.h"
+#include <time.h>
 
 /// Constants used within this source file
 static unsigned /*long*/ int MAX_NUMBER = ~0;
@@ -116,6 +117,11 @@ void check_tree_correctness (Internal_Node * x){
 
 	return;
 }
+static double scaffolding_total_time = 0;
+void print_scaffolding_timing(){
+
+	printf ( "Scaffolding total time(s):%f \n", (scaffolding_total_time  / CLOCKS_PER_SEC));
+}
 /// Create the tree above x and y
 void create_scaffolding (Internal_Node *x, Internal_Node *y)
 {
@@ -126,6 +132,9 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 		lvl_count = INT_BIT_SIZE, // This represents the lvl where x and y have their most recent common ancestor
 		bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
 
+#ifdef RD_TIMING
+	clock_t temp = clock();
+#endif
 
     /// Find whether y->prev or y->next  has a closer common ancestor to x.
     if ((y->bl->next))
@@ -347,6 +356,10 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 #ifdef RD_DEBUG
 	if (x->bl->parent->size > 1)
 	check_tree_correctness(x);
+#endif
+
+#ifdef RD_TIMING
+	scaffolding_total_time += (double)(clock() - temp);
 #endif
 }
 

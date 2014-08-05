@@ -21,7 +21,6 @@
 #include	"order-maintenance-par-rebalance.h"
 #include	<stdlib.h>
 #include	<stdio.h>
-#include	<time.h>
 
 /// Tests if each node is in order in the back-insert case
 void order_test (OM_Node ** nodeArray, int num_nodes)
@@ -95,7 +94,7 @@ int main ( int argc, char *argv[] )
 	print_rebuild_count();
 	print_rebalance_count();
 	print_rebuild_tree();
-	
+	print_scaffolding_timing();	
 	/*order_test(nodeArray, num_nodes);*/
 	check_sub_correctness(list);
 
