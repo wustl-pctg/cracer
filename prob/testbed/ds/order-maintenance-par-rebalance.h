@@ -27,12 +27,12 @@
 #include <limits.h>
 #include <math.h>
 #include <assert.h>
-
 #include	<time.h>
 /*/// Pre-compiler macro for debugging */
 //#define RD_DEBUG
 //#define RD_STATS
 //#define RD_TIMING
+#define RD_SIZE_REBALANCE
 
 #define LEFT 0
 #define RIGHT 1

@@ -80,6 +80,9 @@ int main ( int argc, char *argv[] )
 	// End clock
 	printf("Took %f ms.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
+	print_scaffolding_timing();
+	print_rebalance_timing();
+
 	/*order_test(nodeArray, num_nodes);*/
 	//check_sub_correctness(list);
 #ifdef RD_STATS

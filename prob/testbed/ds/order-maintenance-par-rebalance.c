@@ -24,7 +24,7 @@ static unsigned /*long*/ int MAX_NUMBER = ~0;
 static int INT_BIT_SIZE = 32;
 static int HALF_INT_BIT_SIZE = 16;
 static int lg_HALF_INT_BIT_SIZE = 4;
-static double OVERFLOW_CONSTANT = 1.40;
+static double OVERFLOW_CONSTANT = 1.30;
 static unsigned int rebuild_tree_count = 0;
 void print_rebuild_tree(){
 	printf ( "Rebuld tree count: %i\n", rebuild_tree_count );
@@ -1154,6 +1154,9 @@ void rebalance_tl (Bottom_List * pivot){
     assert(current_node->num_children > 1); ///< Minimum is 2 nodes
 #endif
 
+#ifdef RD_SIZE_REBALANCE
+	printf("Current size of subtree to rebalance: %i\n",current_node->num_children);
+#endif
     //TODO: Parallelize this
 	i = rebuild_tree_count;
     rebuild_tree(current_node, nodeArray, 0, current_node->num_children - 1);
