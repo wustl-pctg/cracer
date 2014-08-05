@@ -59,9 +59,7 @@ int main ( int argc, char *argv[] )
 	clock_t start = clock();
 
 	// Create and add the first relevant thing to the ds
-	/*first_insert(list, nodeArray[0]);*/
-	insert_tl(list->head, nodeArray[0]);
-
+	first_insert_tl(list, nodeArray[0]);
 
 	i = 1;
 	for (; i < num_nodes; i++)
@@ -70,7 +68,7 @@ int main ( int argc, char *argv[] )
 		//j = i -1;     ///< Case where each insert is at the back
 		/*j = 0;        ///< Case where each insert is at the front*/
 
-		insert_tl(nodeArray[j], nodeArray[i]);
+		insert_tl(nodeArray[j], nodeArray[i], 0);
 
 #ifdef RD_DEBUG
 		printf("Check for correctness..");
