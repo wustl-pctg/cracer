@@ -31,6 +31,7 @@
 /*/// Pre-compiler macro for debugging */
 //#define RD_DEBUG
 //#define RD_STATS
+#define PARALLEL_THRESHOLD
 
 #define LEFT 0
 #define RIGHT 1
@@ -132,4 +133,5 @@ void free_bl (Bottom_List * list);
 void free_tl ( Top_List * list );
 void check_sub_correctness (Top_List * list);
 void print_tree (Top_List * list);
+void c_rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
 #endif 
