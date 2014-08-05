@@ -78,7 +78,7 @@ int main ( int argc, char *argv[] )
 //		}
 		/*j = 0;*/
 		j = i-1;
-//		j = (rand() % i);
+		/*j = (rand() % i);*/
 		insert(nodeArray[j], nodeArray[i]);
 
 #ifdef RD_DEBUG

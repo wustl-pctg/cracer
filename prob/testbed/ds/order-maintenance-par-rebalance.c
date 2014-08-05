@@ -635,13 +635,14 @@ void first_insert (Top_List * list, OM_Node * y)
  *  Description:  Insert list y after list x in Top_List list.
  * =====================================================================================
  */
-void insert_tl (Bottom_List *x, Bottom_List *y)
+void insert_tl (Bottom_List *x, Bottom_List *y, int depth)
 {
     /// Retrieve Top_List
     Top_List * list = x->parent;
 
 #ifdef RD_DEBUG
-	printf("Insert_tl\n");
+	printf("Insert_t\n");
+	assert(depth < 2);
     assert( (list->size == 0 || x != NULL) && (y != NULL) && (list != NULL) );
 #endif
 
@@ -668,7 +669,8 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
     if (    (x == list->tail && (MAX_NUMBER == x->tag )  ) || ///< If x is tail, use MAX_NUMBER instead of x->next->tag
 		    (x != list->tail && (x->next->tag - x->tag <= 1)) )
     {
-		//Link y in the linked list.
+		/*
+		 //Link y in the linked list.
 
 		/// Reassign prev/next pointers
 		y->prev = x;
@@ -682,7 +684,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		/// Assign the parent of y to the list
 		y->parent = list;
 		list->size += 1;
-
+		*/
 
 #ifdef RD_DEBUG
 
@@ -701,6 +703,7 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
 		/*spawn rebalance_tl(x);sync;*/
 
 		/// Dont assign pointers, call insert again to put y after x
+		insert_tl(x,y, ++depth);
     }
     else /// No collision
     {
@@ -855,7 +858,7 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 #endif
 
 		/// Insert the finished DS into the Top_List
-		insert_tl(holder, to_add);
+		insert_tl(holder, to_add, 0);
 
 		/// Update place holder for next Top_List insert
 		holder = to_add;
@@ -902,13 +905,43 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		printf("split insert 2\n");
 #endif
 		/// Insert the finished DS into the Top_List
-		insert_tl(holder, to_add);
+		insert_tl(holder, to_add , 0);
     }
 
 }
 static unsigned int rebuild_skip_count= 0;
 void print_rebuild_count(){
 	printf ( "rebuild count: %i\n", rebuild_skip_count );
+}
+
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  par_build_array_from_rebalance_list
+ *  Description:  Buiilds the array in parallel
+ * =====================================================================================
+ */
+void par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end){
+	int left_side_end;
+	// Build left side
+	if (current_node->left->lvl != 0){
+		par_build_array_from_rebalance_list(buildArray, current_node->left, (start), (start + current_node->left->num_children - 1));
+		left_side_end = start + current_node->left->num_children;
+	}
+	else { /// This is a leaf node
+		buildArray[start] = current_node->left;
+		left_side_end = start + 1;
+	}
+
+	if (current_node->right->lvl != 0){
+	
+		par_build_array_from_rebalance_list(buildArray, current_node->right, left_side_end, end);
+	}
+	else{
+		buildArray[end] = current_node->right;
+	}
+
 }
 /*!
  * ===  FUNCTION  ======================================================================
@@ -1021,7 +1054,7 @@ void rebalance_tl (Bottom_List * pivot){
 
 
 #ifdef RD_STATS
-
+	Top_List * list = pivot->parent;
     if (list->list_of_size_of_top_list_when_split_head == NULL)
     {
 		list->list_of_size_of_top_list_when_split_head = malloc(sizeof(ll_node));
@@ -1090,16 +1123,9 @@ void rebalance_tl (Bottom_List * pivot){
     }
     while ( (overflow_density > overflow_threshold ) && (current_node->lvl <= INT_BIT_SIZE) );
 
-	//Alex:
-    // Include the extra node in all the parents and their ancestors
-    temp = current_node;
-    while (temp != NULL){
-    	temp->num_children += 1;
-    	temp = temp->parent;
-	}
-
-    /// Get the array of nodes to be rebalanced
-    Internal_Node ** nodeArray = build_array_from_rebalance_list(current_node);
+	Internal_Node ** nodeArray = malloc(sizeof(Internal_Node *) * current_node->num_children);
+	//parallel:
+	par_build_array_from_rebalance_list(nodeArray, current_node, 0, current_node->num_children -1);
 
 #ifdef RD_DEBUG
     assert(current_node->num_children > 1); ///< Minimum is 2 nodes
