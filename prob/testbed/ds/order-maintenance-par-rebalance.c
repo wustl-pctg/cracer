@@ -653,9 +653,10 @@ void insert_tl (Bottom_List *x, Bottom_List *y, int depth)
     /// Retrieve Top_List
     Top_List * list = x->parent;
 
+	//TODO:take out
+	assert(depth < 2);
 #ifdef RD_DEBUG
 	printf("Insert_t\n");
-	assert(depth < 2);
     assert( (list->size == 0 || x != NULL) && (y != NULL) && (list != NULL) );
 #endif
 
@@ -1064,6 +1065,10 @@ void print_rebalance_count(){
  * =====================================================================================
  */
 void rebalance_tl (Bottom_List * pivot){
+
+#ifdef RD_TIMING
+
+#endif
 
 
 #ifdef RD_STATS
