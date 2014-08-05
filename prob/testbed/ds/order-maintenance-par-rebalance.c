@@ -1057,6 +1057,11 @@ void print_rebalance_count(){
 
 	printf ( "Rebalance count:%i\n", rebalance_count );
 }
+static double rebalance_total_time = 0;
+void print_rebalance_timing(){
+
+	printf ( "rebalance total time(s):%f \n", (rebalance_total_time  / CLOCKS_PER_SEC));
+}
 /*!
  * ===  FUNCTION  ======================================================================
  *         Name:  rebalance_tl
@@ -1067,7 +1072,7 @@ void print_rebalance_count(){
 void rebalance_tl (Bottom_List * pivot){
 
 #ifdef RD_TIMING
-
+	clock_t temp = clock();
 #endif
 
 
@@ -1219,6 +1224,9 @@ current_node->right->lvl = current_node->lvl -1;
 */
     /// Free the array we created
     free(nodeArray);
+#ifdef RD_TIMING
+	rebalance_total_time += (double)(clock() - temp);
+#endif
 }
 static unsigned int remove_scaffolding_count = 0;
 void print_remove_count(){

@@ -95,6 +95,7 @@ int main ( int argc, char *argv[] )
 	print_rebalance_count();
 	print_rebuild_tree();
 	print_scaffolding_timing();	
+	print_rebalance_timing();	
 	/*order_test(nodeArray, num_nodes);*/
 	check_sub_correctness(list);
 
