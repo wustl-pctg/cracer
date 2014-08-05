@@ -17,7 +17,7 @@
  * =====================================================================================
  */
 
-#include	"order-maintenance-general.h"
+#include	"order-maintenance-par-rebalance.h"
 #include	<stdlib.h>
 #include	<stdio.h>
 #include	<time.h>
@@ -64,8 +64,8 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-		j = (rand() % i); ///< Case where each insert is random*/
-		//j = i -1;     ///< Case where each insert is at the back
+		//j = (rand() % i); ///< Case where each insert is random*/
+		j = i -1;     ///< Case where each insert is at the back
 		/*j = 0;        ///< Case where each insert is at the front*/
 
 		insert_tl(nodeArray[j], nodeArray[i], 0);

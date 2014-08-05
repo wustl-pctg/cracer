@@ -1072,7 +1072,7 @@ void print_rebalance_timing(){
 void rebalance_tl (Bottom_List * pivot){
 
 #ifdef RD_TIMING
-	clock_t temp = clock();
+	clock_t temp_clock = clock();
 #endif
 
 
@@ -1225,7 +1225,7 @@ current_node->right->lvl = current_node->lvl -1;
     /// Free the array we created
     free(nodeArray);
 #ifdef RD_TIMING
-	rebalance_total_time += (double)(clock() - temp);
+	rebalance_total_time += (double)(clock() - temp_clock);
 #endif
 }
 static unsigned int remove_scaffolding_count = 0;
