@@ -1,4 +1,3 @@
-P
 /*
  * =====================================================================================
  *
@@ -17,7 +16,7 @@ P
  * =====================================================================================
  */
 
-#include "order-maintenance-par-rebalance.h"
+#include "order-maintenance-par-rebalance.cilkh"
 #include <time.h>
 
 /// Constants used within this source file
@@ -153,7 +152,7 @@ cilk void check_tree_correctness (Internal_Node * x){
 static double scaffolding_total_time = 0;
 void print_scaffolding_timing(){
 
-	printf ( "Scaffolding total time(s):%f \n", (scaffolding_total_time  / CLOCKS_PER_SEC));
+//	printf ( "Scaffolding total time(s):%f \n", (scaffolding_total_time  / CLOCKS_PER_SEC));
 }
 
 /// Create the tree above x and y
@@ -165,9 +164,11 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 		ztag = ytag,//Just a tmp variable
 		lvl_count = INT_BIT_SIZE, // This represents the lvl where x and y have their most recent common ancestor
 		bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
+    Internal_Node * new_parent, * iter_node;
+
 
 #ifdef RD_TIMING
-	clock_t temp = clock();
+//	clock_t temp = clock();
 #endif
 
     /// Find whether y->prev or y->next  has a closer common ancestor to x.
@@ -221,8 +222,6 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 		    bit_counter = bit_counter >> 1;
 		}
     }
-
-    Internal_Node * new_parent, * iter_node;
 
     /// The old parent is below the new parent that is to be created
     if (x->parent->lvl < lvl_count)
@@ -394,7 +393,7 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 #endif
 
 #ifdef RD_TIMING
-	scaffolding_total_time += (double)(clock() - temp);
+//	scaffolding_total_time += (double)(clock() - temp);
 #endif
 }
 
@@ -660,7 +659,7 @@ void first_insert_tl (Top_List * list, Bottom_List * _y)
  * ===  FUNCTION  ======================================================================
  *         Name:  first_insert
  *  Description:  Insert y into the first Bottom_List in the Top_List specified (list)
- * =====RR==============================================================================
+ * ===================================================================================
  */
 void first_insert (Top_List * list, OM_Node * y)
 {
@@ -1028,8 +1027,9 @@ void print_rebalance_count(){
 static double rebalance_total_time = 0;
 void print_rebalance_timing(){
 
-	printf ( "rebalance total time(s):%f \n", (rebalance_total_time  / CLOCKS_PER_SEC));
+//	printf ( "rebalance total time(s):%f \n", (rebalance_total_time  / CLOCKS_PER_SEC));
 }
+
 /*!
  * ===  FUNCTION  ======================================================================
  *         Name:  rebalance_tl
@@ -1040,7 +1040,7 @@ void print_rebalance_timing(){
 cilk void rebalance_tl (Bottom_List * pivot){
 
 #ifdef RD_TIMING
-	clock_t temp_clock = clock();
+//	clock_t temp_clock = clock();
 #endif
 
 
@@ -1142,7 +1142,7 @@ cilk void rebalance_tl (Bottom_List * pivot){
 	free(nodeArray);
 
 #ifdef RD_TIMING
-	rebalance_total_time += (double)(clock() - temp_clock);
+//	rebalance_total_time += (double)(clock() - temp_clock);
 #endif
 
 }
