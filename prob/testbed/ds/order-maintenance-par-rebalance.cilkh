@@ -31,7 +31,7 @@
 /*/// Pre-compiler macro for debugging */
 //#define RD_DEBUG
 //#define RD_STATS
-#define PARALLEL_THRESHOLD
+#define PARALLEL_THRESHOLD_FLAG
 
 #define LEFT 0
 #define RIGHT 1
@@ -106,6 +106,8 @@ typedef struct Top_List_s{
 Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node);
 void create_scaffolding(Internal_Node *, Internal_Node *);
 cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
+cilk void par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end)
+
 
 /// Declarations of the OM-functions (in batchify part)
 cilk void insert(OM_Node *x, OM_Node *y);
@@ -134,4 +136,5 @@ void free_tl ( Top_List * list );
 void check_sub_correctness (Top_List * list);
 void print_tree (Top_List * list);
 void c_rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
+void c_par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end)
 #endif 

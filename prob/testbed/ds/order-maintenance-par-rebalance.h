@@ -32,7 +32,7 @@
 //#define RD_DEBUG
 //#define RD_STATS
 //#define RD_TIMING
-#define RD_SIZE_REBALANCE
+//#define RD_SIZE_REBALANCE
 
 #define LEFT 0
 #define RIGHT 1

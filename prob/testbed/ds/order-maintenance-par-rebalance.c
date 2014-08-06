@@ -26,9 +26,12 @@ static int HALF_INT_BIT_SIZE = 16;
 static int lg_HALF_INT_BIT_SIZE = 4;
 static double OVERFLOW_CONSTANT = 1.30;
 static unsigned int rebuild_tree_count = 0;
+
+
 void print_rebuild_tree(){
 	printf ( "Rebuld tree count: %i\n", rebuild_tree_count );
 }
+
 void check_subtree_correctness( Internal_Node *x){
 
 	if (x->lvl == 0){
@@ -117,11 +120,13 @@ void check_tree_correctness (Internal_Node * x){
 
 	return;
 }
+
 static double scaffolding_total_time = 0;
 void print_scaffolding_timing(){
 
 	printf ( "Scaffolding total time(s):%f \n", (scaffolding_total_time  / CLOCKS_PER_SEC));
 }
+
 /// Create the tree above x and y
 void create_scaffolding (Internal_Node *x, Internal_Node *y)
 {
