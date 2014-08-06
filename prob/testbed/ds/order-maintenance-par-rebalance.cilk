@@ -556,6 +556,8 @@ Top_List * create_tl ()
     /// Allocate memory for top list
     Top_List * list = malloc(sizeof(*list));
 
+    Bottom_List * bl = create_bl();
+
     /// Assign appropriate vals to list
     list->size = 0;
 
@@ -566,7 +568,6 @@ Top_List * create_tl ()
 #endif
 
     /// Insert the first Bottom_List
-    Bottom_List * bl = create_bl();
     first_insert_tl(list, bl);
 
     return list;
@@ -611,7 +612,8 @@ void first_insert_bl (Bottom_List * ds, OM_Node * y)
 void first_insert_tl (Top_List * list, Bottom_List * _y)
 {
     Internal_Node *y;
-    int i = 1;
+    Internal_Node * root = malloc(sizeof(Internal_Node));
+
 #ifdef RD_DEBUG
     /// Make sure they're not NULL
     if ( !(list && _y) )
@@ -647,7 +649,6 @@ void first_insert_tl (Top_List * list, Bottom_List * _y)
 
 
 
-    Internal_Node * root = malloc(sizeof(Internal_Node));
     root->left = y;
     y->parent = root;
     //Top lvl node
@@ -2054,7 +2055,7 @@ void c_rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, i
  *  Description:  Buiilds the array in parallel
  * =====================================================================================
  */
-cilk void par_build_array_from_rebalance_list (Internal_Node ** buildArray, Internal_Node * current_node, int start, int end)
+cilk void c_par_build_array_from_rebalance_list (Internal_Node ** buildArray, Internal_Node * current_node, int start, int end)
 {
 
 	int left_side_end;
