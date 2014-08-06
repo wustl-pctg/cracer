@@ -461,8 +461,11 @@ cilk void insert_internal(OM_Node *x, OM_Node *y){
 		    }
 
 #endif
-		    split_bl(ds->parent, ds);
-		    insert(x, y );
+		    spawn split_bl(ds->parent, ds);
+			sync;
+
+		    spawn insert(x, y );
+			sync;
 		    return;
 		}
 
@@ -963,6 +966,10 @@ cilk void par_build_array_from_rebalance_list (Internal_Node ** buildArray, Inte
 		if (current_node->left->num_children < PARALLEL_THRESHOLD)
 		{
 			c_par_build_array_from_rebalance_list(buildArray, current_node->left, (start), (start + current_node->left->num_children - 1));
+			/*
+			spawn par_build_array_from_rebalance_list(buildArray, current_node->left, (start), (start + current_node->left->num_children - 1));
+			sync;
+			 */
 		}
 		else
 		{
@@ -981,6 +988,10 @@ cilk void par_build_array_from_rebalance_list (Internal_Node ** buildArray, Inte
 		if (current_node->right->num_children < PARALLEL_THRESHOLD)
 		{
 			c_par_build_array_from_rebalance_list(buildArray, current_node->right, left_side_end, end);
+			/*
+			spawn par_build_array_from_rebalance_list(buildArray, current_node->right, left_side_end, end);
+			sync;
+			*/
 		}
 		else
 		{
@@ -1064,7 +1075,8 @@ cilk void rebalance_tl (Bottom_List * pivot){
 #endif
 
     /// Temp current internal node
-    Internal_Node *current_node = pivot->internal, * temp; ///< temp for rebuild set-up
+    Internal_Node *current_node = pivot->internal;
+	Internal_Node ** nodeArray;
 
     /// Constants used to calculate when to rebalance
     double overflow_density, overflow_threshold, i = -1;
@@ -1115,10 +1127,11 @@ cilk void rebalance_tl (Bottom_List * pivot){
     }
     while ( (overflow_density > overflow_threshold ) && (current_node->lvl <= INT_BIT_SIZE) );
 
-	Internal_Node ** nodeArray = malloc(sizeof(Internal_Node *) * current_node->num_children);
+	nodeArray = malloc(sizeof(Internal_Node *) * current_node->num_children);
 
 	//parallel:
-	par_build_array_from_rebalance_list(nodeArray, current_node, 0, current_node->num_children -1);
+	spawn par_build_array_from_rebalance_list(nodeArray, current_node, 0, current_node->num_children -1);
+	sync;
 
 #ifdef RD_DEBUG
     assert(current_node->num_children > 1); ///< Minimum is 2 nodes
@@ -1372,9 +1385,11 @@ cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray
 		{
 			if (num_children_left < PARALLEL_THRESHOLD)
 			{
-				//c_rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
+				c_rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
+				/*
 				spawn rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
 				sync;
+				*/
 			}
 			else
 				spawn rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
@@ -1480,9 +1495,11 @@ cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray
 		{
 			if (num_children_right < PARALLEL_THRESHOLD)
 			{
+				c_rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);
+				/*	
 				spawn rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);
 				sync;
-				//c_rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);
+				*/
 			}
 			else
 				spawn rebuild_tree(current_node->right, nodeArray, rightStart, rightEnd);
@@ -1693,7 +1710,7 @@ void print_tree (Top_List * list)
     print_node *head, *current = malloc(sizeof(print_node));
     Internal_Node *iter, *trailing;
 
-    int i = 0, tailIndex = 1, current_lvl;
+    int current_lvl;
 
     printf ( "Tree size: %i\n", list->size );
     iter = list->head->internal;
@@ -2055,7 +2072,7 @@ void c_rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, i
  *  Description:  Buiilds the array in parallel
  * =====================================================================================
  */
-cilk void c_par_build_array_from_rebalance_list (Internal_Node ** buildArray, Internal_Node * current_node, int start, int end)
+void c_par_build_array_from_rebalance_list (Internal_Node ** buildArray, Internal_Node * current_node, int start, int end)
 {
 
 	int left_side_end;
