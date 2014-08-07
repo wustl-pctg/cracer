@@ -462,25 +462,28 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
  *  			  Returns 0 if x > y
  * =====================================================================================
  */
-int order (OM_Node * x, OM_Node * y)
-{
-	/// If they're in the same list, compare tags
-	if (x->ds == y->ds )
-	{
-		if (x->tag < y->tag)
-			return 1;
-		else 
-			return 0;
-	}
+/*int order (OM_Node * x, OM_Node * y)*/
+/*{*/
+	/*/// If they're in the same list, compare tags*/
+	/*if (x->ds == y->ds )*/
+	/*{*/
+		/*if (x->tag < y->tag)*/
+			/*return 1;*/
+		/*else */
+			/*return 0;*/
+	/*}*/
 	
-	/// Otherwise, compare their lists' tags
-	else
-	{
-		if (x->ds->tag < y->ds->tag)
-			return 1;
-		else
-			return 0;
-	}
+	/*/// Otherwise, compare their lists' tags*/
+	/*else*/
+	/*{*/
+		/*if (x->ds->tag < y->ds->tag)*/
+			/*return 1;*/
+		/*else*/
+			/*return 0;*/
+	/*}*/
+/*}*/
+
+void order(OM_Node *x, OM_Node *y, int *result){
 }
 
 /*! KUNAL'S VERSION

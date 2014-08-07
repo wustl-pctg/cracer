@@ -2088,22 +2088,19 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
  * =====================================================================================
  */
 void OM_DS_init(CilkContext *const context){
-
-	/// Define CILK running parameters
-
-	// If Batchify works
-//#define BATCHIFY_WORKING
+/// Define CILK running parameters
 //#define RD_DEBUG
-//#define RD_STATS
 
 	if (context->Cilk_global_state){
-		/// Debug message
-		;//printf("Debug: OM_DS_init\n");
-
-		/// Allocate heap memory for top list
+		// Create top lists
 		context->Cilk_global_state->englishOM_DS = create_tl();
 		context->Cilk_global_state->hebrewOM_DS  = create_tl();
 	}
+#ifdef RD_DEBUG
+	else {
+		printf ( "No cilk global state. Can't fulfill OM_DS_init\n" );
+	}
+#endif
 }
 
 /*! 
@@ -2126,65 +2123,50 @@ void setup_runtime_node(Runtime_node * rn, OM_Node * en, OM_Node * hn){
  * =====================================================================================
  */
 void OM_DS_free_and_free_nodes(CilkContext *const context){
-
 	/// Retrieve Top_Lists
-	Top_List * english_tl = context->Cilk_global_state->englishOM_DS;
-	Top_List * hebrew_tl = context->Cilk_global_state->hebrewOM_DS;
-	Bottom_List * current_bl = english_tl->head;
-	OM_Node * current_node = english_tl->head->head;
+	Top_List * 		english_tl   = context->Cilk_global_state->englishOM_DS;
+	Top_List * 		hebrew_tl    = context->Cilk_global_state->hebrewOM_DS;
+	Bottom_List * 	current_bl   = english_tl->head,
+				*   trailing_bl;
+	OM_Node * 		current_node = english_tl->head->head
+		    * 		trailing_node;
 
-#ifdef RD_STATS
-	unsigned int node_count = 0;
-	printf("Debug: Global Node count: %i\n English/Hebrew Size:%i/%i\n", global_node_count, english_tl->size, hebrew_tl->size);
-#endif
-
+	// Free all om node's in english
 	while (current_bl != NULL)
 	{
 		while (current_node != NULL)
 		{
-
-#ifdef RD_STATS
-			node_count++;
-#endif
-
+			trailing_node = current_node;
 			current_node = current_node->next;
+			free(trailing_node);
 		}
+		trailing_bl = current_bl;
 		current_bl = current_bl->next;
+		//Free previous bottom list
+		free(trailing_bl);	
 		if (current_bl)
 			current_node = current_bl->head;
-
 	}
 
-#ifdef RD_STATS
-	printf ( "Num nodes (counted) in english: %i\n", node_count );
-	node_count = 0;
-#endif
-
+	// Free all om node's in hebrew
 	current_bl = hebrew_tl->head;
 	current_node = current_bl->head;
-	
 	while (current_bl != NULL)
 	{
 		while (current_node != NULL)
 		{
-
-#ifdef RD_STATS
-			node_count++;
-#endif
-
+			trailing_node = current_node;
 			current_node = current_node->next;
+			free(trailing_node);
 		}
+		trailing_bl = current_bl;
 		current_bl = current_bl->next;
+		//Free previous bottom list
+		free(trailing_bl);	
 		if (current_bl)
 			current_node = current_bl->head;
-
 	}
-
-#ifdef RD_STATS	
-	printf ( "Num nodes (counted) in hebrew: %i\n", node_count );
-#endif
-
-	/// Free each and all their contents
+	/// Free each and all their contents (non-runtime components)
 	free_tl(english_tl);
 	free_tl(hebrew_tl);
 }
@@ -2192,7 +2174,6 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 
 /*! 
  * ===  FUNCTION  ======================================================================
-
  *         Name:  OM_DS_insert
  *  Description:  Inserts y after x in the list (eng or heb) specified by ID.
  * =====================================================================================
@@ -2204,11 +2185,13 @@ inline void OM_DS_insert(CilkWorkerState *const ws, Runtime_node * x, Runtime_no
 	  return insert(ws, x->english, y->english);
 	else if (ID == HEBREW_ID)
 	  return insert(ws, x->hebrew, y->hebrew);
+#ifdef RD_DEBUG
 	else
 	{
 		printf("Incorrect ID specified in OM_DS_insert. Exit.\n");
 		exit(10);
 	}
+#endif
 }
 
 /*! 
@@ -2218,16 +2201,19 @@ inline void OM_DS_insert(CilkWorkerState *const ws, Runtime_node * x, Runtime_no
  * =====================================================================================
  */
 inline int OM_DS_order(Runtime_node * x, Runtime_node *y, const int ID){
-
+	//To store our results
+	int order_result = 0;
 	if (ID == ENGLISH_ID)
-		return order(x->english, y->english);
+		order(x->english, y->english, &order_result);
 	else if (ID == HEBREW_ID)
-		return order(x->hebrew, y->hebrew);
+		order(x->hebrew, y->hebrew, &order_result);
+#ifdef RD_DEBUG
 	else
 	{
-		printf("Incorrect ID specified in OM_DS_order. Exit.\n");
-		exit(10);
+		printf("Incorrect ID specified when calling OM_DS_order: %i\n", ID);
 	}
+#endif
+	return order_result;
 }
 
 /********************************************************************************
@@ -2238,10 +2224,10 @@ inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame,
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-	    ;//printf("Debug: In batch node, no race detect needed");
 		return;
 	}
-	// TEST:
+	// This case occurs only after we call spawn the first time in invoke main slow
+	// This will set up both the english/hebrew order ds's
 	if (frame->current_node == NULL)
 	{
 		OM_Node * first_node_e = Cilk_malloc(sizeof(OM_Node)), *first_node_h  = Cilk_malloc(sizeof(OM_Node));
@@ -2250,15 +2236,11 @@ inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame,
 #ifdef RD_DEBUG
 		printf("Debug: Current node is null, this should only be when calling before spawn in invoke main slow\n");
 #endif
-		/// Setup frame nodes
+		/// Link OM_Node's with our current runtime node
 		setup_runtime_node(frame->current_node, first_node_e, first_node_h);
 
-		frame->current_node->english->ID = frame->current_node->hebrew->ID = global_node_count++;
-		
 		first_insert(WS_TOP_LIST_ENGLISH,  first_node_e);
 		first_insert(WS_TOP_LIST_HEBREW,   first_node_h);
-
-		//return;
 	}
 	/// Instantiate three new nodes
 
@@ -2283,9 +2265,6 @@ inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame,
 	setup_runtime_node(cont_node, cont_node_e, cont_node_h);
 	setup_runtime_node(spawned_func_node, spawned_func_node_e, spawned_func_node_h);
 
-	/// Assign uniquee node ID's
-	cont_node_e->ID = cont_node_e->ID = global_node_count++;
-	spawned_func_node_e->ID = spawned_func_node_h->ID =  global_node_count++;
 
 	/// Enter only if this is the first spawn after a sync/in a function
 	if (frame->first_spawn_flag != 1){
