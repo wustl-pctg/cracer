@@ -27,7 +27,6 @@
 #include <cilk-internal.h>
 #include <cilk-cilk2c-pre.h>
 #include <cilk-cilk2c.h>
-#include <RD_and_OM.h>
 FILE_IDENTITY(ident,
 							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/invoke-main.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
@@ -71,37 +70,6 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 
   CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at the end of the func.*/
 
-	
-/*
-	//If the current node hasn't been initialized yet, we havent been in invoke main slow
-	if (_cilk_frame->header.current_node == NULL)
-	{
-		OM_Node * main_node_e = Cilk_malloc(sizeof(OM_Node)), *main_node_h = Cilk_malloc(sizeof(OM_Node));
-		Runtime_node * main_node = Cilk_malloc(sizeof(Runtime_node));
-
-		// Link nodes together	
-		setup_runtime_node(main_node, main_node_e, main_node_h);
-
-		main_node_e->ID = main_node_h->ID = 1;
-
-		/// Add the sublists to the top lists
-		first_insert(ws->context->Cilk_global_state->englishOM_DS, main_node_e);
-		first_insert(ws->context->Cilk_global_state->hebrewOM_DS, main_node_h);
-		
-		/// Set first spawned flag of the header frame
-		_cilk_frame->header.first_spawn_flag = 0;
-
-		/// Set the current frame node equal to the node just created
-		_cilk_frame->header.current_node = main_node;
-	}
-	else{
-		printf("Debug:Starting invoke main slow in separate thread\n"); 
-	}
-
-	/// Update the worker state to match the frame
-	ws->current_node = _cilk_frame->header.current_node;
-*/
-  	/*end order maintenance*/
   CILK2C_START_THREAD_SLOW();
   switch (_cilk_frame->header.entry) {
   case 1:

@@ -321,9 +321,8 @@ void Cilk_terminate(CilkContext *const context)
   /* Terminate debug code */
   Cilk_debug_terminate(context);
 
-  /*! free order maintenance for race detection space */
+  /*! Free order maintenance for race detection space */
   OM_DS_free_and_free_nodes(context);
-  /* ======= TODO: Free list of RD-structs ============ */
 
   /* Free the address space */
   Cilk_free_global_state(context);

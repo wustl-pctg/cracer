@@ -74,15 +74,6 @@ void insert_internal(OM_Node * x, OM_Node *y)
 	/// Retrieve the Bottom_List
 	Bottom_List * ds = x->ds;
 
-#ifdef RD_DEBUG
-	/// y and ds should never be NULL
-	if ( !(x && y && ds) )
-	{
-		printf("Some node or ds is null, skipping insert; x(%d) and y(%d)\n", x->ID, y->ID);
-		assert(0);
-	}
-#endif
-
 	/// Update the ds y is in 
 	y->ds = ds;
 
@@ -190,21 +181,6 @@ void insert_internal(OM_Node * x, OM_Node *y)
  */
 void first_insert_bl (Bottom_List * ds, OM_Node * y)
 {
-#ifdef RD_DEBUG
-	/// Make sure they're not NULL
-	if ( !(ds && y) )
-	{
-		printf("First node or ds null: ds: %p y:(%d) %p\n", ds, y->ID, y);
-		assert(0);
-	}
-	
-	if (ds->size != 0)
-	{
-		printf("Size was not 0. Improper call to first_insert_bl\n");
-		assert(0);
-	}
-#endif
-
 	y->ds = ds;
 	ds->head = ds->tail = y;
 	y->next = y->prev = NULL;
@@ -273,123 +249,6 @@ void insert(struct CilkWorkerState_s *const ws, OM_Node *x, OM_Node *y){
 
 	Cilk_batchify(ws, &batchInsertOp, NULL, ir, sizeof(InsertRecord), NULL);
 }
-
-/*
-[>! 
- * ===  FUNCTION  ======================================================================
- *         Name:  insert
- *  Description:  Insert node y after node x in the Bottom_List specified in x->ds.
- * =====================================================================================
- <]
-void insert(struct CilkWorkerState_s *const ws, OM_Node *x, OM_Node *y)
-{
-	/// Retrieve the Bottom_List
-	Bottom_List * ds = x->ds;
-
-#ifdef RD_DEBUG
-	/// y and ds should never be NULL
-	if ( !(x && y && ds) )
-	{
-		printf("Some node or ds is null, skipping insert; x(%d) and y(%d)\n", x->ID, y->ID);
-		assert(0);
-	}
-#endif
-
-	/// Update the ds y is in 
-	y->ds = ds;
-
-	if (x == ds->tail)
-	{
-		/// y's tage is the average of its neighbors
-		y->tag = (x->tag >> 1) + (MAX_NUMBER >> 1);
-
-		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-		if (x->tag & 0x1 == 0x1) y->tag += 1;
-
-		/// Check for collision
-		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag		
-		{
-#ifdef RD_STATS
-			if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
-			{
-				ds->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
-				ds->list_of_size_of_bottom_list_when_split_tail = ds->list_of_size_of_bottom_list_when_split_head;
-				ds->list_of_size_of_bottom_list_when_split_head->data = ds->size;
-			}
-			else
-			{
-				ll_node * nextnode = malloc(sizeof(ll_node));
-				ds->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
-				ds->list_of_size_of_bottom_list_when_split_tail = nextnode;
-				nextnode->next = NULL;
-				nextnode->data = ds->size;
-			}
-
-#endif
-			split_bl(ds->parent, ds);
-			insert(ws, x, y);
-			return;
-		}
-
-		ds->tail = y;
-	}
-	else
-	{
-		/// y's tage is the average of its neighbors
-		y->tag = (x->tag >> 1) + (x->next->tag >> 1);
-
-		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
-		if (x->next->tag & x->tag & 0x1 == 0x1) y->tag += 1;
-			
-
-		/// Check for collision
-		if ((x->next->tag - x->tag) <= 1)
-		{
-#ifdef RD_STATS
-			
-			if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
-			{
-				ds->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
-				ds->list_of_size_of_bottom_list_when_split_tail = ds->list_of_size_of_bottom_list_when_split_head;
-				ds->list_of_size_of_bottom_list_when_split_head->data = ds->size;
-			}
-			else
-			{
-				ll_node * nextnode = malloc(sizeof(ll_node));
-				ds->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
-				ds->list_of_size_of_bottom_list_when_split_tail = nextnode;
-				nextnode->next = NULL;
-				nextnode->data = ds->size;
-			}
-
-#endif
-
-			split_bl(ds->parent, ds);
-			insert(ws, x, y);
-			return;
-		}
-
-	}
-
-	/// Reassign prev/next pointers
-	y->prev = x;
-	y->next = x->next;
-	x->next = y;
-	if (y->next != NULL) y->next->prev = y; ///< If y isn't tail, make the next node point to it
-
-	ds->size += 1;
-
-
-	/// Mark flag in each list greater than half it's capacity
-//	if (ds->size > (INT_BIT_SIZE >> 1))
-//		ds->reorder_flag = 1;
-
-//	if (ds->size == INT_BIT_SIZE)
-//		return 1; ///< Needs to be split
-//	else
-//		return 0; ///< Doesn't needs immediately split
-}
-*/
 
 /*! 
  * ===  FUNCTION  ======================================================================
@@ -771,7 +630,7 @@ void print_bl (Bottom_List * list)
 	printf ( "(size = %i) Head->", list->size );
 	while (current != NULL)
 	{
-		printf ( "(%i | %u)->", current->ID, current->tag);
+		printf ( "(%p | %u)->", current, current->tag);
 		current = current->next;
 	}
 	printf ( "Tail\n" );

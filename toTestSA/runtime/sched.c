@@ -2075,7 +2075,11 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 #define ENGLISH_ID 10
 #define HEBREW_ID 11
 
-#include "OM_DS.c"
+#ifndef PARALLEL_OM_DS
+	#include "OM_DS_LL.c"
+#elif defined
+	#include "OM_DS_TREE.c"
+#endif
 
 /**************************************************
  *     Runtime Functions Utilizing the OM-DS      *
@@ -2249,7 +2253,7 @@ inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame,
 		/// Allocate heap memory
 		post_sync_node_e = Cilk_malloc(sizeof(OM_Node));
 		post_sync_node_h = Cilk_malloc(sizeof(OM_Node));
-		post_sync_node =  Cilk_malloc(sizeof(Runtime_node));
+		post_sync_node   =  Cilk_malloc(sizeof(Runtime_node));
 
 		/// Link nodes
 		setup_runtime_node(post_sync_node, post_sync_node_e, post_sync_node_h);
@@ -2384,7 +2388,6 @@ inline void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *fr
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-		//    printf("Debug: In batch node, no race detect needed");
 		return;
 	}
 

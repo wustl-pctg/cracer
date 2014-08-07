@@ -128,7 +128,11 @@ struct CilkWorkerState_s;
 /************************************ |
  **********Order maintanance*********
 \************************************/
-#include "OM_DS.h"
+#ifdef PARALLEL_OM_DS
+	#include "OM_DS_LL.h"
+#elif defined
+	#include "OM_DS_TREE.h"
+#endif
 
 /*
  * a stack frame consists of this header and of a procedure-specific
@@ -148,10 +152,10 @@ typedef struct {
 	WHEN_CILK_ND(DisjointSetMemberT s_set;)
 	WHEN_CILK_ND(DisjointSetMemberT p_set;)
 	WHEN_CILK_DEBUG(volatile unsigned int magic;)
-	//Order maintenance for race detector
+	//Order maintenance for race detection
 	Runtime_node * current_node, *post_sync_node, *next_spawned_node;
-
 	int first_spawn_flag;
+
 } CilkStackFrame;
 
 

@@ -41,9 +41,7 @@ typedef struct OM_Node_s{
 	int ID;
 	unsigned /*long*/ int tag;
 	struct Bottom_List_s * ds;
-
 	struct Runtime_node_s * linked_runtime_node;
-
 } OM_Node;
 
 
@@ -66,16 +64,11 @@ typedef struct Bottom_List_s {
 	unsigned /*long*/ int tag;
 
 
-#ifdef RD_STATS
-	ll_node * list_of_size_of_bottom_list_when_split_head, *list_of_size_of_bottom_list_when_split_tail;
-#endif
-
 } Bottom_List;
 
 typedef struct InsertRecord_s{
 	OM_Node *x;
 	OM_Node *y;
-	int ID;
 } InsertRecord;
 
 /// Top-level LL made up of Bottom_List(s)
@@ -83,11 +76,6 @@ typedef struct Top_List_s{
 
 	Bottom_List *head, *tail; /// TODO: change to Bottom_List of the sublist
 	int size;
-
-
-#ifdef RD_STATS
-	ll_node * list_of_size_of_top_list_when_split_head, *list_of_size_of_top_list_when_split_tail;
-#endif
 
 } Top_List;
 
