@@ -748,7 +748,37 @@ cilk void insert_tl (Bottom_List *x, Bottom_List *y)
     }
 }
 
+cilk void orderBatchOp(void *dataStruct, void *data, size_t size, void *result) {
+	int i = 0;
+	OrderRecord * orArray = (OrderRecord *)data, * or;
+	int * resultArray = (int *)result;
+	OM_Node * x, * y;
 
+
+	/// use a regular for loop to be sequential
+	for (;i < size; i++){
+		x = (&orArray[i])->x;
+		y = (&orArray[i])->y;
+
+		/// If they're in the same list, compare tags
+		if (x->ds == y->ds )
+		{
+			if (x->tag < y->tag)
+				resultArray[i] = 1;
+			else
+				resultArray[i] = 0;
+		}
+		/// Otherwise, compare their lists' tags
+		else
+		{
+			if (x->ds->tag < y->ds->tag)
+				resultArray[i] = 1;
+			else
+				resultArray[i] = 0;
+		}
+	}
+
+}
 /*!
  * ===  FUNCTION  ======================================================================
  *         Name:  order
@@ -758,25 +788,15 @@ cilk void insert_tl (Bottom_List *x, Bottom_List *y)
  *
  * =====================================================================================
  */
-int order (OM_Node * x, OM_Node * y)
+cilk void order (OM_Node * x, OM_Node * y, int * result)
 {
-    /// If they're in the same list, compare tags
-    if (x->ds == y->ds )
-    {
-		if (x->tag < y->tag)
-		    return 1;
-		else
-		    return 0;
-    }
+	OrderRecord *or = malloc(sizeof(OrderRecord));
+	or->x  = x;
+	or->y  = y;
 
-    /// Otherwise, compare their lists' tags
-    else
-    {
-		if (x->ds->tag < y->ds->tag)
-		    return 1;
-		else
-		    return 0;
-    }
+	Cilk_batchify(_cilk_ws, &orderBatchOp, NULL, or, sizeof(OrderRecord), result);
+	//TODO: Does this go here?
+	free(or);
 }
 
 /*!

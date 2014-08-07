@@ -108,13 +108,14 @@ void create_scaffolding(Internal_Node *, Internal_Node *);
 cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
 cilk void par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end);
 
+//Batchify
+cilk void orderBatchOp(void *dataStruct, void *data, size_t size, void *result);
+cilk void order (OM_Node * x, OM_Node * y, int * result);
 
 /// Declarations of the OM-functions (in batchify part)
 cilk void insert (OM_Node *x, OM_Node *y);
 cilk void insert_internal(OM_Node * x, OM_Node *y);
-/*
- *cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result);
- */
+cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result);
 
 
 /// Declarations of the OM-functions
@@ -124,7 +125,6 @@ void first_insert_bl(Bottom_List * ds, OM_Node * y);
 void first_insert_tl(Top_List * list, Bottom_List * y);
 void first_insert(Top_List *, OM_Node *);
 cilk void insert_tl(Bottom_List *x, Bottom_List *y);
-int order(OM_Node * x, OM_Node * y);
 cilk void split_bl(Top_List * list, Bottom_List * list_to_split);
 cilk void rebalance_tl(Bottom_List * pivot);
 void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const /*long*/ int skip_size);
