@@ -24,14 +24,16 @@
 #include	<time.h>
 
 /// Tests if each node is in order in the back-insert case
-void order_test (OM_Node ** nodeArray, int num_nodes)
+cilk void order_test (OM_Node ** nodeArray, int num_nodes)
 {
-	int i = 1, j = 1;
+	int i = 1, j = 1, r;
 	for(; i < num_nodes-1; ++i)
 	{
 		for(j = i+1; j < num_nodes-1; ++j)
 		{
-			if( !order(nodeArray[i], nodeArray[j]) )
+			spawn order(nodeArray[i], nodeArray[j], &r);
+			sync;
+			if( !(r) )
 				printf("Nodes %i and  %i out of order.\n", i, j);
 		}
 	}
@@ -78,7 +80,7 @@ clock_t start;
 //		}
 		/*j = 0;*/
 		j = i-1;
-//		j = (rand() % i);
+		/*j = (rand() % i);*/
 		spawn insert(nodeArray[j], nodeArray[i]);
 		sync;
 
@@ -93,7 +95,7 @@ clock_t start;
 	// End clock
 	printf("Took %f s.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 	
-	/*order_test(nodeArray, num_nodes);*/
+	/*spawn order_test(nodeArray, num_nodes); sync;*/
 	check_sub_correctness(list);
 
 #ifdef RD_STATS
