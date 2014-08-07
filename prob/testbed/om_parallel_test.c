@@ -1,3 +1,4 @@
+
 /*
  * =====================================================================================
  *
@@ -93,7 +94,6 @@ int main ( int argc, char *argv[] )
 	print_remove_count();
 	print_rebuild_count();
 	print_rebalance_count();
-	print_rebuild_tree();
 	print_scaffolding_timing();	
 	print_rebalance_timing();	
 	/*order_test(nodeArray, num_nodes);*/
