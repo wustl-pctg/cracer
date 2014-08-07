@@ -1496,12 +1496,12 @@ void free_bl (Bottom_List * list)
  *  Description:  Free all internal nodes in the tree and the leaves bottom lists..
  * =====================================================================================
  */
-void free_tl_helper (Internal_Node * node)
+void free_internal_nodes (Internal_Node * node)
 {
 	if (node->left) 
 	{
 		if (node->left->lvl > 0)
-			free_tl_helper(node->left);
+			free_internal_nodes(node->left);
 		else
 		{
 			free_bl(node->left->bl);
@@ -1512,7 +1512,7 @@ void free_tl_helper (Internal_Node * node)
 	if (node->right)
 	{
 		if (node->right->lvl > 0)
-			free_tl_helper(node->right);
+			free_internal_nodes(node->right);
 		else
 		{
 			free_bl(node->right->bl);
@@ -1533,12 +1533,13 @@ void free_tl_helper (Internal_Node * node)
 void free_tl (Top_List * list)
 {
 	Internal_Node * root = list->head->internal;
-
+	
 	/// When the while loop exits, root will be the root
 	while (root->parent != NULL)
 		root = root->parent;
 
-	free_tl_helper(root);
+	free_internal_nodes(root);
+
 	free(list);
 	list = NULL;
 }

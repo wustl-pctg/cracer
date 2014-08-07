@@ -675,12 +675,10 @@ void first_insert (Top_List * list, OM_Node * y)
  *  Description:  Insert list y after list x in Top_List list.
  * =====================================================================================
  */
-cilk void insert_tl (Bottom_List *x, Bottom_List *y, int depth)
+cilk void insert_tl (Bottom_List *x, Bottom_List *y)
 {
     /// Retrieve Top_List
     Top_List * list = x->parent;
-
-	assert(depth < 2);
 
 #ifdef RD_DEBUG
     assert( (list->size == 0 || x != NULL) && (y != NULL) && (list != NULL) );
@@ -906,7 +904,7 @@ cilk void split_bl (Top_List * list, Bottom_List * list_to_split)
 		assert(to_add->internal == NULL);
 #endif
 		/// Insert the finished DS into the Top_List
-		spawn insert_tl(holder, to_ad);
+		spawn insert_tl(holder, to_add);
 		sync;
     }
 }
