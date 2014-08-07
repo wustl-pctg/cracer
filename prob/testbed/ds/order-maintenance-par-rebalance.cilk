@@ -391,7 +391,7 @@ cilk void insert(OM_Node *x, OM_Node *y){
 
 	Cilk_batchify(_cilk_ws, &batchInsertOp ,NULL, ir, sizeof(OM_DS_BatchRecord), NULL);
 	//TODO: does this go here?
-	/*free(ir);*/
+	free(ir);
 }
 
 //This is for the cilk version
