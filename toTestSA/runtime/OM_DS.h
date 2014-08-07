@@ -42,7 +42,7 @@ typedef struct OM_Node_s{
 	unsigned /*long*/ int tag;
 	struct Bottom_List_s * ds;
 
-	struct Runtime_node_s * parent;
+	struct Runtime_node_s * linked_runtime_node;
 
 } OM_Node;
 
@@ -109,7 +109,7 @@ void insert_internal(OM_Node*, OM_Node*);
 /// Usable OM_DS functions
 void first_insert(Top_List * list, OM_Node* y);
 void insert(struct CilkWorkerState_s *const ws, OM_Node * x, OM_Node * y);
-int order(OM_Node * x, OM_Node * y);
+void order(OM_Node * x, OM_Node * y, int * result);
 
 //CILK2C
 void batchInsertOp (struct CilkWorkerState_s *const ws, void *dataStruct, void *data, size_t size, void *result);

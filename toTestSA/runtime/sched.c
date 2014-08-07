@@ -2112,8 +2112,8 @@ void OM_DS_init(CilkContext *const context){
 void setup_runtime_node(Runtime_node * rn, OM_Node * en, OM_Node * hn){
 	rn->english = en;
 	rn->hebrew = hn;
-	en->parent = rn;
-	hn->parent = rn;
+	en->linked_runtime_node = rn;
+	hn->linked_runtime_node = rn;
 }
 
 /*! 
@@ -2126,43 +2126,20 @@ void OM_DS_free_and_free_nodes(CilkContext *const context){
 	/// Retrieve Top_Lists
 	Top_List * 		english_tl   = context->Cilk_global_state->englishOM_DS;
 	Top_List * 		hebrew_tl    = context->Cilk_global_state->hebrewOM_DS;
-	Bottom_List * 	current_bl   = english_tl->head,
-				*   trailing_bl;
-	OM_Node * 		current_node = english_tl->head->head
-		    * 		trailing_node;
+	Bottom_List * 	current_bl   = english_tl->head;
+	OM_Node * 		current_node = english_tl->head->head;
 
-	// Free all om node's in english
+	// Free all runtime nodes
 	while (current_bl != NULL)
 	{
-		while (current_node != NULL)
+		while (current_node->next != NULL)
 		{
-			trailing_node = current_node;
 			current_node = current_node->next;
-			free(trailing_node);
+			// This is 
+			free(current_node->linked_runtime_node);
 		}
-		trailing_bl = current_bl;
 		current_bl = current_bl->next;
 		//Free previous bottom list
-		free(trailing_bl);	
-		if (current_bl)
-			current_node = current_bl->head;
-	}
-
-	// Free all om node's in hebrew
-	current_bl = hebrew_tl->head;
-	current_node = current_bl->head;
-	while (current_bl != NULL)
-	{
-		while (current_node != NULL)
-		{
-			trailing_node = current_node;
-			current_node = current_node->next;
-			free(trailing_node);
-		}
-		trailing_bl = current_bl;
-		current_bl = current_bl->next;
-		//Free previous bottom list
-		free(trailing_bl);	
 		if (current_bl)
 			current_node = current_bl->head;
 	}
@@ -2252,14 +2229,14 @@ inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame,
 	Runtime_node * cont_node = NULL,* post_sync_node = NULL,* spawned_func_node = NULL;
 
 	/// Create heap memory for the two guaranteed nodes
-	cont_node_e = Cilk_malloc(sizeof(OM_Node));
-	cont_node_h = Cilk_malloc(sizeof(OM_Node));
+	cont_node_e         = Cilk_malloc(sizeof(OM_Node));
+	cont_node_h         = Cilk_malloc(sizeof(OM_Node));
 	spawned_func_node_e = Cilk_malloc(sizeof(OM_Node));	
 	spawned_func_node_h = Cilk_malloc(sizeof(OM_Node));
 	
 	/// & their runtime counterparts
-	cont_node =  Cilk_malloc(sizeof(Runtime_node));
-	spawned_func_node =  Cilk_malloc(sizeof(Runtime_node));
+	cont_node 			=  Cilk_malloc(sizeof(Runtime_node));
+	spawned_func_node 	=  Cilk_malloc(sizeof(Runtime_node));
 
 	// Link nodes
 	setup_runtime_node(cont_node, cont_node_e, cont_node_h);
@@ -2273,9 +2250,6 @@ inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame,
 		post_sync_node_e = Cilk_malloc(sizeof(OM_Node));
 		post_sync_node_h = Cilk_malloc(sizeof(OM_Node));
 		post_sync_node =  Cilk_malloc(sizeof(Runtime_node));
-
-		/// Assign unique id
-		post_sync_node_e->ID =post_sync_node_h->ID =  global_node_count++;
 
 		/// Link nodes
 		setup_runtime_node(post_sync_node, post_sync_node_e, post_sync_node_h);
@@ -2330,8 +2304,7 @@ inline void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-		;//printf("Debug: In batch node, no race detect needed");
-		return; //then in batcher
+		return; 
 	}
 
 #ifdef RD_DEBUG
@@ -2348,7 +2321,8 @@ inline void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	/// Reset the frame's next_spawned_node, since to use this we would need to spawn again.
 	/// At that point a new one will be created
-	frame->next_spawned_node = NULL;
+	//TODO: remove, we never check the value of this node before a function is called
+	/*frame->next_spawned_node = NULL;*/
 
 	/// Reset spawn flag
 	frame->first_spawn_flag = 0;
@@ -2360,7 +2334,6 @@ inline void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-		//	    printf("Debug: In batch node, no race detect needed");
 		return;
 	}
 
@@ -2377,7 +2350,8 @@ inline void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
 
 	/// Reset the frame's next_spawned_node, since to use this we would need to spawn again.
 	/// At that point a new one will be created
-	frame->next_spawned_node = NULL;
+	//TODO: remove, we never check the value of this node before a function is called
+	/*frame->next_spawned_node = NULL;*/
 
 	/// Reset spawn flag
 	frame->first_spawn_flag = 0;
@@ -2388,7 +2362,6 @@ inline void OM_DS_after_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *fr
 	/// Exit function immediately if a batch node
 	if  (ws->batch_id != 0)
 	{
-		//	    printf("Debug: In batch node, no race detect needed");
 		return;
 	}
 

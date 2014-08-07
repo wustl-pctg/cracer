@@ -462,31 +462,28 @@ void insert_tl (Bottom_List *x, Bottom_List *y)
  *  			  Returns 0 if x > y
  * =====================================================================================
  */
-/*int order (OM_Node * x, OM_Node * y)*/
-/*{*/
-	/*/// If they're in the same list, compare tags*/
-	/*if (x->ds == y->ds )*/
-	/*{*/
-		/*if (x->tag < y->tag)*/
-			/*return 1;*/
-		/*else */
-			/*return 0;*/
-	/*}*/
+void order (OM_Node * x, OM_Node * y, int *result)
+{
+	/// If they're in the same list, compare tags
+	if (x->ds == y->ds )
+	{
+		if (x->tag < y->tag)
+			*result = 1;
+		else
+			*result = 0;
+	}
 	
-	/*/// Otherwise, compare their lists' tags*/
-	/*else*/
-	/*{*/
-		/*if (x->ds->tag < y->ds->tag)*/
-			/*return 1;*/
-		/*else*/
-			/*return 0;*/
-	/*}*/
-/*}*/
-
-void order(OM_Node *x, OM_Node *y, int *result){
+	/// Otherwise, compare their lists' tags
+	else
+	{
+		if (x->ds->tag < y->ds->tag)
+			*result = 1;
+		else
+			*result = 0;
+	}
 }
 
-/*! KUNAL'S VERSION
+/*!
  * ===  FUNCTION  ======================================================================
  *         Name:  split_bl
  *  Description:  Splits the bottom list into two bottom lists. Then it inserts the second
