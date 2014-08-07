@@ -20,12 +20,19 @@
 #include <time.h>
 
 /// Constants used within this source file
-static unsigned long int MAX_NUMBER = ~0;
-static int INT_BIT_SIZE = 64;
-static int HALF_INT_BIT_SIZE = 32;
-static int lg_HALF_INT_BIT_SIZE = 5;
-static double OVERFLOW_CONSTANT = 1.50;
-static unsigned PARALLEL_THRESHOLD = 15000;
+static unsigned /*long*/ int MAX_NUMBER = ~0;
+static int INT_BIT_SIZE = 32;
+static int HALF_INT_BIT_SIZE = 16;
+static int lg_HALF_INT_BIT_SIZE = 4;
+static double OVERFLOW_CONSTANT = 1.30;
+static unsigned int rebuild_tree_count = 0;
+static unsigned PARALLEL_THRESHOLD = 25000;
+
+
+void print_rebuild_tree()
+{
+	printf ( "Rebuld tree count: %i\n", rebuild_tree_count );
+}
 
 cilk void check_subtree_correctness( Internal_Node *x){
 
@@ -163,7 +170,7 @@ void print_scaffolding_timing()
 /// Create the tree above x and y
 void create_scaffolding (Internal_Node *x, Internal_Node *y)
 {
-    unsigned long int
+    unsigned int
 		xtag = x->bl->tag,
 		ytag = y->bl->tag,
 		ztag = ytag, ///< Just a tmp variable
@@ -391,7 +398,7 @@ cilk void insert(OM_Node *x, OM_Node *y){
 
 	Cilk_batchify(_cilk_ws, &batchInsertOp ,NULL, ir, sizeof(OM_DS_BatchRecord), NULL);
 	//TODO: does this go here?
-	free(ir);
+	/*free(ir);*/
 }
 
 //This is for the cilk version
@@ -692,6 +699,7 @@ cilk void insert_tl (Bottom_List *x, Bottom_List *y)
 cilk void orderBatchOp(void *dataStruct, void *data, size_t size, void *result) {
 	int i = 0;
 	OM_DS_BatchRecord * orArray = (OM_DS_BatchRecord *)data;
+	OM_DS_BatchRecord * or;
 	int * resultArray = (int *)result;
 	OM_Node * x, * y;
 
@@ -992,8 +1000,8 @@ cilk void rebalance_tl (Bottom_List * pivot){
 	Internal_Node ** nodeArray;
 
     /// Constants used to calculate when to rebalance
-    double overflow_density, overflow_threshold;
-    unsigned long int current_tag_range = 1, current_tree_lvl = 0, lvl_dif = 0;
+    double overflow_density, overflow_threshold, i = -1;
+    unsigned int current_tag_range = 1, current_tree_lvl = 0, lvl_dif = 0;
 
 	rebalance_count++;
 
@@ -1053,6 +1061,7 @@ cilk void rebalance_tl (Bottom_List * pivot){
 	printf("%i\n",current_node->num_children);
 #endif
 
+	i = rebuild_tree_count;
 	spawn rebuild_tree(current_node, nodeArray, 0, current_node->num_children - 1);
 	sync;
 
@@ -1104,6 +1113,7 @@ cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray
 {
     Internal_Node * new_child;
     int num_children = (endIndex - startIndex) + 1;
+    rebuild_tree_count++;
 
     /// If there is only one node, simply make it the left child of the current_node
     if (num_children == 1)
@@ -1297,7 +1307,6 @@ cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray
 		}
 #else
 				spawn rebuild_tree(current_node->left, nodeArray, leftStart, leftEnd);
-
 #endif
 
 		/// Make a right node if it is null
@@ -1445,7 +1454,7 @@ void print_bl (Bottom_List * list)
     printf ( "(size = %i) Head->", list->size );
     while (current != NULL)
     {
-		printf ( "(%p | %u)->", current, current->tag);
+		printf ( "(%i | %u)->", current->ID, current->tag);
 		current = current->next;
     }
     printf ( "Tail\n" );
@@ -1477,16 +1486,16 @@ void free_bl (Bottom_List * list)
 
 /*!
  * ===  FUNCTION  ======================================================================
- *         Name:  free_internal_nodes
+ *         Name:  free_tl_helper
  *  Description:  Free all internal nodes in the tree and the leaves bottom lists..
  * =====================================================================================
  */
-void free_internal_nodes (Internal_Node * node)
+void free_tl_helper (Internal_Node * node)
 {
 	if (node->left)
 	{
 		if (node->left->lvl > 0)
-			free_internal_nodes(node->left);
+			free_tl_helper(node->left);
 		else
 		{
 			free_bl(node->left->bl);
@@ -1497,7 +1506,7 @@ void free_internal_nodes (Internal_Node * node)
 	if (node->right)
 	{
 		if (node->right->lvl > 0)
-			free_internal_nodes(node->right);
+			free_tl_helper(node->right);
 		else
 		{
 			free_bl(node->right->bl);
@@ -1523,7 +1532,7 @@ void free_tl (Top_List * list)
 	while (root->parent != NULL)
 		root = root->parent;
 
-	free_internal_nodes(root);
+	free_tl_helper(root);
 	free(list);
 	list = NULL;
 }
@@ -1557,6 +1566,21 @@ void check_sub_correctness (Top_List * list)
 }
 
 
+void LNR (Internal_Node * current, int level)
+{
+    int temp = 9-level;
+    if (current != NULL)
+    {
+		LNR(current->left, level-1);
+		while (temp > 0)
+		{
+		    printf("\t");
+		    --temp;
+		}
+		printf("Level: %i [%i, mem: %p, L: %p, R: %p]\n", level, current->base, current, current->left, current->right);
+		LNR(current->right, level-1);
+    }
+}
 typedef struct print_node_s{
     Internal_Node *data;
     struct		print_node_s *next;
@@ -1674,6 +1698,7 @@ void c_rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, i
 	/////////////////////////// OLD REBUILD AT BOTTOM
     Internal_Node * new_child;
     int num_children = (endIndex - startIndex) + 1;
+    rebuild_tree_count++;
 
     /// If there is only one node, simply make it the left child of the current_node
     if (num_children == 1)
