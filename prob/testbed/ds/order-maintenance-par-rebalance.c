@@ -32,9 +32,11 @@ void print_rebuild_tree(){
 	printf ( "Rebuld tree count: %i\n", rebuild_tree_count );
 }
 
-void check_subtree_correctness( Internal_Node *x){
-
-	if (x->lvl == 0){
+/// Helper function that checks that the tree is correct
+void check_subtree_correctness( Internal_Node *x)
+{
+	if (x->lvl == 0)
+	{
 		assert(x->bl != NULL);
 		assert(x->bl->internal == x);
 		assert(x->left == NULL);
@@ -44,25 +46,29 @@ void check_subtree_correctness( Internal_Node *x){
 		assert(x->bl->tag == x->base);
 		return;
 	}
-	else {
+	else
+	{
 		assert(x->left);
 		assert(x->right);
 	
 		assert(x->left->base == x->base);
-		//TODO: fix below
-		assert(x->right->base > x->base);// | ((1 << x->lvl) )) ); // new try
+	
+		assert(x->right->base > x->base);
 		assert(x->left->parent == x);
 		assert(x->right->parent == x);
-		if (x->num_children == 2){
+		if (x->num_children == 2)
+		{
 			assert(x->left->lvl == 0);
 			assert(x->right->lvl == 0);
 		}
-		if (x->left->lvl != 0 && x->right->lvl != 0){
-			//already checked
+		if (x->left->lvl != 0 && x->right->lvl != 0)
+		{
 			assert(x->left->num_children + x->right->num_children == x->num_children);
 		}
-		else if ((x->left->lvl != 0) ^ (x->right->lvl != 0)){
-			if (x->left->lvl == 0){
+		else if ((x->left->lvl != 0) ^ (x->right->lvl != 0))
+		{
+			if (x->left->lvl == 0)
+			{
 				assert(x->right->num_children + 1 == x->num_children);
 			}
 			if (x->right->lvl == 0){
@@ -80,10 +86,12 @@ void check_subtree_correctness( Internal_Node *x){
 }
 
 void check_tree_correctness (Internal_Node * x){
-	while (x->parent){
+	while (x->parent)
+	{
 		x = x->parent;
 	}
-	if (x->lvl == 0){
+	if (x->lvl == 0)
+	{
 		assert(x->bl != NULL);
 		assert(x->left == NULL);
 		assert(x->right == NULL);
@@ -92,28 +100,34 @@ void check_tree_correctness (Internal_Node * x){
 		assert(x->bl->tag == x->base);
 		return;
 	}
+
 	assert(x->left);
 	assert(x->right);
 	assert(x->left->base == x->base);
-	//TODO: ?
-	//assert(x->right->base == x->base | ((1 << x->lvl) -1));
+
 	assert(x->left->parent ==x);
 	assert(x->right->parent == x);
-	if (x->num_children == 2){
+	if (x->num_children == 2)
+	{
 		assert(x->left->lvl == 0);
 		assert(x->right->lvl == 0);
-	}if (x->left->lvl != 0 && x->right->lvl != 0){
-		//already checked
+	}
+	if (x->left->lvl != 0 && x->right->lvl != 0)
+	{
 		assert(x->left->num_children + x->right->num_children == x->num_children);
 	}
-	else if ((x->left->lvl != 0) ^ (x->right->lvl != 0)){
-		if (x->left->lvl == 0){
+	else if ((x->left->lvl != 0) ^ (x->right->lvl != 0))
+	{
+		if (x->left->lvl == 0)
+		{
 			assert(x->right->num_children + 1 == x->num_children);
 		}
-		if (x->right->lvl == 0){
+		if (x->right->lvl == 0)
+		{
 			assert(x->left->num_children + 1 == x->num_children);
 		}
 	}
+
 	assert(x->num_children != 1);
 	check_subtree_correctness(x->left);
 	check_subtree_correctness(x->right);
@@ -133,8 +147,8 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
     unsigned int
 		xtag = x->bl->tag,
 		ytag = y->bl->tag,
-		ztag = ytag,//Just a tmp variable
-		lvl_count = INT_BIT_SIZE, // This represents the lvl where x and y have their most recent common ancestor
+		ztag = ytag, ///< Just a tmp variable
+		lvl_count = INT_BIT_SIZE, ///< This represents the lvl where x and y have their most recent common ancestor
 		bit_counter = (0x1) << ( INT_BIT_SIZE - 1);
 
 #ifdef RD_TIMING
@@ -246,15 +260,12 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
     /// The old parent is above new parent that is to be created
     else if (x->parent->lvl > lvl_count)
     {
-#ifdef RD_DEBUG
-		printf ( "Debug: Create scaffold - old parent above new parent\n" );
-#endif
-
 		new_parent = malloc(sizeof(Internal_Node));
-		//nullify the base
+
+		/// Nullify the base
 		new_parent->bl = NULL;
 
-		// Assign x's old parent to new_parent's parent
+		/// Assign x's old parent to new_parent's parent
 		new_parent->parent = x->parent;
 
 		/// We know the direction of the child based on if z was changed
@@ -269,7 +280,7 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 		    new_parent->right = x; ///< Also update right in this case
 		}
 
-		//Reassign the old parent's left/right references
+		/// Reassign the old parent's left/right references
 		if (x->parent->left == x)
 		    x->parent->left = new_parent;
 		else if (x->parent->right == x)
@@ -280,7 +291,7 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 		    assert(0);
 		}
 
-		//Assign x/y parent
+		/// Assign x/y parent
 		x->parent = y->parent = new_parent;
 
 		/// Assign lvl to new parent
@@ -292,15 +303,11 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 		else
 			new_parent->base = (xtag >> lvl_count) << lvl_count;
 
-		// This is a new node with just 2 children
+		/// This is a new node with just 2 children
 		new_parent->num_children = 2;
     }
-    ///TODO: remove this and fix one after
 	else if (lvl_count == INT_BIT_SIZE) // root is already made)
 	{
-#ifdef RD_DEBUG
-		printf ( "======= This should only be made once, second insert\n" );
-#endif
 		new_parent = x->parent;
 		assert(new_parent->lvl == INT_BIT_SIZE);
 		new_parent->num_children = 2;
@@ -309,10 +316,6 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 	}
     else ///< They are equal, i.e. the same node
     {
-#ifdef RD_DEBUG
-		printf ("Debug : Create scaffolding - Old and new parent of x are the same\n" );
-#endif
-
 		new_parent = malloc(sizeof(Internal_Node));
 
 		/// Update new parent bas
@@ -323,10 +326,10 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 
 		new_parent->parent = x->parent;
 		new_parent->lvl = lvl_count;
-		new_parent->num_children = 2; //TODO Is this right?
+		new_parent->num_children = 2;
 		new_parent->bl = NULL;
 
-		//Reassign the old parent's left/right references
+		/// Reassign the old parent's left/right references
 		if (x->parent->left == x)
 		    x->parent->left = new_parent;
 		else if (x->parent->right == x)
@@ -346,7 +349,7 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 		y->parent = x->parent = new_parent;
     }
 
-    // Update number of children
+    /// Update number of children
     iter_node = new_parent->parent;
 
     while (iter_node != NULL)
@@ -366,39 +369,26 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 #ifdef RD_TIMING
 	scaffolding_total_time += (double)(clock() - temp);
 #endif
+
 }
 
 void insert(OM_Node *x, OM_Node *y){
-    /*InsertRecord *ir = malloc(sizeof(InsertRecord));*/
-    /*ir->x  = x;*/
-    /*ir->y  = y;*/
-
-    /*Cilk_batchify(_cilk_ws, &batchInsertOp ,NULL, ir, sizeof(InsertRecord), NULL);*/
-    /// This is the C (non cilk) version
     insert_internal(x, y);
 }
 
-//This is for the cilk version
-/*cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result)*/
-/*{*/
-/*int i = 0;*/
-/*InsertRecord * irArray = (InsertRecord *)data,* ir;*/
-/*/// use a regular for loop to be sequential*/
-/*for(; i < size; i++){*/
-/*ir = &irArray[i];				*/
-/*insert_internal(ir->x, ir->y); */
-/*}*/
-/*}*/
-
 void insert_internal(OM_Node *x, OM_Node *y){
+
     Bottom_List *ds = x->ds;
+
 #ifdef RD_DEBUG
+
     /// y and ds should never be NULL
     if ( !(x && y) )
     {
 		printf("Some node or ds is null, skipping insert; x(%d) and y(%d)\n", x->ID, y->ID);
 		assert(0);
     }
+
 #endif
 
     /// Update the ds y is in
@@ -415,6 +405,7 @@ void insert_internal(OM_Node *x, OM_Node *y){
 		/// Check for collision
 		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag
 		{
+
 #ifdef RD_STATS
 		    if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
 		    {
@@ -447,10 +438,10 @@ void insert_internal(OM_Node *x, OM_Node *y){
 		/// Correct for adding two odd numbers (MAX_NUMBER is always odd)
 		if ((x->next->tag & x->tag & 0x1) == 0x1) y->tag += 1;
 
-
 		/// Check for collision
 		if ((x->next->tag - x->tag) <= 1)
 		{
+
 #ifdef RD_STATS
 
 		    if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
@@ -471,7 +462,6 @@ void insert_internal(OM_Node *x, OM_Node *y){
 #endif
 
 		    split_bl(ds->parent, ds);
-
 		    insert(x, y);
 		    return;
 		}
@@ -486,16 +476,7 @@ void insert_internal(OM_Node *x, OM_Node *y){
 
     ds->size += 1;
 
-
-    /// Mark flag in each list greater than half it's capacity
-//				if (ds->size > (INT_BIT_SIZE >> 1))
-//								ds->reorder_flag = 1;
-
-//				if (ds->size == INT_BIT_SIZE)
-//								return 1; ///< Needs to be split
-//				else
-//								return 0; ///< Doesn't needs immediately split
-    return;
+	return;
 }
 
 /*!
@@ -653,13 +634,11 @@ void first_insert (Top_List * list, OM_Node * y)
  *  Description:  Insert list y after list x in Top_List list.
  * =====================================================================================
  */
-void insert_tl (Bottom_List *x, Bottom_List *y, int depth)
+void insert_tl (Bottom_List *x, Bottom_List *y)
 {
     /// Retrieve Top_List
     Top_List * list = x->parent;
 
-	//TODO:take out
-	assert(depth < 2);
 #ifdef RD_DEBUG
 	printf("Insert_t\n");
     assert( (list->size == 0 || x != NULL) && (y != NULL) && (list != NULL) );
@@ -688,41 +667,11 @@ void insert_tl (Bottom_List *x, Bottom_List *y, int depth)
     if (    (x == list->tail && (MAX_NUMBER == x->tag )  ) || ///< If x is tail, use MAX_NUMBER instead of x->next->tag
 		    (x != list->tail && (x->next->tag - x->tag <= 1)) )
     {
-		/*
-		 //Link y in the linked list.
-
-		/// Reassign prev/next pointers
-		y->prev = x;
-		y->next = x->next;
-		x->next = y;
-		if (y->next != NULL)
-		    y->next->prev = y; ///< If not null, the we can update the next nodes prev reference
-		else
-		    list->tail = y; ///< If x was the previous tail, y->next is NULL and is new tail
-
-		/// Assign the parent of y to the list
-		y->parent = list;
-		list->size += 1;
-		*/
-
-#ifdef RD_DEBUG
-
-		printf ( "\n\n=== Before rebalance ===\n" );
-		/*print_tree(list);*/
-#endif
 		/// Thin out the list - make room for y
 		rebalance_tl(x);
 
-#ifdef RD_DEBUG
-
-		printf ( "\n\n=== After rebalance ===\n" );
-		/*print_tree(list);*/
-#endif
-		/// PARALLEL:
-		/*spawn rebalance_tl(x);sync;*/
-
 		/// Dont assign pointers, call insert again to put y after x
-		insert_tl(x,y, ++depth);
+		insert_tl(x,y);
     }
     else /// No collision
     {
@@ -743,19 +692,18 @@ void insert_tl (Bottom_List *x, Bottom_List *y, int depth)
 
 		///Parallel: Create binary tree scaffolding
 		y->internal = malloc(sizeof(Internal_Node));
-		// Base level
+
+		/// Base level
 		y->internal->lvl = 0;
-		// This is a leaf internal node, so no children. Base won't be used in leaf node.
+
+		/// This is a leaf internal node, so no children. Base won't be used in leaf node.
 		y->internal->num_children = 0;
 		y->internal->base = y->tag;
 		y->internal->parent = y->internal->left = y->internal->right = NULL;
-		// Give a reference to the internal node to y itself
-		y->internal->bl = y;
-		///TODO: Make this parallel
 
-#ifdef RD_DEBUG
-		printf("Calling scaffolding in insert_tl\n");
-#endif
+		/// Give a reference to the internal node to y itself
+		y->internal->bl = y;
+
 		create_scaffolding(x->internal, y->internal);
 
     }
