@@ -56,7 +56,6 @@ clock_t start;
 	for (;i < num_nodes; i++)
 	{
 		nodeArray[i]= malloc(sizeof(OM_Node));
-		nodeArray[i]->ID = i;
 	}
 
 	/// Clock to record how long the inserts take
@@ -78,8 +77,8 @@ clock_t start;
 //		else if (list->split_flag == 1) {
 			/*j =i - 1;*/
 //		}
-		j = 0;
-		/*j = i-1;*/
+		/*j = 0;*/
+		j = i-1;
 		/*j = (rand() % i);*/
 		spawn insert(nodeArray[j], nodeArray[i]);
 		sync;
