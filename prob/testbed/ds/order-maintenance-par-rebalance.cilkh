@@ -123,7 +123,7 @@ Top_List * create_tl();
 void first_insert_bl(Bottom_List * ds, OM_Node * y);
 void first_insert_tl(Top_List * list, Bottom_List * y);
 void first_insert(Top_List *, OM_Node *);
-cilk void insert_tl(Bottom_List *x, Bottom_List *y, int depth);
+cilk void insert_tl(Bottom_List *x, Bottom_List *y);
 int order(OM_Node * x, OM_Node * y);
 cilk void split_bl(Top_List * list, Bottom_List * list_to_split);
 cilk void rebalance_tl(Bottom_List * pivot);

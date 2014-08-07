@@ -749,7 +749,6 @@ int order (OM_Node * x, OM_Node * y)
  */
 void split_bl (Top_List * list, Bottom_List * list_to_split)
 {
-	///NEW VERSION
     OM_Node * current = list_to_split->head, *transition_node;
 
     /// Create new list to add to top
@@ -760,11 +759,6 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
     /// Each node in the list will be spaced out by skip_size tag spaces
     unsigned long int skip_size = MAX_NUMBER >> lg_HALF_INT_BIT_SIZE;
-
-
-#ifdef RD_DEBUG
-	printf(" ========= Split ========= \n");
-#endif
 
     /// First reorganize list_to_split appropriately
     current->tag = 0;
@@ -821,11 +815,10 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
 #ifdef RD_DEBUG
 		assert(to_add->internal == NULL);
-		printf("Split insert 1\n");
 #endif
 
 		/// Insert the finished DS into the Top_List
-		insert_tl(holder, to_add, 0);
+		insert_tl(holder, to_add);
 
 		/// Update place holder for next Top_List insert
 		holder = to_add;
@@ -869,13 +862,13 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
 #ifdef RD_DEBUG
 		assert(to_add->internal == NULL);
-		printf("split insert 2\n");
 #endif
 		/// Insert the finished DS into the Top_List
-		insert_tl(holder, to_add , 0);
+		insert_tl(holder, to_add);
     }
 
 }
+
 static unsigned int rebuild_skip_count= 0;
 void print_rebuild_count(){
 	printf ( "rebuild count: %i\n", rebuild_skip_count );
@@ -889,27 +882,33 @@ void print_rebuild_count(){
  *  Description:  Buiilds the array in parallel
  * =====================================================================================
  */
-void par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end){
+void par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end)
+{
 	int left_side_end;
-	// Build left side
-	if (current_node->left->lvl != 0){
+
+	/// Build left side
+	if (current_node->left->lvl != 0)
+	{
 		par_build_array_from_rebalance_list(buildArray, current_node->left, (start), (start + current_node->left->num_children - 1));
 		left_side_end = start + current_node->left->num_children;
 	}
-	else { /// This is a leaf node
+	else /// This is a leaf node
+	{ 
 		buildArray[start] = current_node->left;
 		left_side_end = start + 1;
 	}
 
-	if (current_node->right->lvl != 0){
-	
+	if (current_node->right->lvl != 0)
+	{
 		par_build_array_from_rebalance_list(buildArray, current_node->right, left_side_end, end);
 	}
-	else{
+	else
+	{
 		buildArray[end] = current_node->right;
 	}
 
 }
+
 /*!
  * ===  FUNCTION  ======================================================================
  *         Name:  build_array_from_rebalance_list
@@ -967,10 +966,6 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 			new_node->left = new_node->right = NULL;
 			new_node->base = current_node->bl->next->tag;
 
-#ifdef RD_DEBUG
-		    printf ( "Allocating space for node to be inserted (in build array): %p\n", new_node);
-#endif
-
 		    // Assign the internal node's bl pointer to the bl to be inserted
 		    new_node->bl = current_node->bl->next;
 
@@ -991,30 +986,21 @@ Internal_Node ** build_array_from_rebalance_list (Internal_Node *current_node)
 
     }
 
-#ifdef RD_DEBUG
-
-	/// Going to print the array
-	i = 0;
-	printf("nodeArray: [");
-	while (i < num_children)
-	{
-		printf(" %p ", nodeArray[i++]);
-	}
-	printf(" ]\n");
-#endif
-
     return nodeArray;
 }
+
 static int rebalance_count = 0;
 void print_rebalance_count(){
 
 	printf ( "Rebalance count:%i\n", rebalance_count );
 }
+
 static double rebalance_total_time = 0;
 void print_rebalance_timing(){
 
 	printf ( "rebalance total time(s):%f \n", (rebalance_total_time  / CLOCKS_PER_SEC));
 }
+
 /*!
  * ===  FUNCTION  ======================================================================
  *         Name:  rebalance_tl
@@ -1055,6 +1041,7 @@ void rebalance_tl (Bottom_List * pivot){
     unsigned int current_tag_range = 1, current_tree_lvl = 0, lvl_dif = 0;
 
 	rebalance_count++;
+
 #ifdef RD_DEBUG
 	/// Make sure the bottom_lists are in order before everything
 	check_sub_correctness(pivot->parent);
@@ -1069,8 +1056,6 @@ void rebalance_tl (Bottom_List * pivot){
 		if (current_node == NULL)
 			printf("Pivot is NULL\n");
 		assert(current_node != NULL);
-
-		/*assert(current_node->parent != NULL);*/
 #endif
 		if (current_node->lvl == INT_BIT_SIZE)
 		{
@@ -1100,7 +1085,7 @@ void rebalance_tl (Bottom_List * pivot){
     while ( (overflow_density > overflow_threshold ) && (current_node->lvl <= INT_BIT_SIZE) );
 
 	Internal_Node ** nodeArray = malloc(sizeof(Internal_Node *) * current_node->num_children);
-	//parallel:
+
 	par_build_array_from_rebalance_list(nodeArray, current_node, 0, current_node->num_children -1);
 
 #ifdef RD_DEBUG
@@ -1110,101 +1095,43 @@ void rebalance_tl (Bottom_List * pivot){
 #ifdef RD_SIZE_REBALANCE
 	printf("%i\n",current_node->num_children);
 #endif
-    //TODO: Parallelize this
+
 	i = rebuild_tree_count;
     rebuild_tree(current_node, nodeArray, 0, current_node->num_children - 1);
 
-	/*printf ( "Diff in rebuild tree count(%i) for tree of size %i\n", (rebuild_tree_count - 1), current_node->num_children );*/
 #ifdef RD_DEBUG
 	check_tree_correctness(current_node);
-	printf ( "===========> Passed tree correctness after rebuild.\n" );
-	printf(".... now subtree....\n");
 	check_sub_correctness(pivot->parent);
-	
 #endif
 
-/*
-/// Rebuild left half of tree portion needing rebalanced
-if ( !(current_node->left) )
-{
-/// Node at lvl - 1 is optimal, so we create it if not present
-current_node->left = malloc(sizeof(Internal_Node));
-current_node->left->parent = current_node;
-
-// Initialize to null
-current_node->left->left = current_node->left->right = NULL;
-
-current_node->left->lvl = current_node->lvl -1;
-// num children taken care of in rebuild
-}
-else if (current_node->left->lvl != current_node->lvl - 1)
-{
-/// New current_node->left is temp
-temp = malloc(sizeof(Internal_Node));
-
-current_node->left->parent = temp;
-current_node->left = temp;
-current_node->left->parent = current_node;
-current_node->left->lvl = current_node->lvl -1;
-// num children taken care of in rebuild
-}
-/// else current->left is already as desired
-
-
-/// Rebuild right half of tree portion needing rebalanced
-if( !(current_node->right) )
-{
-/// Node at lvl - 1 is optimal, so we create it if not present
-current_node->right = malloc(sizeof(Internal_Node));
-current_node->right->parent = current_node;
-
-// Initialize to null
-current_node->right->right = current_node->right->left = NULL;
-
-current_node->right->lvl = current_node->lvl -1;
-// num children taken care of in rebuild
-}
-else if (current_node->left->lvl != current_node->lvl - 1)
-{
-/// New current_node->right is temp
-temp = malloc(sizeof(Internal_Node));
-
-current_node->right->parent = temp;
-current_node->right = temp;
-current_node->right->parent = current_node;
-current_node->right->lvl = current_node->lvl -1;
-// num children taken care of in rebuild
-}
-/// else current->right is already as desired
-
-*/
     /// Free the array we created
     free(nodeArray);
+
 #ifdef RD_TIMING
 	rebalance_total_time += (double)(clock() - temp_clock);
 #endif
 }
+
 static unsigned int remove_scaffolding_count = 0;
-void print_remove_count(){
+void print_remove_count()
+{
 	printf ( "Remove scaffolding: %i\n", remove_scaffolding_count );
 }
-void remove_scaffolding(Internal_Node * node){
+
+void remove_scaffolding(Internal_Node * node)
+{
 	remove_scaffolding_count++;
 
 	if (node->left && node->left->lvl > 0)
 	{
-		//parallel
 		remove_scaffolding(node->left);
 	}
 	if (node->right && node->right->lvl > 0)
 	{
-		// parallel:
 		remove_scaffolding(node->right);
 	}
 	free(node);
-	// sync;
 }
-
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -1216,11 +1143,6 @@ void remove_scaffolding(Internal_Node * node){
  */
 void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex)
 {
-
-#ifdef RD_DEBUG
-	printf("rebuild_tree(%p, nodeArray, %i, %i)\n", current_node, startIndex, endIndex);
-#endif
-	/////////////////////////// OLD REBUILD AT BOTTOM
     Internal_Node * new_child;
     int num_children = (endIndex - startIndex) + 1;
     rebuild_tree_count++;
@@ -1233,19 +1155,14 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		 * in the array that will be moved. So don't worry about them, and update the children
 		 * accordingly
 		 */
-		//ALEX: remove any remaining internal nodes that are in between current node and lvl 0.
 		if (current_node->left && current_node->left->lvl > 0)
 		{
-			//parallel
 			remove_scaffolding(current_node->left);
 		}
 		if (current_node->right && current_node->right->lvl > 0)
 		{
-			// parallel:
 			remove_scaffolding(current_node->right);
 		}
-		//sync
-
 
 		current_node->left = nodeArray[startIndex];
 
@@ -1269,20 +1186,14 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		 * we can simply make the left and right children of current_node the startIndex
 		 * and endIndex respectively.
 		 */
-
-		//ALEX: remove any remaining internal nodes that are in between current node and lvl 0.
-		//parallel:
 		if (current_node->left && current_node->left->lvl > 0)
 		{
-			//parallel
 			remove_scaffolding(current_node->left);
 		}
 		if (current_node->right && current_node->right->lvl > 0)
 		{
-			// parallel:
 			remove_scaffolding(current_node->right);
 		}
-		//sync
 
 		current_node->left = nodeArray[startIndex];
 		current_node->right = nodeArray[endIndex];
@@ -1307,6 +1218,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
     {
     	/// Flags
     	int rebuild_left_flag = 1, rebuild_right_flag = 1;
+
 		/// First get the new indices of the split
 		int leftStart = startIndex; ///< 0 is the first index in the array
 		int leftEnd = startIndex + ((num_children - 1) >> 1); ///< If odd, will be floor of half the index range
@@ -1319,13 +1231,13 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 		current_node->num_children = num_children;
 
 #ifdef RD_DEBUG
-		/*assert(current_node->left != NULL && current_node->right != NULL);*/
 		assert(num_children_left >= 1 && num_children_right >= 1);
 #endif
 
-		// Make a left node if it is null
+		/// Make a left node if it is null
 		if (num_children_left == 1){///< Connect this node to the leaf
-				//Clear scaffolding
+
+				/// Clear scaffolding
 				if (current_node->right && current_node->right->lvl > 0)
 					remove_scaffolding(current_node->right);
 
@@ -1338,11 +1250,11 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				/// Assign its base/tag -- fill the remaining spaces with 1's
 				current_node->left->base = current_node->left->bl->tag = current_node->base;
 
-				//We can stop the rebuild:
+				/// We can stop the rebuild:
 				rebuild_left_flag = 0;
 			}
-		else if (current_node->left == NULL)
-			 { // We need an internal node to contain more than 1 node
+		else if (current_node->left == NULL) ///< We need an internal node to contain more than 1 node
+		{ 
 #ifdef RD_DEBUG
 				/// If we have lvl 1 or 0, then we messed up because we have 3 children
 				assert(current_node->lvl > 1);
@@ -1352,7 +1264,6 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 				/// Update the new child lvl
 				current_node->left->lvl = current_node->lvl -1;
-				//no bl
 				current_node->left->bl = NULL;
 
 				/// Update the base
@@ -1363,6 +1274,7 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 				current_node->left->left = current_node->left->right = NULL;
 			}
+
 		/// Now set-up the left-half and rebuild
 		else if ((current_node->lvl - current_node->left->lvl) != 1) ///< If the cur->left isn't one level below it
 		{
@@ -1375,8 +1287,6 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 				    /// Update base/tags
 				    current_node->left->base = current_node->left->bl->tag = current_node->base;
-
-				    //Alex: no need to rebuild
 					rebuild_left_flag = 0;
 				}
 				else ///< The number of children on the left is > 1
@@ -1388,9 +1298,9 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				    current_node->left = new_child;
 				    new_child->parent = current_node;
 
-					// Null the pointer to the right and left
-					// Since the old left node was a leaf node, we won't lose track of it
-					// also nullify bl
+					/// Null the pointer to the right and left
+					/// Since the old left node was a leaf node, we won't lose track of it
+					/// also nullify bl
 				    new_child->left = new_child->right = NULL;
 				    new_child->bl = NULL;
 
@@ -1418,8 +1328,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 
 
 		// Make a right node if it is null
-		if (num_children_right == 1){///< Connect this node to the leaf
-				//clear scaffolding
+		if (num_children_right == 1) ///< Connect this node to the leaf
+		{
 				if (current_node->right && current_node->right->lvl > 0)
 					remove_scaffolding(current_node->right);
 
@@ -1430,7 +1340,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				current_node->right->parent = current_node;
 
 				/// Assign its base/tag -- fill the next space with a 1
-				if (current_node->lvl == INT_BIT_SIZE){
+				if (current_node->lvl == INT_BIT_SIZE)
+				{
 					current_node->right->base = current_node->right->bl->tag = (1 << (INT_BIT_SIZE - 1));
 				}
 				else
@@ -1439,8 +1350,8 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
 				//We can stop the rebuild:
 				rebuild_right_flag = 0;
 			}
-		else if (current_node->right == NULL)
-		{ // We need an internal node to contain more than 1 node
+		else if (current_node->right == NULL) /// We need an internal node to contain more than 1 node
+		{ 
 #ifdef RD_DEBUG
 				/// If we have lvl 1 or 0, then we messed up because we have 3 children
 				assert(current_node->lvl > 1);
@@ -1515,50 +1426,6 @@ void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int
     }
 }
 
-
-
-
-
-/*!
- * ===  FUNCTION  ======================================================================
- *         Name:  relabel_tl_tag_range
- *  Description:  Relabels the range of tags from list start to end using a distance of skip_size.
- * =====================================================================================
- */
-void relabel_tl_tag_range (Bottom_List *start, Bottom_List *end, const /*long*/ int  skip_size)
-{
-    Bottom_List * current = start;
-    current->tag = start->tag;
-
-    /// Iterate through and update tags
-    do
-    {
-		current->next->tag = current->tag + skip_size;
-		current = current->next;
-    }
-    while (current != end);
-}
-
-/*!
- * ===  FUNCTION  ======================================================================
- *         Name:  rebalance_bls
- *  Description:  Rebalance all bottom lists with the reorder flag.
- e/
- void rebalance_bls (Top_List * list)
- {
- /// The Iterators
- Bottom_List * current, * current_h;
- current = list->head;
-
- while(current != NULL)
- {
- if(current->reorder_flag == 1) ///< If 1, then needs split
- split_bl(list, current);
- current = current->next;
- }
- }
-
-
 /*!
 * ===  FUNCTION  ======================================================================
 *         Name:  print_tl
@@ -1598,7 +1465,6 @@ void print_bl (Bottom_List * list)
     }
     printf ( "Tail\n" );
 }
-
 
 /*!
  * ===  FUNCTION  ======================================================================
@@ -1780,12 +1646,6 @@ void print_tree (Top_List * list)
 
     }
 
-    /*//free print nodes*/
-    /*while (head != NULL){*/
-    /*print_node *next = head->next;*/
-    /*free(head);*/
-    /*head = next;*/
-    /*}*/
     printf ( "\n\nEND TREE\n" );
 
 }

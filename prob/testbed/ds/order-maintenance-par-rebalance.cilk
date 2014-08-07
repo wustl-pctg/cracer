@@ -731,7 +731,7 @@ cilk void insert_tl (Bottom_List *x, Bottom_List *y, int depth)
 		/*spawn rebalance_tl(x);sync;*/
 
 		/// Dont assign pointers, call insert again to put y after x
-		spawn insert_tl(x,y, ++depth);
+		spawn insert_tl(x,y);
 		sync;
     }
     else /// No collision
@@ -887,7 +887,7 @@ cilk void split_bl (Top_List * list, Bottom_List * list_to_split)
 #endif
 
 		/// Insert the finished DS into the Top_List
-		spawn insert_tl(holder, to_add, 0);
+		spawn insert_tl(holder, to_add);
 		sync;
 
 		/// Update place holder for next Top_List insert
@@ -935,7 +935,7 @@ cilk void split_bl (Top_List * list, Bottom_List * list_to_split)
 		printf("split insert 2\n");
 #endif
 		/// Insert the finished DS into the Top_List
-		spawn insert_tl(holder, to_add , 0);
+		spawn insert_tl(holder, to_ad);
 		sync;
     }
 }
