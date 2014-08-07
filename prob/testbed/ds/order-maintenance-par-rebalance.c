@@ -1131,6 +1131,7 @@ void remove_scaffolding(Internal_Node * node)
 		remove_scaffolding(node->right);
 	}
 	free(node);
+	node = NULL;
 }
 
 /*
@@ -1491,26 +1492,57 @@ void free_bl (Bottom_List * list)
 
 /*!
  * ===  FUNCTION  ======================================================================
+ *         Name:  free_tl_helper
+ *  Description:  Free all internal nodes in the tree and the leaves bottom lists..
+ * =====================================================================================
+ */
+void free_tl_helper (Internal_Node * node)
+{
+	if (node->left) 
+	{
+		if (node->left->lvl > 0)
+			free_tl_helper(node->left);
+		else
+		{
+			free_bl(node->left->bl);
+			free(node->left);
+			node->left = NULL;
+		}
+	}
+	if (node->right)
+	{
+		if (node->right->lvl > 0)
+			free_tl_helper(node->right);
+		else
+		{
+			free_bl(node->right->bl);
+			free(node->right);
+			node->right = NULL;
+		}
+	}
+	free(node);
+	node = NULL;
+}
+
+/*!
+ * ===  FUNCTION  ======================================================================
  *         Name:  free_tl
- *  Description:  Free all Bottom_Lists in Top_List list and the list itself.
+ *  Description:  Call helper to free tree then free the Top_List itself
  * =====================================================================================
  */
 void free_tl (Top_List * list)
 {
-    Bottom_List *next, * current = list->head;
+	Internal_Node * root = list->head->internal;
 
-    /// Iterate through and call free_bl on the Bottom_List current
-    while (current != NULL){
-		next = current->next;
-		free_bl(current); ///< Implicitly prevents dangling pointers
-		current = NULL; ///< Prevent dangling pointers
-		current = next;
-    }
+	/// When the while loop exits, root will be the root
+	while (root->parent != NULL)
+		root = root->parent;
 
-    /// Finally free the Top_List
-    free(list);
-    list = NULL; ///< Prevent dangling pointers
+	free_tl_helper(root);
+	free(list);
+	list = NULL;
 }
+
 
 /*!
  * ===  FUNCTION  ======================================================================
