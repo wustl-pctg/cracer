@@ -26,7 +26,7 @@ static int HALF_INT_BIT_SIZE = 16;
 static int lg_HALF_INT_BIT_SIZE = 4;
 static double OVERFLOW_CONSTANT = 1.30;
 static unsigned int rebuild_tree_count = 0;
-static unsigned PARALLEL_THRESHOLD = 100000;
+static unsigned PARALLEL_THRESHOLD = 25000;
 
 
 void print_rebuild_tree(){
