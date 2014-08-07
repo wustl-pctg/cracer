@@ -2077,7 +2077,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 
 #ifndef PARALLEL_OM_DS
 	#include "OM_DS_LL.c"
-#elif defined
+#else
 	#include "OM_DS_TREE.c"
 #endif
 

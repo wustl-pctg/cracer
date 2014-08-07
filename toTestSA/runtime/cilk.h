@@ -128,9 +128,9 @@ struct CilkWorkerState_s;
 /************************************ |
  **********Order maintanance*********
 \************************************/
-#ifdef PARALLEL_OM_DS
+#ifndef PARALLEL_OM_DS
 	#include "OM_DS_LL.h"
-#elif defined
+#else
 	#include "OM_DS_TREE.h"
 #endif
 
