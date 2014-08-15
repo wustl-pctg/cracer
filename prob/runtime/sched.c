@@ -1933,8 +1933,22 @@ void Cilk_batchify(CilkWorkerState *const ws,
 
       num_ops = compact(ws, pending, work_array, record);
 
-      Closure* t = USE_PARAMETER(invoke_batch);
-      BatchFrame* f = USE_SHARED(batch_frame);
+      /* Closure* t = USE_PARAMETER(invoke_batch); */
+      /* BatchFrame* f = USE_SHARED(batch_frame); */
+      BatchArgs args;
+      Closure t;
+      BatchFrame f;
+
+      t->join_counter = 0;
+      t->status = CLOSURE_READY;
+      t->parent = (Closure *) NULL;
+      WHEN_CILK_DEBUG(t->owner_ready_deque = NOBODY);
+
+      f->header.entry = 0;
+      f->header.sig = USE_SHARED(invoke_batch_sig);
+      f->args = &args;
+      WHEN_CILK_DEBUG(f->header.magic = CILK_STACKFRAME_MAGIC);
+
 
       // Only need these for the slow version.
       f->args->ds = ds;
@@ -1943,16 +1957,22 @@ void Cilk_batchify(CilkWorkerState *const ws,
       f->args->op = op;
 
       /* deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); */
-      /* Closure_lock(ws, t); */
-      /* setup_for_execution(ws, t); */
-      /* Closure_unlock(ws, t); */
-      /* deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques)); */
+      /* Closure_lock(ws, &t); */
+      /* setup_for_execution(ws, &t); */
+      /* Closure_unlock(ws, &t); */
+      /* deque_add_bottom(ws, &t, ws->self, USE_PARAMETER(ds_deques)); */
       /* deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques)); */
+			do_what_it_says(ws, &t, USE_PARAMETER(ds_deques));
 
-      reset_batch_closure(ws->context);
+			deque_lock(ws, ws->self, ws->current_deque_pool);
+			t = deque_xtract_bottom(ws, ws->self, ws->current_deque_pool);
+			deque_unlock(ws, ws->self, ws->current_deque_pool);
 
-      batch_scheduler(ws, ws->batch_id, t);
-			/* do_what_it_says(ws, t, USE_PARAMETER(ds_deques)); */
+
+      /* reset_batch_closure(ws->context); */
+      /* batch_scheduler(ws, ws->batch_id, t); */
+
+
       //      invoke_batch(ws, ds, op, num_ops);
 
     } else {
