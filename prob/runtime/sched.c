@@ -195,6 +195,8 @@ static void init_deques(CilkContext *const context)
 		USE_PARAMETER1(ds_deques)[i].top = (Closure *) NULL;
 		USE_PARAMETER1(ds_deques)[i].bottom = (Closure *) NULL;
 		WHEN_CILK_DEBUG(USE_PARAMETER1(ds_deques)[i].mutex_owner = NOBODY);
+
+    
 	}
 }
 
@@ -1929,7 +1931,6 @@ void Cilk_batchify(CilkWorkerState *const ws,
 
       }
 
-
       num_ops = compact(ws, pending, work_array, record);
 
       Closure* t = USE_PARAMETER(invoke_batch);
@@ -2105,6 +2106,11 @@ void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws)
 	ws->ds_cache.stack =
 		Cilk_malloc_fixed(USE_PARAMETER(options->stackdepth) *
 											sizeof(CilkStackFrame *));
+  
+  // Reserve space for 'secret' batch frame.
+  ws->ds_cache.stack[0] = USE_SHARED(batch_frame)->header;
+  ws->ds_cache.stack++;
+
 	ws->stackdepth = USE_PARAMETER(options->stackdepth);
 	Cilk_switch2core(ws);
 
@@ -2116,6 +2122,8 @@ void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws)
 
 void Cilk_scheduler_per_worker_terminate(CilkWorkerState *const ws)
 {
+  // Make sure to free the 'secret' batch frame.
+  ws->ds_cache.stack--;
 	Cilk_free(ws->cache.stack);
 	Cilk_free(ws->ds_cache.stack);
 }
