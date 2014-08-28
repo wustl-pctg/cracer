@@ -443,7 +443,9 @@ void Cilk_start(CilkContext *const context,
 								void *args,
 								int return_size )
 {
-  Cilk_global_init_2(context);
+  Cilk_global_init_2(context); // @todo Why 2? Just remove the old
+                               // one, since they couldn't be bothered
+                               // to document it.
 
   /* initialize the scheduler */
   Cilk_scheduler_init_2(context);

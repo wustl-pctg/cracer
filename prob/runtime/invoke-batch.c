@@ -64,11 +64,13 @@ static inline unsigned int compact(CilkWorkerState *const ws, Batch *pending,
   return num_ops;
 }
 
-static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
+//static inline
+void Cilk_terminate_batch(CilkWorkerState *const ws)
 {
   CILK_ASSERT(ws, USE_SHARED(current_batch_id) ==
               USE_SHARED(pending_batch).batch_no);
-  CILK_ASSERT(ws, ws->batch_id == USE_SHARED(current_batch_id));
+  /* CILK_ASSERT(ws, ws->batch_id == USE_SHARED(current_batch_id) || */
+  /*             ws->batch_id + 1 == USE_SHARED(current_batch_id)); */
   Cilk_enter_state(ws, STATE_BATCH_TERMINATE);
 
   int i, index;
@@ -86,81 +88,30 @@ static inline void Cilk_terminate_batch(CilkWorkerState *const ws)
 		}
 	}
 
+  /* printf("Batch %i terminated by %i with batch_id %i.\n", */
+  /*        USE_SHARED(current_batch_id), ws->self, ws->batch_id); */
+
+	Closure *t;
+
+	deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
+	t = deque_xtract_bottom(ws, ws->self, USE_PARAMETER(ds_deques));
+	deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
+
+
   USE_SHARED(current_batch_id)++; // signal end of this batch
   USE_SHARED(batch_owner) = -1;
   __sync_lock_release(&USE_SHARED(batch_lock));
   Cilk_exit_state(ws, STATE_BATCH_TERMINATE);
 }
 
-// @todo @refactor I don't think this actually helps anything. We
-// still have to put an initial closure on the deque
-// (setup_for_execution).
-// Whether we put invoke_batch_slow on initially or the actual batch
-// function doesn't particularly matter -- someone stealing
-// invoke_batch will see that it is executing and just suspend and
-// steal again.
-// NB: I *think* this is what happens. I should check empirically just
-// to be safe.
-static void invoke_batch(CilkWorkerState* const _cilk_ws, void* dataStruct,
-                         InternalBatchOperation op,
-                         unsigned int num)
-{
-  CilkWorkerState* const ws = _cilk_ws;
-  CILK_ASSERT(ws, ws->batch_id == USE_SHARED(current_batch_id));
-  unsigned int num_ops = num;
-  int* work_array;
-  void* ds = dataStruct;
-
-  Closure* cl = USE_PARAMETER(invoke_batch);
-  deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
-  Closure_lock(ws, cl);
-  BatchFrame* f = USE_SHARED(batch_frame);
-
-  // Don't execute the op twice, so signal here to never do this
-  // again.
-  f->header.entry = 1;
-
-  setup_for_execution(ws, cl);
-  Closure_unlock(ws, cl);
-  deque_add_bottom(ws, cl, ws->self, USE_PARAMETER(ds_deques));
-  deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
-
-  BatchFrame* _cilk_frame = USE_SHARED(batch_frame);
-
-  CILK2C_START_THREAD_FAST();
-
-  work_array = _cilk_frame->args->work_array;
-
-  CILK2C_BEFORE_SPAWN_FAST();
-  CILK2C_PUSH_FRAME(_cilk_frame);
-
-  op(ws, ds, (void*)work_array, num_ops, NULL);
-
-  CILK2C_XPOP_FRAME_NORESULT(_cilk_frame, /* return nothing*/);
-  CILK2C_AFTER_SPAWN_FAST();
-
-  _cilk_frame->header.entry=2;
-  CILK2C_AT_SYNC_FAST();
-
-  // We can also spawn here, to do in parallel, optionally.
-
-  --ws->current_cache->tail;
-  CILK_WMB();
-
-  Cilk_remove_and_keep_closure_and_frame(_cilk_ws, &_cilk_frame->header,
-                                         _cilk_ws->self,
-																				 USE_PARAMETER(ds_deques));
-  Cilk_terminate_batch(_cilk_ws);
-}
-
 static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
                               BatchFrame *_cilk_frame)
 {
   //	Cilk_enter_state(_cilk_ws, STATE_BATCH_INVOKE);
-  InternalBatchOperation op;
 	void* ds;
   void* work_array;
   unsigned num_ops = 0;
+  InternalBatchOperation op;
   CilkWorkerState *const ws = _cilk_ws; /*for the USE_SHARED macro at
 																					the end of the func.*/
 
@@ -174,10 +125,10 @@ static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
     goto _sync2;
   }
 
-  op = _cilk_frame->args->op;
-  ds = _cilk_frame->args->ds;
-  work_array = _cilk_frame->args->work_array;
-  num_ops = _cilk_frame->args->num_ops;
+  ds = _cilk_frame->args.ds;
+  work_array = _cilk_frame->args.work_array;
+  num_ops = _cilk_frame->args.num_ops;
+  op = _cilk_frame->args.op;
 
   _cilk_frame->header.entry=1;
   CILK2C_BEFORE_SPAWN_SLOW();
@@ -267,18 +218,18 @@ void Batcher_init(CilkContext *const context)
 
   f = Cilk_malloc(sizeof(BatchFrame));
   f->header.sig = USE_SHARED1(invoke_batch_sig);
-  f->args = Cilk_malloc(sizeof(BatchArgs));
+  //  f->args = Cilk_malloc(sizeof(BatchArgs));
 
   t->frame = &f->header;
 
   /* Initialize the signature of a batch operation */
   memset( USE_SHARED1(invoke_batch_sig), 0 , 3*sizeof(CilkProcInfo) );
-  USE_SHARED1(invoke_batch_sig)[0].size = 0;//sizeof(int);
+  USE_SHARED1(invoke_batch_sig)[0].size = 0;
   USE_SHARED1(invoke_batch_sig)[0].index = sizeof(BatchFrame);
   USE_SHARED1(invoke_batch_sig)[0].inlet = invoke_batch_slow;
-  USE_SHARED1(invoke_batch_sig)[1].size = 0;//sizeof(int);
-  USE_SHARED1(invoke_batch_sig)[1].inlet = NULL;//invoke_batch_catch_inlet;
-  USE_SHARED1(invoke_batch_sig)[1].argsize = 0;//sizeof(BatchArgs);
+  USE_SHARED1(invoke_batch_sig)[1].size = 0;
+  USE_SHARED1(invoke_batch_sig)[1].inlet = NULL;
+  USE_SHARED1(invoke_batch_sig)[1].argsize = 0;
 
   USE_PARAMETER1(invoke_batch) = t;
   USE_SHARED1(batch_frame) = f;
@@ -291,15 +242,17 @@ void Batcher_cleanup(CilkContext *const context)
   // state.
   Closure *t = USE_PARAMETER1(invoke_batch);
 
+  USE_PARAMETER1(stage_lock) = 0;
+
   //  WHEN_CILK_DEBUG(CILK_ASSERT(NULL, t->magic == CILK_CLOSURE_MAGIC));
 	WHEN_CILK_DEBUG(t->magic = ~CILK_CLOSURE_MAGIC);
   //	WHEN_CILK_DEBUG(CILK_ASSERT1(NULL, t->malloced));
   //  Closure_clean(context, t);
-  //et  Cilk_free(t);
+  //  Cilk_free(t);
 
 
   Cilk_free(USE_SHARED1(batch_work_array));
-  Cilk_free(USE_SHARED1(batch_frame)->args);
+  //  Cilk_free(USE_SHARED1(batch_frame)->args);
   Cilk_free(USE_SHARED1(batch_frame));
   Cilk_free(USE_PARAMETER1(invoke_batch));
 }

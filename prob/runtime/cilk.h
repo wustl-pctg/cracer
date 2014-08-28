@@ -267,9 +267,9 @@ typedef struct {
 
   Cilk_time start_time;
 
-  Closure *invoke_main; // Does this need to be a pointer? Actual mem
-                        // would be faster. ***
+  Closure *invoke_main;
   Closure *invoke_batch;
+  volatile int stage_lock;
 
   /* declaration of the various hooks */
   HookList *Cilk_init_global_hooks;
@@ -570,21 +570,16 @@ typedef struct {
   void* ds;
   void* work_array;
   size_t num_ops;
-} BatchArgs; // **** move this later
+} BatchArgs;
 
 /* This is a hand-compiled procedure that calls a batch operation */
 typedef struct {
   CilkStackFrame header;
-  BatchArgs *args; // I don't think this is actually necessary. It's
-                   // a holdover from invoke_main_frame, where *args
-                   // was the command-line arguments passed in (I
-                   // think). So it's not really necessary in this
-                   // case. *** rsu
+  BatchArgs args;
   int arg_size;
   unsigned int batch_id;
   int retval;
 } BatchFrame;
-
 
 /* ??? Cilk_fake_lock and so forth probably need to be defined. */
 #ifdef __CILK2C__

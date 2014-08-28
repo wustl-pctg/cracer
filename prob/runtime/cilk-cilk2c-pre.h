@@ -1,7 +1,6 @@
 /* config.h and compiler-dep.h are included by the includer of this file. */
 FILE_IDENTITY(ident_cilk_cilk2c_pre,
 							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/cilk-cilk2c-pre.h $ $LastChangedBy: bradley $ $Rev: 1465 $ $Date: 2004-08-02 06:31:06 -0400 (Mon, 02 Aug 2004) $");
-#define BATCH_ASSERT(args...) CILK_ASSERT(args) // ***
 /*
  * Copyright (c) 2000 Massachusetts Institute of Technology
  * Copyright (c) 2000 Matteo Frigo

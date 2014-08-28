@@ -465,7 +465,7 @@ Cilk_parse_command_line(Cilk_options *options, int *argc, char *argv[]);
       100,                                      \
       1,                                        \
       0,                                        \
-      50,                                        \
+      0,                                        \
       CILK_DEFAULT_STACK_DEPTH,									\
       0,																				\
       0,																				\

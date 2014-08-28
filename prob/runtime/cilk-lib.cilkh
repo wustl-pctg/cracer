@@ -106,10 +106,15 @@ extern __cilksafe__ __nooutput__ __cilkonly__ CilkWorkerState *const _cilk_ws;
 /***********************************************************\
  * BATCHER
 \***********************************************************/
-typedef cilk void (*CilkBatchOperation)(void *dataStruct, void *data,
+
+typedef cilk 
+void (*CilkBatchOperation)(void *dataStruct, void *data,
 																	 size_t numElements, void *result);
 
 extern void Cilk_terminate_batch(CilkWorkerState *const ws);
+extern void Cilk_init_batch(CilkWorkerState *const ws);
+extern void Cilk_wait_for_stage(CilkWorkerState *const ws, int stage);
+extern void Cilk_set_stage(CilkWorkerState *const ws, int stage);
 extern void Cilk_batchify(CilkWorkerState *const ws,
 													CilkBatchOperation op, void *dataStruct,
 													void *data, size_t dataSize,
