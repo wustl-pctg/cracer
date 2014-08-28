@@ -1,0 +1,175 @@
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "pairheap.cilkh"
+
+struct pair_node
+{
+  data_t key;
+  struct pair_node* left_child;
+  struct pair_node* next_sibling;
+};
+
+struct pair_heap
+{
+  struct pair_node* root;
+  struct pair_node** tree_array;
+  size_t tree_array_size;
+};
+
+#include "pairheap_batch.cilk"
+
+/* --- *Private Methods* --- */
+
+struct pair_node* node_create()
+{
+  struct pair_node* h = malloc(sizeof(struct pair_heap));
+  h->left_child = NULL;
+  h->next_sibling = NULL;
+  return h;
+}
+
+void destroy(struct pair_node* ph)
+{
+  if (ph == NULL) return;
+  if (ph->left_child) destroy(ph->left_child);
+  if (ph->next_sibling) destroy(ph->next_sibling);
+  free(ph);
+}
+
+void print(struct pair_node* ph)
+{
+  struct pair_node* next;
+  if (ph == NULL) return;
+  printf("%i(", ph->key);
+  if (ph->next_sibling) printf("%i", ph->next_sibling->key);
+  printf("):");
+
+  next = ph->left_child;
+  while (next != NULL) {
+    printf(" %i", next->key);
+    next = next->next_sibling;
+  }
+  printf("\n");
+  print(ph->next_sibling);
+  print(ph->left_child);
+}
+
+// This is not a public method, but I don't want it to conflict with
+// other functions, e.g. link in unistd.h
+static inline struct pair_node* da_link(struct pair_node* parent,
+                                     struct pair_node* child)
+{
+  if (parent->next_sibling == child) parent->next_sibling = child->next_sibling;
+  child->next_sibling = parent->left_child;
+  parent->left_child = child;
+  return parent;
+}
+
+struct pair_node* merge(struct pair_node* heap1, struct pair_node* heap2)
+{
+  if (heap1 == NULL) return heap2;
+  if (heap2 == NULL) return heap1;
+
+  //  printf("Merging %i and %i------\n", heap1->key, heap2->key);
+
+  if (heap1->key <= heap2->key) {
+    return da_link(heap1, heap2);
+  } else {
+    return da_link(heap2, heap1);
+  }
+}
+// @todo iterative version, so I don't run out of stack space.
+struct pair_node* merge_pairs(struct pair_node* list)
+{
+  struct pair_node *next, *prev, *current;
+  if (list == NULL) return NULL;
+  if (list->next_sibling == NULL) return list;
+
+  // The simple, elegant recursive version. Stack overflow for large
+  // pairing heaps... :(
+  /* next = list->next_sibling->next_sibling; */
+  /* list->next_sibling->next_sibling = NULL; */
+  /* return merge(merge(list, list->next_sibling), */
+  /*              merge_pairs(next)); */
+
+  current = list;
+  next = current->next_sibling;
+  prev = NULL;
+  while (current != NULL) {
+
+    current = merge(current, current->next_sibling);
+    next = current->next_sibling;
+    current->next_sibling = prev; // Reverse the pointer for the way back.
+    prev = current;
+    current = next;
+  }
+
+  // Now start with prev and work our way back.
+  current = prev;
+  while (current->next_sibling != NULL) {
+    current = merge(current, current->next_sibling);
+  }
+  return current;
+}
+
+/* --- *Public Methods* --- */
+
+PairingHeap ph_create()
+{
+  PairingHeap h = malloc(sizeof(struct pair_heap));
+  h->root = NULL;
+  h->tree_array = NULL;
+  h->tree_array_size = 0;
+  return h;
+}
+
+
+PairingHeap ph_create_init(data_t elem)
+{
+  PairingHeap h = ph_create();
+  h->root = node_create();
+  h->root->key = elem;
+  return h;
+}
+
+void ph_destroy(PairingHeap this)
+{
+  destroy(this->root);
+  free(this);
+}
+
+int ph_is_empty(PairingHeap this) { return this->root == NULL; }
+
+void ph_print(PairingHeap this)
+{
+  if (this->root == NULL) {
+    printf("Empty pairing heap.\n");
+  } else {
+    printf("Pairing Heap with root key: %i.\n", this->root->key);
+    print(this->root);
+  }
+}
+
+
+data_t ph_find_min(PairingHeap this)
+{
+  if (ph_is_empty(this)) return INT_MAX;
+  return this->root->key;
+}
+
+void ph_delete_min(PairingHeap this)
+{
+  struct pair_node* old_root = this->root;
+  if (old_root == NULL) return;
+  this->root = merge_pairs(old_root->left_child);
+  free(old_root);
+}
+
+void ph_insert(PairingHeap this, data_t elem)
+{
+  struct pair_node* root = this->root;
+  struct pair_node* new_heap = node_create();
+  new_heap->key = elem;
+  this->root = merge(root, new_heap);
+}

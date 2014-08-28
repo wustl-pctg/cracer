@@ -1,0 +1,19 @@
+#define PARFOR_THRESHOLD 64
+
+#ifdef CILK
+cilk void parfor(const int begin, const int end, const int incr,
+								 const loopBodyFunc body, void *data)
+{
+  int i;
+
+  if ((end-begin)/incr <= PARFOR_THRESHOLD) {
+    for (i = begin; i <= end; i += incr) {
+      body(i, data);
+    }
+  } else {
+    i = begin+(end-begin)/2;
+    spawn parfor(begin, i, incr, body, data);
+    spawn parfor(i + 1, end, incr, body, data);
+  }
+}
+#endif

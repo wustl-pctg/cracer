@@ -1,0 +1,182 @@
+#include <stdlib.h>
+#include <stdio.h>
+
+#include <check.h>
+
+#include "common.h"
+#include "dynarray.cilk"
+
+START_TEST(test_create_empty)
+{
+  DynamicArray d = da_create();
+  ck_assert_ptr_ne(d, NULL);
+  ck_assert_ptr_ne(d->array, NULL);
+  ck_assert_uint_eq(d->current_size, 0);
+  ck_assert_uint_gt(d->max_size, 0);
+
+  da_destroy(d);
+}
+END_TEST
+
+START_TEST(test_create_sized)
+{
+  DynamicArray d = da_create_sized(53);
+
+  ck_assert_ptr_ne(d, NULL);
+  ck_assert_ptr_ne(d->array, NULL);
+  ck_assert_uint_eq(d->current_size, 0);
+  ck_assert_uint_eq(d->max_size, 53);
+
+  da_destroy(d);
+}
+END_TEST
+
+START_TEST(test_push_back)
+{
+  DynamicArray d = da_create();
+  da_push_back(d, 42);
+  ck_assert_int_eq(da_get_item(d,0), 42);
+
+  da_push_back(d, 29);
+  da_push_back(d, 57);
+
+  ck_assert_int_eq(da_get_item(d,0), 42);
+  ck_assert_int_eq(da_get_item(d,1), 29);
+  ck_assert_int_eq(da_get_item(d,2), 57);
+
+  da_destroy(d);
+}
+END_TEST
+
+START_TEST(test_insert)
+{
+  DynamicArray d = da_create();
+  da_push_back(d, 103);
+  da_push_back(d, 1);
+
+  da_insert(d, 2000, 1);
+  da_insert(d, 5087, 2);
+
+  ck_assert_int_eq(da_get_item(d,0), 103);
+  ck_assert_int_eq(da_get_item(d,1), 2000);
+  ck_assert_int_eq(da_get_item(d,2), 5087);
+
+  da_destroy(d);
+
+}
+END_TEST
+
+START_TEST(test_resize)
+{
+  DynamicArray d = da_create_sized(2);
+  da_push_back(d, 42);
+  ck_assert_int_eq(da_get_item(d,0), 42);
+
+  data_t* old_array = d->array;
+  da_resize(d, 1);
+  ck_assert_ptr_eq(old_array, d->array);
+  ck_assert_uint_eq(d->max_size, 2);
+
+  da_resize(d, 50);
+  ck_assert_ptr_ne(old_array, d->array);
+  ck_assert_uint_eq(d->max_size, 50);
+  ck_assert_int_eq(da_get_item(d,0), 42);
+
+  da_destroy(d);
+}
+END_TEST
+
+START_TEST(test_push_back_full)
+{
+  DynamicArray d = da_create_sized(1);
+
+  da_push_back(d, 42);
+  ck_assert_int_eq(da_get_item(d,0), 42);
+  ck_assert_uint_eq(d->current_size, 1);
+  ck_assert_uint_eq(d->max_size, 2);
+
+  da_push_back(d, 58);
+  ck_assert_int_eq(da_get_item(d,1), 58);
+  ck_assert_uint_eq(d->current_size, 2);
+  ck_assert_uint_eq(d->max_size, 4);
+
+  da_destroy(d);
+}
+END_TEST
+
+START_TEST(test_batch_push_back)
+{
+  DynamicArray d = da_create_sized(10);
+  data_t array[5] = {0, 5, 7, 234, 99};
+
+  da_batch_push_back((void*)d, (void*)array, 5, NULL);
+
+  for (int i = 0; i < 5; ++i) {
+    ck_assert_int_eq(da_get_item(d, i), array[i]);
+  }
+
+  data_t array2[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+  da_batch_push_back((void*)d, (void*)array2, 10, NULL);
+
+  for (int i = 0; i < 5; ++i) {
+    ck_assert_int_eq(da_get_item(d, i), array[i]);
+  }
+  for (int i = 5; i < 15; ++i) {
+    ck_assert_int_eq(da_get_item(d, i), array2[i-5]);
+  }
+
+  da_destroy(d);
+}
+END_TEST
+
+START_TEST(test_batch_stress)
+{
+  size_t num_items = 2048;
+  DynamicArray d = da_create_sized(1);
+  data_t* array = malloc(sizeof(data_t) * num_items);
+  da_batch_push_back((void*)d, (void*)array, num_items, NULL);
+
+  for (int i = 0; i < num_items; ++i) {
+    ck_assert_int_eq(da_get_item(d, i), array[i]);
+  }
+
+  da_destroy(d);
+
+}
+END_TEST
+
+Suite* dynamic_array_heap_suite(void)
+{
+  Suite* s = suite_create("Dynamic Array Tests");
+
+  TCase* tc_create = tcase_create("Creation Methods");
+  tcase_add_test(tc_create, test_create_empty);
+  tcase_add_test(tc_create, test_create_sized);
+  suite_add_tcase(s, tc_create);
+
+  TCase* tc_modifiers = tcase_create("Modification Methods");
+  tcase_add_test(tc_modifiers, test_push_back);
+  tcase_add_test(tc_modifiers, test_insert);
+  tcase_add_test(tc_modifiers, test_resize);
+  tcase_add_test(tc_modifiers, test_push_back_full);
+  suite_add_tcase(s, tc_modifiers);
+
+  TCase* tc_batch = tcase_create("Batch Method");
+  tcase_add_test(tc_batch, test_batch_push_back);
+  tcase_add_test(tc_batch, test_batch_stress);
+  suite_add_tcase(s, tc_batch);
+
+  return s;
+}
+
+int main(void)
+{
+  int number_failed;
+  Suite *s = dynamic_array_heap_suite();
+  SRunner *sr = srunner_create(s);
+  srunner_run_all(sr, CK_NORMAL);
+  number_failed = srunner_ntests_failed(sr);
+  srunner_free(sr);
+  return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+}

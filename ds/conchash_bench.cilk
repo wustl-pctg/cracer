@@ -1,0 +1,95 @@
+// Benchmark runs for a concurrent hash table.
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
+
+#ifdef CILK
+#include <cilk-lib.cilkh>
+#endif
+
+#include "common.h"
+#include "benchopt.h"
+#include "timer.h"
+#include "conchash.cilkh"
+
+#define INIT_SIZE 20000
+
+int g_par_threshold = 32;
+BenchOptions g_options;
+int* g_vals;
+int g_num_spots;
+HashTable g_table;
+
+cilk void set_up(size_t initial_size, size_t num_ops)
+{
+  int i;
+  g_table = ht_create();
+
+  for (i = 0; i < initial_size; ++i) {
+    // spawn
+    ht_insert(g_table, rand());
+    //    sync;
+  }
+
+  g_vals = malloc(sizeof(data_t) * num_ops * g_num_spots);
+  if (!g_vals) fprintf(stderr, "insufficient memory (vals)\n");
+
+  for (i = 0; i < num_ops * g_num_spots; ++i) {
+    if (rand() % 2 == 0) g_vals[i] = -rand();
+    else g_vals[i] = rand();
+  }
+
+  return;
+}
+
+cilk void parfor_ht(const int begin, const int end)
+{
+  int i;
+
+  if (end - begin <= g_par_threshold) {
+
+    for (i = begin; i < end; ++i) {
+#ifdef CILK
+      if (g_vals[i] < 0) ht_par_remove(_cilk_ws, g_table, -g_vals[i]);
+      else ht_par_insert(_cilk_ws, g_table, g_vals[i]);
+#else
+      if (g_vals[i] < 0) ht_remove(g_table, -g_vals[i]);
+      else ht_insert(g_table, g_vals[i]);
+#endif
+          }
+
+  } else {
+    i = begin + (end - begin) / 2;
+    spawn parfor_ht(begin, i);
+    spawn parfor_ht(i, end);
+  }
+}
+
+cilk int main(int argc, char* argv[])
+{
+  size_t num_ops;
+  size_t initial_size;
+
+  get_options(argc, argv, &g_options);
+  num_ops = g_options.operations;
+  initial_size = g_options.initial_size > 0 ?
+    g_options.initial_size : INIT_SIZE;
+
+#ifdef CILK
+  g_num_spots = _cilk_ws->context->Cilk_RO_params->batchvals;
+#else
+  g_num_spots = 1;
+#endif
+
+  spawn set_up(initial_size, num_ops);
+  sync;
+
+  timer_start();
+  spawn parfor_ht(0, num_ops);
+  sync;
+  timer_stop();
+
+  printf("%lf\n", timer_get_wall_time());
+
+  return 0;
+}

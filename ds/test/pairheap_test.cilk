@@ -1,0 +1,307 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
+//#include <mcheck.h>
+
+#include <check.h>
+
+#include "common.h"
+#include "pairheap.cilk"
+
+
+START_TEST(test_create_empty)
+{
+  PairingHeap h = ph_create();
+  
+  ck_assert_ptr_ne(h, NULL);
+  ck_assert_ptr_eq(h->root, NULL);
+
+  /* ck_assert_int_eq(mprobe(h->root), MCHECK_OK); */
+  /* ck_assert_int_eq(mprobe(h), MCHECK_OK); */
+
+  ph_destroy(h);
+}
+END_TEST
+
+START_TEST(test_create_init)
+{
+  PairingHeap h = ph_create_init(5);
+
+  ck_assert_ptr_ne(h, NULL);
+  ck_assert_ptr_ne(h->root, NULL);
+  ck_assert_ptr_eq(h->root->left_child, NULL);
+  ck_assert_ptr_eq(h->root->next_sibling, NULL);
+  ck_assert_int_eq(h->root->key, 5);
+
+  ph_destroy(h);
+}
+END_TEST
+
+START_TEST(test_destroy_simple)
+{
+  PairingHeap h = ph_create_init(42);
+  struct pair_node* inner = h->root;
+
+  ph_destroy(h);
+
+  UNUSED(inner);
+
+  /* ck_assert_int_eq(mprobe(inner), MCHECK_FREE); */
+  /* ck_assert_int_eq(mprobe(h), MCHECK_FREE); */
+}
+END_TEST
+
+START_TEST(test_insert_start_empty)
+{
+  PairingHeap h = ph_create();
+
+  ph_insert(h, 7);
+  ck_assert_int_eq(ph_find_min(h), 7);
+
+  ph_destroy(h);
+}
+END_TEST
+
+START_TEST(test_insert_start_init)
+{
+  PairingHeap h = ph_create_init(5);
+  ck_assert_int_eq(ph_find_min(h), 5);
+
+  ph_insert(h, 7);
+  ck_assert_int_eq(ph_find_min(h), 5);
+
+  ph_destroy(h);
+}
+END_TEST
+
+START_TEST(test_insert_multiple)
+{
+  PairingHeap h = ph_create();
+
+  ph_insert(h, 5);
+  //  ck_assert_uint_eq(ph_size(h), 1);
+  ck_assert_int_eq(ph_find_min(h), 5);
+
+  ph_insert(h, 4);
+  //  ck_assert_uint_eq(ph_size(h), 2);
+  ck_assert_int_eq(ph_find_min(h), 4);
+
+  ph_insert(h, 7);
+  //  ck_assert_uint_eq(ph_size(h), 3);
+  ck_assert_int_eq(ph_find_min(h), 4);
+
+  ph_destroy(h);
+}
+END_TEST
+
+START_TEST(test_delete_min_empty)
+{
+  PairingHeap h = ph_create();
+
+  ck_assert_int_eq(ph_is_empty(h), 1);
+  //  ck_assert_uint_eq(ph_size(h), 0);
+  ph_delete_min(h);
+  ck_assert_int_eq(ph_is_empty(h), 1);
+  //  ck_assert_uint_eq(ph_size(h), 0);
+
+  ph_destroy(h);
+}
+END_TEST
+
+START_TEST(test_delete_min_single)
+{
+  PairingHeap h = ph_create();
+
+  ph_insert(h, 42);
+  //  ck_assert_uint_eq(ph_size(h), 1);
+  ck_assert_int_eq(ph_find_min(h), 42);
+
+  ph_delete_min(h);
+  //  ck_assert_uint_eq(ph_size(h), 0);
+  ck_assert_int_eq(ph_find_min(h), INT_MAX);
+
+  ph_destroy(h);
+}
+END_TEST
+
+START_TEST(test_delete_min_multiple)
+{
+  PairingHeap h = ph_create_init(57);
+
+  ph_insert(h, 27);
+  ph_insert(h, 43);
+  ck_assert_int_eq(ph_find_min(h), 27);
+
+  ph_delete_min(h);
+  ck_assert_int_eq(ph_find_min(h), 43);
+
+  ph_delete_min(h);
+  ck_assert_int_eq(ph_find_min(h), 57);
+
+  ph_destroy(h);
+}
+END_TEST
+
+START_TEST(test_merge_pairs)
+{
+  PairingHeap h = ph_create_init(7);
+  data_t array[6] = {44, 72, 30, 58, 73, 49};
+
+  for (int i = 0; i < 6; ++i) {
+    ph_insert(h, array[i]);
+  }
+  ck_assert_ptr_eq(h->root->next_sibling, NULL);
+  ck_assert_int_eq(ph_find_min(h), 7);
+
+  ph_delete_min(h);
+  ck_assert_ptr_ne(h->root, NULL);
+  ck_assert_ptr_eq(h->root->next_sibling, NULL);
+  ck_assert_int_eq(ph_find_min(h), 30);
+
+  ph_delete_min(h);
+  ck_assert_ptr_eq(h->root->next_sibling, NULL);
+  ck_assert_int_eq(ph_find_min(h), 44);
+
+  ph_delete_min(h);
+  ck_assert_ptr_eq(h->root->next_sibling, NULL);
+  ck_assert_int_eq(ph_find_min(h), 49);
+
+  ph_delete_min(h);
+  ck_assert_ptr_eq(h->root->next_sibling, NULL);
+  ck_assert_int_eq(ph_find_min(h), 58);
+
+  ph_delete_min(h);
+  ck_assert_ptr_eq(h->root->next_sibling, NULL);
+  ck_assert_int_eq(ph_find_min(h), 72);
+
+  ph_delete_min(h);
+  ck_assert_ptr_eq(h->root->next_sibling, NULL);
+  ck_assert_int_eq(ph_find_min(h), 73);
+
+  ph_delete_min(h);
+  ck_assert_ptr_eq(h->root, NULL);
+  ck_assert_int_eq(ph_find_min(h), INT_MAX);
+}
+END_TEST
+
+START_TEST(test_batch_insert_empty)
+{
+  PairingHeap h = ph_create();
+  data_t array[10] = {4, 3, 6, 5, 9, 8, 7, 1, 2, 0};
+  ph_batch((void*)h, (void*)array, 10, NULL);
+
+  for (int i = 0; i < 10; ++i) {
+    ck_assert_int_eq(ph_find_min(h), i);
+    ph_delete_min(h);
+  }
+  ph_destroy(h);
+}
+END_TEST
+
+START_TEST(test_batch_insert)
+{
+  PairingHeap h = ph_create_init(5);
+  data_t array[9] = {4, 3, 6, 9, 8, 7, 1, 2, 0};
+  ph_batch((void*)h, (void*)array, 9, NULL);
+
+  for (int i = 0; i < 10; ++i) {
+    ck_assert_int_eq(ph_find_min(h), i);
+    ph_delete_min(h);
+  }
+
+  ph_destroy(h);
+
+}
+END_TEST
+
+START_TEST(test_batch_both)
+{
+  PairingHeap h = ph_create();
+  data_t array1[5] = {4, 7, 2, 6, 5};
+  ph_batch((void*)h, (void*)array1, 5, NULL);
+  data_t array2[5] = {INT_MAX, 1, INT_MAX, 9, INT_MAX};
+  ph_batch((void*)h, (void*)array2, 5, NULL);
+
+  ck_assert_int_eq(ph_find_min(h), 5);
+  ph_delete_min(h);
+  ck_assert_int_eq(ph_find_min(h), 6);
+  ph_delete_min(h);
+  ck_assert_int_eq(ph_find_min(h), 7);
+  ph_delete_min(h);
+  ck_assert_int_eq(ph_find_min(h), 9);
+  ph_delete_min(h);
+}
+END_TEST
+
+START_TEST(test_batch_stress)
+{
+  PairingHeap h = ph_create();
+  data_t array[16];
+  int num_tests = 100;
+
+  for (int i = 0; i < num_tests; ++i) {
+    for (int j = 0; j < 16; ++j) {
+      if (rand() % 2 == 0) array[j] = INT_MAX;
+      else array[j] = rand();
+    }
+    ph_batch((void*)h, (void*)array, 16, NULL);
+  }
+}
+END_TEST
+
+Suite* pairing_heap_suite(void)
+{
+  Suite* s = suite_create("Pairing Heap Tests");
+
+  TCase* tc_create = tcase_create("Func: create");
+  tcase_add_test(tc_create, test_create_empty);
+  tcase_add_test(tc_create, test_create_init);
+  suite_add_tcase(s, tc_create);
+
+  TCase* tc_destroy = tcase_create("Func: destroy");
+  tcase_add_test(tc_destroy, test_destroy_simple);
+  //  tcase_add_test(tc_destroy, test_destroy_small); Add and remove
+  //  some things, then free.
+  suite_add_tcase(s, tc_destroy);
+
+  TCase* tc_merge = tcase_create("Func: merge");
+  tcase_add_test(tc_merge, test_merge_pairs);
+  suite_add_tcase(s, tc_merge);
+
+  /* TCase* tc_find_min = tcase_create("Func: find_min"); */
+  /* tcase_add_test(tc_xx, test_xx); */
+  /* suite_add_tcase(s, tc_xx); */
+
+  TCase* tc_delete_min = tcase_create("Func: seq_delete_min");
+  tcase_add_test(tc_delete_min, test_delete_min_empty);
+  tcase_add_test(tc_delete_min, test_delete_min_single);
+  tcase_add_test(tc_delete_min, test_delete_min_multiple);
+  tcase_add_test(tc_delete_min, test_merge_pairs);
+  suite_add_tcase(s, tc_delete_min);
+
+  TCase* tc_insert = tcase_create("Func: seq_insert");
+  tcase_add_test(tc_insert, test_insert_start_empty);
+  tcase_add_test(tc_insert, test_insert_start_init);
+  tcase_add_test(tc_insert, test_insert_multiple);
+  suite_add_tcase(s, tc_insert);
+
+  TCase* tc_batch = tcase_create("Func: batch");
+  tcase_add_test(tc_batch, test_batch_insert);
+  tcase_add_test(tc_batch, test_batch_insert_empty);
+  tcase_add_test(tc_batch, test_batch_both);
+  tcase_add_test(tc_batch, test_batch_stress);
+  suite_add_tcase(s, tc_batch);
+
+  return s;
+}
+
+int main(void)
+{
+  int number_failed;
+  Suite *s = pairing_heap_suite();
+  SRunner *sr = srunner_create(s);
+  srunner_run_all(sr, CK_NORMAL);
+  number_failed = srunner_ntests_failed(sr);
+  srunner_free(sr);
+  return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+}

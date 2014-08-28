@@ -1,0 +1,155 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+#include <math.h>
+
+#include "conchash.cilkh"
+
+struct bucket
+{
+  data_t item;
+  size_t num_entries;
+  struct bucket* next;
+  struct bucket* prev;
+};
+
+struct ht
+{
+  struct bucket* array;
+  size_t size; // Num entries in the array.
+  size_t load; // Num data items in the table.
+};
+
+#define HASH(e) HASH_FUNC(this->size, e)
+
+#include "conchash_batch.cilk"
+
+#define PHI 0.61803 // (sqrt(5)-1)/2
+// Simple hash function for now. Might improve later, if time.
+size_t ht_default_hash(size_t size, data_t item)
+{
+	double k = (double) item;
+  size_t pos;
+	
+  // Is ab supposed to be abs?
+  pos = floor(size * ( abs(k * PHI - floor(k * PHI))));
+  return pos;
+}
+
+struct bucket* find(HashTable this, data_t item)
+{
+  struct bucket* result = &this->array[HASH(item)];
+
+  while (result->item != item) {
+    if (result->next == NULL) return NULL;
+    result = result->next;
+  }
+  if (result->num_entries == 0) return NULL;
+  return result;
+}
+
+HashTable ht_create(void) { return ht_create_sized(DEFAULT_SIZE); }
+HashTable ht_create_sized(size_t size)
+{
+  HashTable ht = malloc(sizeof(struct ht));
+  ht->array = calloc(size, sizeof(struct bucket));
+  ht->size = size;
+  ht->load = 0;
+  return ht;
+}
+
+void ht_destroy(HashTable this)
+{
+  int i;
+  struct bucket* b;
+  struct bucket* next;
+
+  for (i = 0; i < this->size; ++i) {
+    b = &this->array[i];
+    if (b->next == NULL) continue;
+    b = b->next;
+
+    while (b != NULL) {
+      next = b->next;
+      free(b);
+      b = next;
+    }
+  }
+
+  free(this->array);
+  free(this);
+}
+
+void ht_print(HashTable this)
+{
+  int i;
+  struct bucket* b;
+  printf("Hash table: %p\n", this->array);
+  printf("Size: %zu, Load: %zu\n", this->size, this->load);
+
+  for (i = 0; i < this->size; ++i) {
+    b = &this->array[i];
+    printf("Items at %i:", i);
+    while (b != NULL) {
+      if (b->num_entries == 0) break;
+      printf(" %i", b->item);
+      b = b->next;
+    }
+    printf("\n");
+  }
+}
+
+size_t ht_get_size(HashTable this) { return this->size; }
+size_t ht_get_load(HashTable this) { return this->load; }
+
+size_t ht_search(HashTable this, data_t key)
+{
+  struct bucket* b = find(this, key);
+  if (b != NULL) return b->num_entries;
+  return 0;
+}
+
+void ht_insert(HashTable this, data_t item)
+{
+  struct bucket* b;
+
+  if (this->load >= ((double)this->size * GROW_RATIO))
+    ht_resize(this, this->size * 2);
+
+  b = &this->array[HASH(item)];
+
+  while (b->num_entries > 0 && b->item != item) {
+    if (b->next == NULL) {
+      b->next = calloc(1, sizeof(struct bucket));
+      b->next->prev = b;
+    }
+    b = b->next;
+  }
+  assert(b);
+  if (b->num_entries == 0) this->load++;
+  b->num_entries++;
+  b->item = item;
+}
+
+size_t ht_remove(HashTable this, data_t item)
+{
+  struct bucket* b = find(this, item);
+  if (b == NULL) return 0;
+  assert(b->num_entries > 0);
+
+  b->num_entries--;
+  if (b->num_entries == 0) {
+    this->load--;
+
+    if (b->prev != NULL) {
+      b->prev->next = NULL;
+      free(b);
+    }
+
+  }
+
+  // @todo sometimes we do want to shrink, but not below some set size...
+  /* if (this->load <= ((double)this->size * SHRINK_RATIO)) */
+  /*   ht_resize(this, this->size / 2);   */
+  return b->num_entries;
+}

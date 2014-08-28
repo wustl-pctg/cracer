@@ -1,0 +1,51 @@
+/** @file dynarray.h
+ *  @brief Function prototypes for a Dynamic Array data structure.
+ *
+ *  @author Tyler Romero
+ *  @author Robert Utterback
+ *
+ *  @bug No known bugs.
+ *  @todo Write batch function.
+ */
+
+#ifndef _DYNARRAY_H
+#define _DYNARRAY_H
+
+#include "common.h"
+
+#define DEFAULT_SIZE 1024
+#define SEQ_COPY_THRESHOLD 512
+
+typedef int data_t;
+typedef int index_t;
+typedef struct dyn_array* DynamicArray;
+
+/** @brief Create a dynamic array of *default* size.
+ *  @return The dynamic array that was allocated.
+ */
+DynamicArray da_create();
+DynamicArray da_create_sized(size_t size);
+void da_destroy(DynamicArray this);
+void da_print(DynamicArray this);
+
+data_t da_get_item(DynamicArray this, index_t i);
+size_t da_get_size(DynamicArray this);
+
+void da_insert(DynamicArray this, data_t item, size_t pos);
+
+// This is only a cilk function because it may want to resize in
+// parallel. Should probably split these into separate functions so
+// that a use doesn't need to spawn all the time...or just switch to cilkplus.
+cilk void da_push_back(DynamicArray this, data_t item);
+
+
+// Possibly, but not necessarily, parallel methods.
+cilk void da_batch_push_back(void* ds, void* data, size_t num_items, void* res);
+cilk void da_resize(DynamicArray this, size_t new_size);
+
+// Methods that only make sense in a parallel context.
+#ifdef CILK
+void da_par_push_back(CilkWorkerState* const ws, DynamicArray this, data_t item);
+#endif
+
+#endif // _DYNARRAY_H

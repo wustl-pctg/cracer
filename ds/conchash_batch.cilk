@@ -1,0 +1,47 @@
+/** @file conchash_batch.cilk
+ *  @brief Parallel batch functions for a concurrent hash table.
+ *
+ *  @author Tyler Romero
+ *  @author Kefu Lu
+ *
+ * @bug No known bugs.
+ */
+#ifdef CILK
+#include <cilk-lib.cilkh>
+
+void ht_par_insert(CilkWorkerState* const ws, HashTable this, data_t item)
+{
+  Cilk_batchify(ws, ht_batch_both, this, &item, sizeof(data_t), NULL);
+}
+void ht_par_remove(CilkWorkerState* const ws, HashTable this, data_t item)
+{
+  Cilk_batchify(ws, ht_batch_both, this, &item, sizeof(data_t), NULL);
+}
+#endif
+
+cilk void copy(struct bucket* old_array, struct bucket* new_array,
+               size_t size)
+{
+
+}
+
+cilk void ht_resize(HashTable this, size_t new_size)
+{
+
+}
+
+cilk void ht_batch_insert(void* ds, void* data, size_t num_items, void* res)
+{
+
+}
+
+cilk void ht_batch_remove(void* ds, void* data, size_t num_items, void* res)
+{
+
+}
+
+cilk void ht_batch_both(void* ds, void* data, size_t num_items, void* res)
+{
+
+}
+

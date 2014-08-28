@@ -1,0 +1,64 @@
+/** @file dynarray_batch.cilk
+ *  @brief Parallel batch functions for a Dynamic Array.
+ *
+ * @author Tyler Romero
+ * @author Robert Utterback
+ *
+ * @bug No known bugs.
+ */
+#include <string.h>
+#ifdef CILK
+#include <cilk-lib.cilkh>
+#endif
+
+#ifdef CILK
+void da_par_push_back(CilkWorkerState* const ws, DynamicArray this, data_t item)
+{
+  Cilk_batchify(ws, da_batch_push_back, this, &item, sizeof(data_t), NULL);
+  return;
+}
+#endif
+
+/** @brief Copy from one array to another, possibly in parallel.
+ *  @param old_array The 'from' array.
+ *  @param new_array The 'to' array.
+ *  @param num_items
+ */
+
+cilk void copy(data_t* old_array, data_t* new_array, size_t num_items)
+{
+  size_t new_num;
+  if (num_items <= SEQ_COPY_THRESHOLD) {
+    memcpy(new_array, old_array, num_items * sizeof(data_t));
+  } else {
+    new_num = num_items / 2;
+    spawn copy(old_array, new_array, new_num);
+    spawn copy(old_array + new_num + 1, new_array + new_num + 1,
+               num_items - new_num);
+  }
+}
+
+cilk void da_batch_push_back(void* ds, void* data, size_t num_items,
+                             void* res)
+{
+  DynamicArray this = (struct dyn_array*) ds;
+  data_t* items = (data_t*) data;
+  //  USE_UNUSED(res);
+  //  res++;
+
+  if (num_items >= this->max_size) {
+    spawn da_resize(this, num_items * 2);
+    sync;
+  }
+
+  if (num_items + this->current_size >= this->max_size) {
+    spawn da_resize(this, this->max_size * 2);
+    sync;
+  }
+
+  spawn copy(items, this->array + this->current_size, num_items);
+  sync;
+
+  this->current_size += num_items;
+  return;
+}

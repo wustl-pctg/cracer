@@ -1,0 +1,53 @@
+/** @file conchash.cilkh
+ *  @brief Function prototypes for a (concurrent) hash table.
+ *
+ *  @author Tyler Romero
+ *  @author Kefu Lu
+ *  @author Robert Utterback
+ *
+ *  @bug No known bugs.
+ */
+
+#ifndef _CONCHASH_CILKH
+#define _CONCHASH_CILKH
+
+#include "common.h"
+
+typedef int data_t;
+typedef struct ht* HashTable;
+
+#define DEFAULT_SIZE 1024
+#define SEQ_COPY_THRESHOLD 512
+#define GROW_RATIO 0.5 // > 50% load
+#define SHRINK_RATIO 0.25 // < 25% load
+size_t ht_default_hash(size_t size, data_t item);
+#define HASH_FUNC ht_default_hash
+
+/** @brief Create a hash table of *default* size.
+ *  @return The hash table that was allocated.
+ */
+HashTable ht_create(void);
+HashTable ht_create_sized(size_t size);
+void ht_destroy(HashTable this);
+void ht_print(HashTable this);
+
+size_t ht_get_size(HashTable this);
+size_t ht_get_load(HashTable this);
+size_t ht_search(HashTable this, data_t key);
+
+void ht_insert(HashTable this, data_t item);
+size_t ht_remove(HashTable this, data_t item);
+
+// Possibly, but not necessarily, parallel methods.
+cilk void ht_resize(HashTable this, size_t new_size);
+cilk void ht_batch_insert(void* ds, void* data, size_t num_items, void* res);
+cilk void ht_batch_remove(void* ds, void* data, size_t num_items, void* res);
+cilk void ht_batch_both(void* ds, void* data, size_t num_items, void* res);
+
+// Methods that only make sense in a parallel context.
+#ifdef CILK
+void ht_par_insert(CilkWorkerState* const ws, HashTable this, data_t item);
+void ht_par_remove(CilkWorkerState* const ws, HashTable this, data_t item);
+#endif
+
+#endif // _CONC_CILKH

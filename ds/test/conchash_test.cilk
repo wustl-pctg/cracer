@@ -1,0 +1,97 @@
+#include <stdio.h>
+#include <stdlib.h>
+//#include <mcheck.h>
+
+#include <check.h>
+
+#include "conchash.cilk"
+
+#define EXIT_SUCCESS 0
+#define EXIT_FAILURE 1
+
+START_TEST(test_create)
+{
+  HashTable ht = ht_create();
+
+  ck_assert_ptr_ne(ht, NULL);
+  ck_assert_ptr_ne(ht->array, NULL);
+  ck_assert_uint_eq(ht->load, 0);
+  ck_assert_uint_eq(ht->size, DEFAULT_SIZE);
+
+  ht_destroy(ht);
+}
+END_TEST
+
+START_TEST(test_create_sized)
+{
+  HashTable ht = ht_create_sized(42);
+
+  ck_assert_ptr_ne(ht, NULL);
+  ck_assert_ptr_ne(ht->array, NULL);
+  ck_assert_uint_eq(ht->load, 0);
+  ck_assert_uint_eq(ht->size, 42);
+
+  ht_destroy(ht);
+}
+END_TEST
+
+START_TEST(test_insert)
+{
+  HashTable ht = ht_create();
+
+  ck_assert_uint_eq(ht_search(ht,55), 0);
+  ht_insert(ht,55);
+  ck_assert_uint_eq(ht_search(ht,55), 1);
+  ht_insert(ht,55);
+  ck_assert_uint_eq(ht_search(ht,55), 2);
+
+  ht_destroy(ht);
+}
+END_TEST
+
+START_TEST(test_remove)
+{
+  HashTable ht = ht_create();
+
+  ck_assert_uint_eq(ht_remove(ht,49), 0);
+  ht_insert(ht,49);
+  ht_insert(ht,49);
+  ck_assert_uint_eq(ht_remove(ht,49), 1);
+  ht_remove(ht,49);
+  ck_assert_uint_eq(ht_remove(ht,49), 0);
+  ck_assert_uint_eq(ht_search(ht,55), 0);
+
+  ht_destroy(ht);
+}
+END_TEST
+
+Suite* hash_table_suite(void)
+{
+  Suite* s = suite_create("Concurrent Hash Table tests");
+
+  TCase* tc_create = tcase_create("Func: create");
+  tcase_add_test(tc_create, test_create);
+  tcase_add_test(tc_create, test_create_sized);
+  suite_add_tcase(s, tc_create);
+
+  TCase* tc_insert = tcase_create("Hash Table Insert");
+  tcase_add_test(tc_insert, test_insert);
+  suite_add_tcase(s, tc_insert);
+
+  TCase* tc_remove = tcase_create("Hash Table Remove");
+  tcase_add_test(tc_remove, test_remove);
+  suite_add_tcase(s, tc_remove);
+
+  return s;
+}
+
+int main(void)
+{
+  int number_failed;
+  Suite *s = hash_table_suite();
+  SRunner *sr = srunner_create(s);
+  srunner_run_all(sr, CK_NORMAL);
+  number_failed = srunner_ntests_failed(sr);
+  srunner_free(sr);
+  return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
