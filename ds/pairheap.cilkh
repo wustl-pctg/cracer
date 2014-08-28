@@ -1,0 +1,47 @@
+// A batched pairing heap.
+// Robert Utterback
+//#include <cilk-lib.cilkh>
+#ifndef _PAIR_HEAP_H
+#define _PAIR_HEAP_H
+
+#include "common.h"
+
+typedef int data_t;
+typedef struct pair_heap* PairingHeap;
+
+// @todo A create function which takes an array of items for an
+// initial heap.
+//PairingHeap ph_heapify(data_t* array, size_t num_elems);
+PairingHeap ph_create();
+PairingHeap ph_create_init(data_t elem);
+void ph_destroy(PairingHeap this);
+
+// Primary methods
+data_t ph_find_min(PairingHeap this);
+void ph_delete_min(PairingHeap this);
+void ph_insert(PairingHeap this, data_t elem);
+
+#ifdef CILK
+data_t ph_par_delete_min(CilkWorkerState* const ws,
+                         PairingHeap this);
+void ph_par_insert(CilkWorkerState* const ws,
+                   PairingHeap this, data_t elem);
+#endif
+
+// Auxiliary methods
+int ph_is_empty(PairingHeap this);
+//size_t ph_size(PairingHeap this);
+void ph_print(PairingHeap this);
+
+// Batch functions.
+cilk void ph_batch(void* ds, void* data, size_t num_elems, void* res);
+cilk void ph_batch_insert(void* ds, void* data, size_t num_elems, void* res);
+cilk void ph_batch_delete_min(void* ds, void* data, size_t num_elems, void* res);
+
+// Currently unused methods
+// Merge two completely separate heaps, NOT siblings.
+//PairingHeap ph_merge(PairingHeap heap1, PairingHeap heap2);
+//data_t ph_delete(PairingHeap this, data_t elem);
+//void ph_decrease_key(PairingHeap this, data_t elem, key_t new_key);
+
+#endif
