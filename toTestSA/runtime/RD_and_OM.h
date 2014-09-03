@@ -10,7 +10,7 @@
 
 /// Various DS definitions
 #define BATCHIFY_WORKING
-//#define OM_IS_LL
+#define PARALLEL_OM_DS
 #define OM_IS_BENDER
 
 #ifdef OM_IS_BENDER

@@ -24,7 +24,11 @@
 #define _CILK_LIB_H
 
 struct OM_Node_s;
-#include <OM_DS.h>
+#ifndef PARALLEL_OM_DS
+	#include "OM_DS_LL.h"
+#else
+	#include "OM_DS_TREE.h"
+#endif
 #include <cilk.h>
 #include <RD_and_OM.h>
 
