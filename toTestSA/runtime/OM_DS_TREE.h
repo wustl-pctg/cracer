@@ -4,10 +4,11 @@
  *       Filename:  OM_DS.h
  *
  *    Description:  Contains the data structures for order maintenance data structure
+ *                  The corresponding source file is the cilk2c translation of the cilk
+ *       			version of the parallized two-tier OM-DS with a Tree-style top list.
  *
  *        Version:  1.0
  *        Created:  06/23/2014 03:13:03 PM
- *       Revision:  Contains linked list only
  *       Compiler:  gcc
  *
  *         Author:  Alex Jones (aj), atjalex@gmail.com & Shane Deiley

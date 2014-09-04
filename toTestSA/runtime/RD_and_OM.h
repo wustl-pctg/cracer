@@ -10,13 +10,12 @@
 
 /// Various DS definitions
 #define BATCHIFY_WORKING
-#define PARALLEL_OM_DS
-#define OM_IS_BENDER
+//#define OM_IS_LL
 
+// Not really sure where this ever comes in - not even in C_g_s
+//#define OM_IS_BENDER
 #ifdef OM_IS_BENDER
-
 #define WS_TOP_LIST ws->context->Cilk_global_state->OM_DS
-
 #endif
 
 /*! Forward declarations of our race_detection objects */
@@ -58,19 +57,5 @@ void tag_range_relabel (Bottom_List *x, Bottom_List *y, unsigned long tag_spacin
 void OM_DS_add_first_node(Bottom_List *ds, OM_Node * _x, const int ID);
 inline void OM_DS_after_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame);
 inline void OM_DS_after_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #endif /* RD_AND_OM_H */

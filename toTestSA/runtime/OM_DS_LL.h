@@ -4,6 +4,8 @@
  *       Filename:  OM_DS.h
  *
  *    Description:  Contains the data structures for order maintenance data structure
+ *                  It is important to note this header and corresponding source file
+ *                  is for the version of the two-tiered OM-DS with a linked-list top.
  *
  *        Version:  1.0
  *        Created:  06/23/2014 03:13:03 PM

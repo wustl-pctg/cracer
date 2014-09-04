@@ -1,4 +1,7 @@
-
+/* IMPORTANT =====================
+ * See the corresponding (like named) header for more information
+ * on this source file's content.
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include "OM_DS_LL.h"

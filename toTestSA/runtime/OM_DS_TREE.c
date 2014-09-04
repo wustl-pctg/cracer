@@ -1,3 +1,14 @@
+/* ======================= IMPORTANT ========================
+ * This is the translated code of OM_DS_TREE.cilk from the cilk2c
+ * compiler.  In other words, this is the parallelized version
+ * of the order maintenance data structure in C code so it is 
+ * callable by the runtime system.
+ */
+
+
+
+
+
 #include "OM_DS_TREE.h"
 
 static unsigned MAX_NUMBER= ~0;
