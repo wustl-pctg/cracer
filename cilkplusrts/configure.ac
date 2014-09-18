@@ -31,9 +31,9 @@ AM_INIT_AUTOMAKE(foreign no-dist)
 AC_PROG_CXX
 AC_PROG_CC
 # AC_PROG_LIBTOOL
-# AC_CONFIG_MACRO_DIR([..])
+AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_FILES([Makefile])
-AM_ENABLE_MULTILIB(, ..)
+#AM_ENABLE_MULTILIB(, ..)
 
 if test "${multilib}" = "yes"; then
   multilib_arg="--enable-multilib"
