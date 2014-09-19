@@ -35,9 +35,9 @@ AM_CPPFLAGS = $(GENERAL_FLAGS)
 AM_LDFLAGS = -lpthread -ldl
 
 # Target list.
-toolexeclib_LTLIBRARIES = libcilkrts.la
+toolexeclib_LTLIBRARIES = libcilkrts.la libcilkrts.g.la
 
-libcilkrts_la_SOURCES =            \
+CILK_SRC = \
   runtime/bug.cpp                  \
   runtime/cilk-abi.c               \
   runtime/cilk-abi-cilk-for.cpp    \
@@ -68,12 +68,18 @@ libcilkrts_la_SOURCES =            \
   runtime/sysdep-unix.c            \
   runtime/worker_mutex.c
 
+libcilkrts_la_SOURCES = $(CILK_SRC)
+libcilkrts_g_la_SOURCES = $(CILK_SRC)
+
 # Load the $(REVISION) value.
 include include/internal/rev.mk
 
 # libcilkrts_la_LDFLAGS  = -rpath '$(libdir)'
 # libcilkrts_la_LDFLAGS = -version-info 5:$(CILK_REVISION):0
-libcilkrts_la_LDFLAGS = -lpthread -ldl
+COMMON_LINK_FLAGS = -lpthread -ldl
+libcilkrts_la_LDFLAGS = $(COMMON_LINK_FLAGS)
+libcilkrts_g_la_LDFLAGS = $(COMMON_LINK_FLAGS)
+libcilkrts_g_la_CFLAGS = $(AM_CFLAGS) -g
 
 # C/C++ header files for Cilk.
 cilkincludedir = $(includedir)/cilk
