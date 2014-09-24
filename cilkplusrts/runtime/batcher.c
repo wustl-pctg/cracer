@@ -9,7 +9,7 @@
 #include <cilk/batcher.h>
 #include "rts-common.h"
 
-CILK_API_VOID cilk_batchify(int test)
+CILK_API_VOID cilk_batchify(function_t f)
 {
-  // Do stuff.
+	f();
 }

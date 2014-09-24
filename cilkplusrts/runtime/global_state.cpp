@@ -389,7 +389,7 @@ global_state_t* cilkg_get_user_settable_values()
         g->max_user_workers         = 0;   // 0 unless set by user
         g->fiber_pool_size          = 7;   // Arbitrary default
         
-        g->global_fiber_pool_size   = 3 * 3* g->P;  // Arbitrary default
+        g->global_fiber_pool_size   = 6 * 3* g->P;  // Arbitrary default
         // 3*P was the default size of the worker array (including
         // space for extra user workers).  This parameter was chosen
         // to match previous versions of the runtime.
