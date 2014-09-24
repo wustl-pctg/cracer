@@ -66,7 +66,8 @@ CILK_SRC = \
   runtime/stats.c                  \
   runtime/symbol_test.c            \
   runtime/sysdep-unix.c            \
-  runtime/worker_mutex.c
+  runtime/worker_mutex.c					 \
+	runtime/batcher.c
 
 libcilkrts_la_SOURCES = $(CILK_SRC)
 
@@ -102,7 +103,8 @@ cilkinclude_HEADERS =              \
   include/cilk/reducer_opor.h      \
   include/cilk/reducer_opxor.h     \
   include/cilk/reducer_ostream.h   \
-  include/cilk/reducer_string.h
+  include/cilk/reducer_string.h    \
+	include/cilk/batcher.h
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS
 # values defined in terms of make variables, as is the case for CC and
