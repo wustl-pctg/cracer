@@ -34,6 +34,9 @@ struct Bottom_List_s;
 struct Top_List_s;
 struct Runtime_node_s;
 
+/// TEST
+struct Internal_Node_s;
+
 /// The Node that makes up Bottom_Lists
 typedef struct OM_Node_s{
 
@@ -64,8 +67,16 @@ typedef struct Bottom_List_s {
 	struct Bottom_List_s *prev;
 	unsigned /*long*/ int tag;
 
+	///TEST
+	struct Internal_Node_s * internal;
 
 } Bottom_List;
+
+typedef struct Internal_Node_s {
+	Bottom_List * bl;
+	unsigned int base, lvl, num_children;
+	struct Internal_Node_s *parent, *left, *right;
+} Internal_Node;
 
 typedef struct InsertRecord_s{
 	OM_Node *x;
@@ -85,6 +96,12 @@ typedef struct Runtime_node_s{
 	struct OM_Node_s * english, *hebrew;
 } Runtime_node;
 
+
+/// Parallel:
+Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node);
+void create_scaffolding(Internal_Node *, Internal_Node *);
+cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
+cilk void par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end);
 
 
 /// Declarations of the OM-functions operating internally
@@ -111,6 +128,9 @@ void print_bl(Bottom_List * list);
 void free_bl (Bottom_List * list);
 void free_tl ( Top_List * list );
 void check_sub_correctness (Top_List * list);
+void print_tree (Top_List * list);
+void c_rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
+void c_par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end);
 
 #endif 
 

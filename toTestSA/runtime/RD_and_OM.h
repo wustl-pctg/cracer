@@ -11,7 +11,7 @@
 /// Various DS definitions
 #define BATCHIFY_WORKING
 #define PARALLEL_OM_DS
-//#define OM_IS_LL
+
 
 // Not really sure where this ever comes in - not even in C_g_s
 //#define OM_IS_BENDER
