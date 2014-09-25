@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  OM_DS.h
+ *       Filename:  OM_DS_TREE.h
  *
  *    Description:  Contains the data structures for order maintenance data structure
  *                  The corresponding source file is the cilk2c translation of the cilk
