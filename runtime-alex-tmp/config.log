@@ -134,11 +134,11 @@ configure:3797: checking lex output file root
 configure:3813: result: lex.yy
 configure:3818: checking lex library
 configure:3837: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c   >&5
-/tmp/ccXqcohW.o: In function `yylex':
+/tmp/ccopwbSP.o: In function `yylex':
 conftest.c:(.text+0x6a0): undefined reference to `yywrap'
-/tmp/ccXqcohW.o: In function `input':
+/tmp/ccopwbSP.o: In function `input':
 conftest.c:(.text+0x10f9): undefined reference to `yywrap'
-/tmp/ccXqcohW.o: In function `main':
+/tmp/ccopwbSP.o: In function `main':
 conftest.c:(.text+0x1db7): undefined reference to `yywrap'
 collect2: ld returned 1 exit status
 configure:3843: $? = 1
@@ -2446,7 +2446,7 @@ configure:20798: $? = 0
 configure:20816: result: yes
 configure:20830: checking for gethrtime
 configure:20886: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c -lm  >&5
-/tmp/cc3A3U4u.o: In function `main':
+/tmp/ccTW5kvz.o: In function `main':
 conftest.c:(.text+0xa): undefined reference to `gethrtime'
 collect2: ld returned 1 exit status
 configure:20892: $? = 1
@@ -2535,7 +2535,7 @@ configure: failed program was:
 configure:20910: result: no
 configure:20924: checking for gethrvtime
 configure:20980: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c -lm  >&5
-/tmp/ccIy55gy.o: In function `main':
+/tmp/ccSpDvDC.o: In function `main':
 conftest.c:(.text+0xa): undefined reference to `gethrvtime'
 collect2: ld returned 1 exit status
 configure:20986: $? = 1
@@ -2624,6 +2624,553 @@ configure: failed program was:
 configure:21004: result: no
 configure:21018: checking for sched_yield
 configure:21074: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c -lm  >&5
+configure:21080: $? = 0
+configure:21098: result: yes
+configure:21112: checking for clone
+configure:21168: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c -lm  >&5
+configure:21174: $? = 0
+configure:21192: result: yes
+configure:21206: checking for yield
+configure:21262: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c -lm  >&5
+/tmp/ccsFWL1T.o: In function `main':
+conftest.c:(.text+0xa): undefined reference to `yield'
+collect2: ld returned 1 exit status
+configure:21268: $? = 1
+configure: failed program was:
+| /* confdefs.h.  */
+| #define PACKAGE_NAME ""
+| #define PACKAGE_TARNAME ""
+| #define PACKAGE_VERSION ""
+| #define PACKAGE_STRING ""
+| #define PACKAGE_BUGREPORT ""
+| #define PACKAGE "cilk"
+| #define VERSION "5.4.6"
+| #define YYTEXT_POINTER 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_TYPES_H 1
+| #define HAVE_SYS_STAT_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_MEMORY_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_INTTYPES_H 1
+| #define HAVE_STDINT_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_DLFCN_H 1
+| #define HAVE_LIBM 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_ALLOCA_H 1
+| #define HAVE_FCNTL_H 1
+| #define HAVE_LIMITS_H 1
+| #define HAVE_MALLOC_H 1
+| #define HAVE_STDDEF_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_SYS_TIME_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_PTHREAD_H 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_SIGNAL_H 1
+| #define HAVE_SCHED_H 1
+| #define TIME_WITH_SYS_TIME 1
+| #define HAVE_MEMALIGN 1
+| #define HAVE_STRCHR 1
+| #define HAVE_STRTOUL 1
+| #define HAVE_GETTIMEOFDAY 1
+| #define HAVE_SCHED_YIELD 1
+| #define HAVE_CLONE 1
+| /* end confdefs.h.  */
+| /* Define yield to an innocuous variant, in case <limits.h> declares yield.
+|    For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+| #define yield innocuous_yield
+| 
+| /* System header to define __stub macros and hopefully few prototypes,
+|     which can conflict with char yield (); below.
+|     Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+|     <limits.h> exists even on freestanding compilers.  */
+| 
+| #ifdef __STDC__
+| # include <limits.h>
+| #else
+| # include <assert.h>
+| #endif
+| 
+| #undef yield
+| 
+| /* Override any GCC internal prototype to avoid an error.
+|    Use char because int might match the return type of a GCC
+|    builtin and then its argument prototype would still apply.  */
+| #ifdef __cplusplus
+| extern "C"
+| #endif
+| char yield ();
+| /* The GNU C library defines this for functions which it implements
+|     to always fail with ENOSYS.  Some functions are actually named
+|     something starting with __ and the normal name is an alias.  */
+| #if defined __stub_yield || defined __stub___yield
+| choke me
+| #endif
+| 
+| int
+| main ()
+| {
+| return yield ();
+|   ;
+|   return 0;
+| }
+configure:21286: result: no
+configure:21300: checking for sginap
+configure:21356: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c -lm  >&5
+/tmp/ccaZGWHZ.o: In function `main':
+conftest.c:(.text+0xa): undefined reference to `sginap'
+collect2: ld returned 1 exit status
+configure:21362: $? = 1
+configure: failed program was:
+| /* confdefs.h.  */
+| #define PACKAGE_NAME ""
+| #define PACKAGE_TARNAME ""
+| #define PACKAGE_VERSION ""
+| #define PACKAGE_STRING ""
+| #define PACKAGE_BUGREPORT ""
+| #define PACKAGE "cilk"
+| #define VERSION "5.4.6"
+| #define YYTEXT_POINTER 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_TYPES_H 1
+| #define HAVE_SYS_STAT_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_MEMORY_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_INTTYPES_H 1
+| #define HAVE_STDINT_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_DLFCN_H 1
+| #define HAVE_LIBM 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_ALLOCA_H 1
+| #define HAVE_FCNTL_H 1
+| #define HAVE_LIMITS_H 1
+| #define HAVE_MALLOC_H 1
+| #define HAVE_STDDEF_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_SYS_TIME_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_PTHREAD_H 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_SIGNAL_H 1
+| #define HAVE_SCHED_H 1
+| #define TIME_WITH_SYS_TIME 1
+| #define HAVE_MEMALIGN 1
+| #define HAVE_STRCHR 1
+| #define HAVE_STRTOUL 1
+| #define HAVE_GETTIMEOFDAY 1
+| #define HAVE_SCHED_YIELD 1
+| #define HAVE_CLONE 1
+| /* end confdefs.h.  */
+| /* Define sginap to an innocuous variant, in case <limits.h> declares sginap.
+|    For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+| #define sginap innocuous_sginap
+| 
+| /* System header to define __stub macros and hopefully few prototypes,
+|     which can conflict with char sginap (); below.
+|     Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+|     <limits.h> exists even on freestanding compilers.  */
+| 
+| #ifdef __STDC__
+| # include <limits.h>
+| #else
+| # include <assert.h>
+| #endif
+| 
+| #undef sginap
+| 
+| /* Override any GCC internal prototype to avoid an error.
+|    Use char because int might match the return type of a GCC
+|    builtin and then its argument prototype would still apply.  */
+| #ifdef __cplusplus
+| extern "C"
+| #endif
+| char sginap ();
+| /* The GNU C library defines this for functions which it implements
+|     to always fail with ENOSYS.  Some functions are actually named
+|     something starting with __ and the normal name is an alias.  */
+| #if defined __stub_sginap || defined __stub___sginap
+| choke me
+| #endif
+| 
+| int
+| main ()
+| {
+| return sginap ();
+|   ;
+|   return 0;
+| }
+configure:21380: result: no
+configure:21394: checking for sched_setaffinity
+configure:21450: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L   conftest.c -lm  >&5
+configure:21456: $? = 0
+configure:21474: result: yes
+configure:21677: checking for the pthreads library -lpthreads
+configure:21723: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L    conftest.c -lpthreads -lm  >&5
+/usr/bin/ld: cannot find -lpthreads
+collect2: ld returned 1 exit status
+configure:21729: $? = 1
+configure: failed program was:
+| /* confdefs.h.  */
+| #define PACKAGE_NAME ""
+| #define PACKAGE_TARNAME ""
+| #define PACKAGE_VERSION ""
+| #define PACKAGE_STRING ""
+| #define PACKAGE_BUGREPORT ""
+| #define PACKAGE "cilk"
+| #define VERSION "5.4.6"
+| #define YYTEXT_POINTER 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_TYPES_H 1
+| #define HAVE_SYS_STAT_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_MEMORY_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_INTTYPES_H 1
+| #define HAVE_STDINT_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_DLFCN_H 1
+| #define HAVE_LIBM 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_ALLOCA_H 1
+| #define HAVE_FCNTL_H 1
+| #define HAVE_LIMITS_H 1
+| #define HAVE_MALLOC_H 1
+| #define HAVE_STDDEF_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_SYS_TIME_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_PTHREAD_H 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_SIGNAL_H 1
+| #define HAVE_SCHED_H 1
+| #define TIME_WITH_SYS_TIME 1
+| #define HAVE_MEMALIGN 1
+| #define HAVE_STRCHR 1
+| #define HAVE_STRTOUL 1
+| #define HAVE_GETTIMEOFDAY 1
+| #define HAVE_SCHED_YIELD 1
+| #define HAVE_CLONE 1
+| #define HAVE_SCHED_SETAFFINITY 1
+| /* end confdefs.h.  */
+| #include <pthread.h>
+| int
+| main ()
+| {
+| pthread_t th; pthread_join(th, (void**) 0);
+|                      pthread_attr_init((pthread_attr_t*) 0);
+|                      pthread_cleanup_push((void(*)(void *)) 0, (void*) 0);
+|                      pthread_create((pthread_t*) 0, (pthread_attr_t*) 0,
+|                                     (void*(*)(void *)) 0, (void*) 0);
+|                      pthread_cleanup_pop(0);
+|   ;
+|   return 0;
+| }
+configure:21749: result: no
+configure:21622: checking whether pthreads work without any flags
+configure:21723: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L    conftest.c  -lm  >&5
+/tmp/ccsai3o7.o: In function `main':
+conftest.c:(.text+0x18): undefined reference to `pthread_join'
+conftest.c:(.text+0x7e): undefined reference to `__pthread_register_cancel'
+conftest.c:(.text+0x97): undefined reference to `pthread_create'
+conftest.c:(.text+0xa6): undefined reference to `__pthread_unregister_cancel'
+collect2: ld returned 1 exit status
+configure:21729: $? = 1
+configure: failed program was:
+| /* confdefs.h.  */
+| #define PACKAGE_NAME ""
+| #define PACKAGE_TARNAME ""
+| #define PACKAGE_VERSION ""
+| #define PACKAGE_STRING ""
+| #define PACKAGE_BUGREPORT ""
+| #define PACKAGE "cilk"
+| #define VERSION "5.4.6"
+| #define YYTEXT_POINTER 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_TYPES_H 1
+| #define HAVE_SYS_STAT_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_MEMORY_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_INTTYPES_H 1
+| #define HAVE_STDINT_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_DLFCN_H 1
+| #define HAVE_LIBM 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_ALLOCA_H 1
+| #define HAVE_FCNTL_H 1
+| #define HAVE_LIMITS_H 1
+| #define HAVE_MALLOC_H 1
+| #define HAVE_STDDEF_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_SYS_TIME_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_PTHREAD_H 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_SIGNAL_H 1
+| #define HAVE_SCHED_H 1
+| #define TIME_WITH_SYS_TIME 1
+| #define HAVE_MEMALIGN 1
+| #define HAVE_STRCHR 1
+| #define HAVE_STRTOUL 1
+| #define HAVE_GETTIMEOFDAY 1
+| #define HAVE_SCHED_YIELD 1
+| #define HAVE_CLONE 1
+| #define HAVE_SCHED_SETAFFINITY 1
+| /* end confdefs.h.  */
+| #include <pthread.h>
+| int
+| main ()
+| {
+| pthread_t th; pthread_join(th, (void**) 0);
+|                      pthread_attr_init((pthread_attr_t*) 0);
+|                      pthread_cleanup_push((void(*)(void *)) 0, (void*) 0);
+|                      pthread_create((pthread_t*) 0, (pthread_attr_t*) 0,
+|                                     (void*(*)(void *)) 0, (void*) 0);
+|                      pthread_cleanup_pop(0);
+|   ;
+|   return 0;
+| }
+configure:21749: result: no
+configure:21627: checking whether pthreads work with -Kthread
+configure:21723: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L -Kthread   conftest.c  -lm  >&5
+gcc: unrecognized option '-Kthread'
+/tmp/cc16Z9sa.o: In function `main':
+conftest.c:(.text+0x18): undefined reference to `pthread_join'
+conftest.c:(.text+0x7e): undefined reference to `__pthread_register_cancel'
+conftest.c:(.text+0x97): undefined reference to `pthread_create'
+conftest.c:(.text+0xa6): undefined reference to `__pthread_unregister_cancel'
+collect2: ld returned 1 exit status
+configure:21729: $? = 1
+configure: failed program was:
+| /* confdefs.h.  */
+| #define PACKAGE_NAME ""
+| #define PACKAGE_TARNAME ""
+| #define PACKAGE_VERSION ""
+| #define PACKAGE_STRING ""
+| #define PACKAGE_BUGREPORT ""
+| #define PACKAGE "cilk"
+| #define VERSION "5.4.6"
+| #define YYTEXT_POINTER 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_TYPES_H 1
+| #define HAVE_SYS_STAT_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_MEMORY_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_INTTYPES_H 1
+| #define HAVE_STDINT_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_DLFCN_H 1
+| #define HAVE_LIBM 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_ALLOCA_H 1
+| #define HAVE_FCNTL_H 1
+| #define HAVE_LIMITS_H 1
+| #define HAVE_MALLOC_H 1
+| #define HAVE_STDDEF_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_SYS_TIME_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_PTHREAD_H 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_SIGNAL_H 1
+| #define HAVE_SCHED_H 1
+| #define TIME_WITH_SYS_TIME 1
+| #define HAVE_MEMALIGN 1
+| #define HAVE_STRCHR 1
+| #define HAVE_STRTOUL 1
+| #define HAVE_GETTIMEOFDAY 1
+| #define HAVE_SCHED_YIELD 1
+| #define HAVE_CLONE 1
+| #define HAVE_SCHED_SETAFFINITY 1
+| /* end confdefs.h.  */
+| #include <pthread.h>
+| int
+| main ()
+| {
+| pthread_t th; pthread_join(th, (void**) 0);
+|                      pthread_attr_init((pthread_attr_t*) 0);
+|                      pthread_cleanup_push((void(*)(void *)) 0, (void*) 0);
+|                      pthread_create((pthread_t*) 0, (pthread_attr_t*) 0,
+|                                     (void*(*)(void *)) 0, (void*) 0);
+|                      pthread_cleanup_pop(0);
+|   ;
+|   return 0;
+| }
+configure:21749: result: no
+configure:21627: checking whether pthreads work with -kthread
+configure:21723: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L -kthread   conftest.c  -lm  >&5
+gcc: unrecognized option '-kthread'
+/tmp/ccxDFZkf.o: In function `main':
+conftest.c:(.text+0x18): undefined reference to `pthread_join'
+conftest.c:(.text+0x7e): undefined reference to `__pthread_register_cancel'
+conftest.c:(.text+0x97): undefined reference to `pthread_create'
+conftest.c:(.text+0xa6): undefined reference to `__pthread_unregister_cancel'
+collect2: ld returned 1 exit status
+configure:21729: $? = 1
+configure: failed program was:
+| /* confdefs.h.  */
+| #define PACKAGE_NAME ""
+| #define PACKAGE_TARNAME ""
+| #define PACKAGE_VERSION ""
+| #define PACKAGE_STRING ""
+| #define PACKAGE_BUGREPORT ""
+| #define PACKAGE "cilk"
+| #define VERSION "5.4.6"
+| #define YYTEXT_POINTER 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_TYPES_H 1
+| #define HAVE_SYS_STAT_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_MEMORY_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_INTTYPES_H 1
+| #define HAVE_STDINT_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_DLFCN_H 1
+| #define HAVE_LIBM 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_ALLOCA_H 1
+| #define HAVE_FCNTL_H 1
+| #define HAVE_LIMITS_H 1
+| #define HAVE_MALLOC_H 1
+| #define HAVE_STDDEF_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_SYS_TIME_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_PTHREAD_H 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_SIGNAL_H 1
+| #define HAVE_SCHED_H 1
+| #define TIME_WITH_SYS_TIME 1
+| #define HAVE_MEMALIGN 1
+| #define HAVE_STRCHR 1
+| #define HAVE_STRTOUL 1
+| #define HAVE_GETTIMEOFDAY 1
+| #define HAVE_SCHED_YIELD 1
+| #define HAVE_CLONE 1
+| #define HAVE_SCHED_SETAFFINITY 1
+| /* end confdefs.h.  */
+| #include <pthread.h>
+| int
+| main ()
+| {
+| pthread_t th; pthread_join(th, (void**) 0);
+|                      pthread_attr_init((pthread_attr_t*) 0);
+|                      pthread_cleanup_push((void(*)(void *)) 0, (void*) 0);
+|                      pthread_create((pthread_t*) 0, (pthread_attr_t*) 0,
+|                                     (void*(*)(void *)) 0, (void*) 0);
+|                      pthread_cleanup_pop(0);
+|   ;
+|   return 0;
+| }
+configure:21749: result: no
+configure:21677: checking for the pthreads library -llthread
+configure:21723: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L    conftest.c -llthread -lm  >&5
+/usr/bin/ld: cannot find -llthread
+collect2: ld returned 1 exit status
+configure:21729: $? = 1
+configure: failed program was:
+| /* confdefs.h.  */
+| #define PACKAGE_NAME ""
+| #define PACKAGE_TARNAME ""
+| #define PACKAGE_VERSION ""
+| #define PACKAGE_STRING ""
+| #define PACKAGE_BUGREPORT ""
+| #define PACKAGE "cilk"
+| #define VERSION "5.4.6"
+| #define YYTEXT_POINTER 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_TYPES_H 1
+| #define HAVE_SYS_STAT_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_MEMORY_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_INTTYPES_H 1
+| #define HAVE_STDINT_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_DLFCN_H 1
+| #define HAVE_LIBM 1
+| #define STDC_HEADERS 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_ALLOCA_H 1
+| #define HAVE_FCNTL_H 1
+| #define HAVE_LIMITS_H 1
+| #define HAVE_MALLOC_H 1
+| #define HAVE_STDDEF_H 1
+| #define HAVE_STDLIB_H 1
+| #define HAVE_STRING_H 1
+| #define HAVE_STRINGS_H 1
+| #define HAVE_SYS_TIME_H 1
+| #define HAVE_UNISTD_H 1
+| #define HAVE_PTHREAD_H 1
+| #define HAVE_SYS_WAIT_H 1
+| #define HAVE_SIGNAL_H 1
+| #define HAVE_SCHED_H 1
+| #define TIME_WITH_SYS_TIME 1
+| #define HAVE_MEMALIGN 1
+| #define HAVE_STRCHR 1
+| #define HAVE_STRTOUL 1
+| #define HAVE_GETTIMEOFDAY 1
+| #define HAVE_SCHED_YIELD 1
+| #define HAVE_CLONE 1
+| #define HAVE_SCHED_SETAFFINITY 1
+| /* end confdefs.h.  */
+| #include <pthread.h>
+| int
+| main ()
+| {
+| pthread_t th; pthread_join(th, (void**) 0);
+|                      pthread_attr_init((pthread_attr_t*) 0);
+|                      pthread_cleanup_push((void(*)(void *)) 0, (void*) 0);
+|                      pthread_create((pthread_t*) 0, (pthread_attr_t*) 0,
+|                                     (void*(*)(void *)) 0, (void*) 0);
+|                      pthread_cleanup_pop(0);
+|   ;
+|   return 0;
+| }
+configure:21749: result: no
+configure:21627: checking whether pthreads work with -pthread
+configure:21723: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L -pthread   conftest.c  -lm  >&5
+configure:21729: $? = 0
+configure:21749: result: yes
+configure:21768: checking for joinable pthread attribute
+configure:21793: gcc -o conftest -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200809L -pthread   conftest.c  -lm  >&5
+configure:21799: $? = 0
+configure:21816: result: PTHREAD_CREATE_JOINABLE
+configure:21826: checking if more special flags are required for pthreads
+configure:21833: result: no
+configure:22073: creating ./config.status
 
 ## ---------------- ##
 ## Cache variables. ##
@@ -2669,12 +3216,17 @@ ac_cv_env_host_alias_value=
 ac_cv_env_target_alias_set=
 ac_cv_env_target_alias_value=
 ac_cv_f77_compiler_gnu=yes
+ac_cv_func_clone=yes
 ac_cv_func_gethrtime=no
 ac_cv_func_gethrvtime=no
 ac_cv_func_gettimeofday=yes
 ac_cv_func_memalign=yes
+ac_cv_func_sched_setaffinity=yes
+ac_cv_func_sched_yield=yes
+ac_cv_func_sginap=no
 ac_cv_func_strchr=yes
 ac_cv_func_strtoul=yes
+ac_cv_func_yield=no
 ac_cv_header_alloca_h=yes
 ac_cv_header_dlfcn_h=yes
 ac_cv_header_fcntl_h=yes
@@ -2778,7 +3330,7 @@ CXXCPP='g++ -E'
 CXXDEPMODE='depmode=gcc3'
 CXXFLAGS='-g -O0'
 CYGPATH_W='echo'
-DEFS=''
+DEFS='-DHAVE_CONFIG_H'
 DEPDIR='.deps'
 ECHO='echo'
 ECHO_C=''
@@ -2812,8 +3364,8 @@ PACKAGE_TARNAME=''
 PACKAGE_VERSION=''
 PATH_SEPARATOR=':'
 PERFCTR_LIBS=''
-PTHREAD_CC=''
-PTHREAD_CFLAGS=''
+PTHREAD_CC='gcc'
+PTHREAD_CFLAGS='-pthread'
 PTHREAD_LIBS=''
 RANLIB='ranlib'
 SET_MAKE=''
@@ -2846,7 +3398,7 @@ datadir='${datarootdir}'
 datarootdir='${prefix}/share'
 docdir='${datarootdir}/doc/${PACKAGE}'
 dvidir='${docdir}'
-exec_prefix='NONE'
+exec_prefix='${prefix}'
 host='x86_64-unknown-linux-gnu'
 host_alias=''
 host_cpu='x86_64'
@@ -2864,7 +3416,7 @@ mandir='${datarootdir}/man'
 mkdir_p='/bin/mkdir -p'
 oldincludedir='/usr/include'
 pdfdir='${docdir}'
-prefix='NONE'
+prefix='/usr/local'
 program_transform_name='s,x,x,'
 psdir='${docdir}'
 sbindir='${exec_prefix}/sbin'
@@ -2917,5 +3469,77 @@ target_alias=''
 #define HAVE_STRCHR 1
 #define HAVE_STRTOUL 1
 #define HAVE_GETTIMEOFDAY 1
+#define HAVE_SCHED_YIELD 1
+#define HAVE_CLONE 1
+#define HAVE_SCHED_SETAFFINITY 1
+#define CILKC_PTHREAD_LIBS ""
+#define CILKC_PTHREAD_CFLAGS "-pthread"
+#define CILKC_PTHREAD_CC "gcc"
+#define WITH_GNU_LD 1
 
-configure: exit 1
+configure: exit 0
+
+## ---------------------- ##
+## Running config.status. ##
+## ---------------------- ##
+
+This file was extended by config.status, which was
+generated by GNU Autoconf 2.61.  Invocation command line was
+
+  CONFIG_FILES    = 
+  CONFIG_HEADERS  = 
+  CONFIG_LINKS    = 
+  CONFIG_COMMANDS = 
+  $ ./config.status 
+
+on austen.cse.wustl.edu
+
+config.status:679: creating FAQ/Makefile
+config.status:679: creating Makefile
+config.status:679: creating cilk2c/Makefile
+config.status:679: creating doc/Makefile
+config.status:679: creating doc/version.tex
+config.status:679: creating examples/Makefile
+config.status:679: creating runtime/Makefile
+config.status:679: creating support/Makefile
+config.status:679: creating config.h
+config.status:944: config.h is unchanged
+config.status:679: creating runtime/cilk-sysdep.h
+config.status:944: runtime/cilk-sysdep.h is unchanged
+config.status:990: executing depfiles commands
+
+## ---------------------- ##
+## Running config.status. ##
+## ---------------------- ##
+
+This file was extended by config.status, which was
+generated by GNU Autoconf 2.61.  Invocation command line was
+
+  CONFIG_FILES    = 
+  CONFIG_HEADERS  = 
+  CONFIG_LINKS    = 
+  CONFIG_COMMANDS = 
+  $ ./config.status config.h
+
+on austen.cse.wustl.edu
+
+config.status:679: creating config.h
+config.status:944: config.h is unchanged
+
+## ---------------------- ##
+## Running config.status. ##
+## ---------------------- ##
+
+This file was extended by config.status, which was
+generated by GNU Autoconf 2.61.  Invocation command line was
+
+  CONFIG_FILES    = 
+  CONFIG_HEADERS  = 
+  CONFIG_LINKS    = 
+  CONFIG_COMMANDS = 
+  $ ./config.status runtime/cilk-sysdep.h
+
+on austen.cse.wustl.edu
+
+config.status:679: creating runtime/cilk-sysdep.h
+config.status:944: runtime/cilk-sysdep.h is unchanged
