@@ -7,7 +7,8 @@
  */
 
 #include <cilk/batcher.h>
-#include "rts-common.h"
+//#include "rts-common.h"
+#include "scheduler.h"
 
 #include <stdio.h>
 

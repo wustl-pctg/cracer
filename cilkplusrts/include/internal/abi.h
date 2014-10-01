@@ -100,7 +100,7 @@ typedef struct cilkred_map           cilkred_map;     ///< Forward declaration f
 
 /// Forwarded declaration for system-dependent worker state
 typedef struct __cilkrts_worker_sysdep_state
-                                     __cilkrts_worker_sysdep_state;
+__cilkrts_worker_sysdep_state;
 
 /**
  * The worker struct contains per-worker information that needs to be
@@ -155,6 +155,15 @@ struct __cilkrts_worker {
     __cilkrts_stack_frame *volatile *volatile exc;   /**< @copydoc tail */
 
     /**
+     * T, H, and E pointers for a batch deque.
+     *
+     * Synchronization fields. [shared read/write]
+     */
+    __cilkrts_stack_frame *volatile *volatile tail_batch;
+    __cilkrts_stack_frame *volatile *volatile head_batch; /**< @copydoc tail_batch */
+    __cilkrts_stack_frame *volatile *volatile exc_batch; /**< @copydoc tail_batch */
+
+    /**
      * Addition to the THE protocol to allow us to protect some set of
      * entries in the tail queue from stealing.  Normally, this is set
      * beyond the end of the task queue, indicating that all entries are
@@ -165,6 +174,7 @@ struct __cilkrts_worker {
      * Synchronization field.
      */
     __cilkrts_stack_frame *volatile *volatile protected_tail;
+    __cilkrts_stack_frame *volatile *volatile protected_tail_batch;
 
     /**
      * Limit of the Lazy Task Queue, to detect queue overflow
