@@ -387,7 +387,7 @@ global_state_t* cilkg_get_user_settable_values()
         g->force_reduce             = 0;   // Default Off
         g->P                        = hardware_cpu_count;   // Defaults to hardware CPU count
         g->max_user_workers         = 0;   // 0 unless set by user
-        g->fiber_pool_size          = 7;   // Arbitrary default
+        g->fiber_pool_size          = 14;   // Arbitrary default
         
         g->global_fiber_pool_size   = 6 * 3* g->P;  // Arbitrary default
         // 3*P was the default size of the worker array (including

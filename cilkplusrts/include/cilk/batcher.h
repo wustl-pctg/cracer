@@ -8,9 +8,8 @@
 
 #include <cilk/common.h>
 
-typedef void (*function_t)(void);
-
 __CILKRTS_BEGIN_EXTERN_C
+typedef void (*function_t)(void);
 CILK_API(void) cilk_batchify(function_t f);
 __CILKRTS_END_EXTERN_C
 

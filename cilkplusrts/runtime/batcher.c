@@ -9,6 +9,10 @@
 #include <cilk/batcher.h>
 //#include "rts-common.h"
 #include "scheduler.h"
+#include "cilk_fiber.h"
+#include "full_frame.h"
+#include "stats.h"
+#include "local_state.h"
 
 #include <stdio.h>
 
@@ -16,7 +20,7 @@ CILK_API_VOID cilk_batchify(function_t f)
 {
 	printf("Doing the function");
 	printf("Getting cilk worker");
-	CILK_ABI(__cilkrts_worker_ptr) w = __cilkrts_get_tls_worker();
+	__cilkrts_worker * w = __cilkrts_get_tls_worker();
     cilk_fiber *fiber = NULL;
     printf("Allocating new fiber");
 	START_INTERVAL(w, INTERVAL_FIBER_ALLOCATE) {
