@@ -45,7 +45,7 @@ cilk int main ( int argc, char *argv[] )
 	/// User specifies the number of nodes to insert
 	int num_nodes = atoi(argv[1]);
 	int i = 0, j, split_flag = 0;
-clock_t start;
+	clock_t start;
 	OM_Node ** nodeArray = malloc(num_nodes * sizeof(OM_Node *));
 	
 	/// Create the list
@@ -59,10 +59,14 @@ clock_t start;
 	}
 
 	/// Clock to record how long the inserts take
-	 start = clock();
+    start = clock();
 
 	// Create and add the first relevant thing to the ds
 	first_insert(list, nodeArray[0]);
+
+#ifdef RD_DEBUG
+	printf("DEBUG: About to enter the loop\n");
+#endif
 
 	i = 1;
 	for (; i < num_nodes; i++)

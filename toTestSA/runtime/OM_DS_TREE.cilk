@@ -1,11 +1,9 @@
-/* The c version of this code utilized in the runtime is found in OM_DS_TREE.c
- * That source is the translated C code from this cilk file. */
-
+/* Cilk file used for parallel DS translation */
 
 /*
  * =====================================================================================
  *
- *       Filename:  order-maintenance-par-rebalance
+ *       Filename:  OM_DS_TREE.cilk
  *
  *    Description:  Source file for Bender's OM-Data Structure with parallel rebalances
  *
@@ -20,7 +18,7 @@
  * =====================================================================================
  */
 
-#include "order-maintenance-par-rebalance.cilkh"
+#include "OM_DS_TREE.cilkh"
 #include <time.h>
 
 /// Constants used within this source file
@@ -396,39 +394,31 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 }
 
 cilk void insert(OM_Node *x, OM_Node *y){
-    /*InsertRecord *ir = malloc(sizeof(InsertRecord));*/
-    /*ir->x  = x;*/
-    /*ir->y  = y;*/
+	OM_DS_BatchRecord *ir = malloc(sizeof(OM_DS_BatchRecord));
+	ir->x  = x;
+	ir->y  = y;
 
-    /*Cilk_batchify(_cilk_ws, &batchInsertOp ,NULL, ir, sizeof(InsertRecord), NULL);*/
-    /// This is the C (non cilk) version
-    spawn insert_internal(x, y);
+	Cilk_batchify(_cilk_ws, &batchInsertOp ,NULL, ir, sizeof(OM_DS_BatchRecord), NULL);
+	//TODO: does this go here?
+	/*free(ir);*/
 }
 
 //This is for the cilk version
-/*cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result)*/
-/*{*/
-/*int i = 0;*/
-/*InsertRecord * irArray = (InsertRecord *)data,* ir;*/
-/*/// use a regular for loop to be sequential*/
-/*for(; i < size; i++){*/
-/*ir = &irArray[i];				*/
-/*insert_internal(ir->x, ir->y); */
-/*}*/
-/*}*/
+cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result)
+{
+	int i = 0;
+	OM_DS_BatchRecord * irArray = (OM_DS_BatchRecord *)data,* ir;
+	/// use a regular for loop to be sequential
+	for(; i < size; i++){
+		ir = &irArray[i];				
+		spawn insert_internal(ir->x, ir->y);
+		sync;
+	}
+}
 
 cilk void insert_internal(OM_Node *x, OM_Node *y)
 {
     Bottom_List *ds = x->ds;
-
-#ifdef RD_DEBUG
-    /// y and ds should never be NULL
-    if ( !(x && y) )
-    {
-		printf("Some node or ds is null, skipping insert; x(%d) and y(%d)\n", x->ID, y->ID);
-		assert(0);
-    }
-#endif
 
     /// Update the ds y is in
     y->ds = ds;
@@ -444,28 +434,10 @@ cilk void insert_internal(OM_Node *x, OM_Node *y)
 		/// Check for collision
 		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag
 		{
-
-#ifdef RD_STATS
-		    if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
-		    {
-				ds->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
-				ds->list_of_size_of_bottom_list_when_split_tail = ds->list_of_size_of_bottom_list_when_split_head;
-				ds->list_of_size_of_bottom_list_when_split_head->data = ds->size;
-		    }
-		    else
-		    {
-				ll_node * nextnode = malloc(sizeof(ll_node));
-				ds->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
-				ds->list_of_size_of_bottom_list_when_split_tail = nextnode;
-				nextnode->next = NULL;
-				nextnode->data = ds->size;
-		    }
-
-#endif
 		    spawn split_bl(ds->parent, ds);
 			sync;
 
-		    spawn insert(x, y );
+		    spawn insert_internal(x, y );
 			sync;
 		    return;
 		}
@@ -484,29 +456,10 @@ cilk void insert_internal(OM_Node *x, OM_Node *y)
 		/// Check for collision
 		if ((x->next->tag - x->tag) <= 1)
 		{
-#ifdef RD_STATS
-
-		    if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
-		    {
-				ds->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
-				ds->list_of_size_of_bottom_list_when_split_tail = ds->list_of_size_of_bottom_list_when_split_head;
-				ds->list_of_size_of_bottom_list_when_split_head->data = ds->size;
-		    }
-		    else
-		    {
-				ll_node * nextnode = malloc(sizeof(ll_node));
-				ds->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
-				ds->list_of_size_of_bottom_list_when_split_tail = nextnode;
-				nextnode->next = NULL;
-				nextnode->data = ds->size;
-		    }
-
-#endif
-
 		    spawn split_bl(ds->parent, ds);
 			sync;
 
-		    spawn insert(x, y);
+		    spawn insert_internal(x, y);
 			sync;
 		    return;
 		}
@@ -539,10 +492,6 @@ Bottom_List * create_bl ()
     /// Reset size and reorder flag
     list->size = list->reorder_flag = 0;
 
-#ifdef RD_STATS
-    list->list_of_size_of_bottom_list_when_split_head = list->list_of_size_of_bottom_list_when_split_head = NULL;
-#endif
-
 	/// Make sure the internal node is NULL
 	list->internal = NULL;
 
@@ -567,9 +516,6 @@ Top_List * create_tl ()
 
     /// Assign correct vals to head and tail pointers
     list->head = list->tail = NULL;
-#ifdef RD_STATS
-    list->list_of_size_of_top_list_when_split_head = list->list_of_size_of_top_list_when_split_head = NULL;
-#endif
 
     /// Insert the first Bottom_List
     first_insert_tl(list, bl);
@@ -752,7 +698,38 @@ cilk void insert_tl (Bottom_List *x, Bottom_List *y)
     }
 }
 
+cilk void orderBatchOp(void *dataStruct, void *data, size_t size, void *result) {
+	int i = 0;
+	OM_DS_BatchRecord * orArray = (OM_DS_BatchRecord *)data;
+	OM_DS_BatchRecord * or;
+	int * resultArray = (int *)result;
+	OM_Node * x, * y;
 
+
+	/// use a regular for loop to be sequential
+	for (;i < size; i++){
+		x = (&orArray[i])->x;
+		y = (&orArray[i])->y;
+
+		/// If they're in the same list, compare tags
+		if (x->ds == y->ds )
+		{
+			if (x->tag < y->tag)
+				resultArray[i] = 1;
+			else
+				resultArray[i] = 0;
+		}
+		/// Otherwise, compare their lists' tags
+		else
+		{
+			if (x->ds->tag < y->ds->tag)
+				resultArray[i] = 1;
+			else
+				resultArray[i] = 0;
+		}
+	}
+
+}
 /*!
  * ===  FUNCTION  ======================================================================
  *         Name:  order
@@ -762,25 +739,15 @@ cilk void insert_tl (Bottom_List *x, Bottom_List *y)
  *
  * =====================================================================================
  */
-int order (OM_Node * x, OM_Node * y)
+cilk void order (OM_Node * x, OM_Node * y, int * result)
 {
-    /// If they're in the same list, compare tags
-    if (x->ds == y->ds )
-    {
-		if (x->tag < y->tag)
-		    return 1;
-		else
-		    return 0;
-    }
+	OM_DS_BatchRecord *or = malloc(sizeof(OM_DS_BatchRecord));
+	or->x  = x;
+	or->y  = y;
 
-    /// Otherwise, compare their lists' tags
-    else
-    {
-		if (x->ds->tag < y->ds->tag)
-		    return 1;
-		else
-		    return 0;
-    }
+	Cilk_batchify(_cilk_ws, &orderBatchOp, NULL, or, sizeof(OM_DS_BatchRecord), result);
+	//TODO: Does this go here?
+	free(or);
 }
 
 /*!
@@ -1030,26 +997,7 @@ cilk void rebalance_tl (Bottom_List * pivot){
 	clock_t temp_clock = clock();
 #endif
 
-
-#ifdef RD_STATS
-	Top_List * list = pivot->parent;
-    if (list->list_of_size_of_top_list_when_split_head == NULL)
-    {
-		list->list_of_size_of_top_list_when_split_head = malloc(sizeof(ll_node));
-		list->list_of_size_of_top_list_when_split_tail = list->list_of_size_of_top_list_when_split_head;
-		list->list_of_size_of_top_list_when_split_head->data = list->size;
-    }
-    else
-    {
-		ll_node * nextnode = malloc(sizeof(ll_node));
-		list->list_of_size_of_top_list_when_split_tail->next = nextnode;
-		list->list_of_size_of_top_list_when_split_tail = nextnode;
-		nextnode->next = NULL;
-		nextnode->data = list->size;
-    }
-#endif
-
-    /// Temp current internal node
+   /// Temp current internal node
     Internal_Node *current_node = pivot->internal;
 	Internal_Node ** nodeArray;
 

@@ -1,18 +1,19 @@
+/* Copied version of .cilkh header modified for c translation */
+
 /*
  * =====================================================================================
  *
  *       Filename:  OM_DS_TREE.h
  *
- *    Description:  Contains the data structures for order maintenance data structure
- *                  The corresponding source file is the cilk2c translation of the cilk
- *       			version of the parallized two-tier OM-DS with a Tree-style top list.
+ *    Description:  Header 
  *
  *        Version:  1.0
- *        Created:  06/23/2014 03:13:03 PM
+ *        Created:  07/15/2014 11:36:19 AM
+ *       Revision:  none
  *       Compiler:  gcc
  *
- *         Author:  Alex Jones (aj), atjalex@gmail.com & Shane Deiley
- *        Company:  
+ *         Author:  Alex Jones (aj), atjalex@gmail.com; Shane Deiley, shanedeiley@wustl.edu
+ *        Company:  Washington University in St. Louis Summer REU 2014
  *
  * =====================================================================================
  */
@@ -20,34 +21,37 @@
 #ifndef _OM_DS_H
 #define _OM_DS_H
 
+//Parallel
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
 #include <limits.h>
 #include <math.h>
-#include <cilk.h>
+#include <assert.h>
 
-/// Pre-compiler macro for debugging 
+/*/// Pre-compiler macro for debugging */
 //#define RD_DEBUG
-#define WS_TOP_LIST_ENGLISH ws->context->Cilk_global_state->englishOM_DS
-#define WS_TOP_LIST_HEBREW ws->context->Cilk_global_state->hebrewOM_DS
+//#define RD_STATS
+#define PARALLEL_THRESHOLD_FLAG
+
+#define LEFT 0
+#define RIGHT 1
 
 /// FWD Declaration
 struct Bottom_List_s;
 struct Top_List_s;
-struct Runtime_node_s;
+struct Internal_Node_s; 
 
-/// TEST
-struct Internal_Node_s;
-
-/// The Node that makes up Bottom_Lists
+/*/// The Node that makes up Bottom_Lists*/
 typedef struct OM_Node_s{
 
 	struct OM_Node_s *next;
 	struct OM_Node_s *prev;
-	int ID;
 	unsigned /*long*/ int tag;
+	int ID;
 	struct Bottom_List_s * ds;
-	struct Runtime_node_s * linked_runtime_node;
-} OM_Node;
 
+} OM_Node;
 
 #ifdef RD_STATS
 typedef struct ll_node_s {
@@ -56,19 +60,22 @@ typedef struct ll_node_s {
 } ll_node;
 #endif
 
+
 /// Holds OM_Nodes and is what comprises the Top_List
 typedef struct Bottom_List_s {
-
-	struct Top_List_s * parent;
+	struct Top_List_s *parent;
 	OM_Node *head,*tail;
 	int size;
-	int reorder_flag; 
+	int reorder_flag;
 	struct Bottom_List_s *next;
 	struct Bottom_List_s *prev;
 	unsigned /*long*/ int tag;
 
-	///TEST
 	struct Internal_Node_s * internal;
+
+#ifdef RD_STATS
+	ll_node * list_of_size_of_bottom_list_when_split_head, *list_of_size_of_bottom_list_when_split_tail;
+#endif
 
 } Bottom_List;
 
@@ -89,39 +96,34 @@ typedef struct Top_List_s{
 	Bottom_List *head, *tail; /// TODO: change to Bottom_List of the sublist
 	int size;
 
+#ifdef RD_STATS
+	ll_node * list_of_size_of_top_list_when_split_head, *list_of_size_of_top_list_when_split_tail;
+#endif
+
 } Top_List;
-
-/*The runtime node that is carried through the cilk processes*/
-typedef struct Runtime_node_s{
-	struct OM_Node_s * english, *hebrew;
-} Runtime_node;
-
 
 /// Parallel:
 Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node);
 void create_scaffolding(Internal_Node *, Internal_Node *);
-cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
-cilk void par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end);
+void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
+void par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end);
 
 
-/// Declarations of the OM-functions operating internally
+/// Declarations of the OM-functions (in batchify part)
+void insert (OM_Node *x, OM_Node *y);
+void insert_internal(OM_Node * x, OM_Node *y);
+
+/// Declarations of the OM-functions
 Bottom_List * create_bl();
 Top_List * create_tl();
-void first_insert_bl(Bottom_List * ds, OM_Node *y);
+void first_insert_bl(Bottom_List * ds, OM_Node * y);
 void first_insert_tl(Top_List * list, Bottom_List * y);
+void first_insert(Top_List *, OM_Node *);
 void insert_tl(Bottom_List *x, Bottom_List *y);
-void insert_internal(OM_Node*, OM_Node*);
-
-/// Usable OM_DS functions
-void first_insert(Top_List * list, OM_Node* y);
-void insert(struct CilkWorkerState_s *const ws, OM_Node * x, OM_Node * y);
-void order(OM_Node * x, OM_Node * y, int * result);
-
-//CILK2C
-void batchInsertOp (struct CilkWorkerState_s *const ws, void *dataStruct, void *data, size_t size, void *result);
+int order(OM_Node * x, OM_Node * y);
 void split_bl(Top_List * list, Bottom_List * list_to_split);
-void rebalance_tl(Top_List * list, Bottom_List * pivot);
-void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const /*long */int skip_size);
+void rebalance_tl(Bottom_List * pivot);
+void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const /*long*/ int skip_size);
 void rebalance_bls(Top_List * list);
 void print_tl(Top_List * list);
 void print_bl(Bottom_List * list);
@@ -132,6 +134,7 @@ void print_tree (Top_List * list);
 void c_rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
 void c_par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end);
 
+
+
+
 #endif 
-
-

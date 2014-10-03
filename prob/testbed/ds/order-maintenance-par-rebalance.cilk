@@ -379,12 +379,6 @@ void create_scaffolding (Internal_Node *x, Internal_Node *y)
 		iter_node = iter_node->parent;
     }
 
-#ifdef RD_DEBUG
-	if (x->bl->parent->size > 1)
-		spawn check_tree_correctness(x);
-	sync;
-#endif
-
 #ifdef RD_TIMING
 	scaffolding_total_time += (double)(clock() - temp);
 #endif
@@ -1066,7 +1060,8 @@ cilk void rebalance_tl (Bottom_List * pivot){
 	sync;
 
 #ifdef RD_DEBUG
-	check_tree_correctness(current_node);
+	spawn check_tree_correctness(current_node);
+	sync;
 	check_sub_correctness(pivot->parent);
 
 #endif
@@ -1691,12 +1686,9 @@ void print_tree (Top_List * list)
  */
 void c_rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex)
 {
-
-#ifdef RD_DEBUG
-	printf("rebuild_tree(%p, nodeArray, %i, %i)\n", current_node, startIndex, endIndex);
-#endif
-	/////////////////////////// OLD REBUILD AT BOTTOM
     Internal_Node * new_child;
+
+	/////////////////////////// OLD REBUILD AT BOTTOM
     int num_children = (endIndex - startIndex) + 1;
     rebuild_tree_count++;
 
