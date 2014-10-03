@@ -18,10 +18,10 @@
  * =====================================================================================
  */
 
-#include	"order-maintenance-par-rebalance.cilkh"
 #include	<stdlib.h>
 #include	<stdio.h>
 #include	<time.h>
+#include	"order-maintenance-par-rebalance.cilkh"
 
 /// Tests if each node is in order in the back-insert case
 cilk void order_test (OM_Node ** nodeArray, int num_nodes)
@@ -44,6 +44,8 @@ cilk int main ( int argc, char *argv[] )
 {
 	/// User specifies the number of nodes to insert
 	int num_nodes = atoi(argv[1]);
+
+
 	int i = 0, j, split_flag = 0;
 	clock_t start;
 	OM_Node ** nodeArray = malloc(num_nodes * sizeof(OM_Node *));
@@ -51,6 +53,7 @@ cilk int main ( int argc, char *argv[] )
 	/// Create the list
  	Top_List * list = create_tl(); 
 
+	printf("Num_nodes: %i\n", num_nodes);
 
 	/// Assign memory to all the nodes to be inserted
 	for (;i < num_nodes; i++)
@@ -84,9 +87,10 @@ cilk int main ( int argc, char *argv[] )
 		//j = 0;
 		j = i-1;
 		/*j = (rand() % i);*/
+		printf("DEBUG: Entering insert\n");
 		spawn insert(nodeArray[j], nodeArray[i]);
 		sync;
-
+		printf("DEBUG: Past insert\n");
 #ifdef RD_DEBUG
 		printf("Check for correctness of Bottom_lists..");
 		check_sub_correctness(list);
