@@ -391,7 +391,6 @@ cilk void insert(OM_Node *x, OM_Node *y){
 	ir->y  = y;
 
 	Cilk_batchify(_cilk_ws, &batchInsertOp ,NULL, ir, sizeof(OM_DS_BatchRecord), NULL);
-	printf("after batchify\n");
 	//TODO: does this go here?
 	/*free(ir);*/
 }
@@ -402,30 +401,23 @@ cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result
 	int i = 0;
 	OM_DS_BatchRecord * irArray = (OM_DS_BatchRecord *)data,* ir;
 
-#ifdef RD_DEBUG
-	printf("Debug: in batchInsertOP\n");
-#endif
+	/// Initiate the batch
+	Cilk_init_batch(_cilk_ws);
 	/// use a regular for loop to be sequential
 	for(; i < size; i++){
 		ir = &irArray[i];
-#ifdef RD_DEBUG
-		printf("DEBUG: abt to enter insert_internal\n");
-#endif
 		spawn insert_internal(ir->x, ir->y);
 		sync;
-#ifdef RD_DEBUG
-		printf("DEBUG: after insert internal\n");
-#endif
 	}
+
+	/// Terminate the batch
+	Cilk_terminate_batch(_cilk_ws);
 }
 
 cilk void insert_internal(OM_Node *x, OM_Node *y)
 {
     Bottom_List *ds = x->ds;
 
-	#ifdef RD_DEBUG
-	printf("DEBUG: in insert_internal\n");
-	#endif
     /// Update the ds y is in
     y->ds = ds;
 
@@ -440,15 +432,11 @@ cilk void insert_internal(OM_Node *x, OM_Node *y)
 		/// Check for collision
 		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag
 		{
-			printf("About to enter first split_bl\n");
 		    spawn split_bl(ds->parent, ds);
 			sync;
-			printf("after split_bl first\n");
 
-			printf("before insert internal first\n");
 		    spawn insert_internal(x, y );
 			sync;
-			printf("after insert internal first\n");
 		    return;
 		}
 
@@ -466,15 +454,11 @@ cilk void insert_internal(OM_Node *x, OM_Node *y)
 		/// Check for collision
 		if ((x->next->tag - x->tag) <= 1)
 		{
-			printf("before split_bl second\n");
 		    spawn split_bl(ds->parent, ds);
 			sync;
-			printf("after split second\n");
 
-			printf("before insert intern. second\n");
 		    spawn insert_internal(x, y);
 			sync;
-			printf("after insert second\n");
 
 		    return;
 		}
@@ -488,7 +472,6 @@ cilk void insert_internal(OM_Node *x, OM_Node *y)
     if (y->next != NULL) y->next->prev = y; ///< If y isn't tail, make the next node point to it
 
     ds->size += 1;
-	printf("Popping out of insertinternal\n");
 }
 
 /*!

@@ -53,8 +53,6 @@ cilk int main ( int argc, char *argv[] )
 	/// Create the list
  	Top_List * list = create_tl(); 
 
-	printf("Num_nodes: %i\n", num_nodes);
-
 	/// Assign memory to all the nodes to be inserted
 	for (;i < num_nodes; i++)
 	{
@@ -66,10 +64,6 @@ cilk int main ( int argc, char *argv[] )
 
 	// Create and add the first relevant thing to the ds
 	first_insert(list, nodeArray[0]);
-
-#ifdef RD_DEBUG
-	printf("DEBUG: About to enter the loop\n");
-#endif
 
 	i = 1;
 	for (; i < num_nodes; i++)
@@ -87,10 +81,9 @@ cilk int main ( int argc, char *argv[] )
 		//j = 0;
 		j = i-1;
 		/*j = (rand() % i);*/
-		printf("DEBUG: Entering insert\n");
 		spawn insert(nodeArray[j], nodeArray[i]);
 		sync;
-		printf("DEBUG: Past insert\n");
+
 #ifdef RD_DEBUG
 		printf("Check for correctness of Bottom_lists..");
 		check_sub_correctness(list);
