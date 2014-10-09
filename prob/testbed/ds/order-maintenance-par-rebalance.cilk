@@ -391,8 +391,8 @@ cilk void insert(OM_Node *x, OM_Node *y){
 	ir->y  = y;
 
 	Cilk_batchify(_cilk_ws, &batchInsertOp ,NULL, ir, sizeof(OM_DS_BatchRecord), NULL);
-	//TODO: does this go here?
-	/*free(ir);*/
+
+	free(ir);
 }
 
 //This is for the cilk version
@@ -403,6 +403,7 @@ cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result
 
 	/// Initiate the batch
 	Cilk_init_batch(_cilk_ws);
+
 	/// use a regular for loop to be sequential
 	for(; i < size; i++){
 		ir = &irArray[i];
@@ -410,6 +411,7 @@ cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result
 		sync;
 	}
 
+	
 	/// Terminate the batch
 	Cilk_terminate_batch(_cilk_ws);
 }
@@ -745,7 +747,7 @@ cilk void order (OM_Node * x, OM_Node * y, int * result)
 	or->y  = y;
 
 	Cilk_batchify(_cilk_ws, &orderBatchOp, NULL, or, sizeof(OM_DS_BatchRecord), result);
-	//TODO: Does this go here?
+
 	free(or);
 }
 

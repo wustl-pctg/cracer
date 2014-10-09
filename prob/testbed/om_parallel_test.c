@@ -76,9 +76,9 @@ int main ( int argc, char *argv[] )
 //		else if (list->split_flag == 1) {
 			/*j =i - 1;*/
 //		}
-		/*j = 0;*/
+		//j = 0;
 		j = i-1;
-		/*j = (rand() % i);*/
+		//j = (rand() % i);
 		insert(nodeArray[j], nodeArray[i]);
 
 #ifdef RD_DEBUG
@@ -91,11 +91,12 @@ int main ( int argc, char *argv[] )
 	
 	// End clock
 	printf("Took %f s.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
-	print_remove_count();
+
+/*	print_remove_count();
 	print_rebuild_count();
 	print_rebalance_count();
 	print_scaffolding_timing();	
-	print_rebalance_timing();	
+	print_rebalance_timing();	*/
 	/*order_test(nodeArray, num_nodes);*/
 	check_sub_correctness(list);
 
