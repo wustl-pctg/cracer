@@ -16,10 +16,68 @@
 
 #include <stdio.h>
 
+function_t batchFunc;
+
 COMMON_PORTABLE
-void internal_batchify(cilk_fiber *fiber)
+void invoke_batch(cilk_fiber *fiber)
 {
-  printf("In internal batchify\n");
+	__cilkrts_worker * w = __cilkrts_get_tls_worker();
+
+  // NB: This may not actually be the current fiber! @TODO(rob)
+  cilk_fiber* current_fiber = w->l->batch_user_fiber;
+  //  cilk_fiber *current_fiber = w->l->frame_ff->fiber_self;
+
+  // 1. Make sure deque (ltq) pointers are correctly set.
+
+  // 2. Do the collection for the batch.
+
+  // 3. Call the batch operation.
+  batchFunc();
+
+  // Note: SOMEONE will return back here, even if it is not the
+  // original batch owner.
+  // 4. Terminate the batch.
+
+  // 5. Go back to the user code before the call to batchify.
+
+  // @TODO(rob) May be slightly faster to just manually destroy the
+  // batch scheduling fiber and jump back to the user fiber, rather
+  // than jumping to it first. But I doubt it will make a huge difference.
+  cilk_fiber_remove_reference_from_self_and_resume_other(current_fiber,
+                                                         &w->l->fiber_pool,
+                                                         w->l->batch_scheduling_fiber);
+}
+
+COMMON_PORTABLE
+void batch_scheduler_function(cilk_fiber *fiber)
+{
+	__cilkrts_worker * w = __cilkrts_get_tls_worker();
+  cilk_fiber *current_fiber = w->l->frame_ff->fiber_self;
+
+  cilk_fiber_remove_reference_from_self_and_resume_other(w->l->batch_scheduling_fiber,
+                                                         &w->l->fiber_pool,
+                                                         w->l->core_user_fiber);
+
+}
+
+static cilk_fiber* allocate_batch_fiber(__cilkrts_worker* w,
+                                        cilk_fiber_pool* pool,
+                                        cilk_fiber_proc start_proc)
+{
+  cilk_fiber* batch_fiber;
+	START_INTERVAL(w, INTERVAL_FIBER_ALLOCATE) {
+    // allocate_from_thread? @TODO(rob)
+    batch_fiber = cilk_fiber_allocate(pool); 
+    cilk_fiber_reset_state(batch_fiber, start_proc);
+    cilk_fiber_set_owner(batch_fiber, w);
+  } STOP_INTERVAL(w, INTERVAL_FIBER_ALLOCATE);
+
+  if (batch_fiber == NULL) {
+    // Should manually try to get lock and run batch sequentially?
+    __cilkrts_bug("Couldn't get a batch fiber.");
+  }
+
+  return batch_fiber;
 }
 
 /* Here's the plan for batchify:
@@ -49,32 +107,38 @@ void internal_batchify(cilk_fiber *fiber)
  */
 CILK_API_VOID cilk_batchify(function_t f)
 {
-	printf("Doing the function\n");
-	printf("Getting cilk worker\n");
 	__cilkrts_worker * w = __cilkrts_get_tls_worker();
-  cilk_fiber *batch_fiber = NULL;
   cilk_fiber *current_fiber = w->l->frame_ff->fiber_self;
+  cilk_fiber *batch_fiber = NULL;
 
-  printf("Allocating new fiber\n");
-	START_INTERVAL(w, INTERVAL_FIBER_ALLOCATE) {
-    batch_fiber = cilk_fiber_allocate(&w->l->fiber_pool); // allocate_from_thread? TODO(rob)
-    cilk_fiber_reset_state(batch_fiber, internal_batchify);
-    cilk_fiber_set_owner(batch_fiber, w);
-  } STOP_INTERVAL(w, INTERVAL_FIBER_ALLOCATE);
+  cilk_fiber *batch_scheduling_fiber = allocate_batch_fiber(w, &w->l->fiber_pool,
+                                                            batch_scheduler_function);
 
-  if (batch_fiber == NULL) {
+  // Will need to assert this, but disabled now because I don't
+  //  initially set it to NULL at initialization, yet.
+  //  CILK_ASSERT(w->l->core_scheduling_fiber == NULL);
 
-    // Should manually try to get lock and run batch sequentially?
-    printf("Could not get a fiber!\n");
+  w->l->core_user_fiber = current_fiber;
+  w->l->core_scheduling_fiber = w->l->scheduling_fiber;
+  w->l->scheduling_fiber = batch_scheduling_fiber;
+  w->l->batch_scheduling_fiber = batch_scheduling_fiber;
 
+  // @TODO(rob) Try to get the batch lock.
+  int is_batch_owner = 1;
+  if (is_batch_owner) {
+    batch_fiber = allocate_batch_fiber(w, &w->l->fiber_pool,
+                                       invoke_batch);
+    w->l->batch_user_fiber = batch_fiber;
+    batchFunc = f;
   } else {
-    /* full_frame *ff = __cilkrts_make_full_frame(w, 0); */
-    /* ff->join_counter = 1; */
-    /* w->l->frame_ff = ff; */
-    /* f(); */
-
-    cilk_fiber_suspend_self_and_resume_other(current_fiber, batch_fiber);
+    batch_fiber = batch_scheduling_fiber;
   }
 
-  // suspend_self_and_resume_other
+  cilk_fiber_suspend_self_and_resume_other(current_fiber, batch_fiber);
+
+  w->l->scheduling_fiber = w->l->core_scheduling_fiber;
+  w->l->core_scheduling_fiber = NULL;
+  w->l->core_user_fiber = NULL;
+  w->l->batch_scheduling_fiber = NULL;
+  w->l->batch_user_fiber = NULL;
 }
