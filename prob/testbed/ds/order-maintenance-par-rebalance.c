@@ -740,6 +740,14 @@ int order (OM_Node * x, OM_Node * y)
     }
 }
 
+
+
+static unsigned int split_count= 0;
+void print_split_count()
+{
+	printf ( "split count: %i\n", split_count );
+}
+
 /*!
  * ===  FUNCTION  ======================================================================
  *         Name:  split_bl
@@ -760,6 +768,9 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
     /// Each node in the list will be spaced out by skip_size tag spaces
     unsigned long int skip_size = MAX_NUMBER >> lg_HALF_INT_BIT_SIZE;
 
+	/// Update this function call count
+	++split_count;
+	
     /// First reorganize list_to_split appropriately
     current->tag = 0;
     while (node_count < HALF_INT_BIT_SIZE && current->next != NULL)
@@ -1040,6 +1051,7 @@ void rebalance_tl (Bottom_List * pivot){
     double overflow_density, overflow_threshold, i = -1;
     unsigned int current_tag_range = 1, current_tree_lvl = 0, lvl_dif = 0;
 
+	/// Update this function call count
 	rebalance_count++;
 
 #ifdef RD_DEBUG

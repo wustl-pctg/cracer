@@ -437,6 +437,13 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 }
 */
 
+
+static unsigned int split_count= 0;
+void print_split_count()
+{
+	printf ( "split count: %i\n", split_count );
+}
+
 /*! KUNAL'S VERSION
  * ===  FUNCTION  ======================================================================
  *         Name:  split_bl
@@ -457,6 +464,9 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 
 	/// Each node in the list will be spaced out by skip_size tag spaces
 	unsigned long int skip_size = MAX_NUMBER >> lg_HALF_INT_BIT_SIZE;
+
+	/// Update this function call count
+	++split_count;
 
 	/// First reorganize list_to_split appropriately
 	current->tag = 0;
@@ -559,6 +569,13 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	}
 }
 
+
+static int rebalance_count = 0;
+void print_rebalance_count()
+{
+	printf ( "Rebalance count:%i\n", rebalance_count );
+}
+
 /*! 
  * ===  FUNCTION  ======================================================================
  *         Name:  rebalance_tl
@@ -570,6 +587,9 @@ void rebalance_tl (Top_List * list, Bottom_List * pivot)
 {
 	/// Pointers for walking out from the pivot
 	Bottom_List *lList = pivot, *rList = pivot;
+
+	/// Update the count of this function call
+	++rebalance_count;
 #ifdef RD_STATS
 			
 			if (list->list_of_size_of_top_list_when_split_head == NULL)

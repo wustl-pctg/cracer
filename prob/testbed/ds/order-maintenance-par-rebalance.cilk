@@ -751,6 +751,13 @@ cilk void order (OM_Node * x, OM_Node * y, int * result)
 	free(or);
 }
 
+
+static unsigned int split_count= 0;
+void print_split_count()
+{
+	printf ( "split count: %i\n", split_count );
+}
+
 /*!
  * ===  FUNCTION  ======================================================================
  *         Name:  split_bl
@@ -902,6 +909,9 @@ cilk void par_build_array_from_rebalance_list (Internal_Node ** buildArray, Inte
 
 	int left_side_end;
 
+	// Update the count of this function's calls
+	++rebuild_skip_count;
+
 	// Build left side
 	if (current_node->left->lvl != 0)
 	{
@@ -947,6 +957,9 @@ cilk void par_build_array_from_rebalance_list (Internal_Node ** buildArray, Inte
 
 #else
 	int left_side_end;
+
+	// Update the count of this function's calls
+	++rebuild_skip_count;
 
 	// Build left side
 	if (current_node->left->lvl != 0)
@@ -1006,6 +1019,7 @@ cilk void rebalance_tl (Bottom_List * pivot){
     double overflow_density, overflow_threshold, i = -1;
     unsigned int current_tag_range = 1, current_tree_lvl = 0, lvl_dif = 0;
 
+	// Update the count of this function call 
 	rebalance_count++;
 
 #ifdef RD_DEBUG
@@ -1987,6 +2001,9 @@ void c_par_build_array_from_rebalance_list (Internal_Node ** buildArray, Interna
 {
 
 	int left_side_end;
+
+	// Update the count of this function's calls
+	++rebuild_skip_count;
 
 	// Build left side
 	if (current_node->left->lvl != 0)

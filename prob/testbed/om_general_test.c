@@ -42,19 +42,25 @@ int main ( int argc, char *argv[] )
 {
 	/// User specifies the number of nodes to insert
 	int num_nodes = atoi(argv[1]);
-	int i = 0, j, split_flag = 0;
+	int i = 1, j, split_flag = 0;
 
 	OM_Node ** nodeArray = malloc(num_nodes * sizeof(OM_Node *));
-	
+	int * intArray = malloc( num_nodes * sizeof(int));
+
 	/// Create the list
  	Top_List * list = create_tl(); 
 
 
+ 		nodeArray[0]= malloc(sizeof(OM_Node));
+		nodeArray[0]->ID = 0;
+
 	/// Assign memory to all the nodes to be inserted
 	for (;i < num_nodes; i++)
 	{
-		nodeArray[i]= malloc(sizeof(OM_Node));
+		intArray[i] = (rand() % i);
+ 		nodeArray[i]= malloc(sizeof(OM_Node));
 		nodeArray[i]->ID = i;
+
 	}
 
 	/// Clock to record how long the inserts take
@@ -66,26 +72,8 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-		/// Testing what interchanging random in appending does
-		/*
-		if(list->split_flag == 0) {
-			if(i % 2 == 0)
-				j = (rand() % i); ///< Case where each insert is random
-			else
-				j = i - 1;     ///< Case where each insert is at the back
 
-		}
-		else if (list->split_flag == 1) {
-			j = i - 1;
-		}
-		*/
-
-		/// Options for inserting pattern
-		//j = (rand() % i); ///< Case where each insert is random
-		j = i - 1;     ///< Case where each insert is at the back
-		//j = 0;        ///< Case where each insert is at the front
-
-		insert(nodeArray[j], nodeArray[i]);
+		insert(nodeArray[intArray[i]], nodeArray[i]);
 
 #ifdef RD_DEBUG
 		printf("Check for correctness..");
@@ -141,7 +129,8 @@ int main ( int argc, char *argv[] )
 
 	/// Free all the allocated memory
 	free_tl(list);
-
+	free(intArray);
+	free(nodeArray);
 	return EXIT_SUCCESS;
 }
 
