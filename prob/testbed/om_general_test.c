@@ -23,6 +23,8 @@
 #include	<stdio.h>
 #include	<time.h>
 
+#include "util/benchOptions.h"
+
 /// Tests if each node is in order in the back-insert case
 void order_test (OM_Node ** nodeArray, int num_nodes)
 {
@@ -37,6 +39,7 @@ void order_test (OM_Node ** nodeArray, int num_nodes)
 	}
 }
 
+extern int getOptions(int, char**, BenchOptions*);
 
 int main ( int argc, char *argv[] )
 {
@@ -48,7 +51,11 @@ int main ( int argc, char *argv[] )
 	int * intArray = malloc( num_nodes * sizeof(int));
 
 	/// Create the list
- 	Top_List * list = create_tl(); 
+ 	Top_List * list = create_tl();
+
+	/// Arguments from being specified
+	BenchOptions opt;
+	
 
 
  		nodeArray[0]= malloc(sizeof(OM_Node));
