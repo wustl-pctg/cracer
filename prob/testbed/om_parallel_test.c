@@ -42,17 +42,23 @@ int main ( int argc, char *argv[] )
 {
 	/// User specifies the number of nodes to insert
 	int num_nodes = atoi(argv[1]);
-	int i = 0, j, split_flag = 0;
+	int i = 1, j, split_flag = 0;
 
 	OM_Node ** nodeArray = malloc(num_nodes * sizeof(OM_Node *));
-	
+	int * intArray = malloc( num_nodes * sizeof(int));
+
 	/// Create the list
  	Top_List * list = create_tl(); 
 
+ 		nodeArray[0]= malloc(sizeof(OM_Node));
+		nodeArray[0]->ID = 0;
 
 	/// Assign memory to all the nodes to be inserted
 	for (;i < num_nodes; i++)
 	{
+		intArray[i] = 0;
+		//intArray[i] = (rand() % i);
+		//intArray[i] = i-1;
 		nodeArray[i]= malloc(sizeof(OM_Node));
 		nodeArray[i]->ID = i;
 	}
@@ -66,20 +72,8 @@ int main ( int argc, char *argv[] )
 	i = 1;
 	for (; i < num_nodes; i++)
 	{
-//			if(list->split_flag == 0) {
-//			if(i % 2 == 0)
-				/*j = (rand() % i); ///< Case where each insert is random*/
-//			else
-//				j = i - 1;     ///< Case where each insert is at the back
-//			j = 0;        ///< Case where each insert is at the front
-//		}
-//		else if (list->split_flag == 1) {
-			/*j =i - 1;*/
-//		}
-		//j = 0;
-		j = i-1;
-		//j = (rand() % i);
-		insert(nodeArray[j], nodeArray[i]);
+
+		insert(nodeArray[intArray[i]], nodeArray[i]);
 
 #ifdef RD_DEBUG
 		printf("Check for correctness of Bottom_lists..");
@@ -92,6 +86,9 @@ int main ( int argc, char *argv[] )
 	// End clock
 	printf("Took %f s.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 
+
+	print_split_count();
+	print_rebalance_count();
 /*	print_remove_count();
 	print_rebuild_count();
 	print_rebalance_count();
