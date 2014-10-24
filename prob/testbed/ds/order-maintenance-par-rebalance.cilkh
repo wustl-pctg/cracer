@@ -31,6 +31,7 @@
 /*/// Pre-compiler macro for debugging */
 //#define RD_DEBUG
 #define PARALLEL_THRESHOLD_FLAG
+#define RD_STATS
 
 #define LEFT 0
 #define RIGHT 1
@@ -52,6 +53,13 @@ typedef struct OM_Node_s{
 
 } OM_Node;
 
+#ifdef RD_STATS
+typedef struct ll_node_s {
+	unsigned int data;
+	struct ll_node_s 	 *next;
+} ll_node;
+#endif
+
 
 /// Holds OM_Nodes and is what comprises the Top_List
 typedef struct Bottom_List_s {
@@ -64,6 +72,9 @@ typedef struct Bottom_List_s {
 	unsigned /*long*/ int tag;
 
 	struct Internal_Node_s * internal;
+#ifdef RD_STATS
+	ll_node * list_of_size_of_bottom_list_when_split_head, *list_of_size_of_bottom_list_when_split_tail;
+#endif
 
 } Bottom_List;
 
@@ -84,6 +95,9 @@ typedef struct Top_List_s{
 
 	Bottom_List *head, *tail; /// TODO: change to Bottom_List of the sublist
 	int size;
+#ifdef RD_STATS
+	ll_node * list_of_size_of_top_list_when_split_head, *list_of_size_of_top_list_when_split_tail;
+#endif
 
 } Top_List;
 

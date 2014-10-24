@@ -30,7 +30,7 @@
 #include	<time.h>
 /*/// Pre-compiler macro for debugging */
 //#define RD_DEBUG
-//#define RD_STATS
+#define RD_STATS
 //#define RD_TIMING
 //#define RD_SIZE_REBALANCE
 

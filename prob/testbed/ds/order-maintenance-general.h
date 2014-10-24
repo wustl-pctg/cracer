@@ -27,7 +27,7 @@
 
 /// Pre-compiler macro for debugging 
 //#define RD_DEBUG
-//#define RD_STATS
+#define RD_STATS
 
 /// FWD Declaration
 struct Bottom_List_s;

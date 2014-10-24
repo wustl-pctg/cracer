@@ -59,9 +59,9 @@ int main ( int argc, char *argv[] )
 	/// Assign memory to all the nodes to be inserted
 	for (;i < num_nodes; i++)
 	{
-		//intArray[i] = (rand() % i);
+		intArray[i] = (rand() % i);
 		//intArray[i] = i-1;
-		intArray[i] = 0;
+		//intArray[i] = 0;
  		nodeArray[i]= malloc(sizeof(OM_Node));
 		nodeArray[i]->ID = i;
 
@@ -103,6 +103,7 @@ int main ( int argc, char *argv[] )
 	Bottom_List * current_bl = list->head;
 	ll_node * current_ll_node;
 //	printf("Size of bottom lists when split:\n");
+/*
 	/// Calc size of bottom lists when splits occurred
 	while (current_bl != NULL){
 //		printf("\tBottom List # %i : ", list_count++);
@@ -118,20 +119,20 @@ int main ( int argc, char *argv[] )
 	}
 
 	printf("Total number of bottom list splits: %i\n\n", num_splits);
-
+*/
 	list_count = 0;
 	current_ll_node = list->list_of_size_of_top_list_when_split_head;
-//	printf("Size of top list when split: ");
+	printf("Size of top list when rebalanced: \n");
 
 	/// Calc size of bottom lists when splits occurred
 	while (current_ll_node != NULL){
-		//printf("%i; ", current_ll_node->data);
+		printf("%i\n", current_ll_node->data);
 		list_count++;
 		current_ll_node = current_ll_node->next;
 	}
 //	printf ( "\n" );
 
-	printf ( "Total number of top list rebalances: %i \n\n",  list_count);
+//	printf ( "Total number of top list rebalances: %i \n\n",  list_count);
 #endif
 
 	/// Free all the allocated memory

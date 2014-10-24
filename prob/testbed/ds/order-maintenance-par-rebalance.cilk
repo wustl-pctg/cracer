@@ -1012,6 +1012,7 @@ cilk void rebalance_tl (Bottom_List * pivot){
 	clock_t temp_clock = clock();
 #endif
 
+
    /// Temp current internal node
     Internal_Node *current_node = pivot->internal;
 	Internal_Node ** nodeArray;
@@ -1019,6 +1020,23 @@ cilk void rebalance_tl (Bottom_List * pivot){
     /// Constants used to calculate when to rebalance
     double overflow_density, overflow_threshold, i = -1;
     unsigned int current_tag_range = 1, current_tree_lvl = 0, lvl_dif = 0;
+#ifdef RD_STATS
+	Top_List * list = pivot->parent;
+    if (list->list_of_size_of_top_list_when_split_head == NULL)
+    {
+		list->list_of_size_of_top_list_when_split_head = malloc(sizeof(ll_node));
+		list->list_of_size_of_top_list_when_split_tail = list->list_of_size_of_top_list_when_split_head;
+		list->list_of_size_of_top_list_when_split_head->data = list->size;
+    }
+    else
+    {
+		ll_node * nextnode = malloc(sizeof(ll_node));
+		list->list_of_size_of_top_list_when_split_tail->next = nextnode;
+		list->list_of_size_of_top_list_when_split_tail = nextnode;
+		nextnode->next = NULL;
+		nextnode->data = list->size;
+    }
+#endif
 
 	// Update the count of this function call 
 	rebalance_count++;
