@@ -141,7 +141,7 @@ void insert (OM_Node * x, OM_Node *y)
 		/// Check for collision
 		if ((MAX_NUMBER - x->tag) <= 1) ///< If x is tail, use MAX_NUMBER instead of x->next->tag		
 		{
-#ifdef RD_STATS
+/*#ifdef RD_STATS
 			if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
 			{
 				ds->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
@@ -157,7 +157,7 @@ void insert (OM_Node * x, OM_Node *y)
 				nextnode->data = ds->size;
 			}
 
-#endif
+			#endif*/
 			split_bl(ds->parent, ds);
 			insert(x, y );
 			return;
@@ -176,7 +176,7 @@ void insert (OM_Node * x, OM_Node *y)
 		/// Check for collision
 		if ((x->next->tag - x->tag) <= 1)
 		{
-#ifdef RD_STATS
+/*#ifdef RD_STATS
 			
 			if (ds->list_of_size_of_bottom_list_when_split_head == NULL)
 			{
@@ -192,7 +192,7 @@ void insert (OM_Node * x, OM_Node *y)
 				nextnode->next = NULL;
 				nextnode->data = ds->size;
 			}
-#endif
+			#endif*/
 
 			split_bl(ds->parent, ds);
 			insert(x, y);
@@ -465,6 +465,25 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	/// Each node in the list will be spaced out by skip_size tag spaces
 	unsigned long int skip_size = MAX_NUMBER >> lg_HALF_INT_BIT_SIZE;
 
+#ifdef RD_STATS
+			
+			if (list_to_split->list_of_size_of_bottom_list_when_split_head == NULL)
+			{
+				list_to_split->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
+				list_to_split->list_of_size_of_bottom_list_when_split_tail = list_to_split->list_of_size_of_bottom_list_when_split_head;
+				list_to_split->list_of_size_of_bottom_list_when_split_head->size_before_split = list_to_split->size;
+			}
+			else
+			{
+				ll_node * nextnode = malloc(sizeof(ll_node));
+				list_to_split->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
+				list_to_split->list_of_size_of_bottom_list_when_split_tail = nextnode;
+				nextnode->next = NULL;
+				list_to_split->list_of_size_of_bottom_list_when_split_tail->size_before_split = list_to_split->size;
+
+			}
+#endif
+
 	/// Update this function call count
 	++split_count;
 
@@ -480,6 +499,11 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	/// Finalize list_to_splits adjustments
 	list_to_split->size = node_count;
 	list_to_split->tail = current;
+   
+#ifdef RD_STATS
+	list_to_split->list_of_size_of_bottom_list_when_split_tail->data = list_to_split->size;
+#endif
+
 	transition_node = current->next;
 	current->next = NULL;
 	list_to_split->reorder_flag = 0;
@@ -490,11 +514,29 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 	/// Now reorganize each set of 32 into a new Bottom_list to_add
 	while (list_count < num_lists_needed)
 	{
+
+
 		/// Update node count for current iteration
 		node_count = 1; 
 		
 		/// This particular iteration's list to be added
 		to_add = create_bl(); 
+
+#ifdef RD_STATS
+			
+			if (to_add->list_of_size_of_bottom_list_when_split_head == NULL)
+			{
+				to_add->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
+				to_add->list_of_size_of_bottom_list_when_split_tail = to_add->list_of_size_of_bottom_list_when_split_head;
+			}
+			else
+			{
+				ll_node * nextnode = malloc(sizeof(ll_node));
+				to_add->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
+				list_to_split->list_of_size_of_bottom_list_when_split_tail = nextnode;
+				nextnode->next = NULL;
+			}
+#endif
 		
 		/// Node maintenence
 		current = transition_node;
@@ -521,6 +563,11 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		to_add->reorder_flag = 0;
 		to_add->size = node_count;
 
+
+#ifdef RD_STATS
+	to_add->list_of_size_of_bottom_list_when_split_tail->data = to_add->size;
+#endif
+
 		/// Insert the finished DS into the Top_List
 		insert_tl(holder, to_add);
 
@@ -539,6 +586,22 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		
 		/// This particular iteration's list to be added
 		to_add = create_bl(); 
+
+#ifdef RD_STATS
+			
+			if (to_add->list_of_size_of_bottom_list_when_split_head == NULL)
+			{
+				to_add->list_of_size_of_bottom_list_when_split_head = malloc(sizeof(ll_node));
+				to_add->list_of_size_of_bottom_list_when_split_tail = to_add->list_of_size_of_bottom_list_when_split_head;
+			}
+			else
+			{
+				ll_node * nextnode = malloc(sizeof(ll_node));
+				to_add->list_of_size_of_bottom_list_when_split_tail->next = nextnode;
+				list_to_split->list_of_size_of_bottom_list_when_split_tail = nextnode;
+				nextnode->next = NULL;
+			}
+#endif
 		
 		/// Node maintenence
 		current = transition_node;
@@ -563,6 +626,11 @@ void split_bl (Top_List * list, Bottom_List * list_to_split)
 		current->next = NULL;
 		to_add->reorder_flag = 0;
 		to_add->size = node_count;
+
+#ifdef RD_STATS
+		to_add->list_of_size_of_bottom_list_when_split_tail->data = to_add->size;
+#endif
+
 
 		/// Insert the finished DS into the Top_List
 		insert_tl(holder, to_add);

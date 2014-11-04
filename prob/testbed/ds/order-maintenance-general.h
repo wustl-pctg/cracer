@@ -48,6 +48,7 @@ typedef struct OM_Node_s{
 typedef struct ll_node_s {
 	unsigned int data;
 	struct ll_node_s 	 *next;
+	unsigned int size_before_split;
 } ll_node;
 #endif
 

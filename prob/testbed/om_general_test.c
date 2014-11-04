@@ -22,7 +22,7 @@
 #include	<stdlib.h>
 #include	<stdio.h>
 #include	<time.h>
-
+#include    "util/omOptions.h"
 
 /// Tests if each node is in order in the back-insert case
 void order_test (OM_Node ** nodeArray, int num_nodes)
@@ -42,33 +42,71 @@ void order_test (OM_Node ** nodeArray, int num_nodes)
 
 int main ( int argc, char *argv[] )
 {
+	OmOptions opt;
 	/// User specifies the number of nodes to insert
-	int num_nodes = atoi(argv[1]);
+	int num_nodes;
 	int i = 1, j, split_flag = 0;
+	clock_t start;
+	OM_Node ** nodeArray; 
+	int * intArray;
 
-	OM_Node ** nodeArray = malloc(num_nodes * sizeof(OM_Node *));
-	int * intArray = malloc( num_nodes * sizeof(int));
+	opt.inserts = 0;
+	opt.rand = 0;
+	opt.beg = 0;
+	opt.end = 0;
+	opt.printSplits = 0;
 
 	/// Create the list
  	Top_List * list = create_tl();
 
+	getOptions(argc,argv,&opt);
 
- 		nodeArray[0]= malloc(sizeof(OM_Node));
-		nodeArray[0]->ID = 0;
+	num_nodes = opt.inserts;
 
-	/// Assign memory to all the nodes to be inserted
-	for (;i < num_nodes; i++)
+	nodeArray = malloc(num_nodes * sizeof(OM_Node *));
+	intArray = malloc( num_nodes * sizeof(int));
+
+ 	nodeArray[0]= malloc(sizeof(OM_Node));
+	nodeArray[0]->ID = 0;
+
+	if (opt.rand)
 	{
-		intArray[i] = (rand() % i);
-		//intArray[i] = i-1;
-		//intArray[i] = 0;
- 		nodeArray[i]= malloc(sizeof(OM_Node));
-		nodeArray[i]->ID = i;
-
+		/// Assign memory to all the nodes to be inserted
+		for (;i < num_nodes; i++)
+		{
+			intArray[i] = (rand() % i);
+			nodeArray[i]= malloc(sizeof(OM_Node));
+			nodeArray[i]->ID = i;
+		}
+	} else if (opt.end) {
+		/// Assign memory to all the nodes to be inserted
+		for (;i < num_nodes; i++)
+		{
+			intArray[i] = i-1;
+			nodeArray[i]= malloc(sizeof(OM_Node));
+			nodeArray[i]->ID = i;
+		}
+	} else if (opt.beg) {
+		/// Assign memory to all the nodes to be inserted
+		for (;i < num_nodes; i++)
+		{
+			intArray[i] = 0;
+			nodeArray[i]= malloc(sizeof(OM_Node));
+			nodeArray[i]->ID = i;
+		}
+	} else {
+		/// Assign memory to all the nodes to be inserted
+		for (;i < num_nodes; i++)
+		{
+			intArray[i] = (rand() % i);
+			nodeArray[i]= malloc(sizeof(OM_Node));
+			nodeArray[i]->ID = i;
+		}
 	}
+		
 
 	/// Clock to record how long the inserts take
-	clock_t start = clock();
+	start = clock();
 
 	// Create and add the first relevant thing to the ds
 	first_insert(list, nodeArray[0]);
@@ -93,24 +131,35 @@ int main ( int argc, char *argv[] )
 	/*order_test(nodeArray, num_nodes);*/
 	/*check_sub_correctness(list);*/
 
-	print_split_count();
-	print_rebalance_count();
+	if( opt.printSplits ) {
+		print_split_count();
+		print_rebalance_count();
+	}
+
+	i = 0;
 
 #ifdef RD_STATS
 	int num_splits = 0, list_count = 1;
-	int num_rebalances = 0;
+	int num_rebalances = 0, before_split_size_total = 0, split_size_total = 0, rebalance_size_total = 0;
+	int expect_splits = 0, expected_rebalances = 0;
 
 	Bottom_List * current_bl = list->head;
 	ll_node * current_ll_node;
 //	printf("Size of bottom lists when split:\n");
-/*
+
 	/// Calc size of bottom lists when splits occurred
 	while (current_bl != NULL){
 //		printf("\tBottom List # %i : ", list_count++);
 		current_ll_node = current_bl->list_of_size_of_bottom_list_when_split_head;
 		while (	current_ll_node != NULL){
-			num_splits++;
+//			num_splits++;
 //			printf("%i; ", current_ll_node->data);
+			
+			/// Add up the size of the splits **********************
+//			printf("Size before split of %p: %i \t\t", current_ll_node, current_ll_node->size_before_split);
+//			printf("Data for %p: %i\n", current_ll_node, current_ll_node->data);
+			before_split_size_total += current_ll_node->size_before_split;
+			split_size_total += current_ll_node->data;
 			current_ll_node = current_ll_node->next;
 		}
 
@@ -118,21 +167,53 @@ int main ( int argc, char *argv[] )
 		current_bl = current_bl->next;
 	}
 
-	printf("Total number of bottom list splits: %i\n\n", num_splits);
-*/
+//	printf("Total number of bottom list splits: %i\n\n", num_splits);
+
+	/// Print the sum total size of the splits
+	if( opt.printSplits ) {
+		printf("Total size of splits of bottom lists: %i\n\n", split_size_total);
+		printf("Total size of Before splits of bottom lists: %i\n\n", before_split_size_total);
+	}
+
 	list_count = 0;
 	current_ll_node = list->list_of_size_of_top_list_when_split_head;
-	printf("Size of top list when rebalanced: \n");
+//	printf("Size of top list when rebalanced: \n");
 
 	/// Calc size of bottom lists when splits occurred
 	while (current_ll_node != NULL){
-		printf("%i\n", current_ll_node->data);
-		list_count++;
+//		printf("%i\n", current_ll_node->data);
+//		list_count++;
+
+		/// Add up the size of the rebalances ********************
+		rebalance_size_total += current_ll_node->data;
+
 		current_ll_node = current_ll_node->next;
 	}
 //	printf ( "\n" );
 
 //	printf ( "Total number of top list rebalances: %i \n\n",  list_count);
+
+	/// Print the sum total of the rebalances
+	printf("Total size of rebalances of top_lists: %i\n\n", rebalance_size_total);
+
+
+	/* =========================================================================
+	========================== UNIT TESTS FOR SPLITS ===========================
+	========================================================================= */
+	/// Only for the end-insert case
+	if ( opt.end )
+	{
+		// Splits happen starting at the 66th insert every 64 inserts
+		expected_splits = (int)(num_nodes-2)/64;
+		
+		if ( expected_splits != num_splits)
+			printf("\n\n\n INCORRECT NUMBER OF SPLITS - ERROR IN CODE\n\n\n");
+
+		expected_split_size_total = 
+
+		
+	}
+
 #endif
 
 	/// Free all the allocated memory

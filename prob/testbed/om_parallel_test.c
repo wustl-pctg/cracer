@@ -22,6 +22,8 @@
 #include	"ds/order-maintenance-par-rebalance.h"
 #include	<stdlib.h>
 #include	<stdio.h>
+#include <time.h>
+#include "util/omOptions.h"
 
 /// Tests if each node is in order in the back-insert case
 void order_test (OM_Node ** nodeArray, int num_nodes)
@@ -40,31 +42,70 @@ void order_test (OM_Node ** nodeArray, int num_nodes)
 
 int main ( int argc, char *argv[] )
 {
+	OmOptions opt;
 	/// User specifies the number of nodes to insert
-	int num_nodes = atoi(argv[1]);
+	int num_nodes;
 	int i = 1, j, split_flag = 0;
+	clock_t start;
+	OM_Node ** nodeArray; 
+	int * intArray;
 
-	OM_Node ** nodeArray = malloc(num_nodes * sizeof(OM_Node *));
-	int * intArray = malloc( num_nodes * sizeof(int));
+	opt.inserts = 0;
+	opt.rand = 0;
+	opt.beg = 0;
+	opt.end = 0;
+	opt.printSplits = 0;
 
 	/// Create the list
- 	Top_List * list = create_tl(); 
+ 	Top_List * list = create_tl();
 
- 		nodeArray[0]= malloc(sizeof(OM_Node));
-		nodeArray[0]->ID = 0;
+	getOptions(argc,argv,&opt);
 
-	/// Assign memory to all the nodes to be inserted
-	for (;i < num_nodes; i++)
+	num_nodes = opt.inserts;
+
+	nodeArray = malloc(num_nodes * sizeof(OM_Node *));
+	intArray = malloc( num_nodes * sizeof(int));
+
+ 	nodeArray[0]= malloc(sizeof(OM_Node));
+	nodeArray[0]->ID = 0;
+
+	if (opt.rand)
 	{
-		//intArray[i] = 0;
-		intArray[i] = (rand() % i);
-		//intArray[i] = i-1;
-		nodeArray[i]= malloc(sizeof(OM_Node));
-		nodeArray[i]->ID = i;
+		/// Assign memory to all the nodes to be inserted
+		for (;i < num_nodes; i++)
+		{
+			intArray[i] = (rand() % i);
+			nodeArray[i]= malloc(sizeof(OM_Node));
+			nodeArray[i]->ID = i;
+		}
+	} else if (opt.end) {
+		/// Assign memory to all the nodes to be inserted
+		for (;i < num_nodes; i++)
+		{
+			intArray[i] = i-1;
+			nodeArray[i]= malloc(sizeof(OM_Node));
+			nodeArray[i]->ID = i;
+		}
+	} else if (opt.beg) {
+		/// Assign memory to all the nodes to be inserted
+		for (;i < num_nodes; i++)
+		{
+			intArray[i] = 0;
+			nodeArray[i]= malloc(sizeof(OM_Node));
+			nodeArray[i]->ID = i;
+		}
+	} else {
+		/// Assign memory to all the nodes to be inserted
+		for (;i < num_nodes; i++)
+		{
+			intArray[i] = (rand() % i);
+			nodeArray[i]= malloc(sizeof(OM_Node));
+			nodeArray[i]->ID = i;
+		}
 	}
 
 	/// Clock to record how long the inserts take
-	clock_t start = clock();
+	start = clock();
 
 	// Create and add the first relevant thing to the ds
 	first_insert(list, nodeArray[0]);
@@ -86,9 +127,12 @@ int main ( int argc, char *argv[] )
 	// End clock
 	printf("Took %f s.\n", ((double)clock() - start ) / CLOCKS_PER_SEC );
 
+	if( opt.printSplits ) {
+		print_split_count();
+		print_rebalance_count();
+	}
 
-	print_split_count();
-	print_rebalance_count();
+
 /*	print_remove_count();
 	print_rebuild_count();
 	print_rebalance_count();
