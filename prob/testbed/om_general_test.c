@@ -217,10 +217,6 @@ int main ( int argc, char *argv[] )
 		// Splits happen starting at the 66th insert every 64 inserts
 		expected_splits = ((int)(num_nodes-2)/64) * 3;
 
-		// Check Node count
-		if (size != num_nodes)
-			printf("\n\n\n ERROR - Nodes Counted in Bottom Lists does not match Number of Nodes passed in.\n Counted %i and passed %i.\n\n", size, num_nodes);
-
 		// Check expected number of splits
 		if ( expected_splits != num_splits)
 			printf("\n\n\n INCORRECT NUMBER OF SPLITS - ERROR IN CODE\n Expected Splits: %i \t Number of Splits: %i\n\n", expected_splits, num_splits);
@@ -234,6 +230,11 @@ int main ( int argc, char *argv[] )
 			printf("\n\n\n INCORRECT TOTAL SPLIT COUNT - ERROR IN CODE\n Expected total: %i \t Split Total: %i \n\n", expected_split_size_total, split_size_total);
 
 	}
+
+	// Check Node count
+	if (size != num_nodes)
+		printf("\n\n\n ERROR - Nodes Counted in Bottom Lists does not match Number of Nodes passed in.\n Counted %i and passed %i.\n\n", size, num_nodes);
+
 
 	
 
