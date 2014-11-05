@@ -141,23 +141,43 @@ int main ( int argc, char *argv[] )
 #ifdef RD_STATS
 	int num_splits = 0, list_count = 1;
 	int num_rebalances = 0, before_split_size_total = 0, split_size_total = 0, rebalance_size_total = 0;
-	int expect_splits = 0, expected_rebalances = 0;
+	int expected_splits = 0, expected_rebalances = 0, expected_split_size_total = 0, size = 0, count = 0;
 
 	Bottom_List * current_bl = list->head;
 	ll_node * current_ll_node;
+	int list_num = 1;
 //	printf("Size of bottom lists when split:\n");
 
+	if( opt.printSplits ) {
+		printf("\nThe Top_List and sizes of it's bottom_list's nodes:\n");
+	}
+	while (current_bl != NULL) {
+		if( opt.printSplits ) {
+			printf("List %i has %i nodes.\n", list_num++, current_bl->size);
+		}
+		size += current_bl->size;
+		current_bl = current_bl->next;
+	}
+	if( opt.printSplits ) {
+		printf("\n\n");
+	}
+
+	// Reset current_bl
+	current_bl = list->head;
 	/// Calc size of bottom lists when splits occurred
 	while (current_bl != NULL){
+		
 //		printf("\tBottom List # %i : ", list_count++);
 		current_ll_node = current_bl->list_of_size_of_bottom_list_when_split_head;
 		while (	current_ll_node != NULL){
-//			num_splits++;
+			num_splits++;
 //			printf("%i; ", current_ll_node->data);
 			
 			/// Add up the size of the splits **********************
-//			printf("Size before split of %p: %i \t\t", current_ll_node, current_ll_node->size_before_split);
-//			printf("Data for %p: %i\n", current_ll_node, current_ll_node->data);
+			if( opt.printSplits ) {
+				printf("Size before split of %p: %i \t\t", current_ll_node, current_ll_node->size_before_split);
+				printf("Data for %p: %i\n", current_ll_node, current_ll_node->data);
+			}
 			before_split_size_total += current_ll_node->size_before_split;
 			split_size_total += current_ll_node->data;
 			current_ll_node = current_ll_node->next;
@@ -169,12 +189,6 @@ int main ( int argc, char *argv[] )
 
 //	printf("Total number of bottom list splits: %i\n\n", num_splits);
 
-	/// Print the sum total size of the splits
-	if( opt.printSplits ) {
-		printf("Total size of splits of bottom lists: %i\n\n", split_size_total);
-		printf("Total size of Before splits of bottom lists: %i\n\n", before_split_size_total);
-	}
-
 	list_count = 0;
 	current_ll_node = list->list_of_size_of_top_list_when_split_head;
 //	printf("Size of top list when rebalanced: \n");
@@ -182,7 +196,7 @@ int main ( int argc, char *argv[] )
 	/// Calc size of bottom lists when splits occurred
 	while (current_ll_node != NULL){
 //		printf("%i\n", current_ll_node->data);
-//		list_count++;
+		list_count++;
 
 		/// Add up the size of the rebalances ********************
 		rebalance_size_total += current_ll_node->data;
@@ -193,9 +207,6 @@ int main ( int argc, char *argv[] )
 
 //	printf ( "Total number of top list rebalances: %i \n\n",  list_count);
 
-	/// Print the sum total of the rebalances
-	printf("Total size of rebalances of top_lists: %i\n\n", rebalance_size_total);
-
 
 	/* =========================================================================
 	========================== UNIT TESTS FOR SPLITS ===========================
@@ -204,15 +215,27 @@ int main ( int argc, char *argv[] )
 	if ( opt.end )
 	{
 		// Splits happen starting at the 66th insert every 64 inserts
-		expected_splits = (int)(num_nodes-2)/64;
-		
+		expected_splits = ((int)(num_nodes-2)/64) * 3;
+
+		// Check Node count
+		if (size != num_nodes)
+			printf("\n\n\n ERROR - Nodes Counted in Bottom Lists does not match Number of Nodes passed in.\n Counted %i and passed %i.\n\n", size, num_nodes);
+
+		// Check expected number of splits
 		if ( expected_splits != num_splits)
-			printf("\n\n\n INCORRECT NUMBER OF SPLITS - ERROR IN CODE\n\n\n");
+			printf("\n\n\n INCORRECT NUMBER OF SPLITS - ERROR IN CODE\n Expected Splits: %i \t Number of Splits: %i\n\n", expected_splits, num_splits);
 
-		expected_split_size_total = 
+		while ( count < num_nodes - 64) {
+			expected_split_size_total += 65;
+			count += 64;
+		}
 
-		
+		if ( expected_split_size_total != split_size_total || expected_split_size_total != before_split_size_total)
+			printf("\n\n\n INCORRECT TOTAL SPLIT COUNT - ERROR IN CODE\n Expected total: %i \t Split Total: %i \n\n", expected_split_size_total, split_size_total);
+
 	}
+
+	
 
 #endif
 
