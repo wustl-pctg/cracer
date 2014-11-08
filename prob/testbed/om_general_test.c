@@ -132,10 +132,10 @@ int main ( int argc, char *argv[] )
 	/*order_test(nodeArray, num_nodes);*/
 	/*check_sub_correctness(list);*/
 
-
+	if( opt.printSplits){
 		print_split_count();
 		print_rebalance_count();
-
+	}
 
 	i = 0;
 
