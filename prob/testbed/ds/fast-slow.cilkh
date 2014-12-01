@@ -1,0 +1,150 @@
+
+/*
+ * =====================================================================================
+ *
+ *       Filename:  fast-slow.cilkh
+ *
+ *    Description:  Header  order-maintenance-par-rebalance.c
+ *
+ *        Version:  1.0
+ *        Created:  07/15/2014 11:36:19 AM
+ *       Revision:  none
+ *       Compiler:  gcc
+ *
+ *         Author:  Alex Jones (aj), atjalex@gmail.com; Shane Deiley, shanedeiley@wustl.edu
+ *        Company:  Washington University in St. Louis Summer REU 2014
+ *
+ * =====================================================================================
+ */
+
+#ifndef _FAST_SLOW_OM_DS
+#define _FAST_SLOW_OM_DS
+
+#include <cilk-lib.cilkh>
+#include <stdlib.h>
+#include <stdio.h>
+#include <limits.h>
+#include <math.h>
+#include <assert.h>
+#include <pthread.h>
+
+/// Precompiler Flags for Various Code Functions
+//#define RD_DEBUG
+//#define RD_STATS
+#define PARALLEL_THRESHOLD_FLAG
+
+/// Global Definition of a couple of variables
+#define LEFT 0
+#define RIGHT 1
+
+/// FWD Declaration
+struct Bottom_List_s;
+struct Top_List_s;
+struct Internal_Node_s; 
+
+
+/// The Node that makes up Bottom_Lists
+typedef struct OM_Node_s{
+	struct OM_Node_s *next, *prev;
+	unsigned int tag;
+	struct Bottom_List_s * ds;
+} OM_Node;
+
+/// DS for stats
+#ifdef RD_STATS
+typedef struct ll_node_s {
+	unsigned int data;
+	struct ll_node_s 	 *next;
+} ll_node;
+#endif
+
+/// Holds OM_Nodes and is what comprises the Top_List
+typedef struct Bottom_List_s {
+	struct Top_List_s *parent;
+	OM_Node *head,*tail;
+	int size;
+	short reorder_flag;
+	struct Bottom_List_s *next, *prev;
+	unsigned int tag;
+	struct Internal_Node_s * internal;
+
+#ifdef RD_STATS
+	ll_node * list_of_size_of_bottom_list_when_split_head, *list_of_size_of_bottom_list_when_split_tail;
+#endif
+} Bottom_List;
+
+typedef struct Internal_Node_s {
+	Bottom_List * bl;
+	short rebalance_flag;
+	unsigned int base, lvl, num_children;
+	struct Internal_Node_s *parent, *left, *right;
+} Internal_Node;
+
+/// Simple struct for keeping singly-linked list of marked bottom_lists
+typedef struct Marked_List_s {
+	struct Marked_List_s * next, * tail;
+	Bottom_List * list_data;
+	pthread_mutex_t lock;
+} Marked_List;
+
+typedef struct InsertRecord_s{
+	OM_Node *x;
+	OM_Node *y;
+} OM_DS_BatchRecord;
+
+
+/// Top-level LL made up of Bottom_List(s)
+typedef struct Top_List_s{
+	Bottom_List *head, *tail; 
+	int size;
+	Marked_List * marked;
+#ifdef RD_STATS
+	ll_node * list_of_size_of_top_list_when_split_head, *list_of_size_of_top_list_when_split_tail;
+#endif
+} Top_List;
+
+/// Functions unique to the parallel version of the DS
+Internal_Node ** build_array_from_rebalance_list(Internal_Node *current_node);
+void create_scaffolding(Internal_Node *, Internal_Node *);
+cilk void rebuild_tree (Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
+void c_rebuild_tree(Internal_Node * current_node, Internal_Node ** nodeArray, int startIndex,  int endIndex);
+cilk void par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end);
+void c_par_build_array_from_rebalance_list(Internal_Node ** buildArray,Internal_Node * current_node, int start, int end);
+
+
+/// Batchify Order
+cilk void orderBatchOp(void *dataStruct, void *data, size_t size, void *result);
+cilk void order (OM_Node * x, OM_Node * y, int * result);
+
+/// Fast & Slow Path functions
+cilk int fast_insert(OM_Node *x, OM_Node *y);
+cilk void insert_internal(OM_Node * x, OM_Node *y, int * result);
+cilk void batchInsertOp (void *dataStruct, void *data, size_t size, void *result);
+void append_marked_list(Bottom_List * bl);
+cilk void walk_up(Top_list*);
+cilk void walk_up_and_update(Bottom_List *, Internal_Node *, int);
+cilk void conquer_dirty(Internal_Node *);
+cilk void slow_rebuild(Top_List*, Bottom_List*);
+typedef cilk void (*parBody)(Top_List*,Bottom_List*); // DS for function in loop
+cilk void parallel_for(Bottom_List **, const parBody, 
+	 const int begin, const int end, const int incr);
+
+/// Declarations of the OM-functions
+Bottom_List * create_bl();
+Top_List * create_tl();
+void first_insert_bl(Bottom_List * ds, OM_Node * y);
+void first_insert_tl(Top_List * list, Bottom_List * y);
+void first_insert(Top_List *, OM_Node *);
+cilk void insert_tl(Bottom_List *x, Bottom_List *y);
+cilk void split_bl(Top_List * list, Bottom_List * list_to_split, Marked_List * marked);
+cilk void rebalance_tl(Bottom_List * pivot);
+void relabel_tl_tag_range(Bottom_List *start, Bottom_List *end, const /*long*/ int skip_size);
+void rebalance_bls(Top_List * list);
+void print_tl(Top_List * list);
+void print_bl(Bottom_List * list);
+void free_bl (Bottom_List * list);
+void free_tl ( Top_List * list );
+void check_sub_correctness (Top_List * list);
+void print_tree (Top_List * list);
+
+#endif 
