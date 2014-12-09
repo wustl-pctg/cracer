@@ -74,14 +74,14 @@ typedef jmp_buf __CILK_JUMP_BUFFER;
  */
 typedef struct
 {
-    unsigned long Ebp;
-    unsigned long Ebx;
-    unsigned long Edi;
-    unsigned long Esi;
-    unsigned long Esp;
-    unsigned long Eip;
-    unsigned long Registration;
-    unsigned long TryLevel;
+  unsigned long Ebp;
+  unsigned long Ebx;
+  unsigned long Edi;
+  unsigned long Esi;
+  unsigned long Esp;
+  unsigned long Eip;
+  unsigned long Registration;
+  unsigned long TryLevel;
 } __CILK_JUMP_BUFFER;
 
 #    else
@@ -143,96 +143,100 @@ __cilkrts_worker_sysdep_state;
 #endif
 
 struct __cilkrts_worker {
-    /**
-     * T, H, and E pointers in the THE protocol See "The implementation of
-     * the Cilk-5 multithreaded language", PLDI 1998:
-     * http://portal.acm.org/citation.cfm?doid=277652.277725
-     *
-     * Synchronization fields.  [shared read/write]
-     */
-    __cilkrts_stack_frame *volatile *volatile tail;
-    __cilkrts_stack_frame *volatile *volatile head;  /**< @copydoc tail */
-    __cilkrts_stack_frame *volatile *volatile exc;   /**< @copydoc tail */
+  /**
+   * T, H, and E pointers in the THE protocol See "The implementation of
+   * the Cilk-5 multithreaded language", PLDI 1998:
+   * http://portal.acm.org/citation.cfm?doid=277652.277725
+   *
+   * Synchronization fields.  [shared read/write]
+   */
+  __cilkrts_stack_frame *volatile *volatile tail;
+  __cilkrts_stack_frame *volatile *volatile head;  /**< @copydoc tail */
+  __cilkrts_stack_frame *volatile *volatile exc;   /**< @copydoc tail */
 
-    /**
-     * T, H, and E pointers for a batch deque.
-     *
-     * Synchronization fields. [shared read/write]
-     */
-    __cilkrts_stack_frame *volatile *volatile tail_batch;
-    __cilkrts_stack_frame *volatile *volatile head_batch; /**< @copydoc tail_batch */
-    __cilkrts_stack_frame *volatile *volatile exc_batch; /**< @copydoc tail_batch */
+  /**
+   * Addition to the THE protocol to allow us to protect some set of
+   * entries in the tail queue from stealing.  Normally, this is set
+   * beyond the end of the task queue, indicating that all entries are
+   * available for stealing.  During exception handling, protected_tail
+   * may be set to the first entry in the task queue, indicating that
+   * stealing is not allowed.
+   *
+   * Synchronization field.
+   */
+  __cilkrts_stack_frame *volatile *volatile protected_tail;
+  
+  /**
+   * Limit of the Lazy Task Queue, to detect queue overflow
+   * [local read-only]
+   */
+  __cilkrts_stack_frame *volatile *ltq_limit;
 
-    /**
-     * Addition to the THE protocol to allow us to protect some set of
-     * entries in the tail queue from stealing.  Normally, this is set
-     * beyond the end of the task queue, indicating that all entries are
-     * available for stealing.  During exception handling, protected_tail
-     * may be set to the first entry in the task queue, indicating that
-     * stealing is not allowed.
-     *
-     * Synchronization field.
-     */
-    __cilkrts_stack_frame *volatile *volatile protected_tail;
-    __cilkrts_stack_frame *volatile *volatile protected_tail_batch;
+  /**
+   * Worker id.
+   * [local read-only]
+   */
+  int32_t self;
 
-    /**
-     * Limit of the Lazy Task Queue, to detect queue overflow
-     * [local read-only]
-     */
-    __cilkrts_stack_frame *volatile *ltq_limit;
+  /**
+   * Global state of the runtime system, opaque to the client.
+   * [local read-only]
+   */
+  global_state_t *g;
 
-    /**
-     * Worker id.
-     * [local read-only]
-     */
-    int32_t self;
+  /**
+   * Additional per-worker state of the runtime system that we want
+   * to maintain hidden from the client.
+   * [shared read-only]
+   */
+  local_state *l;
 
-    /**
-     * Global state of the runtime system, opaque to the client.
-     * [local read-only]
-     */
-    global_state_t *g;
+  /**
+   * Map from reducer names to reducer values.
+   * [local read/write]
+   */
+  cilkred_map *reducer_map;
 
-    /**
-     * Additional per-worker state of the runtime system that we want
-     * to maintain hidden from the client.
-     * [shared read-only]
-     */
-    local_state *l;
+  /**
+   * A slot that points to the currently executing Cilk frame.
+   * [local read/write]
+   */
+  __cilkrts_stack_frame *current_stack_frame;
 
-    /**
-     * Map from reducer names to reducer values.
-     * [local read/write]
-     */
-    cilkred_map *reducer_map;
+  /**
+   * Reserved space for a pointer.
+   * Used to be __cilkrts_stack_frame *volatile *volatile saved_protected_tail; 
+   */
+  void* reserved;
 
-    /**
-     * A slot that points to the currently executing Cilk frame.
-     * [local read/write]
-     */
-    __cilkrts_stack_frame *current_stack_frame;
-
-    /**
-     * Reserved space for a pointer.
-     * Used to be __cilkrts_stack_frame *volatile *volatile saved_protected_tail; 
-     */
-    void* reserved;
-
-    /**
-     * System-dependent part of the worker state
-     * [local read-only]
-     */
-    __cilkrts_worker_sysdep_state *sysdep;
+  /**
+   * System-dependent part of the worker state
+   * [local read-only]
+   */
+  __cilkrts_worker_sysdep_state *sysdep;
 
 #if __CILKRTS_ABI_VERSION >= 1
-    /**
-     * Per-worker pedigree information used to support scheduling-independent
-     * pseudo-random numbers.
-     * [local read/write]
-     */
-    __cilkrts_pedigree   pedigree;    
+  /**
+   * Per-worker pedigree information used to support scheduling-independent
+   * pseudo-random numbers.
+   * [local read/write]
+   */
+  __cilkrts_pedigree   pedigree;    
 #endif  /* __CILKRTS_ABI_VERSION >= 1 */
+
+  /**
+   * T, H, and E pointers for a batch deque.
+   *
+   * Synchronization fields. [shared read/write]
+   * NB: It seems we need to put these at the end, otherwise we get
+   * segfaults. Is Cilkplus really dependent on a hardcoding of the
+   * elements in this struct? I don't understand exactly what's happening.
+   */
+  __cilkrts_stack_frame *volatile *volatile tail_batch;
+  __cilkrts_stack_frame *volatile *volatile head_batch; /**< @copydoc tail_batch */
+  __cilkrts_stack_frame *volatile *volatile exc_batch; /**< @copydoc tail_batch */
+  __cilkrts_stack_frame *volatile *volatile protected_tail_batch;
+
 };
 
 
@@ -243,95 +247,95 @@ struct __cilkrts_worker {
  */
 struct __cilkrts_stack_frame
 {
-    /**
-     * flags is an integer with values defined below.  Client code
-     * initializes flags to CILK_FRAME_VERSION before the first Cilk
-     * operation.
-     *
-     * The low 24-bits of the 'flags' field are the flags, proper.  The high
-     * 8-bits are the version number.
-     *
-     * IMPORTANT: bits in this word are set and read by the PARENT ONLY,
-     * not by a spawned child.  In particular, the STOLEN and UNSYNCHED
-     * bits are set on a steal and are read before a sync.  Since there
-     * is no synchronization (locking) on this word, any attempt to set
-     * or read these bits asynchronously in a child would result in a race.
-     */
-    uint32_t flags;
+  /**
+   * flags is an integer with values defined below.  Client code
+   * initializes flags to CILK_FRAME_VERSION before the first Cilk
+   * operation.
+   *
+   * The low 24-bits of the 'flags' field are the flags, proper.  The high
+   * 8-bits are the version number.
+   *
+   * IMPORTANT: bits in this word are set and read by the PARENT ONLY,
+   * not by a spawned child.  In particular, the STOLEN and UNSYNCHED
+   * bits are set on a steal and are read before a sync.  Since there
+   * is no synchronization (locking) on this word, any attempt to set
+   * or read these bits asynchronously in a child would result in a race.
+   */
+  uint32_t flags;
 
-    /** Not currently used.  Not initialized by Intel compiler. */
-    int32_t size;
+  /** Not currently used.  Not initialized by Intel compiler. */
+  int32_t size;
 
-    /** 
-     * call_parent points to the __cilkrts_stack_frame of the closest
-     * ancestor spawning function, including spawn helpers, of this frame.
-     * It forms a linked list ending at the first stolen frame.
-     */
-    __cilkrts_stack_frame *call_parent;
+  /** 
+   * call_parent points to the __cilkrts_stack_frame of the closest
+   * ancestor spawning function, including spawn helpers, of this frame.
+   * It forms a linked list ending at the first stolen frame.
+   */
+  __cilkrts_stack_frame *call_parent;
 
-    /**
-     * The client copies the worker from TLS here when initializing
-     * the structure.  The runtime ensures that the field always points
-     * to the __cilkrts_worker which currently "owns" the frame.
-     */
-    __cilkrts_worker *worker;
+  /**
+   * The client copies the worker from TLS here when initializing
+   * the structure.  The runtime ensures that the field always points
+   * to the __cilkrts_worker which currently "owns" the frame.
+   */
+  __cilkrts_worker *worker;
 
-    /**
-     * Unix: Pending exception after sync.  The sync continuation
-     * must call __cilkrts_rethrow to handle the pending exception.
-     *
-     * Windows: the handler that _would_ have been registered if our
-     * handler were not there.  We maintain this for unwinding purposes.
-     * Win32: the value of this field is only defined in spawn helper
-     * functions
-     *
-     * Win64: except_data must be filled in  for all functions with a
-     * __cilkrts_stack_frame
-     */
-    void *except_data;
+  /**
+   * Unix: Pending exception after sync.  The sync continuation
+   * must call __cilkrts_rethrow to handle the pending exception.
+   *
+   * Windows: the handler that _would_ have been registered if our
+   * handler were not there.  We maintain this for unwinding purposes.
+   * Win32: the value of this field is only defined in spawn helper
+   * functions
+   *
+   * Win64: except_data must be filled in  for all functions with a
+   * __cilkrts_stack_frame
+   */
+  void *except_data;
 
-    /**
-     * Before every spawn and nontrivial sync the client function
-     * saves its continuation here.
-     */
-    __CILK_JUMP_BUFFER ctx;
+  /**
+   * Before every spawn and nontrivial sync the client function
+   * saves its continuation here.
+   */
+  __CILK_JUMP_BUFFER ctx;
 
 #if __CILKRTS_ABI_VERSION >= 1
-    /**
-     * Architecture-specific floating point state.  mxcsr and fpcsr should be
-     * set when CILK_SETJMP is called in client code.  Note that the Win64
-     * jmpbuf for the Intel64 architecture already contains this information
-     * so there is no need to use these fields on that OS/architecture.
-     */
-    uint32_t mxcsr;
-    uint16_t fpcsr;         /**< @copydoc mxcsr */
+  /**
+   * Architecture-specific floating point state.  mxcsr and fpcsr should be
+   * set when CILK_SETJMP is called in client code.  Note that the Win64
+   * jmpbuf for the Intel64 architecture already contains this information
+   * so there is no need to use these fields on that OS/architecture.
+   */
+  uint32_t mxcsr;
+  uint16_t fpcsr;         /**< @copydoc mxcsr */
 
 
-    /**
-     * reserved is not used at this time.  Client code should initialize it
-     * to 0 before the first Cilk operation
-     */
-    uint16_t reserved;
+  /**
+   * reserved is not used at this time.  Client code should initialize it
+   * to 0 before the first Cilk operation
+   */
+  uint16_t reserved;
 
-    /**
-     * Pedigree information to support scheduling-independent pseudo-random
-     * numbers.  There are two views of this information.  The copy in a
-     * spawning function is used to stack the rank and communicate to the
-     * runtime on a steal or continuation.  The copy in a spawn helper is
-     * immutable once the function is detached and is a node in the pedigree.
-     * The union is used to make clear which view we're using.
-     *
-     * In the detach sequence Client code should:
-     *    - copy the worker pedigree into the spawn helper's pedigree
-     *    - copy the worker pedigree into the call parent's pedigree
-     *    - set the worker's rank to 0
-     *    - set the worker's pedigree.next to the spawn helper's pedigree
-     */
-    union
-    {
-        __cilkrts_pedigree spawn_helper_pedigree; /* Used in spawn helpers */
-        __cilkrts_pedigree parent_pedigree;       /* Used in spawning funcs */
-    };
+  /**
+   * Pedigree information to support scheduling-independent pseudo-random
+   * numbers.  There are two views of this information.  The copy in a
+   * spawning function is used to stack the rank and communicate to the
+   * runtime on a steal or continuation.  The copy in a spawn helper is
+   * immutable once the function is detached and is a node in the pedigree.
+   * The union is used to make clear which view we're using.
+   *
+   * In the detach sequence Client code should:
+   *    - copy the worker pedigree into the spawn helper's pedigree
+   *    - copy the worker pedigree into the call parent's pedigree
+   *    - set the worker's rank to 0
+   *    - set the worker's pedigree.next to the spawn helper's pedigree
+   */
+  union
+  {
+    __cilkrts_pedigree spawn_helper_pedigree; /* Used in spawn helpers */
+    __cilkrts_pedigree parent_pedigree;       /* Used in spawning funcs */
+  };
 #endif  /* __CILKRTS_ABI_VERSION >= 1 */
 };
 
@@ -407,16 +411,16 @@ struct __cilkrts_stack_frame
 #define CILK_FRAME_VERSION_VALUE(_flags) (((_flags) & CILK_FRAME_VERSION_MASK) >> 24)
 
 /** Any undefined bits are reserved and must be zero ("MBZ" = "Must Be Zero") */
-#define CILK_FRAME_MBZ  (~ (CILK_FRAME_STOLEN | \
-                            CILK_FRAME_UNSYNCHED | \
-                            CILK_FRAME_DETACHED | \
-                            CILK_FRAME_EXCEPTION_PROBED | \
-                            CILK_FRAME_EXCEPTING | \
-                            CILK_FRAME_SF_PEDIGREE_UNSYNCHED | \
-                            CILK_FRAME_LAST | \
-                            CILK_FRAME_EXITING | \
-                            CILK_FRAME_SUSPENDED | \
-                            CILK_FRAME_UNWINDING | \
+#define CILK_FRAME_MBZ  (~ (CILK_FRAME_STOLEN |                 \
+                            CILK_FRAME_UNSYNCHED |              \
+                            CILK_FRAME_DETACHED |               \
+                            CILK_FRAME_EXCEPTION_PROBED |       \
+                            CILK_FRAME_EXCEPTING |              \
+                            CILK_FRAME_SF_PEDIGREE_UNSYNCHED |  \
+                            CILK_FRAME_LAST |                   \
+                            CILK_FRAME_EXITING |                \
+                            CILK_FRAME_SUSPENDED |              \
+                            CILK_FRAME_UNWINDING |              \
                             CILK_FRAME_VERSION_MASK))
 
 __CILKRTS_BEGIN_EXTERN_C
@@ -487,7 +491,7 @@ CILK_ABI(void) __cilkrts_sync(__cilkrts_stack_frame *sf);
  * is raising an exception.
  */
 CILK_ABI_THROWS(void)
-    __cilkrts_return_exception(__cilkrts_stack_frame *sf);
+__cilkrts_return_exception(__cilkrts_stack_frame *sf);
 
 /**
  * Called to re-raise an exception.
@@ -528,16 +532,16 @@ CILK_ABI(__cilkrts_worker_ptr) __cilkrts_get_tls_worker_fast(void);
  * @return The __cilkrts_worker bound to the thread the function is running
  * on.
  */
-CILK_ABI(__cilkrts_worker_ptr) __cilkrts_bind_thread_1(void);
+ CILK_ABI(__cilkrts_worker_ptr) __cilkrts_bind_thread_1(void);
 
-typedef uint32_t cilk32_t;  /**< 32-bit unsigned type for cilk_for loop indicies */
+ typedef uint32_t cilk32_t;  /**< 32-bit unsigned type for cilk_for loop indicies */
 
-typedef uint64_t cilk64_t;  /**< 64-bit unsigned type for cilk_for loop indicies */
+ typedef uint64_t cilk64_t;  /**< 64-bit unsigned type for cilk_for loop indicies */
 
-/**
- * Signature for the lambda function generated for the body of a cilk_for loop
- * which uses 32-bit indicies
- */
+ /**
+  * Signature for the lambda function generated for the body of a cilk_for loop
+  * which uses 32-bit indicies
+  */
 typedef void (*__cilk_abi_f32_t)(void *data, cilk32_t low, cilk32_t high);
 
 /**
@@ -561,8 +565,8 @@ typedef void (*__cilk_abi_f64_t)(void *data, cilk64_t low, cilk64_t high);
  * hueristicts.
  */
 CILK_ABI_THROWS(void) __cilkrts_cilk_for_32(__cilk_abi_f32_t body,
-                                            void *data,
-                                            cilk32_t count,
+   void *data,
+   cilk32_t count,
                                             int grain);
 
 /**
@@ -571,9 +575,9 @@ CILK_ABI_THROWS(void) __cilkrts_cilk_for_32(__cilk_abi_f32_t body,
  * @copydetails __cilkrts_cilk_for_32
  */
 CILK_ABI_THROWS(void) __cilkrts_cilk_for_64(__cilk_abi_f64_t body,
-                                            void *data,
-                                            cilk64_t count,
-                                            int grain);
+   void *data,
+   cilk64_t count,
+   int grain);
 
 /**
  * @brief Allocate memory for variable length arrays. If the frame is
@@ -591,7 +595,6 @@ CILK_ABI_THROWS(void) __cilkrts_cilk_for_64(__cilk_abi_f64_t body,
  *
  * @return The address of the memory block allocated.
  */
-
 CILK_ABI(__cilkrts_void_ptr)
 __cilkrts_stack_alloc(__cilkrts_stack_frame *sf,
                       size_t size,

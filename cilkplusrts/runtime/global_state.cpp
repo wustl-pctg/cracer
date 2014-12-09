@@ -559,6 +559,17 @@ global_state_t* cilkg_init_global_state()
     g->stack_size = cilkos_validate_stack_size(g->stack_size);
     g->failure_to_allocate_stack = 0;
 
+    // Batcher init
+    __cilkrts_mutex_init(&g->batch_lock);
+    g->batch_records = (struct batch_record*)
+      __cilkrts_malloc(g->total_workers * sizeof(struct batch_record));
+    memset(g->batch_records, 0, g->total_workers * sizeof(struct batch_record));
+
+    memset(&g->pending_batch, 0, sizeof(struct batch));
+
+    g->pending_batch.work_array = (batch_data_t*)
+      __cilkrts_malloc(g->total_workers * sizeof(batch_data_t));
+    memset(g->batch_records, 0, g->total_workers * sizeof(batch_data_t));
 
     return g;
 }

@@ -72,6 +72,14 @@ __CILKRTS_BEGIN_EXTERN_C
 #define REDPAR_DEBUG 0
 
 /**
+ * @brief Steal type definition.
+ *
+ * Batcher allows two different types of steals -- core (regular)
+ * steals, and batch steals, which do shared data structure work.
+ */
+typedef enum {CORE, BATCH} steal_t;
+
+/**
  * @brief Lock the worker mutex to allow exclusive access to the
  * values in the @c __cilkrts_worker and local_state structures.
  *

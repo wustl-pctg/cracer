@@ -420,7 +420,8 @@ void __cilkrts_push_next_frame(__cilkrts_worker *w, full_frame *ff)
  * of the full frame will have been incremented by the corresponding push
  * event.  See __cilkrts_push_next_frame, above.
  */
-static full_frame *pop_next_frame(__cilkrts_worker *w)
+// @HACK This was originally static, but I don't think it really matters.
+full_frame *pop_next_frame(__cilkrts_worker *w)
 {
     full_frame *ff;
     ff = w->l->next_frame_ff;
@@ -509,7 +510,12 @@ static void unset_sync_master(__cilkrts_worker *w, full_frame *ff)
 /* the infinity value of E */
 #define EXC_INFINITY  ((__cilkrts_stack_frame **) (-1))
 
-static void increment_E(__cilkrts_worker *victim)
+static inline int is_batch(__cilkrts_worker *victim)
+{
+    return victim->l->saved_head != NULL;
+}
+
+static void increment_E(__cilkrts_worker *victim, steal_t steal)
 {
     __cilkrts_stack_frame *volatile *tmp;
 
@@ -517,7 +523,7 @@ static void increment_E(__cilkrts_worker *victim)
     // victim->exc
     ASSERT_WORKER_LOCK_OWNED(victim);
 
-    tmp = victim->exc;
+    tmp = (is_batch(victim) && steal == CORE) ? victim->l->saved_exc : victim->exc;
     if (tmp != EXC_INFINITY) {
         /* On most x86 this pair of operations would be slightly faster
            as an atomic exchange due to the implicit memory barrier in
@@ -527,7 +533,7 @@ static void increment_E(__cilkrts_worker *victim)
     }
 }
 
-static void decrement_E(__cilkrts_worker *victim)
+static void decrement_E(__cilkrts_worker *victim, steal_t steal)
 {
     __cilkrts_stack_frame *volatile *tmp;
 
@@ -535,7 +541,8 @@ static void decrement_E(__cilkrts_worker *victim)
     // victim->exc
     ASSERT_WORKER_LOCK_OWNED(victim);
 
-    tmp = victim->exc;
+//    tmp = victim->exc;
+    tmp = (is_batch(victim) && steal == CORE) ? victim->l->saved_exc : victim->exc;
     if (tmp != EXC_INFINITY) {
         /* On most x86 this pair of operations would be slightly faster
            as an atomic exchange due to the implicit memory barrier in
@@ -554,6 +561,7 @@ static void signal_THE_exception(__cilkrts_worker *wparent)
 }
 #endif
 
+// @todo change needed for Batcher?
 static void reset_THE_exception(__cilkrts_worker *w)
 {
     // The currently executing worker must own the worker lock to touch
@@ -565,14 +573,20 @@ static void reset_THE_exception(__cilkrts_worker *w)
 }
 
 /* conditions under which victim->head can be stolen: */
-static int can_steal_from(__cilkrts_worker *victim)
+static int can_steal_from(__cilkrts_worker *victim, steal_t steal)
 {
-    return ((victim->head < victim->tail) && 
+    if (steal == BATCH && !is_batch(victim)) return 0;
+    if (steal == CORE && is_batch(victim)) {
+        return ((victim->l->saved_head < victim->l->saved_tail) &&
+                 (victim->l->saved_head < victim->l->saved_protected_tail));
+    }
+
+    return ((victim->head < victim->tail) &&
             (victim->head < victim->protected_tail));
 }
 
 /* Return TRUE if the frame can be stolen, false otherwise */
-static int dekker_protocol(__cilkrts_worker *victim)
+static int dekker_protocol(__cilkrts_worker *victim, steal_t steal)
 {
     // increment_E and decrement_E are going to touch victim->exc.  The
     // currently executing worker must own victim's lock before they can
@@ -581,16 +595,16 @@ static int dekker_protocol(__cilkrts_worker *victim)
 
     /* ASSERT(E >= H); */
 
-    increment_E(victim);
+    increment_E(victim, steal);
 
     /* ASSERT(E >= H + 1); */
-    if (can_steal_from(victim)) {
+    if (can_steal_from(victim, steal)) {
         /* success, we can steal victim->head and set H <- H + 1
            in detach() */
         return 1;
     } else {
         /* failure, restore previous state */
-        decrement_E(victim);
+        decrement_E(victim, steal);
         return 0;    
     }
 }
@@ -715,23 +729,32 @@ static full_frame *unroll_call_stack(__cilkrts_worker *w,
    CHILD frame in its place */
 static void detach_for_steal(__cilkrts_worker *w,
                              __cilkrts_worker *victim,
-                             cilk_fiber* fiber)
+                             cilk_fiber* fiber,
+                             steal_t steal_type)
 {
     /* ASSERT: we own victim->lock */
 
     full_frame *parent_ff, *child_ff, *loot_ff;
     __cilkrts_stack_frame *volatile *h;
+    __cilkrts_stack_frame *volatile **victim_head;
     __cilkrts_stack_frame *sf;
 
     w->l->team = victim->l->team;
 
     CILK_ASSERT(w->l->frame_ff == 0 || w == victim);
 
-    h = victim->head;
+    if (steal_type == CORE) {
+        victim_head = (is_batch(victim)) ? &victim->l->saved_head : &victim->head;
+    } else {
+        victim_head = &victim->head;
+    }
+    h = *victim_head;
+//    h = victim->head;
 
     CILK_ASSERT(*h);
 
-    victim->head = h + 1;
+//    victim->head = h + 1;
+    *victim_head = h + 1;
 
     parent_ff = victim->l->frame_ff;
     BEGIN_WITH_FRAME_LOCK(w, parent_ff) {
@@ -908,7 +931,8 @@ static void random_steal(__cilkrts_worker *w)
     // we've exhausted the list of things this worker stole when we recorded
     // the log so just return.  If we're not replaying a log,
     // replay_get_next_recorded_victim() just returns the victim ID passed in.
-    n = replay_get_next_recorded_victim(w, n);
+    n = replay_get_next_recorded_victim(w, n); // @todo this should be
+                                               // changed for batcher
     if (-1 == n)
         return;
 
@@ -931,9 +955,12 @@ static void random_steal(__cilkrts_worker *w)
     /* do not steal from self */
     CILK_ASSERT (victim != w);
 
+    // @TODO(rob) find a better way to do this, probably function argument
+    steal_t steal_type = (is_batch(w)) ? BATCH : CORE;
+
     /* Execute a quick check before engaging in the THE protocol.
        Avoid grabbing locks if there is nothing to steal. */
-    if (!can_steal_from(victim)) {
+    if (!can_steal_from(victim, steal_type)) {
         NOTE_INTERVAL(w, INTERVAL_STEAL_FAIL_EMPTYQ);
         START_INTERVAL(w, INTERVAL_FIBER_DEALLOCATE) {
             int ref_count = cilk_fiber_remove_reference(fiber, &w->l->fiber_pool);
@@ -943,7 +970,8 @@ static void random_steal(__cilkrts_worker *w)
         } STOP_INTERVAL(w, INTERVAL_FIBER_DEALLOCATE);
         return;
     }
-    
+
+    // @todo separate locks for core and batch?
     /* Attempt to steal work from the victim */
     if (worker_trylock_other(w, victim)) {
         if (w->l->type == WORKER_USER && victim->l->team != w) {
@@ -965,7 +993,7 @@ static void random_steal(__cilkrts_worker *w)
             // A successful steal will change victim->frame_ff, even
             // though the victim may be executing.  Thus, the lock on
             // the victim's deque is also protecting victim->frame_ff.
-            if (dekker_protocol(victim)) {
+            if (dekker_protocol(victim, steal_type)) {
                 int proceed_with_steal = 1; // optimistic
 
                 // If we're replaying a log, verify that this the correct frame
@@ -975,7 +1003,7 @@ static void random_steal(__cilkrts_worker *w)
                     // Abort the steal attempt. decrement_E(victim) to
                     // counter the increment_E(victim) done by the
                     // dekker protocol
-                    decrement_E(victim);
+                    decrement_E(victim, steal_type);
                     proceed_with_steal = 0;
                 }
 
@@ -983,7 +1011,7 @@ static void random_steal(__cilkrts_worker *w)
                 {
                     START_INTERVAL(w, INTERVAL_STEAL_SUCCESS) {
                         success = 1;
-                        detach_for_steal(w, victim, fiber);
+                        detach_for_steal(w, victim, fiber, steal_type);
                         victim_id = victim->self;
 
                         #if REDPAR_DEBUG >= 1
@@ -1377,9 +1405,10 @@ static void setup_for_execution_pedigree(__cilkrts_worker *w)
     w->l->work_stolen = 0;
 }
 
-static void setup_for_execution(__cilkrts_worker *w, 
-                                full_frame *ff,
-                                int is_return_from_call)
+// @HACK This was originally static, but I don't think it really matters.
+void setup_for_execution(__cilkrts_worker *w, 
+                         full_frame *ff,
+                         int is_return_from_call)
 {
     // ASSERT: We own w->lock and ff->lock || P == 1
 
@@ -1745,7 +1774,8 @@ static void notify_children_run(__cilkrts_worker *w)
  * steal attempt.  This method checks our local queue once, and
  * performs one steal attempt.
  */
-static full_frame* check_for_work(__cilkrts_worker *w)
+// @HACK This was originally static, but I don't think it really matters.
+full_frame* check_for_work(__cilkrts_worker *w)
 {
     full_frame *ff = NULL;
     ff = pop_next_frame(w);
@@ -2292,11 +2322,13 @@ void __cilkrts_promote_own_deque(__cilkrts_worker *w)
     cilk_fiber* starting_fiber = w->l->frame_ff->fiber_self;
     
     BEGIN_WITH_WORKER_LOCK(w) {
-        while (dekker_protocol(w)) {
+        // @todo Not sure about this interaction with reducers...
+        steal_t steal_type = (is_batch(w)) ? BATCH : CORE;
+        while (dekker_protocol(w, steal_type)) {
             /* PLACEHOLDER_FIBER is used as non-null marker to tell detach()
                and make_child() that this frame should be treated as a spawn
                parent, even though we have not assigned it a stack. */
-            detach_for_steal(w, w, PLACEHOLDER_FIBER);
+            detach_for_steal(w, w, PLACEHOLDER_FIBER, steal_type);
         }
     } END_WITH_WORKER_LOCK(w);
 
@@ -2778,9 +2810,9 @@ void __cilkrts_restore_stealing(
  * extended to only steal if head+1 is also < protected_tail.
  */
 
-__cilkrts_stack_frame *volatile *__cilkrts_disallow_stealing(
-    __cilkrts_worker *w,
-    __cilkrts_stack_frame *volatile *new_protected_tail)
+__cilkrts_stack_frame *volatile *
+__cilkrts_disallow_stealing(__cilkrts_worker *w,
+                            __cilkrts_stack_frame *volatile *new_protected_tail)
 {
     __cilkrts_stack_frame *volatile *saved_protected_tail = w->protected_tail;
 
@@ -2838,6 +2870,11 @@ __cilkrts_worker *make_worker(global_state_t *g,
         __cilkrts_malloc(g->ltqsize * sizeof(*w->l->ltq));
     w->ltq_limit = w->l->ltq + g->ltqsize;
     w->head = w->tail = w->l->ltq;
+
+    /// Batch deque initialization
+    w->l->batch_ltq = (__cilkrts_stack_frame **)
+        __cilkrts_malloc(g->ltqsize * sizeof(*w->l->batch_ltq));
+
     
     cilk_fiber_pool_init(&w->l->fiber_pool,
                          &g->fiber_pool,

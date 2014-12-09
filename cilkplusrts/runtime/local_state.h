@@ -200,6 +200,22 @@ struct local_state  /* COMMON_PORTABLE */
    */
   struct full_frame *last_full_frame;
 
+  /** 
+   * Holders for our two separate deques -- core deque and batch
+   * deque. The corresponding pointers in the actual worker state are
+   * the current pointers -- if the worker is in a batch, these are
+   * the batch pointers, otherwise they are core pointers. Other
+   * workers may need to use these to steal from a particular deque,
+   * but compiler-generated code will always use the current deque, so
+   * won't need access to these.
+   * [shared read/write]
+   */
+  __cilkrts_stack_frame *volatile *volatile saved_tail;
+  __cilkrts_stack_frame *volatile *volatile saved_head;
+  __cilkrts_stack_frame *volatile *volatile saved_exc;
+  __cilkrts_stack_frame *volatile *volatile saved_protected_tail;
+  struct full_frame *saved_frame_ff;
+
   /**
    * Team on which this worker is a participant.  When a user worker enters,
    * its team is its own worker struct and it can never change teams.  When a
@@ -243,8 +259,8 @@ struct local_state  /* COMMON_PORTABLE */
    *
    * [local read-only]
    */
-  __attribute__((aligned(64)))
-  __cilkrts_stack_frame **ltq;
+  __attribute__((aligned(64))) __cilkrts_stack_frame **ltq;
+  __attribute__((aligned(64))) __cilkrts_stack_frame **batch_ltq;
 
   /**
    * Pool of fibers waiting to be reused.
@@ -280,7 +296,7 @@ struct local_state  /* COMMON_PORTABLE */
    * platforms, so we'll just store it here.
    * [local read/write]
    */
-   cilk_fiber* batch_scheduling_fiber;
+  cilk_fiber* batch_scheduling_fiber;
 
   /**
    * Saved pointer to the leaf node in thread-local storage, when a

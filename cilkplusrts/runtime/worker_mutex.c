@@ -49,68 +49,69 @@
 
 void __cilkrts_mutex_init(struct mutex *m)
 {
-    m->owner = 0;
+  m->owner = 0;
 
-    // Use a simple assignment so Inspector doesn't bug us about the
-    // interlocked exchange doing a read of an uninitialized variable.
-    // By definition there can't be a race when we're initializing the
-    // lock...
-    m->lock = 0;
+  // Use a simple assignment so Inspector doesn't bug us about the
+  // interlocked exchange doing a read of an uninitialized variable.
+  // By definition there can't be a race when we're initializing the
+  // lock...
+  m->lock = 0;
 }
 
 void __cilkrts_mutex_lock(__cilkrts_worker *w, struct mutex *m)
 {
-    int count;
-    const int maxspin = 1000; /* SWAG */
+  int count;
+  const int maxspin = 1000; /* SWAG */
 
-    NOTE_INTERVAL(w, INTERVAL_MUTEX_LOCK);
-    if (!TRY_ACQUIRE(m)) {
-        START_INTERVAL(w, INTERVAL_MUTEX_LOCK_SPINNING);
-        count = 0;
-        do {
-            do {
-                __cilkrts_short_pause();
-                if (++count >= maxspin) {
-                    STOP_INTERVAL(w, INTERVAL_MUTEX_LOCK_SPINNING);
-                    START_INTERVAL(w, INTERVAL_MUTEX_LOCK_YIELDING);
-                    /* let the OS reschedule every once in a while */
-                    __cilkrts_yield();
-                    STOP_INTERVAL(w, INTERVAL_MUTEX_LOCK_YIELDING);
-                    START_INTERVAL(w, INTERVAL_MUTEX_LOCK_SPINNING);
-                    count = 0;
-                }
-            } while (m->lock != 0);
-        } while (!TRY_ACQUIRE(m));
-        STOP_INTERVAL(w, INTERVAL_MUTEX_LOCK_SPINNING);
-    }
+  NOTE_INTERVAL(w, INTERVAL_MUTEX_LOCK);
+  if (!TRY_ACQUIRE(m)) {
+    START_INTERVAL(w, INTERVAL_MUTEX_LOCK_SPINNING);
+    count = 0;
+    do {
+      do {
+        __cilkrts_short_pause();
+        if (++count >= maxspin) {
+          STOP_INTERVAL(w, INTERVAL_MUTEX_LOCK_SPINNING);
+          START_INTERVAL(w, INTERVAL_MUTEX_LOCK_YIELDING);
+          /* let the OS reschedule every once in a while */
+          __cilkrts_yield();
+          STOP_INTERVAL(w, INTERVAL_MUTEX_LOCK_YIELDING);
+          START_INTERVAL(w, INTERVAL_MUTEX_LOCK_SPINNING);
+          count = 0;
+        }
+      } while (m->lock != 0);
+    } while (!TRY_ACQUIRE(m));
+    STOP_INTERVAL(w, INTERVAL_MUTEX_LOCK_SPINNING);
+  }
 
-    CILK_ASSERT(m->owner == 0);
-    m->owner = w;
+  CILK_ASSERT(m->owner == 0);
+  m->owner = w;
 }
 
 int __cilkrts_mutex_trylock(__cilkrts_worker *w, struct mutex *m)
 {
-    NOTE_INTERVAL(w, INTERVAL_MUTEX_TRYLOCK);
-    if (TRY_ACQUIRE(m)) {
-        CILK_ASSERT(m->owner == 0);
-        m->owner = w;
-        return 1;
-    } else {
-        return 0;
-    }
+  NOTE_INTERVAL(w, INTERVAL_MUTEX_TRYLOCK);
+  if (TRY_ACQUIRE(m)) {
+    CILK_ASSERT(m->owner == 0);
+    m->owner = w;
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 void __cilkrts_mutex_unlock(__cilkrts_worker *w, struct mutex *m)
 {
-    CILK_ASSERT(m->owner == w);
-    m->owner = 0;
-    RELEASE(m);
+  CILK_ASSERT(m->owner == w); // @TODO(rob) this may not work for the
+                              // batch lock
+  m->owner = 0;
+  RELEASE(m);
 }
 
 void __cilkrts_mutex_destroy(__cilkrts_worker *w, struct mutex *m)
 {
-    (void)w; /* unused */
-    (void)m; /* unused */
+  (void)w; /* unused */
+  (void)m; /* unused */
 }
 
 /* End worker_mutex.c */
