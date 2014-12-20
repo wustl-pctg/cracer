@@ -69,10 +69,10 @@ void vla_free_from_original_stack(__cilkrts_stack_frame *sf,
 #if 1
     // Add full_size to ff->sync_sp so that when we return, the VLA will no
     // longer be allocated on the stack
-    __cilkrts_adjust_stack(sf->worker->l->frame_ff, full_size);
+    __cilkrts_adjust_stack(*sf->worker->l->frame_ff, full_size);
 #else
     // Inline __cilkrts_adjust_stack for Kevin
-    full_frame *ff = sf->worker->l->frame_ff;
+    full_frame *ff = *sf->worker->l->frame_ff;
     ff->sync_sp = ff->sync_sp + full_size;
 #endif
 }

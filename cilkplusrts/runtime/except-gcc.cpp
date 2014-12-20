@@ -202,7 +202,7 @@ __cilkrts_return_exception(__cilkrts_stack_frame *sf)
            rethrow flag. */
         save_exception_info(w, state, exc, exc == NULL, "save_except");
         {
-            full_frame *ff = w->l->frame_ff;
+            full_frame *ff = *w->l->frame_ff;
             CILK_ASSERT(NULL == ff->pending_exception);
             ff->pending_exception = w->l->pending_exception;
             w->l->pending_exception = NULL;
@@ -299,7 +299,7 @@ NORETURN __cilkrts_c_sync_except (__cilkrts_worker *w, __cilkrts_stack_frame *sf
     save_exception_info(w, state, exc, false, "sync_except");
 #if 0
     {
-        full_frame *ff = w->l->frame_ff;
+        full_frame *ff = *w->l->frame_ff;
         CILK_ASSERT(NULL == ff->pending_exception);
         ff->pending_exception = w->l->pending_exception;
         w->l->pending_exception = NULL;    

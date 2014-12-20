@@ -448,8 +448,8 @@ int replay_match_victim_pedigree_internal(__cilkrts_worker *w, __cilkrts_worker 
 {
     // If we don't have a match, return 0
     if (! w->l->replay_list_entry->match(ped_type_steal,
-                                             &((*victim->head)->parent_pedigree),
-                                             victim->self))
+                                         &((**victim->head)->parent_pedigree),
+                                         victim->self))
         return 0;
 
     // Consume this entry
@@ -479,7 +479,7 @@ void replay_wait_for_steal_if_parent_was_stolen_internal(__cilkrts_worker *w)
     // Stall until our parent is stolen.  Note that we're comparing head
     // and tail, not head and exc.  The steal is not completed until tail
     // is modified.
-    while (!((w->tail - 1) < w->head))
+    while (!((*w->tail - 1) < *w->head))
         __cilkrts_sleep();
 
     // Consume the entry

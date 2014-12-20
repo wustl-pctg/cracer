@@ -39,7 +39,7 @@
 void run_scheduling_stack_fcn(__cilkrts_worker *w)
 {
     scheduling_stack_fcn_t fcn = w->l->post_suspend;
-    full_frame *ff2 = w->l->frame_ff;
+    full_frame *ff2 = *w->l->frame_ff;
     __cilkrts_stack_frame *sf2 = w->l->suspended_stack;
 
     w->l->post_suspend = 0;
@@ -49,7 +49,7 @@ void run_scheduling_stack_fcn(__cilkrts_worker *w)
     // w no longer owns the full frame ff.
     // The next time another (possibly different) worker takes
     // ownership of ff will be at a provably_good_steal on ff. 
-    w->l->frame_ff = NULL;
+    *w->l->frame_ff = NULL;
 
     CILK_ASSERT(fcn);
     CILK_ASSERT(ff2);
@@ -57,7 +57,7 @@ void run_scheduling_stack_fcn(__cilkrts_worker *w)
 
     // After we run the scheduling stack function, we shouldn't
     // (still) not have a full frame.
-    CILK_ASSERT(NULL == w->l->frame_ff);
+    CILK_ASSERT(NULL == *w->l->frame_ff);
 }
 
 /* End local_state.c */

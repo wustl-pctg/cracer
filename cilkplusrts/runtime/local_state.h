@@ -172,7 +172,7 @@ struct local_state  /* COMMON_PORTABLE */
    *
    * [shared read/write]
    */
-  struct full_frame *frame_ff;
+  struct full_frame **frame_ff;
 
   /**
    * Full frame that the worker will be working on next
@@ -210,11 +210,19 @@ struct local_state  /* COMMON_PORTABLE */
    * won't need access to these.
    * [shared read/write]
    */
-  __cilkrts_stack_frame *volatile *volatile saved_tail;
-  __cilkrts_stack_frame *volatile *volatile saved_head;
-  __cilkrts_stack_frame *volatile *volatile saved_exc;
-  __cilkrts_stack_frame *volatile *volatile saved_protected_tail;
-  struct full_frame *saved_frame_ff;
+  __cilkrts_stack_frame *volatile *volatile core_tail;
+  __cilkrts_stack_frame *volatile *volatile core_head;
+  __cilkrts_stack_frame *volatile *volatile core_exc;
+  __cilkrts_stack_frame *volatile *volatile core_protected_tail;
+  __cilkrts_stack_frame *volatile *core_ltq_limit;
+  struct full_frame *core_frame_ff;
+
+  __cilkrts_stack_frame *volatile *volatile batch_tail;
+  __cilkrts_stack_frame *volatile *volatile batch_head;
+  __cilkrts_stack_frame *volatile *volatile batch_exc;
+  __cilkrts_stack_frame *volatile *volatile batch_protected_tail;
+  __cilkrts_stack_frame *volatile *batch_ltq_limit;
+  struct full_frame *batch_frame_ff;
 
   /**
    * Team on which this worker is a participant.  When a user worker enters,
@@ -259,8 +267,12 @@ struct local_state  /* COMMON_PORTABLE */
    *
    * [local read-only]
    */
-  __attribute__((aligned(64))) __cilkrts_stack_frame **ltq;
-  __attribute__((aligned(64))) __cilkrts_stack_frame **batch_ltq;
+  __attribute__((aligned(64)))
+  __cilkrts_stack_frame ***current_ltq;
+  __attribute__((aligned(64)))
+  __cilkrts_stack_frame **core_ltq;
+  __attribute__((aligned(64)))
+  __cilkrts_stack_frame **batch_ltq;
 
   /**
    * Pool of fibers waiting to be reused.
@@ -274,29 +286,12 @@ struct local_state  /* COMMON_PORTABLE */
    */
   cilk_fiber* scheduling_fiber;
 
-  /**
-   * Just a temporary holder -- we want to save the core scheduling
-   * fiber while use a new fiber for batch scheduling.
-   * [local read/write]
-   */
-  cilk_fiber* core_scheduling_fiber;
-
-  /**
-   * Another temporary holder, this time for the user fiber that calls
-   * batchify.
-   * [local read/write]
-   */
-  cilk_fiber* core_user_fiber;
-  cilk_fiber* batch_user_fiber;
-
-  /**
-   * The fiber for the batch scheduling stack.
-   * I'm not actually sure if this is strictly necessary, but it seems
-   * like the get_current_fiber function is not supported on all
-   * platforms, so we'll just store it here.
-   * [local read/write]
-   */
-  cilk_fiber* batch_scheduling_fiber;
+  // /**
+  //  * A temporary holder for the core fiber that called
+  //  * batchify.
+  //  * [local read/write]
+  //  */
+  cilk_fiber* saved_core_fiber;
 
   /**
    * Saved pointer to the leaf node in thread-local storage, when a
@@ -442,6 +437,8 @@ struct local_state  /* COMMON_PORTABLE */
    * [shared read-only]
    */
   ls_magic_t worker_magic_1;
+
+  int batch_id;
 };
 
 /**

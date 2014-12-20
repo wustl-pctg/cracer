@@ -178,11 +178,11 @@ __CILKRTS_INLINE void __cilk_fake_detach(__cilkrts_stack_frame *sf)
     w->pedigree.parent = &sf->spawn_helper_pedigree;
 
     /* Push parent onto the task deque */
-    __cilkrts_stack_frame *volatile *tail = w->tail;
+    __cilkrts_stack_frame *volatile *tail = *w->tail;
     *tail++ = sf->call_parent;
     /* The stores must be separated by a store fence (noop on x86)
      * or the second store is a release (st8.rel on Itanium)   */
-    w->tail = tail;
+    *w->tail = tail;
     sf->flags |= CILK_FRAME_DETACHED;
 }
 

@@ -77,7 +77,7 @@ __CILKRTS_BEGIN_EXTERN_C
  * Batcher allows two different types of steals -- core (regular)
  * steals, and batch steals, which do shared data structure work.
  */
-typedef enum {CORE, BATCH} steal_t;
+typedef enum STEAL_TYPE { STEAL_CORE, STEAL_BATCH, STEAL_ANY } steal_t;
 
 /**
  * @brief Lock the worker mutex to allow exclusive access to the

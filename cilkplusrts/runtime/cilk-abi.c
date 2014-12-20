@@ -162,12 +162,12 @@ CILK_ABI_VOID __cilkrts_enter_frame_fast_1(__cilkrts_stack_frame *sf)
 static int __cilkrts_undo_detach(__cilkrts_stack_frame *sf)
 {
     __cilkrts_worker *w = sf->worker;
-    __cilkrts_stack_frame *volatile *t = w->tail;
+    __cilkrts_stack_frame *volatile *t = *w->tail;
 
 /*    DBGPRINTF("%d - __cilkrts_undo_detach - sf %p\n", w->self, sf); */
 
     --t;
-    w->tail = t;
+    *w->tail = t;
     /* On x86 the __sync_fetch_and_<op> family includes a
        full memory barrier.  In theory the sequence in the
        second branch of the #if should be faster, but on
@@ -179,7 +179,7 @@ static int __cilkrts_undo_detach(__cilkrts_stack_frame *sf)
     sf->flags &= ~CILK_FRAME_DETACHED;
 #endif
 
-    return __builtin_expect(t < w->exc, 0);
+    return __builtin_expect(t < *w->exc, 0);
 }
 
 CILK_ABI_VOID __cilkrts_leave_frame(__cilkrts_stack_frame *sf)
@@ -268,9 +268,11 @@ CILK_ABI_VOID __cilkrts_leave_frame(__cilkrts_stack_frame *sf)
 #endif
 
     if (__builtin_expect(sf->flags & CILK_FRAME_LAST, 0))
-        __cilkrts_c_return_from_initial(w); /* does return */
+      __cilkrts_c_return_from_initial(w); /* does return */
+    // else if (__builtin_expect(sf->flags & CILK_FRAME_BATCH, 0))
+    //   __cilkrts_c_return_from_batch(w);
     else if (sf->flags & CILK_FRAME_STOLEN)
-        __cilkrts_return(w); /* does return */
+      __cilkrts_return(w); /* does return */
 
 /*    DBGPRINTF("%d-%p __cilkrts_leave_frame - returning, StackBase: %p\n", w->self, GetWorkerFiber(w)); */
 }
@@ -397,7 +399,7 @@ CILK_ABI_WORKER_PTR BIND_THREAD_RTN(void)
 	
         CILK_ASSERT(ff->join_counter == 0);
         ff->join_counter = 1;
-        w->l->frame_ff = ff;
+        *w->l->frame_ff = ff;
         w->reducer_map = __cilkrts_make_reducer_map(w);
         __cilkrts_set_leftmost_reducer_map(w->reducer_map, 1);
         load_pedigree_leaf_into_user_worker(w);
@@ -409,9 +411,9 @@ CILK_ABI_WORKER_PTR BIND_THREAD_RTN(void)
     // Note that we must NOT check w->exc, since workers that are trying to
     // steal from it will be updating w->exc and we don't own the worker lock.
     // It's not worth taking out the lock just for an assertion.
-    CILK_ASSERT(w->head == w->l->ltq);
-    CILK_ASSERT(w->tail == w->l->ltq);
-    CILK_ASSERT(w->protected_tail  == w->ltq_limit);
+    CILK_ASSERT(*w->head == *w->l->current_ltq);
+    CILK_ASSERT(*w->tail == *w->l->current_ltq);
+    CILK_ASSERT(*w->protected_tail  == *w->ltq_limit);
 
     // There may have been an old pending exception which was freed when the
     // exception was caught outside of Cilk
@@ -568,7 +570,7 @@ static __cilk_tbb_retcode __cilkrts_unwatch_stack(void *data)
         }
 
         __cilkrts_worker_lock(w);
-        ff = w->l->frame_ff;
+        ff = *w->l->frame_ff;
         __cilkrts_frame_lock(w,ff);
         data = ff->fiber_self;
         __cilkrts_frame_unlock(w,ff);
@@ -580,7 +582,7 @@ static __cilk_tbb_retcode __cilkrts_unwatch_stack(void *data)
     full_frame *ff;
     __cilkrts_worker *w = __cilkrts_get_tls_worker();
     __cilkrts_worker_lock(w);
-    ff = w->l->frame_ff;
+    ff = *w->l->frame_ff;
     __cilkrts_frame_lock(w,ff);
     CILK_ASSERT (data == ff->fiber_self);
     __cilkrts_frame_unlock(w,ff);
@@ -638,7 +640,7 @@ __cilkrts_watch_stack(__cilk_tbb_unwatch_thunk *u,
 
     /* Get current stack */
     __cilkrts_worker_lock(w);
-    current_fiber = w->l->frame_ff->fiber_self;
+    current_fiber = (*w->l->frame_ff)->fiber_self;
     __cilkrts_worker_unlock(w);
 
 /*    CILK_ASSERT( !sd->stack_op_data ); */
@@ -675,7 +677,7 @@ CILK_API_INT __cilkrts_synched(void)
     // that we can check the join counter.  ASSUME: frame_ff is stable (can be
     // read without a lock) in a stolen continuation -- it can't be stolen
     // while it's currently executing.
-    full_frame *ff = w->l->frame_ff;
+    full_frame *ff = *w->l->frame_ff;
 
     // Make sure we have a full frame
     // TBD: Don't think that we should ever not have a full frame here.

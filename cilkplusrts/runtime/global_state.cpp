@@ -337,7 +337,10 @@ int calc_max_user_workers(global_state_t *g)
         return g->max_user_workers;
 
     // Calculate it
-    return std::max(3, g->P * 2);
+    //    return std::max(3, g->P * 2);
+    //    @TODO(rob)
+    // If they don't set it, why should we have any at all?!
+    return 1;
 }
 
 } // end unnamed namespace

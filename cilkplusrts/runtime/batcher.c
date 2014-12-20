@@ -7,7 +7,7 @@
  */
 
 #include <cilk/batcher.h>
-//#include "rts-common.h"
+#include "deque.h"
 #include "scheduler.h"
 #include "cilk_fiber.h"
 #include "full_frame.h"
@@ -29,33 +29,15 @@
 #define END_WITH_FRAME_LOCK(w, ff)                       \
     while (__cilkrts_frame_unlock(w, _locked_ff), 0); } while (0)
 
-
-function_t batchFunc; // @TODO(rob) move
-
 void scheduling_fiber_prepare_to_resume_user_code(__cilkrts_worker *w,
                                                   full_frame *ff,
                                                   __cilkrts_stack_frame *sf);
+cilk_fiber* try_to_start_batch(__cilkrts_worker* w);
 
 COMMON_PORTABLE
-struct batch* create_batch(struct batch_record* record)
+unsigned int collect_batch(struct batch* pending, struct batch_record* records)
 {
-  __cilkrts_worker* w = __cilkrts_get_tls_worker();
-  struct batch* b = &w->g->pending_batch;
-  struct batch_record* records = w->g->batch_records;
-
-  b->id++;
-  b->operation = record->operation;
-  b->ds = record->ds;
-  b->data_size = record->data_size;
-  b->num_ops = collect_batch(b, records);
-
-  return b;
-}
-
-COMMON_PORTABLE
-int collect_batch(struct batch* pending, struct batch_record* records)
-{
-  int num_ops = 0;
+  unsigned int num_ops = 0;
   int p = cilkg_get_nworkers();
 
   for (int i = 0; i < p; ++i) {
@@ -72,6 +54,23 @@ int collect_batch(struct batch* pending, struct batch_record* records)
 }
 
 COMMON_PORTABLE
+struct batch* create_batch(struct batch_record* record)
+{
+  __cilkrts_worker* w = __cilkrts_get_tls_worker();
+  struct batch* b = &w->g->pending_batch;
+  struct batch_record* records = w->g->batch_records;
+
+  b->operation = record->operation;
+  b->ds = record->ds;
+  b->data_size = record->data_size;
+  b->num_ops = collect_batch(b, records);
+
+  printf("Batch %d has %d ops.\n", b->id, b->num_ops);
+
+  return b;
+}
+
+COMMON_PORTABLE
 void terminate_batch(struct batch_record* records)
 {
   __cilkrts_worker* w = __cilkrts_get_tls_worker();
@@ -82,22 +81,105 @@ void terminate_batch(struct batch_record* records)
       records[i].status = ITEM_DONE;
   }
 
+  // @TODO correct assertions here
+  /* CILK_ASSERT(w->l->batch_frame_ff); */
+  /* __cilkrts_destroy_full_frame(w, w->l->batch_frame_ff); */
+  /* w->l->batch_frame_ff = NULL; */
+
+  printf("Worker %i terminated batch %i.\n", w->self, w->g->pending_batch.id);
+  w->g->pending_batch.id++;
   //  __cilkrts_mutex_unlock(w, &w->g->batch_lock);
   // Special unlock here because this worker may not be the original owner!
   w->g->batch_lock.owner = 0;
+  __cilkrts_fence();
   __sync_lock_release(&w->g->batch_lock.lock);
   return;
+}
+
+full_frame* create_batch_frame(__cilkrts_worker* w, cilk_fiber* fiber)
+{
+  full_frame* ff = __cilkrts_make_full_frame(w, 0);
+
+  ff->fiber_self = fiber;
+  CILK_ASSERT(ff->fiber_self);
+
+  cilk_fiber_set_owner(ff->fiber_self, w);
+
+  CILK_ASSERT(ff->join_counter == 0);
+  ff->join_counter = 1;
+  //  ff->is_call_child = 1;
+  return ff;
+}
+
+
+/* @TODO
+ * This doesn't work if a batch function doesn't directly have a spawn
+ * -- then the compiler doesn't insert a call to enter_frame_internal,
+ * which sets the right stack frame.
+ * I think I might need to modify the compiler and add a batch
+ * keyword.
+ * 
+ * Actually, no.
+ * See CILK_FAKE_PROLOG, CILK_FAKE_FORCE_FRAME_PTR, and
+ * CILK_FAKE_INITIAL_ENTER_FRAME in cilk_fake.h.
+ */
+void __cilkrts_c_start_batch()
+{
+  __cilkrts_worker* w = __cilkrts_get_tls_worker();
+  __cilkrts_stack_frame* sf = w->current_stack_frame;
+
+  // Must OR with self to keep version info
+  sf->flags = sf->flags | CILK_FRAME_BATCH;
+}
+
+void call_batch(__cilkrts_worker* w, struct batch* b)
+{
+  __cilkrts_stack_frame sf;
+  sf.call_parent = w->current_stack_frame;
+  sf.worker = w;
+  sf.flags = CILK_FRAME_VERSION | CILK_FRAME_BATCH;
+  w->current_stack_frame = &sf;
+
+  (b->operation)(b->num_ops);
+
+  __cilkrts_c_return_from_batch(w);
+}
+
+void __cilkrts_c_return_from_batch(__cilkrts_worker* w)
+{
+  printf("Worker %d returning from a batch.\n", w->self);
+  BEGIN_WITH_WORKER_LOCK(w) {
+    full_frame* ff = *w->l->frame_ff;
+
+    if (ff) {
+      CILK_ASSERT(ff->join_counter == 1);
+      *w->l->frame_ff = 0;
+
+      CILK_ASSERT(ff->fiber_self);
+      //cilk_fiber_tbb_interop_save_info_from_stack(ff->fiber_self);
+
+      __cilkrts_destroy_full_frame(w, ff);
+    }
+
+    // deallocate fiber here or later? I think will return to
+    // invoke_batch, where the fiber can be deallocated.
+
+    } END_WITH_WORKER_LOCK(w);
+
+    // @TODO reducers and pedigree stuff
 }
 
 COMMON_PORTABLE
 void invoke_batch(cilk_fiber *fiber)
 {
 	__cilkrts_worker * w = __cilkrts_get_tls_worker();
-
-  cilk_fiber* current_fiber = w->l->batch_user_fiber;
-  //  cilk_fiber *current_fiber = w->l->frame_ff->fiber_self;
+  cilk_fiber* current_fiber = fiber;//cilk_fiber_allocate_from_thread();
+  int prev_id = w->self;
 
   // 1. Make sure deque (ltq) pointers are correctly set.
+  CILK_ASSERT(!w->l->batch_frame_ff);
+  CILK_ASSERT(w->tail == &w->l->batch_tail);
+  CILK_ASSERT(*w->tail = *w->head);
 
   // 2. Do the collection for the batch.
   struct batch_record* records = w->g->batch_records;
@@ -106,20 +188,21 @@ void invoke_batch(cilk_fiber *fiber)
 
   // 3. Call the batch operation.
   printf("Worker %i invoking batch %i.\n", w->self, b->id);
-  full_frame* ff = __cilkrts_make_full_frame(w, 0);
-  ff->fiber_self = current_fiber;
-  cilk_fiber_set_owner(ff->fiber_self, w);
-  ff->join_counter = 1;
-  w->l->frame_ff = ff;
 
-  batchFunc();
+  *w->l->frame_ff = create_batch_frame(w, fiber);
 
-  // Note: SOMEONE will return back here, even if it is not the
-  // original batch owner.
+  //  (b->operation)(b->num_ops);
+  call_batch(w, b);
+
+  w = __cilkrts_get_tls_worker();
+  if (w->self != prev_id) {
+    printf("Worker %d stole the main batch frame and returned to invoke_batch.\n", w->self);
+  }
+
+  CILK_ASSERT(w->l->batch_head == w->l->batch_tail);
+
   // 4. Terminate the batch.
   terminate_batch(records);
-  __cilkrts_destroy_full_frame(w, ff);
-  printf("Worker %i terminated batch %i.\n", w->self, b->id);
 
   // 5. Go back to the user code before the call to batchify.
 
@@ -128,61 +211,7 @@ void invoke_batch(cilk_fiber *fiber)
   // than jumping to it first. But I doubt it will make a huge difference.
   cilk_fiber_remove_reference_from_self_and_resume_other(current_fiber,
                                                          &w->l->fiber_pool,
-                                                         w->l->batch_scheduling_fiber);
-}
-
-COMMON_PORTABLE
-void batch_scheduler_function(cilk_fiber *fiber)
-{
-	__cilkrts_worker * w = __cilkrts_get_tls_worker();
-  cilk_fiber *current_fiber = w->l->batch_scheduling_fiber;
-  full_frame* ff = NULL;
-
-  printf("Worker %i entered scheduler function at batch %i.\n", w->self, w->g->pending_batch.id);
-
-  // @TODO(rob) interval statistics
-  while (w->g->batch_records[w->self].status != ITEM_DONE) {
-    //    __cilkrts_short_pause();
-
-    /* cilk_fiber* fiber_to_resume */
-    /*   = worker_scheduling_loop_body(w->l->batch_scheduling_fiber, w); */
-
-    ff = pop_next_frame(w);
-    if (!ff) ff = check_for_work(w);
-    if (ff) {
-      printf("Worker %i stole a batch frame!\n", w->self);
-      __cilkrts_stack_frame* sf;
-      BEGIN_WITH_WORKER_LOCK(w) {
-        CILK_ASSERT(!w->l->frame_ff);
-        BEGIN_WITH_FRAME_LOCK(w, ff) {
-          sf = ff->call_stack;
-          CILK_ASSERT(sf && !sf->call_parent);
-          setup_for_execution(w, ff, 0);
-        } END_WITH_FRAME_LOCK(w, ff);
-      } END_WITH_WORKER_LOCK(w);
-
-      scheduling_fiber_prepare_to_resume_user_code(w, ff, sf);
-      
-      cilk_fiber *other = w->l->frame_ff->fiber_self;
-      cilk_fiber_data* other_data = cilk_fiber_get_data(other);
-      cilk_fiber_data* current_fiber_data = cilk_fiber_get_data(current_fiber);
-
-      CILK_ASSERT(NULL == other_data->resume_sf);
-
-      current_fiber_data->resume_sf = NULL;
-      CILK_ASSERT(current_fiber_data->owner == w);
-      other_data->resume_sf = sf;
-
-      cilk_fiber_suspend_self_and_resume_other(w->l->batch_scheduling_fiber,
-                                               other);
-    }
-
-  }
-
-  cilk_fiber_remove_reference_from_self_and_resume_other(w->l->batch_scheduling_fiber,
-                                                         &w->l->fiber_pool,
-                                                         w->l->core_user_fiber);
-
+                                                         w->l->scheduling_fiber);
 }
 
 static cilk_fiber* allocate_batch_fiber(__cilkrts_worker* w,
@@ -205,114 +234,230 @@ static cilk_fiber* allocate_batch_fiber(__cilkrts_worker* w,
   return batch_fiber;
 }
 
-/* Here's the plan for batchify:
- *  Every worker allocated a new fiber, set to enter a batch
- *  scheduling loop. The old fiber is set as the new "scheduling" fiber.
- *  At the end of this batch scheduler, we suspend that fiber (destroy
- *  it), and jump back to this fiber, where we return back to user
- *  code.
+void execute_batch(__cilkrts_worker* w, cilk_fiber* fiber, int batch_id)
+{
+  volatile int* global_batch_id = &w->g->pending_batch.id;
+  full_frame* ff = NULL;
+  int stole = 0;
 
- * The batch owner must do something slightly different. There are two
- * options:
- *  1. Allocate an additional fiber. Jump to this fiber and execute an
- * "internal batchify" function which just calls the batch operation
- * (could also do collection and termination in there). That fiber is
- * then destroyed and we jump to the batch scheduling fiber, where we
- * just immediately destroy that and return back to user code.
- *
- * 2. Another option is to not allocate an additional fiber, and just
- * manually call the internal batchify operation. This avoids the
- * fiber overhead, but then we must do more careful accounting. In
- * particular, I would be a little concerned about the fiber running
- * the batch sharing a stack with a worker that stole something from
- * the batch owner's core deque. Although it may not actually be
- * anything to worry about.
- *
- * I think I'll implement #1 first, because it seems more straightforward.
- */
-CILK_API_VOID cilk_batchify(function_t f)
+  while (*global_batch_id == batch_id) {
+    /* __cilkrts_short_pause(); */
+    // @@ batch stealing
+
+    ff = pop_next_frame(w);
+    if (!ff) {
+      ff = check_for_work(w, STEAL_BATCH);
+      if (ff) {
+        printf("Worker %i stole a batch frame in batch %d!\n",
+                     w->self, *global_batch_id);
+        stole++;
+        if (stole >= 2) {
+          printf("Multiple batch steals by %d\n", w->self);
+        }
+      }
+    }
+
+    if (ff) {
+      __cilkrts_stack_frame* sf;
+      BEGIN_WITH_WORKER_LOCK(w) {
+        CILK_ASSERT(!*w->l->frame_ff);
+        BEGIN_WITH_FRAME_LOCK(w, ff) {
+          sf = ff->call_stack;
+          CILK_ASSERT(sf && !sf->call_parent);
+          setup_for_execution(w, ff, 0);
+        } END_WITH_FRAME_LOCK(w, ff);
+      } END_WITH_WORKER_LOCK(w);
+
+      scheduling_fiber_prepare_to_resume_user_code(w, ff, sf);
+      
+      cilk_fiber *other = (*w->l->frame_ff)->fiber_self;
+      cilk_fiber_data* other_data = cilk_fiber_get_data(other);
+      cilk_fiber_data* current_fiber_data = cilk_fiber_get_data(fiber);
+
+      if (NULL != other_data->resume_sf) {
+        printf("problem.\n");
+      }
+
+      CILK_ASSERT(NULL == other_data->resume_sf);
+
+      current_fiber_data->resume_sf = NULL;
+      CILK_ASSERT(current_fiber_data->owner == w);
+      other_data->resume_sf = sf;
+
+      cilk_fiber_suspend_self_and_resume_other(w->l->scheduling_fiber,
+                                               other);
+      w = __cilkrts_get_tls_worker();
+    }
+  }
+
+  /* BEGIN_WITH_WORKER_LOCK(w) { */
+  /*   ff = *w->l->frame_ff; */
+  /*   if (ff) { */
+  /*     CILK_ASSERT(ff->join_counter == 1); */
+  /*     *w->l->frame_ff = 0; */
+
+  /*     CILK_ASSERT(ff->fiber_self); */
+  /*     //cilk_fiber_tbb_interop_save_info_from_stack(ff->fiber_self); */
+
+  /*     __cilkrts_destroy_full_frame(w, ff); */
+  /*   } */
+  /* } END_WITH_WORKER_LOCK(w); */
+
+  /* CILK_ASSERT(w->l->batch_frame_ff == NULL); */
+  /* CILK_ASSERT(w->l->batch_tail == w->l->batch_head); */
+  /* ff = pop_next_frame(w); */
+  /* CILK_ASSERT(NULL == ff); */
+}
+
+COMMON_PORTABLE
+void batch_scheduler_function(cilk_fiber *fiber)
 {
 	__cilkrts_worker * w = __cilkrts_get_tls_worker();
-  cilk_fiber *current_fiber;
-  cilk_fiber *batch_fiber = NULL;
-  __cilkrts_worker* saved_team = NULL;
-  cilk_worker_type saved_type;
 
-  // @TODO split out "switch to batch" function
-  // Get own lock and save deque pointers
+  printf("Worker %i entered scheduler function at batch %i.\n", w->self, w->g->pending_batch.id);
+
+  while (w->g->batch_records[w->self].status != ITEM_DONE) {
+
+    execute_batch(w, fiber, w->l->batch_id);
+
+    if (w->g->batch_records[w->self].status != ITEM_DONE) {
+
+      cilk_fiber* new_fiber = try_to_start_batch(w);
+      if (new_fiber != fiber) {
+        printf("Worker %i restarting a batch.\n", w->self);
+        w->l->batch_id = w->g->pending_batch.id; // @TODO just increment?
+        cilk_fiber_reset_state(fiber, batch_scheduler_function);
+        cilk_fiber_set_owner(fiber, w);
+        cilk_fiber_suspend_self_and_resume_other(fiber, new_fiber);
+      }
+    }
+  }
+  cilk_fiber_remove_reference_from_self_and_resume_other(w->l->scheduling_fiber,
+                                                         &w->l->fiber_pool,
+                                                         w->l->saved_core_fiber);
+
+}
+
+
+void switch_to_batch_deque(__cilkrts_worker* w)
+{
   BEGIN_WITH_WORKER_LOCK(w) {
+    CILK_ASSERT(w->l->batch_tail == w->l->batch_head);
+    CILK_ASSERT(w->l->batch_tail == w->l->batch_exc);
+    CILK_ASSERT(w->l->batch_tail == w->l->batch_ltq);
+    CILK_ASSERT(w->l->batch_protected_tail == w->l->batch_ltq + w->g->ltqsize);
+    CILK_ASSERT(w->l->batch_frame_ff == NULL);
 
-    current_fiber = w->l->frame_ff->fiber_self;
-    saved_team = w->l->team;
-    saved_type = w->l->type;
-    w->l->team = (w->l->type == WORKER_USER) ? w : NULL;
-    w->l->type = WORKER_SYSTEM;
-
-    w->l->saved_tail = w->tail;
-    w->l->saved_head = w->head;
-    w->l->saved_exc = w->exc;
-    w->l->saved_protected_tail = w->protected_tail;
-
-    w->head = w->tail = w->exc = w->l->batch_ltq;
-    w->protected_tail = w->l->batch_ltq + w->g->ltqsize;
-    //    __cilkrts_restore_stealing(w, w->ltq_limit);
-    w->l->saved_frame_ff = w->l->frame_ff;
-    w->l->frame_ff = NULL;
+    w->tail = &w->l->batch_tail;
+    w->head = &w->l->batch_head;
+    w->exc = &w->l->batch_exc;
+    w->protected_tail = &w->l->batch_protected_tail;
+    w->l->current_ltq = &w->l->batch_ltq;
+    w->l->frame_ff = &w->l->batch_frame_ff;
     __cilkrts_fence();
   } END_WITH_WORKER_LOCK(w);
+}
 
+void switch_to_core_deque(__cilkrts_worker* w)
+{
+  BEGIN_WITH_WORKER_LOCK(w) {
+    w->tail = &w->l->core_tail;
+    w->head = &w->l->core_head;
+    w->exc = &w->l->core_exc;
+    w->protected_tail = &w->l->core_protected_tail;
+    w->l->current_ltq = &w->l->core_ltq;
+    __cilkrts_fence();
+
+    CILK_ASSERT(!w->l->batch_frame_ff);
+    w->l->batch_head = w->l->batch_tail = w->l->batch_exc = w->l->batch_ltq;
+
+    w->l->frame_ff = &w->l->core_frame_ff;
+
+  } END_WITH_WORKER_LOCK(w);
+}
+
+static inline
+void insert_batch_record(__cilkrts_worker* w, batch_function_t func, void* ds,
+                         int data, size_t data_size)
+{
   struct batch_record* record = &w->g->batch_records[w->self];
-  record->operation = NULL;
-  record->ds = NULL;
-  record->data_size = sizeof(int);
-  record->data = 42;
-  record->status = ITEM_WAITING;
+  record->operation           = func;
+  record->ds                  = ds;
+  record->data                = data;
+  record->data_size           = data_size;
+  record->status              = ITEM_WAITING;
+}
 
-  cilk_fiber *batch_scheduling_fiber = allocate_batch_fiber(w, &w->l->fiber_pool,
-                                                            batch_scheduler_function);
-
-  // Will need to assert this, but disabled now because I don't
-  //  initially set it to NULL at initialization, yet.
-  //  CILK_ASSERT(w->l->core_scheduling_fiber == NULL);
-
-  w->l->core_user_fiber = current_fiber;
-  w->l->core_scheduling_fiber = w->l->scheduling_fiber;
-  w->l->scheduling_fiber = batch_scheduling_fiber;
-  w->l->batch_scheduling_fiber = batch_scheduling_fiber;
+cilk_fiber* try_to_start_batch(__cilkrts_worker* w)
+{
+  CILK_ASSERT(w->head == &w->l->batch_head);
+  /* if (w->g->batch_lock.owner == w) { */
+  /*   printf("what dude\n"); */
+  /* } */
+  /* CILK_ASSERT(w->g->batch_lock.owner != w); */
 
   int is_batch_owner = __cilkrts_mutex_trylock(w, &w->g->batch_lock);
+  cilk_fiber* batch_fiber = w->l->scheduling_fiber;
 
   if (is_batch_owner) {
     batch_fiber = allocate_batch_fiber(w, &w->l->fiber_pool,
                                        invoke_batch);
-    w->l->batch_user_fiber = batch_fiber;
-    batchFunc = f;
-    printf("Worker %i starting a batch.\n", w->self);
-  } else {
-    batch_fiber = batch_scheduling_fiber;
-    printf("Worker %i helping in a batch.\n", w->self);
   }
+  return batch_fiber;
+}
 
+void execute_until_op_done(__cilkrts_worker* w)
+{
+  __cilkrts_worker* saved_team = NULL;
+  cilk_fiber *current_fiber;
+  cilk_fiber *batch_fiber = NULL;
+  cilk_fiber* saved_fiber = NULL;
+  __cilkrts_stack_frame* saved_stack_frame;
 
+  CILK_ASSERT(w->l->core_frame_ff);
+  current_fiber = w->l->core_frame_ff->fiber_self;
+  CILK_ASSERT(current_fiber);
+  saved_team = w->l->team;
+
+  cilk_fiber *batch_scheduling_fiber = allocate_batch_fiber(w, &w->l->fiber_pool,
+                                                            batch_scheduler_function);
+
+  w->l->saved_core_fiber = current_fiber;
+  saved_fiber = w->l->scheduling_fiber;
+  saved_stack_frame = w->current_stack_frame;
+  w->current_stack_frame = NULL;
+  w->l->scheduling_fiber = batch_scheduling_fiber;
+
+  batch_fiber = try_to_start_batch(w);
+
+  w->l->batch_id = w->g->pending_batch.id;
+  printf("Worker %d batchifying %d.\n", w->self, w->l->batch_id);
   cilk_fiber_suspend_self_and_resume_other(current_fiber, batch_fiber);
+  printf("Worker %d done with %d.\n", w->self, w->l->batch_id);
 
-  BEGIN_WITH_WORKER_LOCK(w) {
-    w->tail = w->l->saved_tail;
-    w->head = w->l->saved_head;
-    w->exc = w->l->saved_exc;
-    w->protected_tail = w->l->saved_protected_tail;
-    w->l->frame_ff = w->l->saved_frame_ff;
+  w->l->team = saved_team;
 
-    w->l->team = saved_team;
-    w->l->type = saved_type;
+  if (!w->l->core_frame_ff->fiber_self) {
+    printf("Frame was from stolen from %d while in batch. Should notice upon returning.\n", w->self);
+  }
+  CILK_ASSERT(w->l->core_frame_ff->fiber_self);
 
-    w->l->saved_head = w->l->saved_tail = w->l->saved_exc = NULL;
-    w->l->saved_protected_tail = NULL;
-  } END_WITH_WORKER_LOCK(w);
+  w->l->scheduling_fiber = saved_fiber;
+  w->l->saved_core_fiber = NULL;
+  w->current_stack_frame = saved_stack_frame;
 
-  w->l->scheduling_fiber = w->l->core_scheduling_fiber;
-  w->l->core_scheduling_fiber = NULL;
-  w->l->core_user_fiber = NULL;
-  w->l->batch_scheduling_fiber = NULL;
-  w->l->batch_user_fiber = NULL;
+  //  CILK_ASSERT(w->l->batch_id < w->g->pending_batch.id);
+
+}
+
+CILK_API_VOID cilk_batchify(batch_function_t f)
+{
+	__cilkrts_worker * w = __cilkrts_get_tls_worker();
+
+  CILK_ASSERT(w->l->frame_ff == &w->l->core_frame_ff);
+
+  switch_to_batch_deque(w);
+  insert_batch_record(w, f, NULL, 42, sizeof(int));
+  execute_until_op_done(w);
+  switch_to_core_deque(w);
 }

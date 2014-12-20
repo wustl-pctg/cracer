@@ -150,9 +150,9 @@ struct __cilkrts_worker {
    *
    * Synchronization fields.  [shared read/write]
    */
-  __cilkrts_stack_frame *volatile *volatile tail;
-  __cilkrts_stack_frame *volatile *volatile head;  /**< @copydoc tail */
-  __cilkrts_stack_frame *volatile *volatile exc;   /**< @copydoc tail */
+  __cilkrts_stack_frame *volatile *volatile *volatile tail;
+  __cilkrts_stack_frame *volatile *volatile *volatile head;  /**< @copydoc tail */
+  __cilkrts_stack_frame *volatile *volatile *volatile exc;   /**< @copydoc tail */
 
   /**
    * Addition to the THE protocol to allow us to protect some set of
@@ -164,13 +164,13 @@ struct __cilkrts_worker {
    *
    * Synchronization field.
    */
-  __cilkrts_stack_frame *volatile *volatile protected_tail;
-  
+  __cilkrts_stack_frame *volatile *volatile *volatile protected_tail;
+
   /**
    * Limit of the Lazy Task Queue, to detect queue overflow
    * [local read-only]
    */
-  __cilkrts_stack_frame *volatile *ltq_limit;
+  __cilkrts_stack_frame *volatile **ltq_limit;
 
   /**
    * Worker id.
@@ -223,20 +223,6 @@ struct __cilkrts_worker {
    */
   __cilkrts_pedigree   pedigree;    
 #endif  /* __CILKRTS_ABI_VERSION >= 1 */
-
-  /**
-   * T, H, and E pointers for a batch deque.
-   *
-   * Synchronization fields. [shared read/write]
-   * NB: It seems we need to put these at the end, otherwise we get
-   * segfaults. Is Cilkplus really dependent on a hardcoding of the
-   * elements in this struct? I don't understand exactly what's happening.
-   */
-  __cilkrts_stack_frame *volatile *volatile tail_batch;
-  __cilkrts_stack_frame *volatile *volatile head_batch; /**< @copydoc tail_batch */
-  __cilkrts_stack_frame *volatile *volatile exc_batch; /**< @copydoc tail_batch */
-  __cilkrts_stack_frame *volatile *volatile protected_tail_batch;
-
 };
 
 
@@ -377,6 +363,11 @@ struct __cilkrts_stack_frame
  * yet represented in the pedigree?
  */
 #define CILK_FRAME_SF_PEDIGREE_UNSYNCHED 0x20
+
+/**
+ * The frame created for a batch.
+ */
+#define CILK_FRAME_BATCH 0x40
 
 /** Is this the last (oldest) Cilk frame? */
 #define CILK_FRAME_LAST	     0x80
@@ -532,42 +523,43 @@ CILK_ABI(__cilkrts_worker_ptr) __cilkrts_get_tls_worker_fast(void);
  * @return The __cilkrts_worker bound to the thread the function is running
  * on.
  */
- CILK_ABI(__cilkrts_worker_ptr) __cilkrts_bind_thread_1(void);
+CILK_ABI(__cilkrts_worker_ptr) __cilkrts_bind_thread_1(void);
 
- typedef uint32_t cilk32_t;  /**< 32-bit unsigned type for cilk_for loop indicies */
+typedef uint32_t cilk32_t;  /**< 32-bit unsigned type for cilk_for loop indicies */
+                               
+typedef uint64_t cilk64_t;  /**< 64-bit unsigned type for cilk_for
+                               loop indicies */
 
- typedef uint64_t cilk64_t;  /**< 64-bit unsigned type for cilk_for loop indicies */
-
- /**
-  * Signature for the lambda function generated for the body of a cilk_for loop
-  * which uses 32-bit indicies
-  */
+/**
+ * Signature for the lambda function generated for the body of a cilk_for loop
+ * which uses 32-bit indicies
+ */
 typedef void (*__cilk_abi_f32_t)(void *data, cilk32_t low, cilk32_t high);
 
 /**
  * Signature for the lambda function generated for the body of a cilk_for lop
  * which uses 64-bit indicies
  */
-typedef void (*__cilk_abi_f64_t)(void *data, cilk64_t low, cilk64_t high);
+ typedef void (*__cilk_abi_f64_t)(void *data, cilk64_t low, cilk64_t high);
 
-/**
- * @brief cilk_for implementation for 32-bit indexes.
- *
- * @param body The lambda function for the body of the cilk_for.  The lambda
- * function will be called to execute each grain of work.
- * @param data Data passed by the compiler into the lambda function.  Provides
- * access to data outside the cilk_for body.
- * @param count Number of steps in the loop.
- * @param grain This parameter allows the compiler to pass a value from a
- * \#pragam(grainsize) statement to allow the user to control the grainsize.  If
- * there isn't a \#pragma(grainsize) immediately preceeding cilk_for loop, Pass
- * 0 to specify that the runtime should calculate the grainsize using its own
- * hueristicts.
- */
-CILK_ABI_THROWS(void) __cilkrts_cilk_for_32(__cilk_abi_f32_t body,
-   void *data,
-   cilk32_t count,
-                                            int grain);
+ /**
+  * @brief cilk_for implementation for 32-bit indexes.
+  *
+  * @param body The lambda function for the body of the cilk_for.  The lambda
+  * function will be called to execute each grain of work.
+  * @param data Data passed by the compiler into the lambda function.  Provides
+  * access to data outside the cilk_for body.
+  * @param count Number of steps in the loop.
+  * @param grain This parameter allows the compiler to pass a value from a
+  * \#pragam(grainsize) statement to allow the user to control the grainsize.  If
+  * there isn't a \#pragma(grainsize) immediately preceeding cilk_for loop, Pass
+  * 0 to specify that the runtime should calculate the grainsize using its own
+  * hueristicts.
+  */
+  CILK_ABI_THROWS(void) __cilkrts_cilk_for_32(__cilk_abi_f32_t body,
+                                              void *data,
+                                              cilk32_t count,
+                                              int grain);
 
 /**
  * @brief cilk_for implementation for 64-bit indexes.
@@ -575,9 +567,9 @@ CILK_ABI_THROWS(void) __cilkrts_cilk_for_32(__cilk_abi_f32_t body,
  * @copydetails __cilkrts_cilk_for_32
  */
 CILK_ABI_THROWS(void) __cilkrts_cilk_for_64(__cilk_abi_f64_t body,
-   void *data,
-   cilk64_t count,
-   int grain);
+                                            void *data,
+                                            cilk64_t count,
+                                            int grain);
 
 /**
  * @brief Allocate memory for variable length arrays. If the frame is
@@ -595,6 +587,7 @@ CILK_ABI_THROWS(void) __cilkrts_cilk_for_64(__cilk_abi_f64_t body,
  *
  * @return The address of the memory block allocated.
  */
+
 CILK_ABI(__cilkrts_void_ptr)
 __cilkrts_stack_alloc(__cilkrts_stack_frame *sf,
                       size_t size,

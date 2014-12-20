@@ -7,29 +7,33 @@
 #define BATCHER_H
 
 #include <cilk/common.h>
+#include <stddef.h>
+#include <stdlib.h>
 
 __CILKRTS_BEGIN_EXTERN_C
-typedef void (*function_t)(void);
-CILK_API(void) cilk_batchify(function_t f);
+typedef void (*batch_function_t)(unsigned int);
+//typedef size_t unsigned int;
+CILK_API(void) cilk_batchify(batch_function_t f);
+CILK_API(void) __cilkrts_c_start_batch();
 
 enum BATCH_ITEM_STATUS { ITEM_WAITING, ITEM_IN_PROGRESS, ITEM_DONE };
 typedef int batch_data_t;
 
 struct batch_record {
-  function_t        operation;
-  void*             ds;
-  int            data_size;
-  batch_data_t      data;
+  batch_function_t       operation;
+  void*                  ds;
+  size_t           data_size;
+  batch_data_t           data;
   enum BATCH_ITEM_STATUS status;
 };
 
 struct batch {
-  function_t operation;
-  void*      ds;
-  int     data_size;
-  int     num_ops;
-  void*      work_array;
-  int id;
+  batch_function_t operation;
+  void*            ds;
+  size_t    data_size;
+  size_t     num_ops;
+  void*            work_array;
+  int              id;
 };
 
 __CILKRTS_END_EXTERN_C
