@@ -81,12 +81,14 @@ void terminate_batch(struct batch_record* records)
       records[i].status = ITEM_DONE;
   }
 
+  printf("Worker %i terminated batch %i.\n", w->self, w->g->pending_batch.id);
+
   // @TODO correct assertions here
-  /* CILK_ASSERT(w->l->batch_frame_ff); */
+  // Currently, frame should be destroyed in return_from_batch
+  //  CILK_ASSERT(w->l->batch_frame_ff);
   /* __cilkrts_destroy_full_frame(w, w->l->batch_frame_ff); */
   /* w->l->batch_frame_ff = NULL; */
 
-  printf("Worker %i terminated batch %i.\n", w->self, w->g->pending_batch.id);
   w->g->pending_batch.id++;
   //  __cilkrts_mutex_unlock(w, &w->g->batch_lock);
   // Special unlock here because this worker may not be the original owner!
@@ -107,29 +109,8 @@ full_frame* create_batch_frame(__cilkrts_worker* w, cilk_fiber* fiber)
 
   CILK_ASSERT(ff->join_counter == 0);
   ff->join_counter = 1;
-  //  ff->is_call_child = 1;
+  //ff->is_call_child = 1;
   return ff;
-}
-
-
-/* @TODO
- * This doesn't work if a batch function doesn't directly have a spawn
- * -- then the compiler doesn't insert a call to enter_frame_internal,
- * which sets the right stack frame.
- * I think I might need to modify the compiler and add a batch
- * keyword.
- * 
- * Actually, no.
- * See CILK_FAKE_PROLOG, CILK_FAKE_FORCE_FRAME_PTR, and
- * CILK_FAKE_INITIAL_ENTER_FRAME in cilk_fake.h.
- */
-void __cilkrts_c_start_batch()
-{
-  __cilkrts_worker* w = __cilkrts_get_tls_worker();
-  __cilkrts_stack_frame* sf = w->current_stack_frame;
-
-  // Must OR with self to keep version info
-  sf->flags = sf->flags | CILK_FRAME_BATCH;
 }
 
 void call_batch(__cilkrts_worker* w, struct batch* b)
@@ -176,6 +157,10 @@ void invoke_batch(cilk_fiber *fiber)
   cilk_fiber* current_fiber = fiber;//cilk_fiber_allocate_from_thread();
   int prev_id = w->self;
 
+  if (w->l->batch_frame_ff != NULL) {
+    printf("Worker %d trying to start a batch, but already has a batch frame!\n", w->self);
+  }
+
   // 1. Make sure deque (ltq) pointers are correctly set.
   CILK_ASSERT(!w->l->batch_frame_ff);
   CILK_ASSERT(w->tail == &w->l->batch_tail);
@@ -201,14 +186,40 @@ void invoke_batch(cilk_fiber *fiber)
 
   CILK_ASSERT(w->l->batch_head == w->l->batch_tail);
 
+  BEGIN_WITH_WORKER_LOCK(w) {
+    full_frame* ff = *w->l->frame_ff;
+
+    if (ff) {
+      printf("Worker %d about to terminate, has frame.\n", w->self);
+      CILK_ASSERT(ff->join_counter == 1);
+      *w->l->frame_ff = 0;
+
+      CILK_ASSERT(ff->fiber_self);
+      //cilk_fiber_tbb_interop_save_info_from_stack(ff->fiber_self);
+
+      __cilkrts_destroy_full_frame(w, ff);
+    }
+  } END_WITH_WORKER_LOCK(w);
+
+
   // 4. Terminate the batch.
   terminate_batch(records);
 
   // 5. Go back to the user code before the call to batchify.
 
+  // If we came back here from terminating a steal, we will have a
+  // different fiber!
+  /* if ((*w->l->frame_ff)->fiber_self != current_fiber) { */
+  /*   printf("Different fiber in invoke batch for %d\n", w->self); */
+  /* } */
+
   // @TODO(rob) May be slightly faster to just manually destroy the
   // batch scheduling fiber and jump back to the user fiber, rather
-  // than jumping to it first. But I doubt it will make a huge difference.
+  // than jumping to it first. But I doubt it will make a huge
+  // difference.
+  cilk_fiber_data* current = (cilk_fiber_data*) current_fiber;
+  //  CILK_ASSERT(current->resume_sf == NULL);
+  current->resume_sf = NULL;
   cilk_fiber_remove_reference_from_self_and_resume_other(current_fiber,
                                                          &w->l->fiber_pool,
                                                          w->l->scheduling_fiber);
@@ -238,7 +249,6 @@ void execute_batch(__cilkrts_worker* w, cilk_fiber* fiber, int batch_id)
 {
   volatile int* global_batch_id = &w->g->pending_batch.id;
   full_frame* ff = NULL;
-  int stole = 0;
 
   while (*global_batch_id == batch_id) {
     /* __cilkrts_short_pause(); */
@@ -247,14 +257,6 @@ void execute_batch(__cilkrts_worker* w, cilk_fiber* fiber, int batch_id)
     ff = pop_next_frame(w);
     if (!ff) {
       ff = check_for_work(w, STEAL_BATCH);
-      if (ff) {
-        printf("Worker %i stole a batch frame in batch %d!\n",
-                     w->self, *global_batch_id);
-        stole++;
-        if (stole >= 2) {
-          printf("Multiple batch steals by %d\n", w->self);
-        }
-      }
     }
 
     if (ff) {
@@ -275,7 +277,7 @@ void execute_batch(__cilkrts_worker* w, cilk_fiber* fiber, int batch_id)
       cilk_fiber_data* current_fiber_data = cilk_fiber_get_data(fiber);
 
       if (NULL != other_data->resume_sf) {
-        printf("problem.\n");
+        printf("resume_sf is not null, fiber=%p\n", other);
       }
 
       CILK_ASSERT(NULL == other_data->resume_sf);
@@ -332,6 +334,10 @@ void batch_scheduler_function(cilk_fiber *fiber)
       }
     }
   }
+
+  cilk_fiber_data* current = (cilk_fiber_data*) w->l->scheduling_fiber;
+  //  CILK_ASSERT(current->resume_sf == NULL);
+  current->resume_sf = NULL;
   cilk_fiber_remove_reference_from_self_and_resume_other(w->l->scheduling_fiber,
                                                          &w->l->fiber_pool,
                                                          w->l->saved_core_fiber);
@@ -367,6 +373,10 @@ void switch_to_core_deque(__cilkrts_worker* w)
     w->protected_tail = &w->l->core_protected_tail;
     w->l->current_ltq = &w->l->core_ltq;
     __cilkrts_fence();
+
+    if (w->l->batch_frame_ff != NULL) {
+      printf("Worker %d has a batch frame while trying to switch back to core work!\n", w->self);
+    }
 
     CILK_ASSERT(!w->l->batch_frame_ff);
     w->l->batch_head = w->l->batch_tail = w->l->batch_exc = w->l->batch_ltq;

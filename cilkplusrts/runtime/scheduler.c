@@ -735,15 +735,12 @@ static void detach_for_steal(__cilkrts_worker *w,
 
     CILK_ASSERT(*w->l->frame_ff == 0 || w == victim);
 
-//    h = *victim->head;
     h = d->head;
 
     CILK_ASSERT(*h);
 
-//    *victim->head = h + 1;
     d->head = h + 1;
 
-//    parent_ff = victim->l->core_frame_ff;
     parent_ff = d->frame_ff;
     BEGIN_WITH_FRAME_LOCK(w, parent_ff) {
         /* parent no longer referenced by victim */
@@ -1007,6 +1004,11 @@ static void random_steal(__cilkrts_worker *w, steal_t s)
                         success = 1;
                         detach_for_steal(w, victim, d, fiber);
                         victim_id = victim->self;
+
+                        if (s == STEAL_BATCH) {
+                            printf("Wkr %d batch stole from victim %d, fiber = %p in batch %i\n",
+                                   w->self, victim->self, fiber, w->l->batch_id);
+                        }
 
                         #if REDPAR_DEBUG >= 1
                         fprintf(stderr, "Wkr %d stole from victim %d, fiber = %p\n",
@@ -1331,6 +1333,10 @@ static void setup_for_execution_reducers(__cilkrts_worker *w,
     // First check whether ff is synched.
     __cilkrts_stack_frame *sf = ff->call_stack;
     if (!(sf->flags & CILK_FRAME_UNSYNCHED)) {
+
+        if (ff->rightmost_child) {
+            printf("Shouldn't be rightmost child.\n");
+        }
         // In this case, ff is synched. (Case 1).
         CILK_ASSERT(!ff->rightmost_child);
 
@@ -2579,7 +2585,11 @@ void __cilkrts_return(__cilkrts_worker *w)
         ff = *w->l->frame_ff;
         CILK_ASSERT(ff);
         CILK_ASSERT(ff->join_counter == 1);
+
         /* This path is not used to return from spawn. */
+        if (!ff->is_call_child) {
+            printf("Wkr %d's full frame is not call child!\n", w->self);
+        }
         CILK_ASSERT(ff->is_call_child);
 
         BEGIN_WITH_FRAME_LOCK(w, ff) {
