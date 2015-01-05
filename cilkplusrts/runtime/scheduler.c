@@ -89,17 +89,17 @@
 #ifdef __VXWORKS__
 // redeclare longjmp() with noreturn to stop warnings
 extern __attribute__((noreturn)) 
-		void longjmp(jmp_buf, int);
+void longjmp(jmp_buf, int);
 #endif
 
 //#define DEBUG_LOCKS 1
 #ifdef DEBUG_LOCKS
 // The currently executing worker must own this worker's lock
-#   define ASSERT_WORKER_LOCK_OWNED(w) \
-        { \
-            __cilkrts_worker *tls_worker = __cilkrts_get_tls_worker(); \
-            CILK_ASSERT((w)->l->lock.owner == tls_worker); \
-        }
+#   define ASSERT_WORKER_LOCK_OWNED(w)                              \
+    {                                                               \
+        __cilkrts_worker *tls_worker = __cilkrts_get_tls_worker();  \
+        CILK_ASSERT((w)->l->lock.owner == tls_worker);              \
+    }
 #else
 #   define ASSERT_WORKER_LOCK_OWNED(w)
 #endif // DEBUG_LOCKS
@@ -148,7 +148,7 @@ static void do_sync (__cilkrts_worker *w,
 
 // max is defined on Windows and VxWorks
 #if (! defined(_WIN32)) && (! defined(__VXWORKS__))
-    // TBD: definition of max() for Linux.
+// TBD: definition of max() for Linux.
 #   define max(a, b) ((a) < (b) ? (b) : (a))
 #endif
 
@@ -231,8 +231,8 @@ static int decjoin(full_frame *ff)
 
 static int simulate_decjoin(full_frame *ff)
 {
-  CILK_ASSERT(ff->join_counter > 0);
-  return (ff->join_counter - 1);
+    CILK_ASSERT(ff->join_counter > 0);
+    return (ff->join_counter - 1);
 }
 
 /*
@@ -329,15 +329,15 @@ static void worker_unlock_other(__cilkrts_worker *w,
 
 
 /* Lock macro Usage:
-    BEGIN_WITH_WORKER_LOCK(w) {
-        statement;
-        statement;
-        BEGIN_WITH_FRAME_LOCK(w, ff) {
-            statement;
-            statement;
-        } END_WITH_FRAME_LOCK(w, ff);
-    } END_WITH_WORKER_LOCK(w);
- */
+   BEGIN_WITH_WORKER_LOCK(w) {
+   statement;
+   statement;
+   BEGIN_WITH_FRAME_LOCK(w, ff) {
+   statement;
+   statement;
+   } END_WITH_FRAME_LOCK(w, ff);
+   } END_WITH_WORKER_LOCK(w);
+*/
 #define BEGIN_WITH_WORKER_LOCK(w) __cilkrts_worker_lock(w); do
 #define END_WITH_WORKER_LOCK(w)   while (__cilkrts_worker_unlock(w), 0)
 
@@ -348,24 +348,23 @@ static void worker_unlock_other(__cilkrts_worker *w,
 //
 // #define REMOVE_POSSIBLY_OPTIONAL_LOCKS
 #ifdef REMOVE_POSSIBLY_OPTIONAL_LOCKS
-    #define BEGIN_WITH_WORKER_LOCK_OPTIONAL(w) do
-    #define END_WITH_WORKER_LOCK_OPTIONAL(w)   while (0)
+#define BEGIN_WITH_WORKER_LOCK_OPTIONAL(w) do
+#define END_WITH_WORKER_LOCK_OPTIONAL(w)   while (0)
 #else
-    #define BEGIN_WITH_WORKER_LOCK_OPTIONAL(w) __cilkrts_worker_lock(w); do
-    #define END_WITH_WORKER_LOCK_OPTIONAL(w)   while (__cilkrts_worker_unlock(w), 0)
+#define BEGIN_WITH_WORKER_LOCK_OPTIONAL(w) __cilkrts_worker_lock(w); do
+#define END_WITH_WORKER_LOCK_OPTIONAL(w)   while (__cilkrts_worker_unlock(w), 0)
 #endif
 
 
-#define BEGIN_WITH_FRAME_LOCK(w, ff)                                     \
+#define BEGIN_WITH_FRAME_LOCK(w, ff)                                    \
     do { full_frame *_locked_ff = ff; __cilkrts_frame_lock(w, _locked_ff); do
 
-#define END_WITH_FRAME_LOCK(w, ff)                       \
+#define END_WITH_FRAME_LOCK(w, ff)                                \
     while (__cilkrts_frame_unlock(w, _locked_ff), 0); } while (0)
 
 /* W becomes the owner of F and F can be stolen from W */
 static void make_runnable(__cilkrts_worker *w, full_frame *ff, deque* d)
 {
-//    *w->l->frame_ff = ff;
     d->frame_ff = ff;
 
     /* CALL_STACK is invalid (the information is stored implicitly in W) */
@@ -731,7 +730,9 @@ static void detach_for_steal(__cilkrts_worker *w,
     __cilkrts_stack_frame *volatile *h;
     __cilkrts_stack_frame *sf;
 
-    w->l->team = victim->l->team;
+    // Teams don't matter for batch workers
+//    if (w->l->type != WORKER_BATCH) w->l->team = victim->l->team;
+    if (w->l->batch_id == -1) w->l->team = victim->l->team;
 
     CILK_ASSERT(*w->l->frame_ff == 0 || w == victim);
 
@@ -758,11 +759,11 @@ static void detach_for_steal(__cilkrts_worker *w,
            holding its lock. */
         loot_ff = unroll_call_stack(w, parent_ff, sf);
 
-        #if REDPAR_DEBUG >= 3
+#if REDPAR_DEBUG >= 3
         fprintf(stderr, "[W=%d, victim=%d, desc=detach, parent_ff=%p, loot=%p]\n",
                 w->self, victim->self,
                 parent_ff, loot_ff);
-        #endif
+#endif
 
         // @TODO change for batcher?
         if (WORKER_USER == victim->l->type &&
@@ -809,6 +810,7 @@ static void detach_for_steal(__cilkrts_worker *w,
             make_runnable(victim, child_ff, d);
         } END_WITH_FRAME_LOCK(w, child_ff);
     } END_WITH_FRAME_LOCK(w, parent_ff);
+
 }
 
 /**
@@ -1005,25 +1007,25 @@ static void random_steal(__cilkrts_worker *w, steal_t s)
                         detach_for_steal(w, victim, d, fiber);
                         victim_id = victim->self;
 
+#if REDPAR_DEBUG >= 1
                         if (s == STEAL_BATCH) {
-                            printf("Wkr %d batch stole from victim %d, fiber = %p in batch %i\n",
-                                   w->self, victim->self, fiber, w->l->batch_id);
+                            fprintf(stderr, "Wkr %d batch stole from victim %d, fiber = %p in batch %i\n",
+                                    w->self, victim->self, fiber, w->l->batch_id);
+                        } else {
+                            fprintf(stderr, "Wkr %d stole from victim %d, fiber = %p\n",
+                                    w->self, victim->self, fiber);
                         }
-
-                        #if REDPAR_DEBUG >= 1
-                        fprintf(stderr, "Wkr %d stole from victim %d, fiber = %p\n",
-                                w->self, victim->self, fiber);
-                        #endif
+#endif
 
                         // The use of victim->self contradicts our
                         // classification of the "self" field as 
                         // local.  But since this code is only for
                         // debugging, it is ok.
                         DBGPRINTF ("%d-%p: Stealing work from worker %d\n"
-                            "            sf: %p, call parent: %p\n",
-                            w->self, GetCurrentFiber(), victim->self,
-                            w->l->next_frame_ff->call_stack,
-                            w->l->next_frame_ff->call_stack->call_parent);
+                                   "            sf: %p, call parent: %p\n",
+                                   w->self, GetCurrentFiber(), victim->self,
+                                   w->l->next_frame_ff->call_stack,
+                                   w->l->next_frame_ff->call_stack->call_parent);
                     } STOP_INTERVAL(w, INTERVAL_STEAL_SUCCESS);
                 }  // end if(proceed_with_steal)
             } else {
@@ -1334,9 +1336,6 @@ static void setup_for_execution_reducers(__cilkrts_worker *w,
     __cilkrts_stack_frame *sf = ff->call_stack;
     if (!(sf->flags & CILK_FRAME_UNSYNCHED)) {
 
-        if (ff->rightmost_child) {
-            printf("Shouldn't be rightmost child.\n");
-        }
         // In this case, ff is synched. (Case 1).
         CILK_ASSERT(!ff->rightmost_child);
 
@@ -1431,6 +1430,7 @@ void setup_for_execution(__cilkrts_worker *w,
     deque* d = ((deque*)(w->tail));
 
     make_runnable(w, ff, d);
+//    CILK_ASSERT(ff->sync_master == NULL || ff->sync_master == w);
 }
 
 
@@ -1590,7 +1590,7 @@ user_code_resume_after_switch_into_runtime(cilk_fiber *fiber)
 
     // Actually jump to user code.
     cilkrts_resume(sf, ff);
- }
+}
 
 
 /* The current stack is about to either be suspended or destroyed.  This
@@ -1784,7 +1784,7 @@ full_frame* check_for_work(__cilkrts_worker *w, steal_t s)
     // If there is no work on the queue, try to steal some.
     if (NULL == ff) {
         START_INTERVAL(w, INTERVAL_STEALING) {
-            if (w->l->type != WORKER_USER && w->l->team != NULL) {
+            if (w->l->type != WORKER_USER && w->l->batch_id == -1 && w->l->team != NULL) {
                 // At this point, the worker knows for certain that it has run
                 // out of work.  Therefore, it loses its team affiliation.  User
                 // workers never change teams, of course.
@@ -2363,7 +2363,7 @@ void __cilkrts_promote_own_deque(__cilkrts_worker *w)
    This function takes in a "returning_sf" argument which corresponds
    to the __cilkrts_stack_frame that we are finishing (i.e., the
    argument to __cilkrts_leave_frame).
-   */
+*/
 void __cilkrts_c_THE_exception_check(__cilkrts_worker *w, 
                                      __cilkrts_stack_frame *returning_sf)
 {
@@ -2383,9 +2383,9 @@ void __cilkrts_c_THE_exception_check(__cilkrts_worker *w,
 
         reset_THE_exception(w);
         stolen_p = !(*w->head < (*w->tail + 1)); /* +1 because tail was
-                                                  speculatively
-                                                  decremented by the
-                                                  compiled code */
+                                                    speculatively
+                                                    decremented by the
+                                                    compiled code */
 
         if (stolen_p) {
             /* XXX This will be charged to THE for accounting purposes */
@@ -2587,9 +2587,6 @@ void __cilkrts_return(__cilkrts_worker *w)
         CILK_ASSERT(ff->join_counter == 1);
 
         /* This path is not used to return from spawn. */
-        if (!ff->is_call_child) {
-            printf("Wkr %d's full frame is not call child!\n", w->self);
-        }
         CILK_ASSERT(ff->is_call_child);
 
         BEGIN_WITH_FRAME_LOCK(w, ff) {
@@ -2693,10 +2690,10 @@ void __cilkrts_c_return_from_initial(__cilkrts_worker *w)
     /* This is only called on a user thread worker. */
     CILK_ASSERT(w->l->type == WORKER_USER);
 
-    #if REDPAR_DEBUG >= 3
+#if REDPAR_DEBUG >= 3
     fprintf(stderr, "[W=%d, desc=cilkrts_c_return_from_initial, ff=%p]\n",
             w->self, *w->l->frame_ff);
-    #endif
+#endif
     
     BEGIN_WITH_WORKER_LOCK_OPTIONAL(w) {
         full_frame *ff = *w->l->frame_ff;
@@ -2863,6 +2860,7 @@ __cilkrts_worker *make_worker(global_state_t *g,
     w->l->worker_magic_0 = WORKER_MAGIC_0;
     w->l->team = NULL;
     w->l->type = WORKER_FREE;
+    w->l->batch_id = -1;
     
     __cilkrts_mutex_init(&w->l->lock);
     __cilkrts_mutex_init(&w->l->steal_lock);
@@ -3848,9 +3846,9 @@ slow_path_reductions_for_sync(__cilkrts_worker *w,
             // Deposit left and return.
             if (!middle_map) {
                 *(left_ptrs).map_ptr = left_map;
-                #if (REDPAR_DEBUG > 0)
+#if (REDPAR_DEBUG > 0)
                 CILK_ASSERT(NULL == w->reducer_map);
-                #endif
+#endif
                 // Sanity check upon leaving the loop.
                 verify_current_wkr(w);
                 // Make sure to unlock before we return!

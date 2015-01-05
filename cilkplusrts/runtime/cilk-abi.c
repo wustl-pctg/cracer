@@ -269,6 +269,8 @@ CILK_ABI_VOID __cilkrts_leave_frame(__cilkrts_stack_frame *sf)
 
     if (__builtin_expect(sf->flags & CILK_FRAME_LAST, 0))
       __cilkrts_c_return_from_initial(w); /* does return */
+
+    // @TODO(rob) necessary?
     else if (__builtin_expect(sf->flags & CILK_FRAME_BATCH, 0))
       __cilkrts_c_return_from_batch(w);
     else if (sf->flags & CILK_FRAME_STOLEN)

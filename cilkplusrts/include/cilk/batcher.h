@@ -11,13 +11,15 @@
 #include <stdlib.h>
 
 __CILKRTS_BEGIN_EXTERN_C
-typedef void (*batch_function_t)(unsigned int);
+typedef int batch_data_t;
+typedef void(*batch_function_t)(void* ds, void* data, size_t size, void* results);
 //typedef size_t unsigned int;
-CILK_API(void) cilk_batchify(batch_function_t f);
+CILK_API(void) cilk_batchify(batch_function_t f, void* ds,
+                             batch_data_t data, size_t data_size);
 CILK_API(void) __cilkrts_c_start_batch();
 
 enum BATCH_ITEM_STATUS { ITEM_WAITING, ITEM_IN_PROGRESS, ITEM_DONE };
-typedef int batch_data_t;
+
 
 struct batch_record {
   batch_function_t       operation;
