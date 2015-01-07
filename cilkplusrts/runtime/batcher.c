@@ -48,7 +48,7 @@ unsigned int collect_batch(struct batch* pending, struct batch_record* records)
         pending->operation == records[i].operation) {
 
       records[i].status = ITEM_IN_PROGRESS;
-      memcpy(pending->work_array + num_ops, &records[i].data, pending->data_size);
+      memcpy(((int*)pending->work_array) + num_ops, &records[i].data, pending->data_size);
 
       num_ops++;
     }
@@ -68,7 +68,7 @@ struct batch* create_batch(struct batch_record* record)
   b->data_size = record->data_size;
   b->num_ops = collect_batch(b, records);
 
-  DBGPRINTF("Batch %d has %d ops.\n", b->id, b->num_ops);
+  DBGPRINTF("Batch %d has %d ops.\n---", b->id, b->num_ops);
 
   return b;
 }
@@ -437,7 +437,7 @@ CILK_API_VOID cilk_batchify(batch_function_t f, void* ds,
   CILK_ASSERT(w->l->team != NULL);
 
   cilk_fiber* current_fiber = switch_to_batch_deque(w);
-  insert_batch_record(w, f, NULL, 42, sizeof(int));
+  insert_batch_record(w, f, ds, data, sizeof(int));
   execute_until_op_done(w, current_fiber);
   switch_to_core_deque(w);
 }
