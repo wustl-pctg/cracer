@@ -27,7 +27,6 @@
 #include <cilk-internal.h>
 #include <cilk-cilk2c-pre.h>
 #include <cilk-cilk2c.h>
-
 FILE_IDENTITY(ident,
 							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/invoke-main.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
@@ -92,7 +91,7 @@ static void invoke_main_slow(CilkWorkerState *const _cilk_ws,
 
   _cilk_frame->header.receiver = (void *) &_cilk_frame->retval;
   _cilk_frame->header.entry=1;
-  CILK2C_BEFORE_SPAWN_SLOW();
+  CILK2C_BEFORE_SPAWN_SLOW_INVOKE_MAIN_SLOW();
   CILK2C_PUSH_FRAME(_cilk_frame);
 
   _cilk_frame->import_main(_cilk_ws, args);

@@ -37,13 +37,13 @@ private:
 		PairNode*	_nextSibling;
 		PairNode*	_prev;
 
-        PairNode( final int theElement ) {
+    PairNode( final int theElement ) {
 			_element     = theElement;
 			_leftChild   = null;
 			_nextSibling = null;
 			_prev        = null;
-        }
-    };
+    }
+  };
 
 	PairNode*	_root;
 	PairNode**	_treeArray;
@@ -144,16 +144,16 @@ private:
 
 public:
 
-    PairHeap() {
+  PairHeap() {
 		_root = null;
 		_tree_ary_size = 5; 
 		_treeArray = new PairNode*[ _tree_ary_size ];
 		for (int i=0; i<_tree_ary_size; ++i) {
 			_treeArray[i]= null; 
 		}
-    }
+  }
 
-    PairNode* insert( final int x ) {
+  PairNode* insert( final int x ) {
 		PairNode* newNode = new PairNode( x );
 
 		if( null ==_root )
@@ -163,7 +163,7 @@ public:
 		return newNode;
 	}
 
-    int deleteMin() {
+  int deleteMin() {
 		if( isEmpty() )
 			return null;
 
@@ -173,15 +173,15 @@ public:
 		else
 			_root = combineSiblings( _root->_leftChild );
 		return x;
-    }
+  }
 
-    boolean isEmpty() {
+  boolean isEmpty() {
 		return (null == _root);
-    }
+  }
 
-    void makeEmpty() {
+  void makeEmpty() {
 		_root = null;
-    }
+  }
 
 
 };

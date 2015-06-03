@@ -88,7 +88,7 @@ void terminate_batch(struct batch_record* records)
 
   // @TODO correct assertions here
   // Currently, frame should be destroyed in return_from_batch
-  //  CILK_ASSERT(w->l->batch_frame_ff);
+  CILK_ASSERT(!w->l->batch_frame_ff);
   /* __cilkrts_destroy_full_frame(w, w->l->batch_frame_ff); */
   /* w->l->batch_frame_ff = NULL; */
 

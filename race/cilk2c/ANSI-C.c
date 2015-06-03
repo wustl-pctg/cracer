@@ -1,10 +1,8 @@
+/* A Bison parser, made by GNU Bison 2.5.  */
 
-/* A Bison parser, made by GNU Bison 2.4.1.  */
-
-/* Skeleton implementation for Bison's Yacc-like parsers in C
+/* Bison implementation for Yacc-like parsers in C
    
-      Copyright (C) 1984, 1989, 1990, 2000, 2001, 2002, 2003, 2004, 2005, 2006
-   Free Software Foundation, Inc.
+      Copyright (C) 1984, 1989-1990, 2000-2011 Free Software Foundation, Inc.
    
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -46,7 +44,7 @@
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "2.4.1"
+#define YYBISON_VERSION "2.5"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -67,7 +65,7 @@
 
 /* Copy the first part of user declarations.  */
 
-/* Line 189 of yacc.c  */
+/* Line 268 of yacc.c  */
 #line 1 "ANSI-C.y"
 
 
@@ -219,8 +217,8 @@ PRIVATE void yyerror(const char *msg)
 
 
 
-/* Line 189 of yacc.c  */
-#line 224 "ANSI-C.c"
+/* Line 268 of yacc.c  */
+#line 222 "ANSI-C.c"
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -464,7 +462,7 @@ PRIVATE void yyerror(const char *msg)
 typedef union YYSTYPE
 {
 
-/* Line 214 of yacc.c  */
+/* Line 293 of yacc.c  */
 #line 194 "ANSI-C.y"
 
     Node      *n;
@@ -481,8 +479,8 @@ typedef union YYSTYPE
 
 
 
-/* Line 214 of yacc.c  */
-#line 486 "ANSI-C.c"
+/* Line 293 of yacc.c  */
+#line 484 "ANSI-C.c"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -493,8 +491,8 @@ typedef union YYSTYPE
 /* Copy the second part of user declarations.  */
 
 
-/* Line 264 of yacc.c  */
-#line 498 "ANSI-C.c"
+/* Line 343 of yacc.c  */
+#line 496 "ANSI-C.c"
 
 #ifdef short
 # undef short
@@ -544,7 +542,7 @@ typedef short int yytype_int16;
 #define YYSIZE_MAXIMUM ((YYSIZE_T) -1)
 
 #ifndef YY_
-# if YYENABLE_NLS
+# if defined YYENABLE_NLS && YYENABLE_NLS
 #  if ENABLE_NLS
 #   include <libintl.h> /* INFRINGES ON USER NAME SPACE */
 #   define YY_(msgid) dgettext ("bison-runtime", msgid)
@@ -597,11 +595,11 @@ YYID (yyi)
 #    define alloca _alloca
 #   else
 #    define YYSTACK_ALLOC alloca
-#    if ! defined _ALLOCA_H && ! defined _STDLIB_H && (defined __STDC__ || defined __C99__FUNC__ \
+#    if ! defined _ALLOCA_H && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
      || defined __cplusplus || defined _MSC_VER)
 #     include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
-#     ifndef _STDLIB_H
-#      define _STDLIB_H 1
+#     ifndef EXIT_SUCCESS
+#      define EXIT_SUCCESS 0
 #     endif
 #    endif
 #   endif
@@ -624,24 +622,24 @@ YYID (yyi)
 #  ifndef YYSTACK_ALLOC_MAXIMUM
 #   define YYSTACK_ALLOC_MAXIMUM YYSIZE_MAXIMUM
 #  endif
-#  if (defined __cplusplus && ! defined _STDLIB_H \
+#  if (defined __cplusplus && ! defined EXIT_SUCCESS \
        && ! ((defined YYMALLOC || defined malloc) \
 	     && (defined YYFREE || defined free)))
 #   include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
-#   ifndef _STDLIB_H
-#    define _STDLIB_H 1
+#   ifndef EXIT_SUCCESS
+#    define EXIT_SUCCESS 0
 #   endif
 #  endif
 #  ifndef YYMALLOC
 #   define YYMALLOC malloc
-#   if ! defined malloc && ! defined _STDLIB_H && (defined __STDC__ || defined __C99__FUNC__ \
+#   if ! defined malloc && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
      || defined __cplusplus || defined _MSC_VER)
 void *malloc (YYSIZE_T); /* INFRINGES ON USER NAME SPACE */
 #   endif
 #  endif
 #  ifndef YYFREE
 #   define YYFREE free
-#   if ! defined free && ! defined _STDLIB_H && (defined __STDC__ || defined __C99__FUNC__ \
+#   if ! defined free && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
      || defined __cplusplus || defined _MSC_VER)
 void free (void *); /* INFRINGES ON USER NAME SPACE */
 #   endif
@@ -670,23 +668,7 @@ union yyalloc
      ((N) * (sizeof (yytype_int16) + sizeof (YYSTYPE)) \
       + YYSTACK_GAP_MAXIMUM)
 
-/* Copy COUNT objects from FROM to TO.  The source and destination do
-   not overlap.  */
-# ifndef YYCOPY
-#  if defined __GNUC__ && 1 < __GNUC__
-#   define YYCOPY(To, From, Count) \
-      __builtin_memcpy (To, From, (Count) * sizeof (*(From)))
-#  else
-#   define YYCOPY(To, From, Count)		\
-      do					\
-	{					\
-	  YYSIZE_T yyi;				\
-	  for (yyi = 0; yyi < (Count); yyi++)	\
-	    (To)[yyi] = (From)[yyi];		\
-	}					\
-      while (YYID (0))
-#  endif
-# endif
+# define YYCOPY_NEEDED 1
 
 /* Relocate STACK from its old location to the new one.  The
    local variables YYSIZE and YYSTACKSIZE give the old and new number of
@@ -705,6 +687,26 @@ union yyalloc
     while (YYID (0))
 
 #endif
+
+#if defined YYCOPY_NEEDED && YYCOPY_NEEDED
+/* Copy COUNT objects from FROM to TO.  The source and destination do
+   not overlap.  */
+# ifndef YYCOPY
+#  if defined __GNUC__ && 1 < __GNUC__
+#   define YYCOPY(To, From, Count) \
+      __builtin_memcpy (To, From, (Count) * sizeof (*(From)))
+#  else
+#   define YYCOPY(To, From, Count)		\
+      do					\
+	{					\
+	  YYSIZE_T yyi;				\
+	  for (yyi = 0; yyi < (Count); yyi++)	\
+	    (To)[yyi] = (From)[yyi];		\
+	}					\
+      while (YYID (0))
+#  endif
+# endif
+#endif /* !YYCOPY_NEEDED */
 
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  87
@@ -1278,8 +1280,8 @@ static const yytype_uint8 yyr2[] =
        1,     6,     8,     2,     5,     2,     5,     7,     1,     1
 };
 
-/* YYDEFACT[STATE-NAME] -- Default rule to reduce with in state
-   STATE-NUM when YYTABLE doesn't specify something else to do.  Zero
+/* YYDEFACT[STATE-NAME] -- Default reduction number in state STATE-NUM.
+   Performed when YYTABLE doesn't specify something else to do.  Zero
    means the default is an error.  */
 static const yytype_uint16 yydefact[] =
 {
@@ -1522,8 +1524,7 @@ static const yytype_int16 yypgoto[] =
 
 /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
    positive, shift that token.  If negative, reduce the rule which
-   number is the opposite.  If zero, do what YYDEFACT says.
-   If YYTABLE_NINF, syntax error.  */
+   number is the opposite.  If YYTABLE_NINF, syntax error.  */
 #define YYTABLE_NINF -447
 static const yytype_int16 yytable[] =
 {
@@ -2113,6 +2114,12 @@ static const yytype_int16 yytable[] =
        0,    36,     0,     0,    37,     0,     0,     0,     0,    38,
       39
 };
+
+#define yypact_value_is_default(yystate) \
+  ((yystate) == (-718))
+
+#define yytable_value_is_error(yytable_value) \
+  YYID (0)
 
 static const yytype_int16 yycheck[] =
 {
@@ -2811,9 +2818,18 @@ static const yytype_uint16 yystos[] =
 
 /* Like YYERROR except do call yyerror.  This remains here temporarily
    to ease the transition to the new meaning of YYERROR, for GCC.
-   Once GCC version 2 has supplanted version 1, this can go.  */
+   Once GCC version 2 has supplanted version 1, this can go.  However,
+   YYFAIL appears to be in use.  Nevertheless, it is formally deprecated
+   in Bison 2.4.2's NEWS entry, where a plan to phase it out is
+   discussed.  */
 
 #define YYFAIL		goto yyerrlab
+#if defined YYFAIL
+  /* This is here to suppress warnings from the GCC cpp's
+     -Wunused-macros.  Normally we don't worry about that warning, but
+     some users do, and we want to make it easy for users to remove
+     YYFAIL uses, which will produce warnings from Bison 2.5.  */
+#endif
 
 #define YYRECOVERING()  (!!yyerrstatus)
 
@@ -2823,7 +2839,6 @@ do								\
     {								\
       yychar = (Token);						\
       yylval = (Value);						\
-      yytoken = YYTRANSLATE (yychar);				\
       YYPOPSTACK (1);						\
       goto yybackup;						\
     }								\
@@ -2865,19 +2880,10 @@ while (YYID (0))
 #endif
 
 
-/* YY_LOCATION_PRINT -- Print the location on the stream.
-   This macro was not mandated originally: define only if we know
-   we won't break user code: when these are the locations we know.  */
+/* This macro is provided for backward compatibility. */
 
 #ifndef YY_LOCATION_PRINT
-# if YYLTYPE_IS_TRIVIAL
-#  define YY_LOCATION_PRINT(File, Loc)			\
-     fprintf (File, "%d.%d-%d.%d",			\
-	      (Loc).first_line, (Loc).first_column,	\
-	      (Loc).last_line,  (Loc).last_column)
-# else
-#  define YY_LOCATION_PRINT(File, Loc) ((void) 0)
-# endif
+# define YY_LOCATION_PRINT(File, Loc) ((void) 0)
 #endif
 
 
@@ -3069,7 +3075,6 @@ int yydebug;
 # define YYMAXDEPTH 10000
 #endif
 
-
 
 #if YYERROR_VERBOSE
 
@@ -3172,115 +3177,142 @@ yytnamerr (char *yyres, const char *yystr)
 }
 # endif
 
-/* Copy into YYRESULT an error message about the unexpected token
-   YYCHAR while in state YYSTATE.  Return the number of bytes copied,
-   including the terminating null byte.  If YYRESULT is null, do not
-   copy anything; just return the number of bytes that would be
-   copied.  As a special case, return 0 if an ordinary "syntax error"
-   message will do.  Return YYSIZE_MAXIMUM if overflow occurs during
-   size calculation.  */
-static YYSIZE_T
-yysyntax_error (char *yyresult, int yystate, int yychar)
+/* Copy into *YYMSG, which is of size *YYMSG_ALLOC, an error message
+   about the unexpected token YYTOKEN for the state stack whose top is
+   YYSSP.
+
+   Return 0 if *YYMSG was successfully written.  Return 1 if *YYMSG is
+   not large enough to hold the message.  In that case, also set
+   *YYMSG_ALLOC to the required number of bytes.  Return 2 if the
+   required number of bytes is too large to store.  */
+static int
+yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
+                yytype_int16 *yyssp, int yytoken)
 {
-  int yyn = yypact[yystate];
+  YYSIZE_T yysize0 = yytnamerr (0, yytname[yytoken]);
+  YYSIZE_T yysize = yysize0;
+  YYSIZE_T yysize1;
+  enum { YYERROR_VERBOSE_ARGS_MAXIMUM = 5 };
+  /* Internationalized format string. */
+  const char *yyformat = 0;
+  /* Arguments of yyformat. */
+  char const *yyarg[YYERROR_VERBOSE_ARGS_MAXIMUM];
+  /* Number of reported tokens (one for the "unexpected", one per
+     "expected"). */
+  int yycount = 0;
 
-  if (! (YYPACT_NINF < yyn && yyn <= YYLAST))
-    return 0;
-  else
+  /* There are many possibilities here to consider:
+     - Assume YYFAIL is not used.  It's too flawed to consider.  See
+       <http://lists.gnu.org/archive/html/bison-patches/2009-12/msg00024.html>
+       for details.  YYERROR is fine as it does not invoke this
+       function.
+     - If this state is a consistent state with a default action, then
+       the only way this function was invoked is if the default action
+       is an error action.  In that case, don't check for expected
+       tokens because there are none.
+     - The only way there can be no lookahead present (in yychar) is if
+       this state is a consistent state with a default action.  Thus,
+       detecting the absence of a lookahead is sufficient to determine
+       that there is no unexpected or expected token to report.  In that
+       case, just report a simple "syntax error".
+     - Don't assume there isn't a lookahead just because this state is a
+       consistent state with a default action.  There might have been a
+       previous inconsistent state, consistent state with a non-default
+       action, or user semantic action that manipulated yychar.
+     - Of course, the expected token list depends on states to have
+       correct lookahead information, and it depends on the parser not
+       to perform extra reductions after fetching a lookahead from the
+       scanner and before detecting a syntax error.  Thus, state merging
+       (from LALR or IELR) and default reductions corrupt the expected
+       token list.  However, the list is correct for canonical LR with
+       one exception: it will still contain any token that will not be
+       accepted due to an error action in a later state.
+  */
+  if (yytoken != YYEMPTY)
     {
-      int yytype = YYTRANSLATE (yychar);
-      YYSIZE_T yysize0 = yytnamerr (0, yytname[yytype]);
-      YYSIZE_T yysize = yysize0;
-      YYSIZE_T yysize1;
-      int yysize_overflow = 0;
-      enum { YYERROR_VERBOSE_ARGS_MAXIMUM = 5 };
-      char const *yyarg[YYERROR_VERBOSE_ARGS_MAXIMUM];
-      int yyx;
+      int yyn = yypact[*yyssp];
+      yyarg[yycount++] = yytname[yytoken];
+      if (!yypact_value_is_default (yyn))
+        {
+          /* Start YYX at -YYN if negative to avoid negative indexes in
+             YYCHECK.  In other words, skip the first -YYN actions for
+             this state because they are default actions.  */
+          int yyxbegin = yyn < 0 ? -yyn : 0;
+          /* Stay within bounds of both yycheck and yytname.  */
+          int yychecklim = YYLAST - yyn + 1;
+          int yyxend = yychecklim < YYNTOKENS ? yychecklim : YYNTOKENS;
+          int yyx;
 
-# if 0
-      /* This is so xgettext sees the translatable formats that are
-	 constructed on the fly.  */
-      YY_("syntax error, unexpected %s");
-      YY_("syntax error, unexpected %s, expecting %s");
-      YY_("syntax error, unexpected %s, expecting %s or %s");
-      YY_("syntax error, unexpected %s, expecting %s or %s or %s");
-      YY_("syntax error, unexpected %s, expecting %s or %s or %s or %s");
-# endif
-      char *yyfmt;
-      char const *yyf;
-      static char const yyunexpected[] = "syntax error, unexpected %s";
-      static char const yyexpecting[] = ", expecting %s";
-      static char const yyor[] = " or %s";
-      char yyformat[sizeof yyunexpected
-		    + sizeof yyexpecting - 1
-		    + ((YYERROR_VERBOSE_ARGS_MAXIMUM - 2)
-		       * (sizeof yyor - 1))];
-      char const *yyprefix = yyexpecting;
-
-      /* Start YYX at -YYN if negative to avoid negative indexes in
-	 YYCHECK.  */
-      int yyxbegin = yyn < 0 ? -yyn : 0;
-
-      /* Stay within bounds of both yycheck and yytname.  */
-      int yychecklim = YYLAST - yyn + 1;
-      int yyxend = yychecklim < YYNTOKENS ? yychecklim : YYNTOKENS;
-      int yycount = 1;
-
-      yyarg[0] = yytname[yytype];
-      yyfmt = yystpcpy (yyformat, yyunexpected);
-
-      for (yyx = yyxbegin; yyx < yyxend; ++yyx)
-	if (yycheck[yyx + yyn] == yyx && yyx != YYTERROR)
-	  {
-	    if (yycount == YYERROR_VERBOSE_ARGS_MAXIMUM)
-	      {
-		yycount = 1;
-		yysize = yysize0;
-		yyformat[sizeof yyunexpected - 1] = '\0';
-		break;
-	      }
-	    yyarg[yycount++] = yytname[yyx];
-	    yysize1 = yysize + yytnamerr (0, yytname[yyx]);
-	    yysize_overflow |= (yysize1 < yysize);
-	    yysize = yysize1;
-	    yyfmt = yystpcpy (yyfmt, yyprefix);
-	    yyprefix = yyor;
-	  }
-
-      yyf = YY_(yyformat);
-      yysize1 = yysize + yystrlen (yyf);
-      yysize_overflow |= (yysize1 < yysize);
-      yysize = yysize1;
-
-      if (yysize_overflow)
-	return YYSIZE_MAXIMUM;
-
-      if (yyresult)
-	{
-	  /* Avoid sprintf, as that infringes on the user's name space.
-	     Don't have undefined behavior even if the translation
-	     produced a string with the wrong number of "%s"s.  */
-	  char *yyp = yyresult;
-	  int yyi = 0;
-	  while ((*yyp = *yyf) != '\0')
-	    {
-	      if (*yyp == '%' && yyf[1] == 's' && yyi < yycount)
-		{
-		  yyp += yytnamerr (yyp, yyarg[yyi++]);
-		  yyf += 2;
-		}
-	      else
-		{
-		  yyp++;
-		  yyf++;
-		}
-	    }
-	}
-      return yysize;
+          for (yyx = yyxbegin; yyx < yyxend; ++yyx)
+            if (yycheck[yyx + yyn] == yyx && yyx != YYTERROR
+                && !yytable_value_is_error (yytable[yyx + yyn]))
+              {
+                if (yycount == YYERROR_VERBOSE_ARGS_MAXIMUM)
+                  {
+                    yycount = 1;
+                    yysize = yysize0;
+                    break;
+                  }
+                yyarg[yycount++] = yytname[yyx];
+                yysize1 = yysize + yytnamerr (0, yytname[yyx]);
+                if (! (yysize <= yysize1
+                       && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
+                  return 2;
+                yysize = yysize1;
+              }
+        }
     }
+
+  switch (yycount)
+    {
+# define YYCASE_(N, S)                      \
+      case N:                               \
+        yyformat = S;                       \
+      break
+      YYCASE_(0, YY_("syntax error"));
+      YYCASE_(1, YY_("syntax error, unexpected %s"));
+      YYCASE_(2, YY_("syntax error, unexpected %s, expecting %s"));
+      YYCASE_(3, YY_("syntax error, unexpected %s, expecting %s or %s"));
+      YYCASE_(4, YY_("syntax error, unexpected %s, expecting %s or %s or %s"));
+      YYCASE_(5, YY_("syntax error, unexpected %s, expecting %s or %s or %s or %s"));
+# undef YYCASE_
+    }
+
+  yysize1 = yysize + yystrlen (yyformat);
+  if (! (yysize <= yysize1 && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
+    return 2;
+  yysize = yysize1;
+
+  if (*yymsg_alloc < yysize)
+    {
+      *yymsg_alloc = 2 * yysize;
+      if (! (yysize <= *yymsg_alloc
+             && *yymsg_alloc <= YYSTACK_ALLOC_MAXIMUM))
+        *yymsg_alloc = YYSTACK_ALLOC_MAXIMUM;
+      return 1;
+    }
+
+  /* Avoid sprintf, as that infringes on the user's name space.
+     Don't have undefined behavior even if the translation
+     produced a string with the wrong number of "%s"s.  */
+  {
+    char *yyp = *yymsg;
+    int yyi = 0;
+    while ((*yyp = *yyformat) != '\0')
+      if (*yyp == '%' && yyformat[1] == 's' && yyi < yycount)
+        {
+          yyp += yytnamerr (yyp, yyarg[yyi++]);
+          yyformat += 2;
+        }
+      else
+        {
+          yyp++;
+          yyformat++;
+        }
+  }
+  return 0;
 }
 #endif /* YYERROR_VERBOSE */
-
 
 /*-----------------------------------------------.
 | Release the memory associated to this symbol.  |
@@ -3313,6 +3345,7 @@ yydestruct (yymsg, yytype, yyvaluep)
     }
 }
 
+
 /* Prevent warnings from -Wmissing-prototypes.  */
 #ifdef YYPARSE_PARAM
 #if defined __STDC__ || defined __cplusplus
@@ -3339,10 +3372,9 @@ YYSTYPE yylval;
 int yynerrs;
 
 
-
-/*-------------------------.
-| yyparse or yypush_parse.  |
-`-------------------------*/
+/*----------.
+| yyparse.  |
+`----------*/
 
 #ifdef YYPARSE_PARAM
 #if (defined __STDC__ || defined __C99__FUNC__ \
@@ -3366,8 +3398,6 @@ yyparse ()
 #endif
 #endif
 {
-
-
     int yystate;
     /* Number of tokens to shift before error messages enabled.  */
     int yyerrstatus;
@@ -3522,7 +3552,7 @@ yybackup:
 
   /* First try to decide what to do without reference to lookahead token.  */
   yyn = yypact[yystate];
-  if (yyn == YYPACT_NINF)
+  if (yypact_value_is_default (yyn))
     goto yydefault;
 
   /* Not known => get a lookahead token if don't already have one.  */
@@ -3553,8 +3583,8 @@ yybackup:
   yyn = yytable[yyn];
   if (yyn <= 0)
     {
-      if (yyn == 0 || yyn == YYTABLE_NINF)
-	goto yyerrlab;
+      if (yytable_value_is_error (yyn))
+        goto yyerrlab;
       yyn = -yyn;
       goto yyreduce;
     }
@@ -3609,7 +3639,7 @@ yyreduce:
     {
         case 2:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 395 "ANSI-C.y"
     {
                        if (ANSIOnly) SyntaxError("ANSI C forbids an empty source file");
@@ -3619,42 +3649,42 @@ yyreduce:
 
   case 3:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 399 "ANSI-C.y"
     { Program = JoinLists((yyvsp[(1) - (1)].L), GrabPragmas(0)); parseInputType = EntireProgram; }
     break;
 
   case 4:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 400 "ANSI-C.y"
     { StmtListOutput = (yyvsp[(2) - (2)].L); parseInputType = StatementListString; }
     break;
 
   case 5:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 401 "ANSI-C.y"
     {DeclListOutput = (yyvsp[(2) - (2)].L); parseInputType = DeclListString; }
     break;
 
   case 6:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 405 "ANSI-C.y"
     {}
     break;
 
   case 7:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 417 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(1) - (1)].n); }
     break;
 
   case 10:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 420 "ANSI-C.y"
     { (yyvsp[(2) - (3)].n)->coord = (yyvsp[(1) - (3)].tok);   /* We used to set the coord only for comma expressions.  We really need to do it everywhere. */ 
                                   (yyvsp[(2) - (3)].n)->parenthesized = TRUE;
@@ -3663,7 +3693,7 @@ yyreduce:
 
   case 11:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 426 "ANSI-C.y"
     { if (ANSIOnly)
 	         SyntaxError("statement expressions not allowed with -ansi switch");
@@ -3673,7 +3703,7 @@ yyreduce:
 
   case 12:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 431 "ANSI-C.y"
     { if (ANSIOnly)
 	         SyntaxError("statement expressions not allowed with -ansi switch");
@@ -3683,7 +3713,7 @@ yyreduce:
 
   case 14:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 436 "ANSI-C.y"
     { if (!AcceptWildcards())
 	               {
@@ -3695,7 +3725,7 @@ yyreduce:
 
   case 15:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 442 "ANSI-C.y"
     { if (!AcceptWildcards())
 	               {
@@ -3707,70 +3737,70 @@ yyreduce:
 
   case 17:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 453 "ANSI-C.y"
     { (yyval.n) = ExtendArray((yyvsp[(1) - (4)].n), (yyvsp[(3) - (4)].n), (yyvsp[(2) - (4)].tok)); }
     break;
 
   case 18:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 455 "ANSI-C.y"
     { (yyval.n) = MakeCallCoord((yyvsp[(1) - (3)].n), NULL, (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 19:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 457 "ANSI-C.y"
     { (yyval.n) = MakeCallCoord((yyvsp[(1) - (4)].n), (yyvsp[(3) - (4)].L), (yyvsp[(2) - (4)].tok)); }
     break;
 
   case 20:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 459 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('.', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 21:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 461 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(ARROW, (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 22:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 463 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(POSTINC, (yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tok)); }
     break;
 
   case 23:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 465 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(POSTDEC, (yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tok)); }
     break;
 
   case 24:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 469 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('.', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 25:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 471 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(ARROW, (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 26:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 474 "ANSI-C.y"
     { if (!AcceptWildcards()) {
 	         SyntaxError("Wildcard tokens not allowed in program. \n");
@@ -3781,7 +3811,7 @@ yyreduce:
 
   case 27:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 480 "ANSI-C.y"
     { if (!AcceptWildcards()) {
 	         SyntaxError("Wildcard tokens not allowed in program. \n");
@@ -3792,42 +3822,42 @@ yyreduce:
 
   case 28:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 489 "ANSI-C.y"
     { (yyval.L) = MakeNewList((yyvsp[(1) - (1)].n)); }
     break;
 
   case 29:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 491 "ANSI-C.y"
     { (yyval.L) = AppendItem((yyvsp[(1) - (3)].L), (yyvsp[(3) - (3)].n)); }
     break;
 
   case 30:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 496 "ANSI-C.y"
     { (yyval.n) = OmitLookups() ? (yyvsp[(1) - (1)].n) : LookupPostfixExpression((yyvsp[(1) - (1)].n));}
     break;
 
   case 31:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 498 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(PREINC, (yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].tok)); }
     break;
 
   case 32:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 500 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(PREDEC, (yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].tok)); }
     break;
 
   case 33:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 502 "ANSI-C.y"
     { (yyvsp[(1) - (2)].n)->u.unary.expr = (yyvsp[(2) - (2)].n);
               (yyval.n) = (yyvsp[(1) - (2)].n); }
@@ -3835,105 +3865,105 @@ yyreduce:
 
   case 34:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 505 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (2)].n); }
     break;
 
   case 35:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 507 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(SIZEOF, (yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].tok)); }
     break;
 
   case 36:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 509 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(SIZEOF, (yyvsp[(3) - (4)].n), (yyvsp[(1) - (4)].tok)); }
     break;
 
   case 37:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 511 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(ALIGNOF, (yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].tok)); }
     break;
 
   case 38:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 513 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(ALIGNOF, (yyvsp[(3) - (4)].n), (yyvsp[(1) - (4)].tok)); }
     break;
 
   case 39:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 515 "ANSI-C.y"
     { (yyval.n) = MakeBuiltinVaArgCoord((yyvsp[(3) - (6)].n), (yyvsp[(5) - (6)].n), (yyvsp[(1) - (6)].tok)); }
     break;
 
   case 40:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 517 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(IMAG, (yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].tok)); }
     break;
 
   case 41:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 519 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(REAL, (yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].tok)); }
     break;
 
   case 42:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 523 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord('&', NULL, (yyvsp[(1) - (1)].tok)); }
     break;
 
   case 43:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 524 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord('*', NULL, (yyvsp[(1) - (1)].tok)); }
     break;
 
   case 44:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 525 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord('+', NULL, (yyvsp[(1) - (1)].tok)); }
     break;
 
   case 45:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 526 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord('-', NULL, (yyvsp[(1) - (1)].tok)); }
     break;
 
   case 46:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 527 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord('~', NULL, (yyvsp[(1) - (1)].tok)); }
     break;
 
   case 47:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 528 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord('!', NULL, (yyvsp[(1) - (1)].tok)); }
     break;
 
   case 49:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 533 "ANSI-C.y"
     { if (ANSIOnly)
  	                                                   SyntaxError("constructors not allowed with -ansi switch");
@@ -3943,112 +3973,112 @@ yyreduce:
 
   case 50:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 537 "ANSI-C.y"
     { (yyval.n) = MakeCastCoord((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n), (yyvsp[(1) - (4)].tok)); }
     break;
 
   case 52:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 543 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('*', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 53:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 545 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('/', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 54:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 547 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('%', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 56:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 553 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('+', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 57:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 555 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('-', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 59:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 561 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(LS, (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 60:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 563 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(RS, (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 62:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 569 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('<', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 63:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 571 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('>', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 64:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 573 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(LE, (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 65:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 575 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(GE, (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 67:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 581 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(EQ, (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 68:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 583 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(NE, (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 70:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 589 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('&', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 72:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 595 "ANSI-C.y"
     { 
               WarnAboutPrecedence('^', (yyvsp[(1) - (3)].n));
@@ -4058,7 +4088,7 @@ yyreduce:
 
   case 74:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 604 "ANSI-C.y"
     { WarnAboutPrecedence('|', (yyvsp[(1) - (3)].n));
               WarnAboutPrecedence('|', (yyvsp[(3) - (3)].n));
@@ -4067,14 +4097,14 @@ yyreduce:
 
   case 76:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 612 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(ANDAND, (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 78:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 618 "ANSI-C.y"
     { WarnAboutPrecedence(OROR, (yyvsp[(1) - (3)].n));
               WarnAboutPrecedence(OROR, (yyvsp[(3) - (3)].n));
@@ -4083,14 +4113,14 @@ yyreduce:
 
   case 80:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 626 "ANSI-C.y"
     { (yyval.n) = MakeTernaryCoord((yyvsp[(1) - (5)].n), (yyvsp[(3) - (5)].n), (yyvsp[(5) - (5)].n), (yyvsp[(2) - (5)].tok), (yyvsp[(4) - (5)].tok)); }
     break;
 
   case 81:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 628 "ANSI-C.y"
     {
 	      if (ANSIOnly)
@@ -4101,7 +4131,7 @@ yyreduce:
 
   case 83:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 638 "ANSI-C.y"
     { (yyvsp[(2) - (3)].n)->u.binop.left = (yyvsp[(1) - (3)].n);
               (yyvsp[(2) - (3)].n)->u.binop.right = (yyvsp[(3) - (3)].n);
@@ -4110,84 +4140,84 @@ yyreduce:
 
   case 84:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 644 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('=', NULL, NULL, (yyvsp[(1) - (1)].tok)); }
     break;
 
   case 85:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 645 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(MULTassign, NULL, NULL, (yyvsp[(1) - (1)].tok));  }
     break;
 
   case 86:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 646 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(DIVassign, NULL, NULL, (yyvsp[(1) - (1)].tok));   }
     break;
 
   case 87:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 647 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(MODassign, NULL, NULL, (yyvsp[(1) - (1)].tok));   }
     break;
 
   case 88:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 648 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(PLUSassign, NULL, NULL, (yyvsp[(1) - (1)].tok));  }
     break;
 
   case 89:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 649 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(MINUSassign, NULL, NULL, (yyvsp[(1) - (1)].tok)); }
     break;
 
   case 90:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 650 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(LSassign, NULL, NULL, (yyvsp[(1) - (1)].tok));    }
     break;
 
   case 91:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 651 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(RSassign, NULL, NULL, (yyvsp[(1) - (1)].tok));    }
     break;
 
   case 92:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 652 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(ANDassign, NULL, NULL, (yyvsp[(1) - (1)].tok));   }
     break;
 
   case 93:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 653 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(ERassign, NULL, NULL, (yyvsp[(1) - (1)].tok));    }
     break;
 
   case 94:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 654 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(ORassign, NULL, NULL, (yyvsp[(1) - (1)].tok));    }
     break;
 
   case 96:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 660 "ANSI-C.y"
     {  
               if ((yyvsp[(1) - (3)].n)->typ == Comma) 
@@ -4204,56 +4234,56 @@ yyreduce:
 
   case 97:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 674 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(1) - (1)].n); }
     break;
 
   case 98:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 678 "ANSI-C.y"
     { (yyval.n) = (Node *) NULL; }
     break;
 
   case 99:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 679 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(1) - (1)].n); }
     break;
 
   case 100:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 722 "ANSI-C.y"
     { (yyval.L) = (yyvsp[(1) - (2)].L); }
     break;
 
   case 101:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 724 "ANSI-C.y"
     { (yyval.L) = (yyvsp[(1) - (2)].L); }
     break;
 
   case 102:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 726 "ANSI-C.y"
     { (yyval.L) = MakeNewList(ForceNewSU((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tok))); }
     break;
 
   case 103:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 728 "ANSI-C.y"
     { (yyval.L) = MakeNewList(ForceNewSU((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tok))); }
     break;
 
   case 104:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 734 "ANSI-C.y"
     {
 	      Node *decl = SetDeclType((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].n), Redecl);
@@ -4263,14 +4293,14 @@ yyreduce:
 
   case 105:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 739 "ANSI-C.y"
     { (yyval.L) = MakeNewList(SetProcBody((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n))); }
     break;
 
   case 106:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 741 "ANSI-C.y"
     {    
 		 SetDeclAttribs((yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tq).tq);
@@ -4280,14 +4310,14 @@ yyreduce:
 
   case 107:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 746 "ANSI-C.y"
     { (yyval.L) = MakeNewList(SetProcBody((yyvsp[(3) - (5)].n), (yyvsp[(5) - (5)].n))); }
     break;
 
   case 108:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 748 "ANSI-C.y"
     {
 	      Node *decl = SetDeclType((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].n), Redecl);
@@ -4298,7 +4328,7 @@ yyreduce:
 
   case 109:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 754 "ANSI-C.y"
     {
 		(yyval.L) = AppendItem((yyvsp[(2) - (4)].n)->pragmas_before,
@@ -4309,7 +4339,7 @@ yyreduce:
 
   case 110:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 760 "ANSI-C.y"
     {
 	      SetDeclAttribs((yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tq).tq);
@@ -4320,7 +4350,7 @@ yyreduce:
 
   case 111:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 766 "ANSI-C.y"
     {
 		(yyval.L) = AppendItem((yyvsp[(3) - (5)].n)->pragmas_before,
@@ -4331,7 +4361,7 @@ yyreduce:
 
   case 112:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 777 "ANSI-C.y"
     { 
 	      SetDeclType((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].n), Redecl);
@@ -4340,21 +4370,21 @@ yyreduce:
 
   case 113:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 780 "ANSI-C.y"
     { SetDeclAsm((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); }
     break;
 
   case 114:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 781 "ANSI-C.y"
     { SetDeclAttribs((yyvsp[(2) - (6)].n), (yyvsp[(6) - (6)].tq).tq); }
     break;
 
   case 115:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 783 "ANSI-C.y"
     { 
               (yyval.L) = MakeNewList(SetDeclInit((yyvsp[(2) - (8)].n), (yyvsp[(8) - (8)].n))); 
@@ -4363,7 +4393,7 @@ yyreduce:
 
   case 116:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 789 "ANSI-C.y"
     { 
 	      SetDeclAttribs((yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tq).tq);
@@ -4373,21 +4403,21 @@ yyreduce:
 
   case 117:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 793 "ANSI-C.y"
     { SetDeclAsm((yyvsp[(3) - (5)].n), (yyvsp[(5) - (5)].n)); }
     break;
 
   case 118:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 794 "ANSI-C.y"
     { SetDeclAttribs((yyvsp[(3) - (7)].n), (yyvsp[(7) - (7)].tq).tq); }
     break;
 
   case 119:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 796 "ANSI-C.y"
     { 
               (yyval.L) = MakeNewList(SetDeclInit((yyvsp[(3) - (9)].n), (yyvsp[(9) - (9)].n))); 
@@ -4396,7 +4426,7 @@ yyreduce:
 
   case 120:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 801 "ANSI-C.y"
     { 
               SetDeclType((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].n), Redecl);
@@ -4405,21 +4435,21 @@ yyreduce:
 
   case 121:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 804 "ANSI-C.y"
     { SetDeclAsm((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); }
     break;
 
   case 122:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 805 "ANSI-C.y"
     { SetDeclAttribs((yyvsp[(2) - (6)].n), (yyvsp[(6) - (6)].tq).tq); }
     break;
 
   case 123:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 807 "ANSI-C.y"
     { 
               (yyval.L) = MakeNewList(SetDeclInit((yyvsp[(2) - (8)].n), (yyvsp[(8) - (8)].n))); 
@@ -4428,7 +4458,7 @@ yyreduce:
 
   case 124:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 813 "ANSI-C.y"
     { 
 		 SetDeclAttribs((yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tq).tq);
@@ -4438,21 +4468,21 @@ yyreduce:
 
   case 125:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 817 "ANSI-C.y"
     { SetDeclAsm((yyvsp[(3) - (5)].n), (yyvsp[(5) - (5)].n)); }
     break;
 
   case 126:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 818 "ANSI-C.y"
     { SetDeclAttribs((yyvsp[(3) - (7)].n), (yyvsp[(7) - (7)].tq).tq); }
     break;
 
   case 127:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 820 "ANSI-C.y"
     { 
 		 (yyval.L) = MakeNewList(SetDeclInit((yyvsp[(3) - (9)].n), (yyvsp[(9) - (9)].n))); 
@@ -4461,7 +4491,7 @@ yyreduce:
 
   case 128:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 824 "ANSI-C.y"
     { 
 	      (yyval.L) = AppendDecl((yyvsp[(1) - (3)].L), (yyvsp[(3) - (3)].n), Redecl);
@@ -4470,21 +4500,21 @@ yyreduce:
 
   case 129:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 827 "ANSI-C.y"
     { SetDeclAsm((yyvsp[(3) - (5)].n), (yyvsp[(5) - (5)].n)); }
     break;
 
   case 130:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 828 "ANSI-C.y"
     { SetDeclAttribs((yyvsp[(3) - (7)].n), (yyvsp[(7) - (7)].tq).tq); }
     break;
 
   case 131:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 830 "ANSI-C.y"
     { 
               SetDeclInit((yyvsp[(3) - (9)].n), (yyvsp[(9) - (9)].n)); 
@@ -4497,7 +4527,7 @@ yyreduce:
 
   case 132:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 841 "ANSI-C.y"
     { 
               SyntaxError("declaration without a variable"); 
@@ -4506,7 +4536,7 @@ yyreduce:
 
   case 133:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 847 "ANSI-C.y"
     { 
               (yyval.L) = NULL; /* empty list */ 
@@ -4515,7 +4545,7 @@ yyreduce:
 
   case 134:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 852 "ANSI-C.y"
     { 
               SyntaxError("declaration without a variable"); 
@@ -4524,7 +4554,7 @@ yyreduce:
 
   case 135:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 858 "ANSI-C.y"
     { 
               (yyval.L) = NULL; /* empty list */ 
@@ -4533,7 +4563,7 @@ yyreduce:
 
   case 137:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 869 "ANSI-C.y"
     { 
               SetDeclType((yyvsp[(2) - (2)].n), MakeDefaultPrimType((yyvsp[(1) - (2)].tq).tq, (yyvsp[(1) - (2)].tq).coord), NoRedecl);
@@ -4542,7 +4572,7 @@ yyreduce:
 
   case 138:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 872 "ANSI-C.y"
     {
               SetDeclAttribs((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].tq).tq);
@@ -4551,7 +4581,7 @@ yyreduce:
 
   case 139:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 876 "ANSI-C.y"
     { 
 		(yyval.L) = MakeNewList(SetDeclInit((yyvsp[(2) - (6)].n), (yyvsp[(6) - (6)].n))); 
@@ -4560,7 +4590,7 @@ yyreduce:
 
   case 140:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 880 "ANSI-C.y"
     { 
               SetDeclType((yyvsp[(2) - (2)].n), MakeDefaultPrimType((yyvsp[(1) - (2)].tq).tq, (yyvsp[(1) - (2)].tq).coord), NoRedecl);
@@ -4569,7 +4599,7 @@ yyreduce:
 
   case 141:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 883 "ANSI-C.y"
     {
 	    SetDeclAttribs((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].tq).tq);
@@ -4578,7 +4608,7 @@ yyreduce:
 
   case 142:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 887 "ANSI-C.y"
     { 
               (yyval.L) = MakeNewList(SetDeclInit((yyvsp[(2) - (6)].n), (yyvsp[(6) - (6)].n))); 
@@ -4587,28 +4617,28 @@ yyreduce:
 
   case 143:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 891 "ANSI-C.y"
     { (yyval.L) = AppendDecl((yyvsp[(1) - (3)].L), (yyvsp[(3) - (3)].n), NoRedecl); }
     break;
 
   case 144:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 892 "ANSI-C.y"
     { SetDeclAttribs((yyvsp[(3) - (5)].n), (yyvsp[(5) - (5)].tq).tq); }
     break;
 
   case 145:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 894 "ANSI-C.y"
     { SetDeclInit((yyvsp[(3) - (7)].n), (yyvsp[(7) - (7)].n)); }
     break;
 
   case 146:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 899 "ANSI-C.y"
     { 
               SyntaxError("declaration without a variable"); 
@@ -4617,7 +4647,7 @@ yyreduce:
 
   case 147:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 904 "ANSI-C.y"
     { 
               (yyval.L) = NULL; /* empty list */ 
@@ -4626,7 +4656,7 @@ yyreduce:
 
   case 148:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 909 "ANSI-C.y"
     { 
               SyntaxError("declaration without a variable"); 
@@ -4635,7 +4665,7 @@ yyreduce:
 
   case 149:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 914 "ANSI-C.y"
     { 
               (yyval.L) = NULL; /* empty list */ 
@@ -4644,14 +4674,14 @@ yyreduce:
 
   case 153:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 928 "ANSI-C.y"
     { (yyval.n) = FinishPrimType((yyvsp[(1) - (1)].n)); }
     break;
 
   case 155:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 930 "ANSI-C.y"
     { if (!AcceptWildcards())
 	               {
@@ -4663,63 +4693,63 @@ yyreduce:
 
   case 156:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 942 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tq).tq, & (yyvsp[(2) - (2)].tq).coord); }
     break;
 
   case 157:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 944 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].tq).tq, & (yyvsp[(1) - (2)].tq).coord); }
     break;
 
   case 158:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 946 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tq).tq, & (yyvsp[(2) - (2)].tq).coord); }
     break;
 
   case 159:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 948 "ANSI-C.y"
     { (yyval.n) = MergePrimTypes((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].n)); }
     break;
 
   case 160:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 955 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tq).tq, & (yyvsp[(2) - (2)].tq).coord); }
     break;
 
   case 161:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 957 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(2) - (3)].n), tq_union((yyvsp[(1) - (3)].tq).tq, (yyvsp[(3) - (3)].tq).tq), & (yyvsp[(1) - (3)].tq).coord); }
     break;
 
   case 162:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 959 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tq).tq, & (yyvsp[(2) - (2)].tq).coord); }
     break;
 
   case 163:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 966 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tq).tq, & (yyvsp[(2) - (2)].tq).coord); }
     break;
 
   case 164:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 968 "ANSI-C.y"
     { (yyval.n) = ConvertIdToTdef((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].tq).tq, GetTypedefType((yyvsp[(2) - (2)].n)));
               (yyval.n)->coord = (yyvsp[(1) - (2)].tq).coord; }
@@ -4727,14 +4757,14 @@ yyreduce:
 
   case 165:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 971 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tq).tq, & (yyvsp[(2) - (2)].tq).coord); }
     break;
 
   case 166:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 978 "ANSI-C.y"
     {
 		 (yyval.tq).tq = MergeTypeQuals((yyvsp[(1) - (2)].tq).tq, (yyvsp[(2) - (2)].tq).tq, (yyvsp[(2) - (2)].tq).coord);
@@ -4744,7 +4774,7 @@ yyreduce:
 
   case 167:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 983 "ANSI-C.y"
     {
 		 (yyval.tq).tq = MergeTypeQuals((yyvsp[(1) - (4)].tq).tq, (yyvsp[(2) - (4)].tq).tq, (yyvsp[(2) - (4)].tq).coord);
@@ -4755,7 +4785,7 @@ yyreduce:
 
   case 168:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 989 "ANSI-C.y"
     {
               (yyval.tq).tq = MergeTypeQuals((yyvsp[(1) - (2)].tq).tq, (yyvsp[(2) - (2)].tq).tq, (yyvsp[(2) - (2)].tq).coord);
@@ -4765,14 +4795,14 @@ yyreduce:
 
   case 175:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1019 "ANSI-C.y"
     { (yyval.n) = FinishPrimType((yyvsp[(1) - (1)].n)); }
     break;
 
   case 178:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1031 "ANSI-C.y"
     {
 		(yyval.n) = NodeCopy(NodeDataType(SemCheckNode((yyvsp[(3) - (4)].n))), Subtree); /* copy the node so we can remove type qualifiers without hurting the code */	      
@@ -4783,7 +4813,7 @@ yyreduce:
 
   case 179:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1042 "ANSI-C.y"
     {
 		/* we have to copy the node because we don't want the type qualifiers to modify the original node. */
@@ -4795,63 +4825,63 @@ yyreduce:
 
   case 181:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1054 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].tq).tq, & (yyvsp[(1) - (2)].tq).coord);  }
     break;
 
   case 182:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1056 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tq).tq, & (yyvsp[(2) - (2)].tq).coord); }
     break;
 
   case 183:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1058 "ANSI-C.y"
     { (yyval.n) = MergePrimTypes((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].n)); }
     break;
 
   case 185:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1065 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].tq).tq, & (yyvsp[(1) - (2)].tq).coord); }
     break;
 
   case 186:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1067 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tq).tq, & (yyvsp[(2) - (2)].tq).coord); }
     break;
 
   case 187:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1074 "ANSI-C.y"
     { (yyval.n) = ConvertIdToTdef((yyvsp[(1) - (1)].n), EMPTY_TQ, GetTypedefType((yyvsp[(1) - (1)].n))); }
     break;
 
   case 188:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1076 "ANSI-C.y"
     { (yyval.n) = ConvertIdToTdef((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].tq).tq, GetTypedefType((yyvsp[(2) - (2)].n))); (yyval.n)->coord = (yyvsp[(1) - (2)].tq).coord; }
     break;
 
   case 189:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1078 "ANSI-C.y"
     { (yyval.n) = TypeQualifyNode((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tq).tq, & (yyvsp[(2) - (2)].tq).coord); }
     break;
 
   case 190:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1084 "ANSI-C.y"
     { /*$$.tq = tq_union($1.tq, $2.tq);*/
 	      (yyval.tq).coord = (yyvsp[(1) - (1)].tq).coord; }
@@ -4859,7 +4889,7 @@ yyreduce:
 
   case 191:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1087 "ANSI-C.y"
     { (yyval.tq).tq = MergeTypeQuals((yyvsp[(1) - (2)].tq).tq, (yyvsp[(2) - (2)].tq).tq, (yyvsp[(2) - (2)].tq).coord);
               (yyval.tq).coord = (yyvsp[(1) - (2)].tq).coord; }
@@ -4867,7 +4897,7 @@ yyreduce:
 
   case 193:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1094 "ANSI-C.y"
     { (yyval.tq).tq = MergeTypeQuals((yyvsp[(1) - (2)].tq).tq, (yyvsp[(2) - (2)].tq).tq, (yyvsp[(2) - (2)].tq).coord);
               (yyval.tq).coord = (yyvsp[(1) - (2)].tq).coord; }
@@ -4875,7 +4905,7 @@ yyreduce:
 
   case 199:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1110 "ANSI-C.y"
     {
 	      Warning(2, "function prototype parameters must have types");
@@ -4885,14 +4915,14 @@ yyreduce:
 
   case 200:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1114 "ANSI-C.y"
     {  (yyval.n) = (yyvsp[(2) - (2)].n); }
     break;
 
   case 202:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1122 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(3) - (3)].n), MakePtrCoord(EMPTY_TQ, NULL, (yyvsp[(1) - (3)].tok)), Redecl);
                }
@@ -4900,7 +4930,7 @@ yyreduce:
 
   case 203:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1125 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(4) - (5)].n), MakePtrCoord(EMPTY_TQ, NULL, (yyvsp[(1) - (5)].tok)), Redecl); 
                }
@@ -4908,7 +4938,7 @@ yyreduce:
 
   case 204:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1128 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(5) - (6)].n), MakePtrCoord(   (yyvsp[(3) - (6)].tq).tq,    NULL, (yyvsp[(1) - (6)].tok)), Redecl);
                }
@@ -4916,7 +4946,7 @@ yyreduce:
 
   case 205:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1131 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(4) - (4)].n), MakePtrCoord(   (yyvsp[(3) - (4)].tq).tq,    NULL, (yyvsp[(1) - (4)].tok)), Redecl); 
                }
@@ -4924,7 +4954,7 @@ yyreduce:
 
   case 206:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1139 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (3)].n);  
               }
@@ -4932,7 +4962,7 @@ yyreduce:
 
   case 207:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1142 "ANSI-C.y"
     { (yyval.n) = ModifyDeclType((yyvsp[(2) - (4)].n), (yyvsp[(3) - (4)].n)); 
                }
@@ -4940,7 +4970,7 @@ yyreduce:
 
   case 208:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1145 "ANSI-C.y"
     { (yyval.n) = ModifyDeclType((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); 
                }
@@ -4948,14 +4978,14 @@ yyreduce:
 
   case 209:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1152 "ANSI-C.y"
     { (yyval.n) = ConvertIdToDecl((yyvsp[(1) - (1)].n), EMPTY_TQ, NULL, NULL, NULL); }
     break;
 
   case 210:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1154 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (3)].n);  
                }
@@ -4963,21 +4993,21 @@ yyreduce:
 
   case 211:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1161 "ANSI-C.y"
     { (yyval.n) = ConvertIdToDecl((yyvsp[(1) - (1)].n), EMPTY_TQ, NULL, NULL, NULL); }
     break;
 
   case 212:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1163 "ANSI-C.y"
     { (yyval.n) = ConvertIdToDecl((yyvsp[(1) - (2)].n), EMPTY_TQ, (yyvsp[(2) - (2)].n), NULL, NULL);   }
     break;
 
   case 215:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1175 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(3) - (3)].n), MakePtrCoord(EMPTY_TQ, NULL, (yyvsp[(1) - (3)].tok)), Redecl); 
                }
@@ -4985,7 +5015,7 @@ yyreduce:
 
   case 216:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1178 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(4) - (4)].n), MakePtrCoord((yyvsp[(3) - (4)].tq).tq, NULL, (yyvsp[(1) - (4)].tok)), Redecl); 
                }
@@ -4993,7 +5023,7 @@ yyreduce:
 
   case 217:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1185 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (3)].n); 
                }
@@ -5001,7 +5031,7 @@ yyreduce:
 
   case 218:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1188 "ANSI-C.y"
     { (yyval.n) = ModifyDeclType((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); 
                }
@@ -5009,21 +5039,21 @@ yyreduce:
 
   case 222:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1202 "ANSI-C.y"
     { (yyval.n) = MakePtrCoord(EMPTY_TQ, NULL, (yyvsp[(1) - (2)].tok)); }
     break;
 
   case 223:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1204 "ANSI-C.y"
     { (yyval.n) = MakePtrCoord((yyvsp[(3) - (3)].tq).tq, NULL, (yyvsp[(1) - (3)].tok)); }
     break;
 
   case 224:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1206 "ANSI-C.y"
     { (yyval.n) = SetBaseType((yyvsp[(3) - (3)].n), MakePtrCoord(EMPTY_TQ, NULL, (yyvsp[(1) - (3)].tok))); 
                }
@@ -5031,7 +5061,7 @@ yyreduce:
 
   case 225:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1209 "ANSI-C.y"
     { (yyval.n) = SetBaseType((yyvsp[(4) - (4)].n), MakePtrCoord((yyvsp[(3) - (4)].tq).tq, NULL, (yyvsp[(1) - (4)].tok))); 
                }
@@ -5039,7 +5069,7 @@ yyreduce:
 
   case 226:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1216 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (3)].n); 
                }
@@ -5047,7 +5077,7 @@ yyreduce:
 
   case 227:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1219 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (3)].n); 
                }
@@ -5055,7 +5085,7 @@ yyreduce:
 
   case 228:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1222 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (3)].n); 
                }
@@ -5063,7 +5093,7 @@ yyreduce:
 
   case 229:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1225 "ANSI-C.y"
     { (yyval.n) = SetBaseType((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); 
                }
@@ -5071,28 +5101,28 @@ yyreduce:
 
   case 230:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1231 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(1) - (1)].n);                   }
     break;
 
   case 231:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1232 "ANSI-C.y"
     { (yyval.n) = MakeFdclCoord(EMPTY_TQ, NULL, NULL, (yyvsp[(1) - (2)].tok)); }
     break;
 
   case 232:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1234 "ANSI-C.y"
     { (yyval.n) = DemoteProcArgs(MakeFdclCoord(EMPTY_TQ, (yyvsp[(2) - (3)].L), NULL, (yyvsp[(1) - (3)].tok))); }
     break;
 
   case 236:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1247 "ANSI-C.y"
     { //printf("%s:%d ", __FILE__, __LINE__); DPL($2);
               SetDeclAttribs((yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tq).tq);
@@ -5102,7 +5132,7 @@ yyreduce:
 
   case 237:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1252 "ANSI-C.y"
     { (yyval.n) = ModifyDeclType((yyvsp[(4) - (4)].n), MakePtrCoord(tq_union((yyvsp[(2) - (4)].tq).tq, (yyvsp[(3) - (4)].tq).tq),    NULL, (yyvsp[(1) - (4)].tok))); 
                }
@@ -5110,14 +5140,14 @@ yyreduce:
 
   case 238:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1259 "ANSI-C.y"
     { (yyval.n) = ModifyDeclType((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].n)); }
     break;
 
   case 239:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1261 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (3)].n); 
                }
@@ -5125,7 +5155,7 @@ yyreduce:
 
   case 240:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1264 "ANSI-C.y"
     { (yyval.n) = ModifyDeclType((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); 
                }
@@ -5133,14 +5163,14 @@ yyreduce:
 
   case 241:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1271 "ANSI-C.y"
     { (yyval.n) = ConvertIdToDecl((yyvsp[(1) - (1)].n), EMPTY_TQ, NULL, NULL, NULL); }
     break;
 
   case 242:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1273 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (3)].n); 
                }
@@ -5148,7 +5178,7 @@ yyreduce:
 
   case 243:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1276 "ANSI-C.y"
     { if (!AcceptWildcards())
 	      {
@@ -5160,7 +5190,7 @@ yyreduce:
 
   case 244:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1287 "ANSI-C.y"
     { 
               (yyval.n) = (yyvsp[(1) - (1)].n); 
@@ -5169,7 +5199,7 @@ yyreduce:
 
   case 245:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1291 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(3) - (3)].n), MakePtrCoord(EMPTY_TQ, NULL, (yyvsp[(1) - (3)].tok)), SU); 
                }
@@ -5177,7 +5207,7 @@ yyreduce:
 
   case 246:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1294 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(4) - (4)].n), MakePtrCoord((yyvsp[(3) - (4)].tq).tq, NULL, (yyvsp[(1) - (4)].tok)), SU); 
                }
@@ -5185,14 +5215,14 @@ yyreduce:
 
   case 247:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1301 "ANSI-C.y"
     { (yyval.n) = ModifyDeclType((yyvsp[(1) - (4)].n), MakeFdclCoord(EMPTY_TQ, (yyvsp[(3) - (4)].L), NULL, (yyvsp[(2) - (4)].tok))); }
     break;
 
   case 248:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1303 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (3)].n); 
                }
@@ -5200,7 +5230,7 @@ yyreduce:
 
   case 249:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1306 "ANSI-C.y"
     { (yyval.n) = ModifyDeclType((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); 
                }
@@ -5208,49 +5238,49 @@ yyreduce:
 
   case 250:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1321 "ANSI-C.y"
     { (yyval.L) = MakeNewList((yyvsp[(1) - (1)].n)); }
     break;
 
   case 251:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1323 "ANSI-C.y"
     { (yyval.L) = AppendItem((yyvsp[(1) - (3)].L), (yyvsp[(3) - (3)].n)); }
     break;
 
   case 254:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1335 "ANSI-C.y"
     { (yyval.n) = FinishType((yyvsp[(1) - (1)].n)); }
     break;
 
   case 255:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1337 "ANSI-C.y"
     { (yyval.n) = FinishType(SetBaseType((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].n))); }
     break;
 
   case 256:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1339 "ANSI-C.y"
     { (yyval.n) = MakeDefaultPrimType((yyvsp[(1) - (1)].tq).tq, (yyvsp[(1) - (1)].tq).coord); }
     break;
 
   case 257:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1341 "ANSI-C.y"
     { (yyval.n) = SetBaseType((yyvsp[(2) - (2)].n), MakeDefaultPrimType((yyvsp[(1) - (2)].tq).tq, (yyvsp[(1) - (2)].tq).coord)); }
     break;
 
   case 258:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1342 "ANSI-C.y"
     { if (!AcceptWildcards())
 	               {
@@ -5262,28 +5292,28 @@ yyreduce:
 
   case 259:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1354 "ANSI-C.y"
     { (yyval.tq).tq = EMPTY_TQ; (yyval.tq).coord = UnknownCoord; }
     break;
 
   case 260:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1356 "ANSI-C.y"
     { (yyval.tq) = (yyvsp[(1) - (1)].tq); }
     break;
 
   case 261:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1361 "ANSI-C.y"
     { (yyval.tq) = (yyvsp[(1) - (1)].tq); }
     break;
 
   case 262:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1363 "ANSI-C.y"
     {
 		  (yyval.tq).tq = tq_union ((yyvsp[(1) - (2)].tq).tq, (yyvsp[(2) - (2)].tq).tq);
@@ -5293,7 +5323,7 @@ yyreduce:
 
   case 263:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1371 "ANSI-C.y"
     { if (ANSIOnly)
 	            SyntaxError("__attribute__ not allowed with -ansi switch");
@@ -5303,140 +5333,140 @@ yyreduce:
 
   case 264:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1380 "ANSI-C.y"
     { (yyval.L) = MakeNewList((yyvsp[(1) - (1)].n)); }
     break;
 
   case 265:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1382 "ANSI-C.y"
     { (yyval.L) = AppendItem((yyvsp[(1) - (3)].L), (yyvsp[(3) - (3)].n)); }
     break;
 
   case 266:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1387 "ANSI-C.y"
     { (yyval.n) = NULL; }
     break;
 
   case 267:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1389 "ANSI-C.y"
     { (yyval.n) = ConvertIdToAttrib((yyvsp[(1) - (1)].n), NULL); }
     break;
 
   case 268:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1391 "ANSI-C.y"
     { (yyval.n) = ConvertIdToAttrib((yyvsp[(1) - (4)].n), MakeNewList((yyvsp[(3) - (4)].n))); }
     break;
 
   case 269:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1393 "ANSI-C.y"
     { (yyval.n) = ConvertIdToAttrib((yyvsp[(1) - (6)].n), ConsItem((yyvsp[(3) - (6)].n), (yyvsp[(5) - (6)].L))); }
     break;
 
   case 270:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1404 "ANSI-C.y"
     { (yyval.n) = ConvertIdToAttrib((yyvsp[(1) - (4)].n), (yyvsp[(3) - (4)].L)); }
     break;
 
   case 271:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1409 "ANSI-C.y"
     { (yyval.L) = (yyvsp[(1) - (1)].L); }
     break;
 
   case 272:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1415 "ANSI-C.y"
     { (yyval.n) = NULL; }
     break;
 
   case 274:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1420 "ANSI-C.y"
     { (yyval.n) = MakeAsmCoord(EMPTY_TQ, (yyvsp[(3) - (4)].n), NULL, NULL, NULL, (yyvsp[(1) - (4)].tok)); }
     break;
 
   case 277:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1426 "ANSI-C.y"
     { (yyval.n) = MakeIdCoord(UniqueString("const"), (yyvsp[(1) - (1)].tok)); }
     break;
 
   case 278:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1431 "ANSI-C.y"
     { (yyval.n) = NULL; }
     break;
 
   case 279:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1432 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (2)].n); }
     break;
 
   case 281:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1438 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(':', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 282:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1439 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(':', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 283:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1440 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(DESIGNATED_INITIALIZER, (yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n), (yyvsp[(3) - (4)].tok)); }
     break;
 
   case 284:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1441 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(DESIGNATED_INITIALIZER, (yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n), (yyvsp[(3) - (4)].tok)); }
     break;
 
   case 285:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1442 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(ARRAY_LABELED_INITIALIZER, (yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n), (yyvsp[(3) - (4)].tok)); }
     break;
 
   case 286:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1443 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(ARRAY_LABELED_INITIALIZER, (yyvsp[(2) - (5)].n), (yyvsp[(5) - (5)].n), (yyvsp[(3) - (5)].tok)); }
     break;
 
   case 287:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1444 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(ARRAY_LABELED_INITIALIZER,
 														   MakeBinopCoord(ELLIPSIS, (yyvsp[(2) - (6)].n), (yyvsp[(4) - (6)].n), (yyvsp[(3) - (6)].tok)),
@@ -5445,14 +5475,14 @@ yyreduce:
 
   case 289:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1451 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(1) - (1)].n); }
     break;
 
   case 290:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1455 "ANSI-C.y"
     { if (ANSIOnly) SyntaxError("ISO C forbits empty initializer braces"); /* See Bug 83 */
 	                                   (yyval.n) = MakeInitializerCoord(NULL, (yyvsp[(1) - (2)].tok));
@@ -5461,28 +5491,28 @@ yyreduce:
 
   case 291:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1458 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (3)].n); (yyval.n)->coord = (yyvsp[(1) - (3)].tok); }
     break;
 
   case 292:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1459 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (4)].n); (yyval.n)->coord = (yyvsp[(1) - (4)].tok); }
     break;
 
   case 293:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1464 "ANSI-C.y"
     { (yyval.n) = MakeInitializerCoord(MakeNewList((yyvsp[(1) - (1)].n)), (yyvsp[(1) - (1)].n)->coord); }
     break;
 
   case 294:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1466 "ANSI-C.y"
     { 
               assert((yyvsp[(1) - (3)].n)->typ == Initializer);
@@ -5493,14 +5523,14 @@ yyreduce:
 
   case 296:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1476 "ANSI-C.y"
     { (yyval.L) = AppendItem((yyvsp[(1) - (3)].L), EllipsisNode); }
     break;
 
   case 297:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1480 "ANSI-C.y"
     { Node *n = MakePrimCoord(EMPTY_TQ, Void, (yyvsp[(1) - (1)].tok));
 	      SyntaxErrorCoord(n->coord, "First argument cannot be `...'");
@@ -5510,21 +5540,21 @@ yyreduce:
 
   case 298:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1489 "ANSI-C.y"
     { (yyval.L) = MakeNewList((yyvsp[(1) - (1)].n)); }
     break;
 
   case 299:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1491 "ANSI-C.y"
     { (yyval.L) = AppendItem((yyvsp[(1) - (3)].L), (yyvsp[(3) - (3)].n)); }
     break;
 
   case 300:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1495 "ANSI-C.y"
     { 
 	      SyntaxErrorCoord((yyvsp[(1) - (3)].n)->coord, "formals cannot have initializers");
@@ -5534,21 +5564,21 @@ yyreduce:
 
   case 301:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1500 "ANSI-C.y"
     { (yyval.L) = (yyvsp[(1) - (3)].L); }
     break;
 
   case 302:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1506 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (2)].n); }
     break;
 
   case 303:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1508 "ANSI-C.y"
     { (yyval.n) = SetBaseType((yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].n)); 
             }
@@ -5556,7 +5586,7 @@ yyreduce:
 
   case 304:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1511 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].n), Formal); 
             }
@@ -5564,7 +5594,7 @@ yyreduce:
 
   case 305:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1514 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].n), Formal); 
             }
@@ -5572,35 +5602,35 @@ yyreduce:
 
   case 306:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1517 "ANSI-C.y"
     { (yyval.n) = MakeDefaultPrimType((yyvsp[(2) - (2)].tq).tq, (yyvsp[(2) - (2)].tq).coord); }
     break;
 
   case 307:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1519 "ANSI-C.y"
     { (yyval.n) = SetBaseType((yyvsp[(3) - (3)].n), MakeDefaultPrimType((yyvsp[(2) - (3)].tq).tq, (yyvsp[(2) - (3)].tq).coord)); }
     break;
 
   case 308:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1521 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(3) - (3)].n), MakeDefaultPrimType((yyvsp[(2) - (3)].tq).tq, (yyvsp[(2) - (3)].tq).coord), Formal); }
     break;
 
   case 309:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1523 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (2)].n); }
     break;
 
   case 310:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1525 "ANSI-C.y"
     { (yyval.n) = SetBaseType((yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].n)); 
             }
@@ -5608,7 +5638,7 @@ yyreduce:
 
   case 311:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1528 "ANSI-C.y"
     {
 	      (yyval.n) = SetDeclType((yyvsp[(3) - (4)].n), TypeQualifyNode((yyvsp[(2) - (4)].n), tq_union((yyvsp[(1) - (4)].tq).tq, (yyvsp[(4) - (4)].tq).tq), NULL), Formal);
@@ -5617,7 +5647,7 @@ yyreduce:
 
   case 312:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1532 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].n), Formal); 
             }
@@ -5625,56 +5655,56 @@ yyreduce:
 
   case 313:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1535 "ANSI-C.y"
     { (yyval.n) = MakeDefaultPrimType((yyvsp[(2) - (2)].tq).tq, (yyvsp[(2) - (2)].tq).coord); }
     break;
 
   case 314:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1537 "ANSI-C.y"
     { (yyval.n) = SetBaseType((yyvsp[(3) - (3)].n), MakeDefaultPrimType((yyvsp[(2) - (3)].tq).tq, (yyvsp[(2) - (3)].tq).coord)); }
     break;
 
   case 315:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1539 "ANSI-C.y"
     { (yyval.n) = SetDeclType((yyvsp[(3) - (3)].n), MakeDefaultPrimType(tq_union((yyvsp[(1) - (3)].tq).tq, (yyvsp[(2) - (3)].tq).tq), (yyvsp[(2) - (3)].tq).coord), Formal); }
     break;
 
   case 316:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1545 "ANSI-C.y"
     { (yyval.n) = MakeAdclCoord(EMPTY_TQ, NULL, NULL, (yyvsp[(1) - (2)].tok)); }
     break;
 
   case 317:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1547 "ANSI-C.y"
     { (yyval.n) = MakeAdclCoord(EMPTY_TQ, NULL, (yyvsp[(2) - (3)].n), (yyvsp[(1) - (3)].tok)); }
     break;
 
   case 318:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1549 "ANSI-C.y"
     { (yyval.n) = SetBaseType((yyvsp[(1) - (4)].n), MakeAdclCoord(EMPTY_TQ, NULL, (yyvsp[(3) - (4)].n), (yyvsp[(2) - (4)].tok))); }
     break;
 
   case 319:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1551 "ANSI-C.y"
     { (yyval.n) = SetBaseType((yyvsp[(1) - (3)].n), MakeAdclCoord(EMPTY_TQ, NULL, NULL, (yyvsp[(2) - (3)].tok))); }
     break;
 
   case 320:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1573 "ANSI-C.y"
     { 
               (yyval.n) = SetSUdclNameFields((yyvsp[(1) - (4)].n), NULL, (yyvsp[(3) - (4)].L), (yyvsp[(2) - (4)].tok), (yyvsp[(4) - (4)].tok), NULL);
@@ -5683,7 +5713,7 @@ yyreduce:
 
   case 321:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1578 "ANSI-C.y"
     { 
               (yyval.n) = SetSUdclNameFields((yyvsp[(1) - (5)].n), (yyvsp[(2) - (5)].n), (yyvsp[(4) - (5)].L), (yyvsp[(3) - (5)].tok), (yyvsp[(5) - (5)].tok), NULL);
@@ -5692,7 +5722,7 @@ yyreduce:
 
   case 322:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1582 "ANSI-C.y"
     { 
               (yyval.n) = SetSUdclName((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].n)->coord);
@@ -5701,7 +5731,7 @@ yyreduce:
 
   case 323:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1587 "ANSI-C.y"
     { 
               if (ANSIOnly)
@@ -5712,7 +5742,7 @@ yyreduce:
 
   case 324:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1593 "ANSI-C.y"
     { 
               if (ANSIOnly)
@@ -5723,21 +5753,21 @@ yyreduce:
 
   case 325:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1602 "ANSI-C.y"
     { (yyval.n) = MakeSdclCoord(EMPTY_TQ, NULL, (yyvsp[(1) - (1)].tok)); }
     break;
 
   case 326:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1603 "ANSI-C.y"
     { (yyval.n) = MakeUdclCoord(EMPTY_TQ, NULL, (yyvsp[(1) - (1)].tok)); }
     break;
 
   case 327:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1609 "ANSI-C.y"
     { 
               (yyval.L) = (yyvsp[(2) - (2)].L); 
@@ -5747,7 +5777,7 @@ yyreduce:
 
   case 328:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1614 "ANSI-C.y"
     { 
 	      NodeUpdateTq2(FirstItem((yyvsp[(3) - (3)].L)), tq_union, (yyvsp[(2) - (3)].tq).tq);
@@ -5757,14 +5787,14 @@ yyreduce:
 
   case 331:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1624 "ANSI-C.y"
     { (yyval.L) = (yyvsp[(2) - (2)].L); NodeUpdateTq((Node*)(FirstItem((yyval.L))), tq_add_extension); ((Node*)(FirstItem((yyval.L))))->coord = (yyvsp[(1) - (2)].tok); }
     break;
 
   case 332:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1631 "ANSI-C.y"
     { 
 	      (yyval.L) = MakeNewList(SetDeclType((yyvsp[(2) - (2)].n),
@@ -5775,21 +5805,21 @@ yyreduce:
 
   case 333:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1637 "ANSI-C.y"
     { (yyval.L) = AppendDecl((yyvsp[(1) - (3)].L), (yyvsp[(3) - (3)].n), SU); }
     break;
 
   case 334:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1643 "ANSI-C.y"
     { (yyval.L) = MakeNewList(SetDeclType((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].n), SU)); }
     break;
 
   case 335:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1645 "ANSI-C.y"
     {
 	       SetDeclAttribs((yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tq).tq);
@@ -5799,7 +5829,7 @@ yyreduce:
 
   case 336:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1652 "ANSI-C.y"
     {
 	    Node *d = MakeDecl(NULL, TQ_SU_DECL, (yyvsp[(1) - (2)].n), NULL, (yyvsp[(2) - (2)].n));
@@ -5809,7 +5839,7 @@ yyreduce:
 
   case 337:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1657 "ANSI-C.y"
     {
 		 /* gcc extension: unnamed struct/union fields */
@@ -5822,14 +5852,14 @@ yyreduce:
 
   case 338:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1665 "ANSI-C.y"
     { (yyval.L) = AppendDecl((yyvsp[(1) - (3)].L), (yyvsp[(3) - (3)].n), SU); }
     break;
 
   case 339:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1672 "ANSI-C.y"
     { SetDeclAttribs((yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].tq).tq);
               (yyval.n) = SetDeclBitSize((yyvsp[(1) - (3)].n), (yyvsp[(2) - (3)].n)); }
@@ -5837,7 +5867,7 @@ yyreduce:
 
   case 340:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1689 "ANSI-C.y"
     { (yyval.n) = SetDeclBitSize((yyvsp[(1) - (3)].n), (yyvsp[(2) - (3)].n));
               SetDeclAttribs((yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].tq).tq); }
@@ -5845,126 +5875,126 @@ yyreduce:
 
   case 341:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1695 "ANSI-C.y"
     { (yyval.n) = NULL; }
     break;
 
   case 343:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1701 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (2)].n); }
     break;
 
   case 344:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1707 "ANSI-C.y"
     { (yyval.n) = BuildEnum(NULL, (yyvsp[(3) - (5)].L), (yyvsp[(1) - (5)].tok), (yyvsp[(2) - (5)].tok), (yyvsp[(5) - (5)].tok)); }
     break;
 
   case 345:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1709 "ANSI-C.y"
     { (yyval.n) = BuildEnum((yyvsp[(2) - (6)].n), (yyvsp[(4) - (6)].L), (yyvsp[(1) - (6)].tok), (yyvsp[(3) - (6)].tok), (yyvsp[(6) - (6)].tok));   }
     break;
 
   case 346:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1711 "ANSI-C.y"
     { (yyval.n) = BuildEnum((yyvsp[(2) - (2)].n), NULL, (yyvsp[(1) - (2)].tok), (yyvsp[(2) - (2)].n)->coord, (yyvsp[(2) - (2)].n)->coord); }
     break;
 
   case 347:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1717 "ANSI-C.y"
     { (yyval.L) = MakeNewList(BuildEnumConst((yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].n))); }
     break;
 
   case 348:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1719 "ANSI-C.y"
     { (yyval.L) = AppendItem((yyvsp[(1) - (4)].L), BuildEnumConst((yyvsp[(3) - (4)].n), (yyvsp[(4) - (4)].n))); }
     break;
 
   case 349:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1724 "ANSI-C.y"
     { (yyval.n) = NULL; }
     break;
 
   case 350:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1725 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(2) - (2)].n);   }
     break;
 
   case 351:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1729 "ANSI-C.y"
     { }
     break;
 
   case 352:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1730 "ANSI-C.y"
     { }
     break;
 
   case 361:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1750 "ANSI-C.y"
     {  (yyval.n) = NULL; }
     break;
 
   case 362:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1755 "ANSI-C.y"
     { (yyval.n) = BuildLabel((yyvsp[(1) - (2)].n)); }
     break;
 
   case 363:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1757 "ANSI-C.y"
     { (yyval.n) = AddContainee(MakeCaseCoord((yyvsp[(2) - (3)].n), NULL, (yyvsp[(1) - (3)].tok))); }
     break;
 
   case 364:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1759 "ANSI-C.y"
     { (yyval.n) = AddContainee(MakeDefaultCoord(NULL, (yyvsp[(1) - (2)].tok))); }
     break;
 
   case 365:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1763 "ANSI-C.y"
     { (yyval.n) = BuildLabel((yyvsp[(1) - (2)].n)); }
     break;
 
   case 366:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1768 "ANSI-C.y"
     { (yyval.n) = MakeBlockCoord(PrimVoid, NULL, NULL, (yyvsp[(1) - (2)].tok), (yyvsp[(2) - (2)].tok)); }
     break;
 
   case 367:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1770 "ANSI-C.y"
     {
 		(yyval.n) = MakeBlockCoord(PrimVoid, GrabPragmas((yyvsp[(2) - (3)].L)), NULL, (yyvsp[(1) - (3)].tok), (yyvsp[(3) - (3)].tok));
@@ -5973,7 +6003,7 @@ yyreduce:
 
   case 368:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1774 "ANSI-C.y"
     {
 		MaybeCheckLabelAtEndOfCompoundStatement((yyvsp[(2) - (3)].L));
@@ -5983,7 +6013,7 @@ yyreduce:
 
   case 369:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1779 "ANSI-C.y"
     {
 		MaybeCheckLabelAtEndOfCompoundStatement((yyvsp[(3) - (4)].L));
@@ -5993,14 +6023,14 @@ yyreduce:
 
   case 370:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1785 "ANSI-C.y"
     { (yyval.n) = MakeXBlockCoord(PrimVoid, NULL, NULL, (yyvsp[(1) - (2)].tok), (yyvsp[(2) - (2)].tok)); }
     break;
 
   case 371:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1787 "ANSI-C.y"
     {
 		(yyval.n) = MakeXBlockCoord(PrimVoid, GrabPragmas((yyvsp[(2) - (3)].L)), NULL, (yyvsp[(1) - (3)].tok), (yyvsp[(3) - (3)].tok));
@@ -6009,7 +6039,7 @@ yyreduce:
 
   case 372:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1791 "ANSI-C.y"
     {
 		MaybeCheckLabelAtEndOfCompoundStatement((yyvsp[(2) - (3)].L));
@@ -6019,7 +6049,7 @@ yyreduce:
 
   case 373:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1796 "ANSI-C.y"
     {
 		MaybeCheckLabelAtEndOfCompoundStatement((yyvsp[(3) - (4)].L));
@@ -6029,49 +6059,49 @@ yyreduce:
 
   case 374:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1802 "ANSI-C.y"
     { EnterScope(); }
     break;
 
   case 375:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1803 "ANSI-C.y"
     { ExitScope(); }
     break;
 
   case 376:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1806 "ANSI-C.y"
     { EnterScope(); }
     break;
 
   case 377:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1807 "ANSI-C.y"
     { ExitScope();  }
     break;
 
   case 378:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1814 "ANSI-C.y"
     { (yyval.n) = MakeBlockCoord(PrimVoid, NULL, NULL, (yyvsp[(1) - (2)].tok), (yyvsp[(2) - (2)].tok)); }
     break;
 
   case 379:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1816 "ANSI-C.y"
     { (yyval.n) = MakeBlockCoord(PrimVoid, GrabPragmas((yyvsp[(2) - (3)].L)), NULL, (yyvsp[(1) - (3)].tok), (yyvsp[(3) - (3)].tok)); }
     break;
 
   case 380:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1818 "ANSI-C.y"
     {
 		MaybeCheckLabelAtEndOfCompoundStatement((yyvsp[(2) - (3)].L));
@@ -6081,7 +6111,7 @@ yyreduce:
 
   case 381:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1823 "ANSI-C.y"
     {
 		MaybeCheckLabelAtEndOfCompoundStatement((yyvsp[(3) - (4)].L));
@@ -6091,14 +6121,14 @@ yyreduce:
 
   case 382:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1832 "ANSI-C.y"
     { (yyval.L) = GrabPragmas((yyvsp[(1) - (1)].L)); }
     break;
 
   case 383:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1833 "ANSI-C.y"
     { (yyval.L) = JoinLists(GrabPragmas((yyvsp[(1) - (2)].L)),
                                                          (yyvsp[(2) - (2)].L)); }
@@ -6106,14 +6136,14 @@ yyreduce:
 
   case 384:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1838 "ANSI-C.y"
     { (yyval.L) = GrabPragmas(MakeNewList((yyvsp[(1) - (1)].n))); }
     break;
 
   case 385:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1839 "ANSI-C.y"
     { (yyval.L) = AppendItem(GrabPragmas((yyvsp[(1) - (2)].L)), 
                                                         (yyvsp[(2) - (2)].n)); }
@@ -6121,7 +6151,7 @@ yyreduce:
 
   case 386:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1844 "ANSI-C.y"
     {
             (yyval.n)=(yyvsp[(1) - (2)].n);
@@ -6131,280 +6161,280 @@ yyreduce:
 
   case 387:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1852 "ANSI-C.y"
     { (yyval.n) = MakeIfCoord((yyvsp[(3) - (5)].n), (yyvsp[(5) - (5)].n), (yyvsp[(1) - (5)].tok)); }
     break;
 
   case 388:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1854 "ANSI-C.y"
     { (yyval.n) = MakeIfElseCoord((yyvsp[(3) - (7)].n), (yyvsp[(5) - (7)].n), (yyvsp[(7) - (7)].n), (yyvsp[(1) - (7)].tok), (yyvsp[(6) - (7)].tok)); }
     break;
 
   case 389:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1855 "ANSI-C.y"
     { PushContainer(Switch); }
     break;
 
   case 390:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1856 "ANSI-C.y"
     { (yyval.n) = PopContainer(MakeSwitchCoord((yyvsp[(4) - (6)].n), (yyvsp[(6) - (6)].n), NULL, (yyvsp[(1) - (6)].tok))); }
     break;
 
   case 391:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1861 "ANSI-C.y"
     { PushContainer(While);}
     break;
 
   case 392:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1863 "ANSI-C.y"
     { (yyval.n) = PopContainer(MakeWhileCoord((yyvsp[(4) - (6)].n), (yyvsp[(6) - (6)].n), (yyvsp[(1) - (6)].tok))); }
     break;
 
   case 393:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1865 "ANSI-C.y"
     { PushContainer(Do);}
     break;
 
   case 394:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1867 "ANSI-C.y"
     { (yyval.n) = PopContainer(MakeDoCoord((yyvsp[(3) - (8)].n), (yyvsp[(6) - (8)].n), (yyvsp[(1) - (8)].tok), (yyvsp[(4) - (8)].tok))); }
     break;
 
   case 395:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1869 "ANSI-C.y"
     { PushContainer(For);}
     break;
 
   case 396:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1871 "ANSI-C.y"
     { (yyval.n) = PopContainer(MakeForCoord((yyvsp[(3) - (10)].n), (yyvsp[(5) - (10)].n), (yyvsp[(7) - (10)].n), (yyvsp[(10) - (10)].n), (yyvsp[(1) - (10)].tok))); }
     break;
 
   case 397:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1875 "ANSI-C.y"
     { PushContainer(For);}
     break;
 
   case 398:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1877 "ANSI-C.y"
     { (yyval.n) = PopContainer(MakeForCoord(NULL, (yyvsp[(5) - (10)].n), (yyvsp[(7) - (10)].n), (yyvsp[(10) - (10)].n), (yyvsp[(1) - (10)].tok))); }
     break;
 
   case 399:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1879 "ANSI-C.y"
     { PushContainer(For);}
     break;
 
   case 400:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1881 "ANSI-C.y"
     { (yyval.n) = PopContainer(MakeForCoord((yyvsp[(3) - (10)].n), (yyvsp[(5) - (10)].n), NULL, (yyvsp[(10) - (10)].n), (yyvsp[(1) - (10)].tok))); }
     break;
 
   case 401:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1883 "ANSI-C.y"
     { PushContainer(For);}
     break;
 
   case 402:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1885 "ANSI-C.y"
     { (yyval.n) = PopContainer(MakeForCoord((yyvsp[(3) - (10)].n), NULL, (yyvsp[(7) - (10)].n), (yyvsp[(10) - (10)].n), (yyvsp[(1) - (10)].tok))); }
     break;
 
   case 403:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1886 "ANSI-C.y"
     { PushContainer(For);}
     break;
 
   case 404:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1887 "ANSI-C.y"
     { (yyval.n) = PopContainer(MakeForCoord(NULL, SintZero, NULL, (yyvsp[(6) - (6)].n), (yyvsp[(1) - (6)].tok))); }
     break;
 
   case 405:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1892 "ANSI-C.y"
     { (yyval.n) = ResolveGoto((yyvsp[(2) - (3)].n), (yyvsp[(1) - (3)].tok)); }
     break;
 
   case 406:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1894 "ANSI-C.y"
     { (yyval.n) = AddContainee(MakeContinueCoord(NULL, (yyvsp[(1) - (2)].tok))); }
     break;
 
   case 407:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1896 "ANSI-C.y"
     { (yyval.n) = AddContainee(MakeBreakCoord(NULL, (yyvsp[(1) - (2)].tok))); }
     break;
 
   case 408:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1898 "ANSI-C.y"
     { (yyval.n) = AddReturn(MakeReturnCoord((yyvsp[(2) - (3)].n), (yyvsp[(1) - (3)].tok))); }
     break;
 
   case 409:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1902 "ANSI-C.y"
     { (yyval.n) = ResolveGoto((yyvsp[(2) - (3)].n), (yyvsp[(1) - (3)].tok)); }
     break;
 
   case 410:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1907 "ANSI-C.y"
     { (yyval.L) = NULL; }
     break;
 
   case 412:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1912 "ANSI-C.y"
     { (yyval.L) = MakeNewList((yyvsp[(1) - (1)].n)); }
     break;
 
   case 413:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1914 "ANSI-C.y"
     { (yyval.L) = AppendItem((yyvsp[(1) - (3)].L), (yyvsp[(3) - (3)].n)); }
     break;
 
   case 414:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1918 "ANSI-C.y"
     { (yyval.n) = MakeAsmArgCoord((yyvsp[(1) - (4)].n), (yyvsp[(3) - (4)].n), (yyvsp[(2) - (4)].tok)); }
     break;
 
   case 415:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1922 "ANSI-C.y"
     { (yyval.L) = MakeNewList((yyvsp[(1) - (1)].n)); }
     break;
 
   case 416:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1924 "ANSI-C.y"
     { (yyval.L) = AppendItem((yyvsp[(1) - (3)].L), (yyvsp[(3) - (3)].n)); }
     break;
 
   case 417:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1928 "ANSI-C.y"
     { (yyval.n) = MakeAsmCoord(EMPTY_TQ, (yyvsp[(3) - (5)].n), NULL, NULL, NULL, (yyvsp[(1) - (5)].tok)); }
     break;
 
   case 418:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1930 "ANSI-C.y"
     { (yyval.n) = MakeAsmCoord(EMPTY_TQ, (yyvsp[(3) - (7)].n), (yyvsp[(5) - (7)].L), NULL, NULL, (yyvsp[(1) - (7)].tok)); }
     break;
 
   case 419:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1932 "ANSI-C.y"
     { (yyval.n) = MakeAsmCoord(EMPTY_TQ, (yyvsp[(3) - (9)].n), (yyvsp[(5) - (9)].L), (yyvsp[(7) - (9)].L), NULL, (yyvsp[(1) - (9)].tok)); }
     break;
 
   case 420:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1934 "ANSI-C.y"
     { (yyval.n) = MakeAsmCoord(EMPTY_TQ, (yyvsp[(3) - (11)].n), (yyvsp[(5) - (11)].L), (yyvsp[(7) - (11)].L), (yyvsp[(9) - (11)].L), (yyvsp[(1) - (11)].tok)); }
     break;
 
   case 421:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1936 "ANSI-C.y"
     { (yyval.n) = MakeAsmCoord((yyvsp[(2) - (6)].tq).tq, (yyvsp[(4) - (6)].n), NULL, NULL, NULL, (yyvsp[(1) - (6)].tok)); }
     break;
 
   case 422:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1938 "ANSI-C.y"
     { (yyval.n) = MakeAsmCoord((yyvsp[(2) - (8)].tq).tq, (yyvsp[(4) - (8)].n), (yyvsp[(6) - (8)].L), NULL, NULL, (yyvsp[(1) - (8)].tok)); }
     break;
 
   case 423:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1940 "ANSI-C.y"
     { (yyval.n) = MakeAsmCoord((yyvsp[(2) - (10)].tq).tq, (yyvsp[(4) - (10)].n), (yyvsp[(6) - (10)].L), (yyvsp[(8) - (10)].L), NULL, (yyvsp[(1) - (10)].tok)); }
     break;
 
   case 424:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1942 "ANSI-C.y"
     { (yyval.n) = MakeAsmCoord((yyvsp[(2) - (12)].tq).tq, (yyvsp[(4) - (12)].n), (yyvsp[(6) - (12)].L), (yyvsp[(8) - (12)].L), (yyvsp[(10) - (12)].L), (yyvsp[(1) - (12)].tok)); }
     break;
 
   case 425:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1952 "ANSI-C.y"
     { (yyval.L) = GrabPragmas((yyvsp[(1) - (1)].L)); }
     break;
 
   case 426:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1953 "ANSI-C.y"
     { (yyval.L) = JoinLists((yyvsp[(1) - (2)].L), GrabPragmas((yyvsp[(2) - (2)].L))); }
     break;
 
   case 427:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1958 "ANSI-C.y"
     {
               if (yydebug)
@@ -6419,7 +6449,7 @@ yyreduce:
 
   case 428:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1968 "ANSI-C.y"
     { 
               if (yydebug)
@@ -6434,21 +6464,21 @@ yyreduce:
 
   case 429:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1978 "ANSI-C.y"
     {  (yyval.L) = (yyvsp[(2) - (2)].L); }
     break;
 
   case 430:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1979 "ANSI-C.y"
     { (yyval.L) = (List *) NULL; }
     break;
 
   case 431:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1984 "ANSI-C.y"
     { 
               (yyvsp[(1) - (1)].n) = DefineProc(FALSE, 
@@ -6460,14 +6490,14 @@ yyreduce:
 
   case 432:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 1991 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n)); }
     break;
 
   case 434:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2007 "ANSI-C.y"
     { 
 	      Node *decl = SetDeclType((yyvsp[(2) - (2)].n),
@@ -6479,14 +6509,14 @@ yyreduce:
 
   case 435:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2014 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); }
     break;
 
   case 436:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2016 "ANSI-C.y"
     { 
 	      Node *decl = SetDeclType((yyvsp[(2) - (2)].n),
@@ -6498,14 +6528,14 @@ yyreduce:
 
   case 437:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2023 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); }
     break;
 
   case 438:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2025 "ANSI-C.y"
     { 
               (yyvsp[(1) - (1)].n) = DefineProc(TRUE, 
@@ -6517,14 +6547,14 @@ yyreduce:
 
   case 439:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2032 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n)); }
     break;
 
   case 440:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2034 "ANSI-C.y"
     {  Node *decl = SetDeclType((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].n), Redecl);  
 
@@ -6535,14 +6565,14 @@ yyreduce:
 
   case 441:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2040 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); }
     break;
 
   case 442:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2042 "ANSI-C.y"
     { Node *decl = SetDeclType((yyvsp[(2) - (2)].n), (yyvsp[(1) - (2)].n), Redecl);
 
@@ -6553,14 +6583,14 @@ yyreduce:
 
   case 443:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2048 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); }
     break;
 
   case 444:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2050 "ANSI-C.y"
     { Node *type = MakeDefaultPrimType((yyvsp[(1) - (2)].tq).tq, (yyvsp[(1) - (2)].tq).coord),
                    *decl = SetDeclType((yyvsp[(2) - (2)].n), type, Redecl);
@@ -6572,14 +6602,14 @@ yyreduce:
 
   case 445:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2057 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); }
     break;
 
   case 446:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2059 "ANSI-C.y"
     { Node *type = MakeDefaultPrimType((yyvsp[(1) - (2)].tq).tq, (yyvsp[(1) - (2)].tq).coord),
                    *decl = SetDeclType((yyvsp[(2) - (2)].n), type, Redecl);
@@ -6591,14 +6621,14 @@ yyreduce:
 
   case 447:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2066 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(2) - (4)].n), (yyvsp[(4) - (4)].n)); }
     break;
 
   case 448:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2068 "ANSI-C.y"
     { Node *type = MakeDefaultPrimType(EMPTY_TQ, (yyvsp[(1) - (2)].n)->coord),
                    *decl = SetDeclType((yyvsp[(1) - (2)].n), type, Redecl);
@@ -6609,14 +6639,14 @@ yyreduce:
 
   case 449:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2074 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(1) - (4)].n), (yyvsp[(4) - (4)].n)); }
     break;
 
   case 450:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2076 "ANSI-C.y"
     { Node *decl = SetDeclType((yyvsp[(2) - (3)].n), (yyvsp[(1) - (3)].n), Redecl);
               AddParameterTypes(decl, (yyvsp[(3) - (3)].L));
@@ -6626,14 +6656,14 @@ yyreduce:
 
   case 451:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2081 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(2) - (5)].n), (yyvsp[(5) - (5)].n)); }
     break;
 
   case 452:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2083 "ANSI-C.y"
     { Node *decl = SetDeclType((yyvsp[(2) - (3)].n), (yyvsp[(1) - (3)].n), Redecl);
               AddParameterTypes(decl, (yyvsp[(3) - (3)].L));
@@ -6643,14 +6673,14 @@ yyreduce:
 
   case 453:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2088 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(2) - (5)].n), (yyvsp[(5) - (5)].n)); }
     break;
 
   case 454:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2090 "ANSI-C.y"
     { Node *type = MakeDefaultPrimType((yyvsp[(1) - (3)].tq).tq, (yyvsp[(1) - (3)].tq).coord),
                    *decl = SetDeclType((yyvsp[(2) - (3)].n), type, Redecl);
@@ -6662,14 +6692,14 @@ yyreduce:
 
   case 455:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2097 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(2) - (5)].n), (yyvsp[(5) - (5)].n)); }
     break;
 
   case 456:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2099 "ANSI-C.y"
     { Node *type = MakeDefaultPrimType((yyvsp[(1) - (3)].tq).tq, (yyvsp[(1) - (3)].tq).coord), 
                    *decl = SetDeclType((yyvsp[(2) - (3)].n), type, Redecl);
@@ -6682,21 +6712,21 @@ yyreduce:
 
   case 457:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2107 "ANSI-C.y"
     { (yyval.n) = SetProcBody((yyvsp[(2) - (5)].n), (yyvsp[(5) - (5)].n)); }
     break;
 
   case 458:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2112 "ANSI-C.y"
     { OldStyleFunctionDefinition = TRUE; }
     break;
 
   case 459:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2114 "ANSI-C.y"
     { OldStyleFunctionDefinition = FALSE; 
                (yyval.L) = (yyvsp[(2) - (2)].L); }
@@ -6704,49 +6734,49 @@ yyreduce:
 
   case 460:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2129 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(1) - (1)].n); }
     break;
 
   case 461:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2130 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(1) - (1)].n); }
     break;
 
   case 462:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2131 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(1) - (1)].n); }
     break;
 
   case 463:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2132 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(1) - (1)].n); }
     break;
 
   case 464:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2133 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(1) - (1)].n); }
     break;
 
   case 465:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2138 "ANSI-C.y"
     { (yyval.n) = (yyvsp[(1) - (1)].n); }
     break;
 
   case 466:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2140 "ANSI-C.y"
     { const char *first_text  = (yyvsp[(1) - (2)].n)->u.Const.text;
               const char *second_text = (yyvsp[(2) - (2)].n)->u.Const.text;
@@ -6770,367 +6800,378 @@ yyreduce:
 
   case 467:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2161 "ANSI-C.y"
     { (yyval.tq).tq = TQ_CONST;    (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 468:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2162 "ANSI-C.y"
     { (yyval.tq).tq = TQ_VOLATILE; (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 469:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2163 "ANSI-C.y"
     { (yyval.tq).tq = TQ_INLINE;   (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 470:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2164 "ANSI-C.y"
     { (yyval.tq).tq = TQ_RESTRICT; (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 471:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2165 "ANSI-C.y"
     { (yyval.tq).tq = TQ_COMPLEX;  (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 472:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2166 "ANSI-C.y"
     { (yyval.tq).tq = TQ_PROCEDURE;(yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 473:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2167 "ANSI-C.y"
     { (yyval.tq).tq = TQ_INLET;    (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 474:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2168 "ANSI-C.y"
     { (yyval.tq).tq = TQ_SHARED;   (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 475:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2169 "ANSI-C.y"
     { (yyval.tq).tq = TQ_PRIVATE;  (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 476:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2170 "ANSI-C.y"
     { (yyval.tq).tq = TQ_NOOUTPUT; (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 477:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2171 "ANSI-C.y"
     { (yyval.tq).tq = TQ_CILKONLY; (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 478:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2172 "ANSI-C.y"
     { (yyval.tq).tq = TQ_CILKSAFE; (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 479:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2176 "ANSI-C.y"
     { (yyval.tq).tq = TQ_CONST;    (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 480:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2177 "ANSI-C.y"
     { (yyval.tq).tq = TQ_VOLATILE; (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 481:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2178 "ANSI-C.y"
     { (yyval.tq).tq = TQ_RESTRICT; (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 482:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2179 "ANSI-C.y"
     { (yyval.tq).tq = TQ_PROCEDURE;(yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 483:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2180 "ANSI-C.y"
     { (yyval.tq).tq = TQ_INLET;    (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 484:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2181 "ANSI-C.y"
     { (yyval.tq).tq = TQ_CILKONLY; (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 485:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2182 "ANSI-C.y"
     { (yyval.tq).tq = TQ_CILKSAFE; (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 486:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2186 "ANSI-C.y"
     { (yyval.tq).tq = TQ_TYPEDEF;  (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 487:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2187 "ANSI-C.y"
     { (yyval.tq).tq = TQ_EXTERN;   (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 488:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2188 "ANSI-C.y"
     { (yyval.tq).tq = TQ_STATIC;   (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 489:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2189 "ANSI-C.y"
     { (yyval.tq).tq = TQ_AUTO;     (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 490:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2190 "ANSI-C.y"
     { (yyval.tq).tq = TQ_REGISTER; (yyval.tq).coord = (yyvsp[(1) - (1)].tok); }
     break;
 
   case 491:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2194 "ANSI-C.y"
     { (yyval.n) = StartPrimType(Void, (yyvsp[(1) - (1)].tok));    }
     break;
 
   case 492:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2195 "ANSI-C.y"
     { (yyval.n) = StartPrimType(Char, (yyvsp[(1) - (1)].tok));     }
     break;
 
   case 493:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2196 "ANSI-C.y"
     { (yyval.n) = StartPrimType(Int_ParseOnly, (yyvsp[(1) - (1)].tok));     }
     break;
 
   case 494:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2197 "ANSI-C.y"
     { (yyval.n) = StartPrimType(Float, (yyvsp[(1) - (1)].tok));   }
     break;
 
   case 495:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2198 "ANSI-C.y"
     { (yyval.n) = StartPrimType(Double, (yyvsp[(1) - (1)].tok));  }
     break;
 
   case 496:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2200 "ANSI-C.y"
     { (yyval.n) = StartPrimType(Signed, (yyvsp[(1) - (1)].tok));  }
     break;
 
   case 497:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2201 "ANSI-C.y"
     { (yyval.n) = StartPrimType(Unsigned, (yyvsp[(1) - (1)].tok));}
     break;
 
   case 498:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2203 "ANSI-C.y"
     { (yyval.n) = StartPrimType(Short, (yyvsp[(1) - (1)].tok));   }
     break;
 
   case 499:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2204 "ANSI-C.y"
     { (yyval.n) = StartPrimType(Long, (yyvsp[(1) - (1)].tok));    }
     break;
 
   case 501:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2212 "ANSI-C.y"
     { (yyval.n) = ExtendArray((yyvsp[(1) - (4)].n), (yyvsp[(3) - (4)].n), (yyvsp[(2) - (4)].tok)); }
     break;
 
   case 502:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2214 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('.', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 503:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2216 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(ARROW, (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 504:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2218 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(POSTINC, (yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tok)); }
     break;
 
   case 505:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2220 "ANSI-C.y"
     { (yyval.n) = MakeUnaryCoord(POSTDEC, (yyvsp[(1) - (2)].n), (yyvsp[(2) - (2)].tok)); }
     break;
 
   case 506:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2224 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord('.', (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 507:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2226 "ANSI-C.y"
     { (yyval.n) = MakeBinopCoord(ARROW, (yyvsp[(1) - (3)].n), (yyvsp[(3) - (3)].n), (yyvsp[(2) - (3)].tok)); }
     break;
 
   case 508:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2231 "ANSI-C.y"
     { (yyval.n) = OmitLookups() ? (yyvsp[(1) - (1)].n) : LookupPostfixExpression((yyvsp[(1) - (1)].n));}
     break;
 
   case 509:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2235 "ANSI-C.y"
     { (yyval.L) = (List *) NULL; }
     break;
 
   case 510:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2236 "ANSI-C.y"
     { (yyval.L) = (yyvsp[(1) - (1)].L); }
     break;
 
   case 511:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2243 "ANSI-C.y"
     { (yyval.n) = MakeSpawnCoord(NULL, '=', (yyvsp[(2) - (6)].n), (yyvsp[(4) - (6)].L), FALSE, (yyvsp[(1) - (6)].tok)); }
     break;
 
   case 512:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2248 "ANSI-C.y"
     { (yyval.n) = MakeSpawnCoord((yyvsp[(1) - (8)].n), (yyvsp[(2) - (8)].n)->u.binop.op, (yyvsp[(4) - (8)].n), (yyvsp[(6) - (8)].L), FALSE, (yyvsp[(3) - (8)].tok)); }
     break;
 
   case 513:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2252 "ANSI-C.y"
     { (yyval.n) = MakeSyncCoord((yyvsp[(1) - (2)].tok)); }
     break;
 
   case 514:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2256 "ANSI-C.y"
     { (yyval.n) = MakeInletCallCoord((OmitLookups() ? (yyvsp[(1) - (5)].n) : LookupPostfixExpression((yyvsp[(1) - (5)].n))), (yyvsp[(3) - (5)].L), (yyvsp[(2) - (5)].tok)); }
     break;
 
   case 515:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2265 "ANSI-C.y"
     { (yyval.n) = MakeAbortCoord((yyvsp[(1) - (2)].tok)); }
     break;
 
   case 516:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2270 "ANSI-C.y"
     { (yyval.L) = MakeNewList(MakeSpawnCoord(NULL, '=', (yyvsp[(2) - (5)].n), (yyvsp[(4) - (5)].L), TRUE, (yyvsp[(1) - (5)].tok))); }
     break;
 
   case 517:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2272 "ANSI-C.y"
     { (yyval.L) = ConsItem(MakeSpawnCoord(NULL, '=', (yyvsp[(2) - (7)].n), (yyvsp[(4) - (7)].L), TRUE, (yyvsp[(1) - (7)].tok)), (yyvsp[(7) - (7)].L)); }
     break;
 
   case 518:
 
-/* Line 1455 of yacc.c  */
+/* Line 1806 of yacc.c  */
 #line 2277 "ANSI-C.y"
     { (yyval.n) = MakeSynchedCoord((yyvsp[(1) - (1)].tok)); }
     break;
 
 
 
-/* Line 1455 of yacc.c  */
-#line 7132 "ANSI-C.c"
+/* Line 1806 of yacc.c  */
+#line 7162 "ANSI-C.c"
       default: break;
     }
+  /* User semantic actions sometimes alter yychar, and that requires
+     that yytoken be updated with the new translation.  We take the
+     approach of translating immediately before every use of yytoken.
+     One alternative is translating here after every semantic action,
+     but that translation would be missed if the semantic action invokes
+     YYABORT, YYACCEPT, or YYERROR immediately after altering yychar or
+     if it invokes YYBACKUP.  In the case of YYABORT or YYACCEPT, an
+     incorrect destructor might then be invoked immediately.  In the
+     case of YYERROR or YYBACKUP, subsequent parser actions might lead
+     to an incorrect destructor call or verbose syntax error message
+     before the lookahead is translated.  */
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
 
   YYPOPSTACK (yylen);
@@ -7158,6 +7199,10 @@ yyreduce:
 | yyerrlab -- here on detecting error |
 `------------------------------------*/
 yyerrlab:
+  /* Make sure we have latest lookahead translation.  See comments at
+     user semantic actions for why this is necessary.  */
+  yytoken = yychar == YYEMPTY ? YYEMPTY : YYTRANSLATE (yychar);
+
   /* If not already recovering from an error, report this error.  */
   if (!yyerrstatus)
     {
@@ -7165,37 +7210,36 @@ yyerrlab:
 #if ! YYERROR_VERBOSE
       yyerror (YY_("syntax error"));
 #else
+# define YYSYNTAX_ERROR yysyntax_error (&yymsg_alloc, &yymsg, \
+                                        yyssp, yytoken)
       {
-	YYSIZE_T yysize = yysyntax_error (0, yystate, yychar);
-	if (yymsg_alloc < yysize && yymsg_alloc < YYSTACK_ALLOC_MAXIMUM)
-	  {
-	    YYSIZE_T yyalloc = 2 * yysize;
-	    if (! (yysize <= yyalloc && yyalloc <= YYSTACK_ALLOC_MAXIMUM))
-	      yyalloc = YYSTACK_ALLOC_MAXIMUM;
-	    if (yymsg != yymsgbuf)
-	      YYSTACK_FREE (yymsg);
-	    yymsg = (char *) YYSTACK_ALLOC (yyalloc);
-	    if (yymsg)
-	      yymsg_alloc = yyalloc;
-	    else
-	      {
-		yymsg = yymsgbuf;
-		yymsg_alloc = sizeof yymsgbuf;
-	      }
-	  }
-
-	if (0 < yysize && yysize <= yymsg_alloc)
-	  {
-	    (void) yysyntax_error (yymsg, yystate, yychar);
-	    yyerror (yymsg);
-	  }
-	else
-	  {
-	    yyerror (YY_("syntax error"));
-	    if (yysize != 0)
-	      goto yyexhaustedlab;
-	  }
+        char const *yymsgp = YY_("syntax error");
+        int yysyntax_error_status;
+        yysyntax_error_status = YYSYNTAX_ERROR;
+        if (yysyntax_error_status == 0)
+          yymsgp = yymsg;
+        else if (yysyntax_error_status == 1)
+          {
+            if (yymsg != yymsgbuf)
+              YYSTACK_FREE (yymsg);
+            yymsg = (char *) YYSTACK_ALLOC (yymsg_alloc);
+            if (!yymsg)
+              {
+                yymsg = yymsgbuf;
+                yymsg_alloc = sizeof yymsgbuf;
+                yysyntax_error_status = 2;
+              }
+            else
+              {
+                yysyntax_error_status = YYSYNTAX_ERROR;
+                yymsgp = yymsg;
+              }
+          }
+        yyerror (yymsgp);
+        if (yysyntax_error_status == 2)
+          goto yyexhaustedlab;
       }
+# undef YYSYNTAX_ERROR
 #endif
     }
 
@@ -7254,7 +7298,7 @@ yyerrlab1:
   for (;;)
     {
       yyn = yypact[yystate];
-      if (yyn != YYPACT_NINF)
+      if (!yypact_value_is_default (yyn))
 	{
 	  yyn += YYTERROR;
 	  if (0 <= yyn && yyn <= YYLAST && yycheck[yyn] == YYTERROR)
@@ -7313,8 +7357,13 @@ yyexhaustedlab:
 
 yyreturn:
   if (yychar != YYEMPTY)
-     yydestruct ("Cleanup: discarding lookahead",
-		 yytoken, &yylval);
+    {
+      /* Make sure we have latest lookahead translation.  See comments at
+         user semantic actions for why this is necessary.  */
+      yytoken = YYTRANSLATE (yychar);
+      yydestruct ("Cleanup: discarding lookahead",
+                  yytoken, &yylval);
+    }
   /* Do not reclaim the symbols of the rule which action triggered
      this YYABORT or YYACCEPT.  */
   YYPOPSTACK (yylen);
@@ -7339,7 +7388,7 @@ yyreturn:
 
 
 
-/* Line 1675 of yacc.c  */
+/* Line 2067 of yacc.c  */
 #line 2286 "ANSI-C.y"
 
 /* ----end of grammar----*/

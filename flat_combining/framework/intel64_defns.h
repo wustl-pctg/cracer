@@ -10,7 +10,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include <limits.h>
 #include <sys/types.h>
-#include <malloc.h>
+#include <malloc/malloc.h> // Changed for OSX 10.9.4 rsu
 #include <pthread.h>
 #include <sched.h>
 #include <semaphore.h>
@@ -38,7 +38,8 @@ typedef _u64               ptr_t;
 #define get_unmarked_ref(_p)    ((void *)(((ptr_t)(_p)) & ~1UL))
 #define is_marked_ref(_p)       (((ptr_t)(_p)) & 1UL)
 
-#define ALIGNED_MALLOC(_s,_a)		memalign(_a, _s)
+//#define ALIGNED_MALLOC(_s,_a)		memalign(_a, _s)
+#define ALIGNED_MALLOC(_s,_a) malloc(_s);
 #define ALIGNED_FREE(_p)			free(_p)
 
 //////////////////////////////////////////////////////////////////////////

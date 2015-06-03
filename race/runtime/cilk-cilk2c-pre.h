@@ -131,8 +131,12 @@ static inline void *Cilk_cilk2c_init_frame(CilkWorkerState *const ws,
 
   CILK_COMPLAIN((CilkStackFrame **) t < ws->current_cache->stack + ws->stackdepth,
 								(ws->context, ws, USE_PARAMETER(stack_overflow_msg)));
-
   *t = (CilkStackFrame *) f;
+
+  //added for ORDER MAINTENANCE for RACE DETECT
+  if (ws->batch_id == 0) 
+	(*t)->current_node = ((CilkStackFrame *)(*(ws->current_cache->tail - 1)))->next_spawned_node;
+
   Cilk_membar_StoreStore();
   ws->current_cache->tail = t + 1;
 

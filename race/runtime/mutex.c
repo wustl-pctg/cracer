@@ -29,7 +29,7 @@
 #endif
 
 FILE_IDENTITY(ident,
-							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/mutex.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
+			  "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/mutex.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
 
 /***********************************************************\
@@ -55,7 +55,7 @@ static inline void Cilk_mutex_destroy_memory(Cilk_mutex *lock)
  *  Obtain lock <lock>.  Waits until lock is available.
  */
 static inline void Cilk_mutex_wait_memory(CilkWorkerState *const UNUSED(ws),
-																					Cilk_mutex *lock)
+										  Cilk_mutex *lock)
 {
 	if (ACQUIRE(&(lock->memory)) == 0)  /* fast case */
 		return;
@@ -69,7 +69,7 @@ static inline void Cilk_mutex_wait_memory(CilkWorkerState *const UNUSED(ws),
 	 * cache is snooped correctly.
 	 */
 	do {
-	  while (*&(lock->memory) != 0);
+		while (*&(lock->memory) != 0);
 	} while (ACQUIRE(&(lock->memory)) != 0);
 
 	CILK_RMB();
@@ -85,10 +85,10 @@ static inline int Cilk_mutex_try_memory(Cilk_mutex *lock)
 {
 	CILK_WMB();
 	if (ACQUIRE(&(lock->memory)) == 0) {
-	  CILK_RMB();
-	  return 1;
+		CILK_RMB();
+		return 1;
 	} else
-	  return 0;
+		return 0;
 }
 
 /*
@@ -116,8 +116,8 @@ static inline void Cilk_mutex_init_posix(Cilk_mutex *lock)
  *  Obtain lock <lock>.  Waits until lock is available.
  */
 static inline void Cilk_mutex_wait_posix(CilkContext *const UNUSED(context),
-																				 CilkWorkerState *const UNUSED(ws),
-																				 Cilk_mutex *lock)
+										 CilkWorkerState *const UNUSED(ws),
+										 Cilk_mutex *lock)
 {
 	Cilk_enter_state(ws, STATE_WAITING_FOR_LOCK);
 
@@ -141,9 +141,9 @@ static inline void Cilk_mutex_signal_posix(Cilk_mutex *lock)
 static inline int Cilk_mutex_try_posix(Cilk_mutex *lock)
 {
 	if (pthread_mutex_trylock(&lock->posix) == 0) {
-	  return 1;
+		return 1;
 	} else {
-	  return 0;
+		return 0;
 	}
 }
 
@@ -159,49 +159,49 @@ static inline void Cilk_mutex_destroy_posix(Cilk_mutex* lock)
  * Lock glue
  *********************/
 void Cilk_mutex_init(CilkContext *const context,
-										 Cilk_mutex *lock)
+					 Cilk_mutex *lock)
 {
 	if (USE_PARAMETER1(options->memory_locks)) {
-	  Cilk_mutex_init_memory(lock);
+		Cilk_mutex_init_memory(lock);
 	} else {
-	  Cilk_mutex_init_posix(lock);
+		Cilk_mutex_init_posix(lock);
 	}
 }
 
 void Cilk_mutex_wait(CilkContext *const context,
                      CilkWorkerState *const ws,
-										 Cilk_mutex *lock)
+					 Cilk_mutex *lock)
 {
 	if (USE_PARAMETER1(options->memory_locks)) {
-	  Cilk_mutex_wait_memory(ws, lock);
+		Cilk_mutex_wait_memory(ws, lock);
 	} else {
-	  Cilk_mutex_wait_posix(context, ws, lock);
+		Cilk_mutex_wait_posix(context, ws, lock);
 	}
 }
 
 void Cilk_mutex_signal(CilkContext *const context,
-											 Cilk_mutex *lock)
+					   Cilk_mutex *lock)
 {
 	if (USE_PARAMETER1(options->memory_locks)) {
-	  Cilk_mutex_signal_memory(lock);
+		Cilk_mutex_signal_memory(lock);
 	} else {
-	  Cilk_mutex_signal_posix(lock);
+		Cilk_mutex_signal_posix(lock);
 	}
 }
 
 
 int Cilk_mutex_try(CilkContext *const context,
-									 Cilk_mutex *lock)
+				   Cilk_mutex *lock)
 {
 	if (USE_PARAMETER1(options->memory_locks)) {
-	  return Cilk_mutex_try_memory(lock);
+		return Cilk_mutex_try_memory(lock);
 	} else {
-	  return Cilk_mutex_try_posix(lock);
+		return Cilk_mutex_try_posix(lock);
 	}
 }
 
 void Cilk_mutex_destroy(CilkContext *const context,
-												Cilk_mutex *lock)
+						Cilk_mutex *lock)
 {
 	if(USE_PARAMETER1(options->memory_locks)) {
 		Cilk_mutex_destroy_memory(lock);

@@ -29,6 +29,9 @@
 #include <cilk-internal.h>
 #include <string.h>
 #include <time.h>
+#include <stdlib.h>
+#include <RD_and_OM.h>
+#include <assert.h>
 
 #define BATCH_ASSERT(args...) CILK_ASSERT(args)
 
@@ -36,10 +39,10 @@
 // included yet because it depends on some deque manipulation
 // functions. The includes are kind of a mess.
 static void invoke_batch_slow(CilkWorkerState *const _cilk_ws,
-                       BatchFrame *_cilk_frame);
+							  BatchFrame *_cilk_frame);
 
 FILE_IDENTITY(ident,
-							"$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/sched.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
+			  "$HeadURL: https://bradley.csail.mit.edu/svn/repos/cilk/5.4.3/runtime/sched.c $ $LastChangedBy: bradley $ $Rev: 1698 $ $Date: 2004-10-22 22:10:46 -0400 (Fri, 22 Oct 2004) $");
 
 #define CLOSURE_HEAD(cl)  (cl->cache->head)
 #define CLOSURE_EXCEPTION(cl)  (cl->cache->exception)
@@ -48,6 +51,8 @@ FILE_IDENTITY(ident,
 #define CLOSURE_ABORT(cl) (cl->abort_status)
 
 #define NOBODY (-1)   /* invalid processor number */
+
+int global_node_count = 0;
 
 /*
  * SCHEDULER LOCK DIAGRAM
@@ -81,27 +86,27 @@ static inline void Cilk_switch2core(CilkWorkerState *const ws)
  * Basic operations on closures
  *************************************************************/
 static inline  void Closure_checkmagic(CilkWorkerState *const UNUSED(ws),
-																			 Closure *UNUSED(t))
+									   Closure *UNUSED(t))
 {
 	CILK_ASSERT(ws, t->magic == CILK_CLOSURE_MAGIC);
 }
 
 /* assert that t be locked by ourselves */
 static inline void Closure_assert_ownership(CilkWorkerState *const UNUSED(ws),
-																						Closure *UNUSED(t))
+											Closure *UNUSED(t))
 {
 	CILK_ASSERT(ws, t->mutex_owner == ws->self);
 }
 
 /* assert that t be not locked */
 static inline void Closure_assert_alienation(CilkWorkerState *const UNUSED(ws),
-																						 Closure *UNUSED(t))
+											 Closure *UNUSED(t))
 {
 	CILK_ASSERT(ws, t->mutex_owner != ws->self);
 }
 
 static inline void Closure_clean(CilkContext *const context,
-																 Closure *t)
+								 Closure *t)
 {
 	Cilk_mutex_destroy(context, &t->mutex);
 }
@@ -117,7 +122,7 @@ static inline void Closure_destroy(CilkWorkerState *const ws, Closure *t)
 }
 
 static inline void Closure_destroy_malloc(CilkWorkerState *const ws,
-																					Closure *t)
+										  Closure *t)
 {
 	Closure_checkmagic(ws, t);
 
@@ -166,15 +171,15 @@ static void create_deques(CilkContext *const context)
 	int i;
 
 	INIT_PARAMETER1(deques,
-									Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
-																		sizeof(ReadyDeque)));
+					Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
+									  sizeof(ReadyDeque)));
 	CILK_CHECK(USE_PARAMETER1(deques),
-						 (context, NULL, "failed to allocate deques\n"));
+			   (context, NULL, "failed to allocate deques\n"));
 	INIT_PARAMETER1(ds_deques,
-									Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
-																		sizeof(ReadyDeque)));
+					Cilk_malloc_fixed(USE_PARAMETER1(active_size) *
+									  sizeof(ReadyDeque)));
 	CILK_CHECK(USE_PARAMETER1(ds_deques),
-						 (context, NULL, "failed to allocate deques\n"));
+			   (context, NULL, "failed to allocate deques\n"));
 
 	for(i = 0; i < USE_PARAMETER1(active_size); ++i) {
 		Cilk_mutex_init(context, &USE_PARAMETER1(deques)[i].mutex);
@@ -213,28 +218,28 @@ static void free_deques(CilkContext *const context)
 
 /* assert that pn's deque be locked by ourselves */
 static inline void deque_assert_ownership(CilkWorkerState *const UNUSED(ws),
-																					int UNUSED(pn),
-																					ReadyDeque *const deque_pool)
+										  int UNUSED(pn),
+										  ReadyDeque *const deque_pool)
 {
 	CILK_ASSERT(ws, deque_pool[pn].mutex_owner == ws->self);
 }
 
 static inline void deque_assert_alienation(CilkWorkerState *const UNUSED(ws),
-																					 int UNUSED(pn),
-																					 ReadyDeque *const deque_pool)
+										   int UNUSED(pn),
+										   ReadyDeque *const deque_pool)
 {
 	CILK_ASSERT(ws, deque_pool[pn].mutex_owner != ws->self);
 }
 
 static inline void deque_lock(CilkWorkerState *const ws, int pn,
-															ReadyDeque *const deque_pool)
+							  ReadyDeque *const deque_pool)
 {
 	Cilk_mutex_wait(ws->context, ws, &deque_pool[pn].mutex);
 	WHEN_CILK_DEBUG(deque_pool[pn].mutex_owner = ws->self);
 }
 
 static inline void deque_unlock(CilkWorkerState *const ws, int pn,
-																ReadyDeque *const deque_pool)
+								ReadyDeque *const deque_pool)
 {
 	WHEN_CILK_DEBUG(deque_pool[pn].mutex_owner = NOBODY);
 	Cilk_mutex_signal(ws->context, &deque_pool[pn].mutex);
@@ -245,7 +250,7 @@ static inline void deque_unlock(CilkWorkerState *const ws, int pn,
  * of deques
  */
 static Closure *deque_xtract_top(CilkWorkerState *const ws, int pn,
-																 ReadyDeque *const deque_pool)
+								 ReadyDeque *const deque_pool)
 {
 	Closure *cl;
 
@@ -272,7 +277,7 @@ static Closure *deque_xtract_top(CilkWorkerState *const ws, int pn,
 }
 
 static Closure *deque_peek_top(CilkWorkerState *const ws, int pn,
-															 ReadyDeque *const deque_pool)
+							   ReadyDeque *const deque_pool)
 {
 	Closure *cl;
 
@@ -290,7 +295,7 @@ static Closure *deque_peek_top(CilkWorkerState *const ws, int pn,
 }
 
 static Closure *deque_xtract_bottom(CilkWorkerState *const ws, int pn,
-																		ReadyDeque *const deque_pool)
+									ReadyDeque *const deque_pool)
 {
 	Closure *cl;
 
@@ -317,7 +322,7 @@ static Closure *deque_xtract_bottom(CilkWorkerState *const ws, int pn,
 }
 
 static Closure *deque_peek_bottom(CilkWorkerState *const ws, int pn,
-																	ReadyDeque *const deque_pool)
+								  ReadyDeque *const deque_pool)
 {
 	Closure *cl;
 
@@ -338,7 +343,7 @@ static Closure *deque_peek_bottom(CilkWorkerState *const ws, int pn,
  * Unused code, which may be useful if you hack the scheduler.
  */
 static void deque_add_top(CilkWorkerState *const ws, Closure *cl, int pn,
-													ReadyDeque *const deque_pool)
+						  ReadyDeque *const deque_pool)
 {
 	deque_assert_ownership(ws, pn, deque_pool);
 	CILK_ASSERT(ws, cl->owner_ready_deque == NOBODY);
@@ -358,7 +363,7 @@ static void deque_add_top(CilkWorkerState *const ws, Closure *cl, int pn,
 #endif
 
 static void deque_add_bottom(CilkWorkerState *const ws, Closure *cl, int pn,
-														 ReadyDeque *const deque_pool)
+							 ReadyDeque *const deque_pool)
 {
 	deque_assert_ownership(ws, pn, deque_pool);
 	CILK_ASSERT(ws, cl->owner_ready_deque == NOBODY);
@@ -377,8 +382,8 @@ static void deque_add_bottom(CilkWorkerState *const ws, Closure *cl, int pn,
 }
 
 static inline void deque_assert_is_bottom(CilkWorkerState *const ws,
-																					Closure *UNUSED(t),
-																					ReadyDeque *const deque_pool)
+										  Closure *UNUSED(t),
+										  ReadyDeque *const deque_pool)
 {
 	deque_assert_ownership(ws, ws->self, deque_pool);
 	CILK_ASSERT(ws, t == deque_peek_bottom(ws, ws->self, deque_pool));
@@ -386,8 +391,8 @@ static inline void deque_assert_is_bottom(CilkWorkerState *const ws,
 
 /* Remove closure for frame f from bottom of pn's deque and free them */
 void Cilk_remove_and_free_closure_and_frame(CilkWorkerState *const ws,
-																						CilkStackFrame *f, int pn,
-																						ReadyDeque *const deque_pool)
+											CilkStackFrame *f, int pn,
+											ReadyDeque *const deque_pool)
 {
 	Closure *t;
 
@@ -408,7 +413,7 @@ void Cilk_remove_and_free_closure_and_frame(CilkWorkerState *const ws,
  * of procedure whose signature is p.
  */
 static inline CilkProcInfo *get_CilkProcInfo(CilkWorkerState *const UNUSED(ws),
-																						 CilkProcInfo * p, int entry)
+											 CilkProcInfo * p, int entry)
 {
 	CILK_ASSERT(ws, entry > 0);
 	return p + entry;
@@ -436,7 +441,7 @@ static inline int Closure_has_children(Closure *cl)
 }
 
 static inline void Closure_init(CilkContext *const context,
-																CilkWorkerState *const UNUSED(ws), Closure *new)
+								CilkWorkerState *const UNUSED(ws), Closure *new)
 {
 	Cilk_mutex_init(context, &new->mutex);
 
@@ -492,8 +497,8 @@ Closure *Cilk_Closure_create_malloc(CilkContext *const context, CilkWorkerState 
  */
 static struct InletClosure
 *make_incomplete_inlet_closure(CilkWorkerState *const ws,
-															 Closure *parent,
-															 int entry)
+							   Closure *parent,
+							   int entry)
 {
 	struct InletClosure *p;
 	CilkStackFrame *f;
@@ -524,7 +529,7 @@ static struct InletClosure
 		p->inlet_args = Cilk_internal_malloc(ws, p->argsize);
 
 		memcpy((void *) p->inlet_args,
-					 (char *) f + info->argindex, p->argsize);
+			   (char *) f + info->argindex, p->argsize);
 	} else {
 		/*
 		 * in the non-inlet case, we use the inlet_args field
@@ -543,8 +548,8 @@ static struct InletClosure
  * tree.  Consequently, these operations are private
  */
 static void Closure_add_child(CilkWorkerState *const ws,
-															Closure *parent,
-															Closure *child)
+							  Closure *parent,
+							  Closure *child)
 {
 	struct InletClosure *p;
 
@@ -567,8 +572,8 @@ static void Closure_add_child(CilkWorkerState *const ws,
 }
 
 static struct InletClosure *Closure_remove_child(CilkWorkerState *const ws,
-																								 Closure *parent,
-																								 Closure *child)
+												 Closure *parent,
+												 Closure *child)
 {
 	struct InletClosure **q;
 	struct InletClosure *p;
@@ -588,7 +593,7 @@ static struct InletClosure *Closure_remove_child(CilkWorkerState *const ws,
 	Cilk_die_internal(ws->context, ws, "BUG in Closure_remove_child\n");
 	p = NULL;
 
- found:
+found:
 	return p;
 }
 
@@ -626,7 +631,7 @@ static struct InletClosure *Closure_remove_child(CilkWorkerState *const ws,
 #endif
 
 static inline void increment_exception_pointer(CilkWorkerState *const ws,
-																							 Closure *cl)
+											   Closure *cl)
 {
 	Closure_assert_ownership(ws, cl);
 
@@ -641,7 +646,7 @@ static inline void increment_exception_pointer(CilkWorkerState *const ws,
 }
 
 static inline void decrement_exception_pointer(CilkWorkerState *const ws,
-																							 Closure *cl)
+											   Closure *cl)
 {
 	Closure_assert_ownership(ws, cl);
 
@@ -652,7 +657,7 @@ static inline void decrement_exception_pointer(CilkWorkerState *const ws,
 }
 
 static inline void reset_exception_pointer(CilkWorkerState *const ws,
-																					 Closure *cl)
+										   Closure *cl)
 {
 	Closure_assert_ownership(ws, cl);
 
@@ -660,7 +665,7 @@ static inline void reset_exception_pointer(CilkWorkerState *const ws,
 }
 
 static inline void signal_immediate_exception(CilkWorkerState *const ws,
-																							Closure *cl)
+											  Closure *cl)
 {
 	Closure_assert_ownership(ws, cl);
 
@@ -756,7 +761,7 @@ static inline void maybe_reset_abort(Closure *cl)
 
 
 static void recursively_signal_abort(CilkWorkerState *const ws,
-																		 Closure *cl, enum AbortStatus s)
+									 Closure *cl, enum AbortStatus s)
 {
 	struct InletClosure *p;
 
@@ -862,8 +867,8 @@ static void Closure_make_ready(Closure *cl)
  * Returns the child.
  */
 static Closure *promote_child(CilkWorkerState *const ws,
-															Closure *parent, int victim,
-															ReadyDeque *const deque_pool)
+							  Closure *parent, int victim,
+							  ReadyDeque *const deque_pool)
 {
 	Closure *child = Closure_create(ws);
 
@@ -900,7 +905,7 @@ static Closure *promote_child(CilkWorkerState *const ws,
  * the promotion complete.
  */
 void finish_promote(CilkWorkerState *const ws,
-										Closure *parent, Closure *child)
+					Closure *parent, Closure *child)
 {
 	Closure_assert_ownership(ws, parent);
 	Closure_assert_alienation(ws, child);
@@ -923,7 +928,7 @@ void finish_promote(CilkWorkerState *const ws,
  * stolen closure, or NULL if none.
  */
 static Closure *Closure_steal(CilkWorkerState *const ws, int victim,
-															ReadyDeque *const deque_pool)
+							  ReadyDeque *const deque_pool)
 {
 	Closure *res = (Closure *) NULL;
 	Closure *cl, *child;
@@ -1010,19 +1015,19 @@ static Closure *Closure_steal(CilkWorkerState *const ws, int victim,
 	}
 #if CILK_STATS
 	if (res) {
-    if (ws->batch_id) {
+		if (ws->batch_id) {
 			USE_SHARED(batch_steals_success)[ws->self]++;
-      if (res->frame->sig->inlet != invoke_batch_slow) {
-        USE_SHARED(batch_steals_real)[ws->self]++;
-      }
-    }
-    USE_SHARED(num_steals)[ws->self]++;
-  } else {
-    if (ws->batch_id) {
-      USE_SHARED(batch_steals_fail)[ws->self]++;
-    }
-    USE_SHARED(num_steals_fail)[ws->self]++;
-  }
+			if (res->frame->sig->inlet != invoke_batch_slow) {
+				USE_SHARED(batch_steals_real)[ws->self]++;
+			}
+		}
+		USE_SHARED(num_steals)[ws->self]++;
+	} else {
+		if (ws->batch_id) {
+			USE_SHARED(batch_steals_fail)[ws->self]++;
+		}
+		USE_SHARED(num_steals_fail)[ws->self]++;
+	}
 #endif
 
 	return res;
@@ -1048,7 +1053,7 @@ static void signal_abort_from_inlet(CilkWorkerState *const ws, Closure *cl)
 	Closure_assert_ownership(ws, cl);
 
 	if (cl->status == CLOSURE_RUNNING &&
-			!Closure_at_top_of_stack(cl)) {
+		!Closure_at_top_of_stack(cl)) {
 		/*
 		 * if closure is running and the frame is not on the top,
 		 * then, poll_inlets is called in exception_handler.  So,
@@ -1083,7 +1088,7 @@ static void signal_abort_from_inlet(CilkWorkerState *const ws, Closure *cl)
  * aborted.
  */
 static void apply_inlet(CilkWorkerState *const ws,
-												Closure *cl, struct InletClosure *i)
+						Closure *cl, struct InletClosure *i)
 {
 	void *receiver = i->receiver;
 	int argsize = i->argsize;
@@ -1134,7 +1139,7 @@ static void poll_inlets(CilkWorkerState *const ws, Closure *cl)
 
 	Closure_assert_ownership(ws, cl);
 	if (cl->status == CLOSURE_RUNNING &&
-			!Closure_at_top_of_stack(cl))
+		!Closure_at_top_of_stack(cl))
 		/*
 		 * If we get here, poll_inlets has been called by
 		 * the exception handler
@@ -1163,8 +1168,8 @@ static void poll_inlets(CilkWorkerState *const ws, Closure *cl)
 }
 
 static void complete_and_enque_inlet(CilkWorkerState *const ws,
-																		 Closure *parent, Closure *child,
-																		 struct InletClosure *i)
+									 Closure *parent, Closure *child,
+									 struct InletClosure *i)
 {
 	Closure_assert_ownership(ws, parent);
 	Cilk_event(ws, EVENT_RETURN_ENQUEUE);
@@ -1175,10 +1180,10 @@ static void complete_and_enque_inlet(CilkWorkerState *const ws,
 	CILK_COMPLAIN
 		(child->return_size <= i->argsize,
 		 (ws->context, ws,
-			"Cilk runtime system: invalid size of a return-ed value.\n"
-			"Either some internal Cilk data structure is corrupted,\n"
-			"or you have inconsistent prototypes across different files.\n"
-			"(E.g., cilk int foo(...)  and  cilk double foo(...))\n"));
+		  "Cilk runtime system: invalid size of a return-ed value.\n"
+		  "Either some internal Cilk data structure is corrupted,\n"
+		  "or you have inconsistent prototypes across different files.\n"
+		  "(E.g., cilk int foo(...)  and  cilk double foo(...))\n"));
 
 	if (child->return_size) {
 		CILK_ASSERT(ws, i->inlet_args != NULL);
@@ -1204,7 +1209,7 @@ static Closure *provably_good_steal_maybe(CilkWorkerState *const ws, Closure *pa
 	Closure_assert_ownership(ws, parent);
 
 	if (!Closure_has_children(parent) &&
-			parent->status == CLOSURE_SUSPENDED) {
+		parent->status == CLOSURE_SUSPENDED) {
 		/* do a provably-good steal; this is *really* simple */
 		res = parent;
 
@@ -1304,7 +1309,7 @@ static Closure *Closure_return(CilkWorkerState *const ws, Closure *child)
  * suspend protocol
  */
 static void Closure_suspend(CilkWorkerState *const ws, Closure *cl,
-														ReadyDeque *const deque_pool)
+							ReadyDeque *const deque_pool)
 {
 	Closure *cl1;
 
@@ -1327,21 +1332,20 @@ static void Closure_suspend(CilkWorkerState *const ws, Closure *cl,
  *************************************************************/
 /* destruction of a slow frame */
 void Cilk_destroy_frame(CilkWorkerState *const ws,
-												CilkStackFrame *f, size_t size)
+						CilkStackFrame *f, size_t size)
 {
-	// ******** This have anything to do with the right deque?
 	WHEN_CILK_ALLOCA(
-									 {
-										 if (f->alloca_h)
-											 Cilk_unalloca_internal(ws, f);
-									 });
+		{
+			if (f->alloca_h)
+				Cilk_unalloca_internal(ws, f);
+		});
 
 	Cilk_internal_free(ws, f, size);
 }
 
 /* at a slow sync; return 0 if the sync succeeds, and 1 if suspended */
 /* Unfortunately, the macro which calls this function, CILK2C_SYNC,
- * is generated by the cilk2c translator, so I can't changed this
+ * is generated by the cilk2c translator, so I can't change this
  * function to take a ReadyDeque argument without changing cilk2c,
  * which would be a huge pain. */
 int Cilk_sync(CilkWorkerState *const ws)
@@ -1382,7 +1386,7 @@ int Cilk_sync(CilkWorkerState *const ws)
 #if CILK_TIMING
 /* update work and CP after a slow sync */
 void Cilk_after_sync_slow_cp(CilkWorkerState *const ws,
-														 Cilk_time *work, Cilk_time *cp)
+							 Cilk_time *work, Cilk_time *cp)
 {
 	Closure *t;
 
@@ -1409,8 +1413,8 @@ void Cilk_after_sync_slow_cp(CilkWorkerState *const ws,
 #endif
 
 static void move_result_into_closure(CilkWorkerState *const ws,
-																		 Closure *t, void *resultp,
-																		 int size)
+									 Closure *t, void *resultp,
+									 int size)
 {
 	Closure_assert_ownership(ws, t);
 	t->return_size = size;
@@ -1485,7 +1489,7 @@ int Cilk_exception_handler(CilkWorkerState *const ws, void *resultp, int size)
 	reset_exception_pointer(ws, t);
 
 	CILK_ASSERT(ws, t->status == CLOSURE_RUNNING ||
-							t->status == CLOSURE_RETURNING);
+				t->status == CLOSURE_RETURNING);
 
 	if (CLOSURE_HEAD(t) >= CLOSURE_TAIL(t)) {
 		Cilk_event(ws, EVENT_EXCEPTION_STEAL);
@@ -1555,7 +1559,7 @@ void Cilk_set_result(CilkWorkerState *const ws, void *resultp, int size)
 	 * no abort at all, or the parent is trying to kill us
 	 */
 	CILK_ASSERT(ws, CLOSURE_ABORT(t) == NO_ABORT ||
-							CLOSURE_ABORT(t) == ABORT_ALL);
+				CLOSURE_ABORT(t) == ABORT_ALL);
 
 	t->status = CLOSURE_RETURNING;
 	t->frame = (CilkStackFrame *) NULL;
@@ -1634,7 +1638,7 @@ static Closure *return_value(CilkWorkerState *const ws, Closure *t)
  * result.
  */
 static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
-																ReadyDeque *const deque_pool)
+								ReadyDeque *const deque_pool)
 {
 	Closure *res = NULL;
 	CilkStackFrame *f;
@@ -1694,8 +1698,8 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 
 	default:
 		Cilk_die_internal(ws->context, ws,
-											"BUG in do_what_it_says(), t->status = %d\n",
-											t->status);
+						  "BUG in do_what_it_says(), t->status = %p\n",
+						  t->status);
 		break;
 	}
 
@@ -1708,20 +1712,19 @@ static Closure *do_what_it_says(CilkWorkerState *const ws, Closure *t,
 void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 {
 	int victim;
-	int batch = 0;
 
 	CILK_ASSERT(ws, ws->self >= 0);
 	rts_srand(ws, ws->self * 162347);
-	ReadyDeque* deque_pool = USE_PARAMETER(deques);
 
 	Cilk_enter_state(ws, STATE_TOTAL);
 
 	while (!USE_SHARED(done)) {
+
 		if (!t) {
 			/* try to get work from our local queue */
-			deque_lock(ws, ws->self, deque_pool);
-			t = deque_xtract_bottom(ws, ws->self, deque_pool);
-			deque_unlock(ws, ws->self, deque_pool);
+			deque_lock(ws, ws->self, ws->current_deque_pool);
+			t = deque_xtract_bottom(ws, ws->self, ws->current_deque_pool);
+			deque_unlock(ws, ws->self, ws->current_deque_pool);
 		}
 
 		/* otherwise, steal */
@@ -1731,35 +1734,21 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 
 			// Decide where to steal from
 			if ((rts_rand(ws) % 99)+1 <= USE_PARAMETER(dsprob)) {
-
-				Cilk_enter_state(ws, STATE_BATCH_STEALING);
-				batch = 1;
-				// data structure steal
-				victim = rts_rand(ws) % USE_PARAMETER(active_size);
-
-				if (victim != ws->self) {
-					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
-				}
-
-				Cilk_exit_state(ws, STATE_BATCH_STEALING);
-
-			} else { // regular steal
-
-				victim = rts_rand(ws) % USE_PARAMETER(active_size);
-
-				if (victim != ws->self) {
-					t = Closure_steal(ws, victim, USE_PARAMETER(deques));
-				}
-
+				Cilk_switch2batch(ws);
+			} else {
+				Cilk_switch2core(ws);
 			}
-			//			t = Closure_steal(ws, victim, deque_pool);
+			victim = rts_rand(ws) % USE_PARAMETER(active_size);
+
+			if (victim != ws->self) {
+				t = Closure_steal(ws, victim, ws->current_deque_pool);
+			}
 
 			if (!t && USE_PARAMETER(options->yieldslice) &&
-					!USE_SHARED(done)) {
+				!USE_SHARED(done)) {
 				Cilk_lower_priority(ws);
 			}
 
-			/* Cilk_fence(); */
 			Cilk_exit_state(ws, STATE_STEALING);
 		} // End Stealing
 
@@ -1767,15 +1756,7 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 			Cilk_raise_priority(ws);
 
 		if (t && !USE_SHARED(done)) {
-			if (batch) {
-				Cilk_switch2batch(ws);
-				deque_pool = USE_PARAMETER(ds_deques);
-			}
-			t = do_what_it_says(ws, t, deque_pool);
-			if (batch) {
-				Cilk_switch2core(ws);
-				USE_PARAMETER(deques);
-			}
+			t = do_what_it_says(ws, t, ws->current_deque_pool);
 		}
 
 		/*
@@ -1796,46 +1777,47 @@ void Cilk_scheduler(CilkWorkerState *const ws, Closure *t)
 
 static inline int batch_done_yet(CilkWorkerState *const ws, int batch_id)
 {
-  // Don't need to check the status, but it might reduce contention.
-  //  return USE_SHARED(pending_batch).array[ws->self].status == DS_DONE
-  //    &&
-  return USE_SHARED(current_batch_id) > batch_id;
+	// Don't need to check the status, but it might reduce contention.
+	//  return USE_SHARED(pending_batch).array[ws->self].status == DS_DONE
+	//    &&
+	return USE_SHARED(current_batch_id) > batch_id;
 }
 
 #define MUSEC_IN_SEC 1000000
-#define ELAPSED(begin, diff) \
-  (double)(diff.tv_sec * MUSEC_IN_SEC + diff.tv_usec -\
-           (begin.tv_sec * MUSEC_IN_SEC + begin.tv_usec))
+#define ELAPSED(begin, diff)								\
+	(double)(diff.tv_sec * MUSEC_IN_SEC + diff.tv_usec -	\
+			 (begin.tv_sec * MUSEC_IN_SEC + begin.tv_usec))
 
 // Return 1 if the batch is actually done.
 static inline int batch_sleep(CilkWorkerState *const ws,
                               unsigned int num_microseconds, int batch_id)
 {
-  struct timeval begin, diff;
-  gettimeofday(&begin, NULL);
-  gettimeofday(&diff, NULL);
-  while(ELAPSED(begin,diff) < num_microseconds) {
+	struct timeval begin, diff;
+	gettimeofday(&begin, NULL);
+	gettimeofday(&diff, NULL);
+	while(ELAPSED(begin,diff) < num_microseconds) {
 
-    if (batch_done_yet(ws, batch_id)) return 1;
+		if (batch_done_yet(ws, batch_id)) return 1;
 
-    gettimeofday(&diff, NULL);
+		gettimeofday(&diff, NULL);
 
-  }
-  return 0;
+	}
+	return 0;
 }
 
-void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
+void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id,
+                     Closure* t)
 {
 	int victim, should_steal;
 	int done = 0;
-  Closure* t = NULL;
+	Closure* batch_closure = USE_PARAMETER(invoke_batch);
 
 	Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 
 	CILK_ASSERT(ws, ws->self >= 0);
 	CILK_ASSERT(ws, batch_id >= 0);
 
-  while (!batch_done_yet(ws, ws->batch_id)) {
+	while (!batch_done_yet(ws, ws->batch_id)) {
 		if (!t) {
 			/* try to get work from the local ds queue */
 			deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
@@ -1850,46 +1832,47 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 		while (!t && !batch_done_yet(ws, ws->batch_id)) {
 			// Otherwise, steal
 
-      should_steal = (rts_rand(ws) % 99) + 1;
+			should_steal = (rts_rand(ws) % 99) + 1;
 			if (should_steal <= USE_PARAMETER(batchprob)) {
-        Cilk_enter_state(ws, STATE_BATCH_STEALING);
+				Cilk_enter_state(ws, STATE_BATCH_STEALING);
 
-        if (should_steal <= USE_PARAMETER(bias)) {
-          victim = USE_SHARED(batch_owner);
-        } else {
-          victim = rts_rand(ws) % USE_PARAMETER(active_size);
-        }
+				if (should_steal <= USE_PARAMETER(bias)) {
+					victim = USE_SHARED(batch_owner);
+				} else {
+					victim = rts_rand(ws) % USE_PARAMETER(active_size);
+				}
 
 				if (victim != ws->self && victim != -1
-						&& USE_SHARED(pending_batch).array[victim].status
-            == DS_IN_PROGRESS) {
+					&& USE_SHARED(pending_batch).array[victim].status
+					== DS_IN_PROGRESS) {
 
 					t = Closure_steal(ws, victim, USE_PARAMETER(ds_deques));
 
 					if (!t && USE_PARAMETER(options->yieldslice) &&
-							USE_SHARED(current_batch_id) == batch_id) {
+						USE_SHARED(current_batch_id) == batch_id) {
 						Cilk_lower_priority(ws);
 					}
 				}
-        Cilk_exit_state(ws, STATE_BATCH_STEALING);
+				Cilk_exit_state(ws, STATE_BATCH_STEALING);
 			}
+
 			if (batch_done_yet(ws, batch_id)) {
 				done = 1;
 				break;
 			} else if (!t) {
-        //        nanosleep(&USE_PARAMETER(sleeptime), NULL);
-        if (batch_sleep(ws, USE_PARAMETER(sleeptime), batch_id)) break;
-      }
+				//        nanosleep(&USE_PARAMETER(sleeptime), NULL);
+				if (batch_sleep(ws, USE_PARAMETER(sleeptime), batch_id)) break;
+			}
 		}
-    if (!t && done) break;
+		if (!t && done) break;
 
 		if (USE_PARAMETER(options->yieldslice))
 			Cilk_raise_priority(ws);
 
 		if (t) {
-      Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
+			Cilk_exit_state(ws, STATE_BATCH_SCHEDULING);
 			t = do_what_it_says(ws, t, USE_PARAMETER(ds_deques));
-      Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
+			Cilk_enter_state(ws, STATE_BATCH_SCHEDULING);
 		}
 	}
 
@@ -1900,160 +1883,1243 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id)
 }
 
 void Cilk_batchify(CilkWorkerState *const ws,
-									 InternalBatchOperation op, void *dataStruct,
-									 void *data, size_t dataSize, void *indvResult)
+				   InternalBatchOperation op, void *ds,
+				   void *data, size_t data_size, void *indv_result)
 {
-  unsigned int i, batch_id;
-  int num_spots = USE_PARAMETER(batchvals);
-  Batch* pending = &USE_SHARED(pending_batch);
-  int* work_array = USE_SHARED(batch_work_array);
+	unsigned int num_ops, batch_id;
+	int num_spots = USE_PARAMETER(batchvals);
+	Batch* pending = &USE_SHARED(pending_batch);
+	void* work_array = USE_SHARED(batch_work_array);
 
-  BatchRecord *record = &pending->array[ws->self];
-  record->status = DS_WAITING;
-  record->args = data;
+	BatchRecord *record = &pending->array[ws->self];
+	record->operation = op;
+	record->args = data;
+	record->size = data_size;
+	record->result = indv_result;
 
-  int* status = (int*) &record->status;
-  Cilk_switch2batch(ws); // done in batch_scheduler
+	Cilk_fence();
+	asm volatile ("" : : : "memory");
 
-  do {
+	record->status = DS_WAITING;
 
-    // We can get rid of one of these.
-    ws->batch_id = USE_SHARED(current_batch_id);
-    batch_id = USE_SHARED(current_batch_id);
+	int* status = (int*) &record->status;
+	Cilk_switch2batch(ws); // done in batch_scheduler
+
+	do {
+
+		// We can get rid of one of these.
+		ws->batch_id = USE_SHARED(current_batch_id);
+		batch_id = USE_SHARED(current_batch_id);
 
 		if (*status == DS_WAITING &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
+			0 == USE_SHARED(batch_lock) &&
+			0 == USE_SHARED(batch_lock) &&
+			0 == USE_SHARED(batch_lock) &&
+			__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
 
-      USE_SHARED(batch_owner) = ws->self;
-      ws->batch_id = USE_SHARED(current_batch_id);
-      pending->batch_no = ws->batch_id;
+			USE_SHARED(batch_owner) = ws->self;
+			ws->batch_id = USE_SHARED(current_batch_id);
+			pending->batch_no = ws->batch_id;
 
-      i = compact(ws, pending, work_array, NULL);
+			// Resize if necessary.
+			if (data_size > pending->data_size) {
 
-      Closure* t = USE_PARAMETER(invoke_batch);
-      BatchFrame* f = USE_SHARED(batch_frame);
+				Cilk_free(USE_SHARED(batch_work_array));
+				USE_SHARED(batch_work_array) =
+					Cilk_malloc(USE_PARAMETER(active_size)
+								* data_size
+								* USE_PARAMETER(batchvals));
+				work_array = USE_SHARED(batch_work_array);
+				pending->data_size = data_size;
+			}
 
-      reset_batch_closure(ws->context);
 
-      // Only need these for the slow version.
-      f->args->ds = dataStruct;
-      f->args->work_array = (void*)work_array;
-      f->args->num_ops = i;
-      f->args->op = op;
+			num_ops = compact(ws, pending, work_array, record);
 
-      invoke_batch(ws, dataStruct, op, i);
+			Closure* t = USE_PARAMETER(invoke_batch);
+			BatchFrame* f = USE_SHARED(batch_frame);
 
-    } else {
-      ws->batch_id = USE_SHARED(current_batch_id);
-      batch_scheduler(ws, batch_id);
+			// Only need these for the slow version.
+			f->args->ds = ds;
+			f->args->work_array = (void*)work_array;
+			f->args->num_ops = num_ops;
+			f->args->op = op;
+
+			/* deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); */
+			/* Closure_lock(ws, t); */
+			/* setup_for_execution(ws, t); */
+			/* Closure_unlock(ws, t); */
+			/* deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques)); */
+			/* deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques)); */
+
+			reset_batch_closure(ws->context);
+
+			batch_scheduler(ws, ws->batch_id, t);
+			/* do_what_it_says(ws, t, USE_PARAMETER(ds_deques)); */
+			//      invoke_batch(ws, ds, op, num_ops);
+
+		} else {
+			ws->batch_id = USE_SHARED(current_batch_id);
+			batch_scheduler(ws, batch_id, NULL);
 		}
-  } while (*status != DS_DONE);
+	} while (*status != DS_DONE);
 
-  ws->batch_id = 0;
+	ws->batch_id = 0;
 
-  Cilk_switch2core(ws); // done in batch_scheduler
-  return;
+	Cilk_switch2core(ws); // done in batch_scheduler
+	return;
 
 }
 
 // Do the collect, but just call the operation - don't use invoke_batch_slow
 void Cilk_batchify_sequential(CilkWorkerState * const ws,
-															CilkBatchSeqOperation op, void *dataStruct,
-															void *data, size_t dataSize, void *indvResult)
+							  CilkBatchSeqOperation op, void *dataStruct,
+							  void *data, size_t dataSize, void *indvResult)
 {
-  unsigned int i;
-  Batch* pending = &USE_SHARED(pending_batch);
-  int* work_array = USE_SHARED(batch_work_array);
+	unsigned int i;
+	Batch* pending = &USE_SHARED(pending_batch);
+	int* work_array = USE_SHARED(batch_work_array);
 
-  BatchRecord* record = &pending->array[ws->self];
-  record->status = DS_WAITING;
-  record->args = (int*)data;
+	BatchRecord* record = &pending->array[ws->self];
+	record->status = DS_WAITING;
+	record->args = (int*)data;
 
-  int* status = (int*)&record->status;
-  //  Cilk_switch2batch(ws);
+	int* status = (int*)&record->status;
+	//  Cilk_switch2batch(ws);
 
-  do {
-    ws->batch_id = USE_SHARED(current_batch_id);
+	do {
+		ws->batch_id = USE_SHARED(current_batch_id);
 		if (*status == DS_WAITING &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
+			0 == USE_SHARED(batch_lock) &&
+			0 == USE_SHARED(batch_lock) &&
+			0 == USE_SHARED(batch_lock) &&
+			__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
 
-      ws->batch_id = USE_SHARED(current_batch_id);
-      i = compact(ws, pending, work_array, NULL);
+			ws->batch_id = USE_SHARED(current_batch_id);
+			i = compact(ws, pending, work_array, NULL);
 
-      op(pending, dataStruct, (void*)work_array, i, NULL);
+			op(pending, dataStruct, (void*)work_array, i, NULL);
 
-      Cilk_terminate_batch(ws);
-      //      USE_SHARED(batch_lock) = 0;
-      break;
-    } else {
-      //      nanosleep(&USE_PARAMETER(sleeptime), NULL);
-      if (batch_sleep(ws, USE_PARAMETER(sleeptime), ws->batch_id)) break;
+			Cilk_terminate_batch(ws);
+			//      USE_SHARED(batch_lock) = 0;
+			break;
+		} else {
+			//      nanosleep(&USE_PARAMETER(sleeptime), NULL);
+			if (batch_sleep(ws, USE_PARAMETER(sleeptime), ws->batch_id)) break;
 		}
-  } while (*status != DS_DONE);
+	} while (*status != DS_DONE);
 
-  //  Cilk_switch2core(ws);
+	//  Cilk_switch2core(ws);
 	return;
 
 }
 
 void Cilk_batchify_raw(CilkWorkerState *const ws,
-											 CilkBatchSeqOperation op, void *dataStruct,
-											 void *data, size_t dataSize, void *indvResult)
+					   CilkBatchSeqOperation op, void *dataStruct,
+					   void *data, size_t dataSize, void *indvResult)
 {
-  unsigned int i;
-  Batch* pending = &USE_SHARED(pending_batch);
-  int* work_array = USE_SHARED(batch_work_array);
+	unsigned int i;
+	Batch* pending = &USE_SHARED(pending_batch);
+	int* work_array = USE_SHARED(batch_work_array);
 
-  BatchRecord* record = &pending->array[ws->self];
-  record->status = DS_WAITING;
+	BatchRecord* record = &pending->array[ws->self];
+	record->status = DS_WAITING;
 
 	// Memcpy is slower than a simple array insertion. I'm not quite
 	//sure why this is so. Maybe the compiler can do some extra optimization?
-  ///  __builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
-  work_array[ws->self] = *(int*)data;
-  int* status = (int*)&record->status;
+	///  __builtin_memcpy(work_array + sizeof(helper)*ws->self, data, sizeof(helper));
+	work_array[ws->self] = *(int*)data;
+	int* status = (int*)&record->status;
 
-  Cilk_switch2batch(ws);
+	Cilk_switch2batch(ws);
 
-  do {
-    ws->batch_id = USE_SHARED(current_batch_id);
+	do {
+		ws->batch_id = USE_SHARED(current_batch_id);
 		if (*status == DS_WAITING &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-        0 == USE_SHARED(batch_lock) &&
-				__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
+			0 == USE_SHARED(batch_lock) &&
+			0 == USE_SHARED(batch_lock) &&
+			0 == USE_SHARED(batch_lock) &&
+			__sync_bool_compare_and_swap(&USE_SHARED(batch_lock), 0, 1)) {
 
-      ws->batch_id = USE_SHARED(current_batch_id);
+			ws->batch_id = USE_SHARED(current_batch_id);
 
-      Batch* pending = &USE_SHARED(pending_batch);
+			Batch* pending = &USE_SHARED(pending_batch);
 
-      for (i = 0; i < USE_PARAMETER(active_size); i++) {
-        if (pending->array[i].status == DS_WAITING)
-          pending->array[i].status = DS_IN_PROGRESS;
-      }
+			for (i = 0; i < USE_PARAMETER(active_size); i++) {
+				if (pending->array[i].status == DS_WAITING)
+					pending->array[i].status = DS_IN_PROGRESS;
+			}
 
-      op(pending, dataStruct, (void*)work_array, USE_PARAMETER(active_size), NULL);
+			op(pending, dataStruct, (void*)work_array, USE_PARAMETER(active_size), NULL);
 
-      Cilk_terminate_batch(ws);
+			Cilk_terminate_batch(ws);
 
-      //      USE_SHARED(batch_lock) = 0;
-      break;
-    } else {
-      //      nanosleep(&USE_PARAMETER(sleeptime), NULL);
-      if (batch_sleep(ws, USE_PARAMETER(sleeptime), ws->batch_id)) break;
+			//      USE_SHARED(batch_lock) = 0;
+			break;
+		} else {
+			//      nanosleep(&USE_PARAMETER(sleeptime), NULL);
+			if (batch_sleep(ws, USE_PARAMETER(sleeptime), ws->batch_id)) break;
 		}
-  } while (*status != DS_DONE);
+	} while (*status != DS_DONE);
 
-  Cilk_switch2core(ws);
+	Cilk_switch2core(ws);
 
 	return;
 }
+
+/*!
+**************************************************
+*   Order Maintenance Data Structure Functions   *
+**************************************************/
+
+#define ENGLISH_ID 10
+#define HEBREW_ID 11
+
+#ifndef PARALLEL_OM_DS
+	#include "OM_DS_LL.c"
+#else
+	#include "OM_DS_TREE.c"
+#endif
+
+/**************************************************
+ *     Runtime Functions Utilizing the OM-DS      *
+ **************************************************/
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  OM_DS_init
+ *  Description:  Takes the provided runtime context and initializes english and hebrew ds's.
+ * =====================================================================================
+ */
+void OM_DS_init(CilkContext *const context){
+/// Define CILK running parameters
+//#define RD_DEBUG
+
+	if (context->Cilk_global_state){
+		// Create top lists
+		context->Cilk_global_state->englishOM_DS = create_tl();
+		context->Cilk_global_state->hebrewOM_DS  = create_tl();
+	}
+#ifdef RD_DEBUG
+	else {
+		printf ( "No cilk global state. Can't fulfill OM_DS_init\n" );
+	}
+#endif
+}
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  setup_runtime_node
+ *  Description:  Instantiates a provided Runtime_node's parameters to an Eng and Heb node
+ * =====================================================================================
+ */
+void setup_runtime_node(Runtime_node * rn, OM_Node * en, OM_Node * hn){
+	rn->english = en;
+	rn->hebrew = hn;
+	en->linked_runtime_node = rn;
+	hn->linked_runtime_node = rn;
+}
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  OM_DS_free_and_free_nodes
+ *  Description:  Takes the programs context and frees the eng and heb ds's.
+ * =====================================================================================
+ */
+void OM_DS_free_and_free_nodes(CilkContext *const context){
+	/// Retrieve Top_Lists
+	Top_List * 		english_tl   = context->Cilk_global_state->englishOM_DS;
+	Top_List * 		hebrew_tl    = context->Cilk_global_state->hebrewOM_DS;
+	Bottom_List * 	current_bl   = english_tl->head;
+	OM_Node * 		current_node = english_tl->head->head;
+
+	// Free all runtime nodes
+	while (current_bl != NULL)
+	{
+		while (current_node->next != NULL)
+		{
+			current_node = current_node->next;
+			// This is 
+			free(current_node->linked_runtime_node);
+		}
+		current_bl = current_bl->next;
+		//Free previous bottom list
+		if (current_bl)
+			current_node = current_bl->head;
+	}
+	/// Free each and all their contents (non-runtime components)
+	free_tl(english_tl);
+	free_tl(hebrew_tl);
+}
+
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  OM_DS_insert
+ *  Description:  Inserts y after x in the list (eng or heb) specified by ID.
+ * =====================================================================================
+ */
+inline void OM_DS_insert(CilkWorkerState *const ws, Runtime_node * x, Runtime_node *y, const int ID){
+
+  // ws is only for batchified inserts - so comment out when non-batchified inserts testing
+	if (ID == ENGLISH_ID)
+	  return insert(ws, x->english, y->english);
+	else if (ID == HEBREW_ID)
+	  return insert(ws, x->hebrew, y->hebrew);
+#ifdef RD_DEBUG
+	else
+	{
+		printf("Incorrect ID specified in OM_DS_insert. Exit.\n");
+		exit(10);
+	}
+#endif
+}
+
+/*! 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  OM_DS_order
+ *  Description:  Returns true if x is before y for the list's (eng or heb) ID.
+ * =====================================================================================
+ */
+inline int OM_DS_order(Runtime_node * x, Runtime_node *y, const int ID){
+	//To store our results
+	int order_result = 0;
+	if (ID == ENGLISH_ID)
+		order(x->english, y->english, &order_result);
+	else if (ID == HEBREW_ID)
+		order(x->hebrew, y->hebrew, &order_result);
+#ifdef RD_DEBUG
+	else
+	{
+		printf("Incorrect ID specified when calling OM_DS_order: %i\n", ID);
+	}
+#endif
+	return order_result;
+}
+
+/********************************************************************************
+ *                OM_DS Functions that are Runtime Specific                     *
+ ********************************************************************************/
+inline void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const int FAST_NOT_SLOW){
+
+	/// Exit function immediately if a batch node
+	if  (ws->batch_id != 0)
+	{
+		return;
+	}
+	// This case occurs only after we call spawn the first time in invoke main slow
+	// This will set up both the english/hebrew order ds's
+	if (frame->current_node == NULL)
+	{
+		OM_Node * first_node_e = Cilk_malloc(sizeof(OM_Node)), *first_node_h  = Cilk_malloc(sizeof(OM_Node));
+		ws->current_node = frame->current_node = Cilk_malloc(sizeof(Runtime_node));
+	
+#ifdef RD_DEBUG
+		printf("Debug: Current node is null, this should only be when calling before spawn in invoke main slow\n");
+#endif
+		/// Link OM_Node's with our current runtime node
+		setup_runtime_node(frame->current_node, first_node_e, first_node_h);
+
+		first_insert(WS_TOP_LIST_ENGLISH,  first_node_e);
+		first_insert(WS_TOP_LIST_HEBREW,   first_node_h);
+	}
+	/// Instantiate three new nodes
+
+	/// cont_node: continuation node, will follow from the current node (continues after spawn)
+	/// post_sync_node: the node to move to after the next sync occurs (only malloc'ed if first_Spawn_flag is 0)
+	/// spawned_func_node: the node that the spawned function will be represented by
+	OM_Node * cont_node_e = NULL , * post_sync_node_e = NULL, * spawned_func_node_e = NULL;
+	OM_Node * cont_node_h = NULL , * post_sync_node_h = NULL, * spawned_func_node_h = NULL;
+	Runtime_node * cont_node = NULL,* post_sync_node = NULL,* spawned_func_node = NULL;
+
+	/// Create heap memory for the two guaranteed nodes
+	cont_node_e         = Cilk_malloc(sizeof(OM_Node));
+	cont_node_h         = Cilk_malloc(sizeof(OM_Node));
+	spawned_func_node_e = Cilk_malloc(sizeof(OM_Node));	
+	spawned_func_node_h = Cilk_malloc(sizeof(OM_Node));
+	
+	/// & their runtime counterparts
+	cont_node 			=  Cilk_malloc(sizeof(Runtime_node));
+	spawned_func_node 	=  Cilk_malloc(sizeof(Runtime_node));
+
+	// Link nodes
+	setup_runtime_node(cont_node, cont_node_e, cont_node_h);
+	setup_runtime_node(spawned_func_node, spawned_func_node_e, spawned_func_node_h);
+
+
+	/// Enter only if this is the first spawn after a sync/in a function
+	if (frame->first_spawn_flag != 1){
+
+		/// Allocate heap memory
+		post_sync_node_e = Cilk_malloc(sizeof(OM_Node));
+		post_sync_node_h = Cilk_malloc(sizeof(OM_Node));
+		post_sync_node   =  Cilk_malloc(sizeof(Runtime_node));
+
+		/// Link nodes
+		setup_runtime_node(post_sync_node, post_sync_node_e, post_sync_node_h);
+
+		/// Set first_spawn_flag to indicate the next spawn will not be the first, barring
+		/// that a sync occurs.
+		frame->first_spawn_flag = 1;
+
+		/// Set the frame's post sync node to this node. This ensures we can keep track of the node
+		/// if the child that is spawned creates its own tree beneath it.
+		frame->post_sync_node = post_sync_node;
+	}
+
+	/// Asserts we have a valid (non-null) frame current node before we start inserting
+
+#ifdef RD_DEBUG
+	CILK_ASSERT(ws, frame->current_node != NULL);
+	CILK_ASSERT(ws, frame->current_node->english != NULL && frame->current_node->hebrew != NULL
+					&& frame->current_node->english->ds != NULL && frame->current_node->hebrew->ds != NULL);
+#endif
+	/// Insert {current, spawned function, continuation node} into the english OM_DS
+	insert(ws,frame->current_node->english, spawned_func_node_e);
+	insert(ws,spawned_func_node_e, cont_node_e);
+
+	if (post_sync_node)
+		//English
+		insert(ws,cont_node_e, post_sync_node_e);
+
+
+	/// Insert {current, continuation node, spawned function} into the hebrew OM_DS
+	insert(ws,frame->current_node->hebrew, cont_node_h);
+	insert(ws,cont_node_h, spawned_func_node_h);
+
+	if (post_sync_node)
+		/// Hebrew
+		insert(ws,spawned_func_node_h, post_sync_node_h);
+	
+	/// Move the current node to the continuaion node
+	/// &
+	/// Update the worker state's current node so any calls to Race_detect_{read,write} have
+	/// the most current value.
+	frame->current_node = ws->current_node = cont_node;
+
+	/// Update the next spawned node so when the function is actually spawned and it looks to the
+	/// frame above it on the stack (which is this frame) it can locate its current frame node.
+	frame->next_spawned_node = spawned_func_node;
+
+}
+
+/// After a sync in a slow clone, execute this function.
+inline void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
+	/// Exit function immediately if a batch node
+	if  (ws->batch_id != 0)
+	{
+		return; 
+	}
+
+#ifdef RD_DEBUG
+	if (frame->current_node == NULL)
+		printf ( "DEBUG: Current node is null when calling OM_DS_sync_slow, should be in invoke main slow\n" );
+
+	/// If the sync was legitimate, then reset frame and worker state to post_sync_node.
+	CILK_ASSERT(ws, frame->post_sync_node != NULL);
+#endif
+
+
+	/// Assign frame/worker state's current node to the post sync node
+	frame->current_node = ws->current_node = frame->post_sync_node;
+
+	/// Reset the frame's next_spawned_node, since to use this we would need to spawn again.
+	/// At that point a new one will be created
+	//TODO: remove, we never check the value of this node before a function is called
+	/*frame->next_spawned_node = NULL;*/
+
+	/// Reset spawn flag
+	frame->first_spawn_flag = 0;
+}
+
+
+/// After a sync in a fast clone, execute this function.
+inline void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
+	/// Exit function immediately if a batch node
+	if  (ws->batch_id != 0)
+	{
+		return;
+	}
+
+#ifdef RD_DEBUG
+	if (frame->current_node == NULL)
+		printf ( "DEBUG: Current node is null when calling OM_DS_sync_fast, should be in invoke main slow\n" );
+
+	/// If the sync was legitimate, then reset frame and worker state to post_sync_node.
+	CILK_ASSERT(ws, frame->post_sync_node != NULL);
+#endif
+
+	/// Assign frame/worker state's current node to the post sync node
+	frame->current_node = ws->current_node = frame->post_sync_node;
+
+	/// Reset the frame's next_spawned_node, since to use this we would need to spawn again.
+	/// At that point a new one will be created
+	//TODO: remove, we never check the value of this node before a function is called
+	/*frame->next_spawned_node = NULL;*/
+
+	/// Reset spawn flag
+	frame->first_spawn_flag = 0;
+}
+
+/// After a spawn is finished, update the worker state to match the frame
+inline void OM_DS_after_spawn_fast(CilkWorkerState *const ws, CilkStackFrame *frame){
+	/// Exit function immediately if a batch node
+	if  (ws->batch_id != 0)
+	{
+		return;
+	}
+
+	ws->current_node = frame->current_node;
+}
+/// After a spawn is finished, update the worker state to match the frame
+inline void OM_DS_after_spawn_slow(CilkWorkerState *const ws, CilkStackFrame *frame){
+	/// Exit function immediately if a batch node
+	if  (ws->batch_id != 0)
+	{
+		//	    printf("Debug: In batch node, no race detect needed");
+		return;
+	}
+
+	ws->current_node = frame->current_node;
+}
+
+/// Start a new thread: reset first spawn flag
+inline void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame){
+	/// Exit function immediately if a batch node
+	if  (ws->batch_id != 0)
+	{
+		return;
+	}
+
+	if (!(frame->current_node)) //this frame has not been entered yet
+		frame->first_spawn_flag = 0;
+
+	ws->current_node = frame->current_node;
+}
+/**************************************************************!
+ *        === Race detect functions in particular ===         *
+ **************************************************************/
+
+//! Race_Detect Struct
+/*! This struct is to be utilized as if it is the memory location
+  of a particular variable in a program.  To change the value of
+  the pointer, race_detect_Read or rd_write must be called and the
+  necessary changes to the real variable they care about are handled
+  internally, through the member data.
+*/
+struct RD_Memory_Struct_s {
+
+	Cilk_mutex mutex; //Lock for atomicity
+	void * data; //The memory location where the read/write occurs
+	size_t size; //Size of 'data' data type
+	Runtime_node * left_r; //leftmost node that is reading
+	Runtime_node * right_r; //rightmost node that is reading
+	Runtime_node * left_w; //leftmost node that is writing
+	Runtime_node * right_w; //rightmost node that is writing
+
+};
+
+/*! Initializes the lock for a RD_Memory_struct
+  \param ws The current workerstate upon being called
+  \param mem The struct whose mutex is being initialized
+*/
+static void RD_mutex_init(CilkWorkerState * const ws, RD_Memory_Struct * mem)
+{
+	/*printf("Debug: RD_mutex_init\n");*/
+	Cilk_mutex_init(ws->context, &(mem->mutex) );
+}
+
+/*! Frees the allocated memory for the lock for RD_Memory_Struct
+  \param ws The current workerstate upon being called
+  \param mem The struct whose mutex is being initialized
+*/
+static void RD_mutex_destroy(CilkWorkerState * const ws, RD_Memory_Struct * mem)
+{
+	/*printf("Debug: RD_mutex_destroy\n");*/
+	Cilk_mutex_destroy(ws->context, &(mem->mutex) );
+}
+
+/*! Creates the structure upon the call to this function and returns a pointer
+  to the address in memory to be utilized in place of the desired variable
+  \param ws The CilkWorkerState of the given program
+  \param size The size of the data type to read/written
+  \return the memory location of the RD_Memory_Struct
+*/
+void * RD_structure_create(CilkWorkerState * const ws, size_t size)
+{
+	RD_Memory_Struct * memPtr;
+	/*printf("Debug: RD_structure_create\n");*/
+	memPtr = Cilk_malloc(sizeof(RD_Memory_Struct));
+
+	//!Inialize known members
+	memPtr->size = size;
+	memPtr->data = Cilk_malloc(size);
+
+	//!Initialize the lock
+	RD_mutex_init(ws, memPtr);
+
+	return (void *)memPtr;
+}
+
+/*! Frees the allocated memory for the RD_Memory_Struct
+  \param ws The current workerstate upon being called
+  \param mem The struct itself
+*/
+
+void RD_free(CilkWorkerState * const ws, void * mem)
+{
+	RD_Memory_Struct * memptr;
+	/*printf("Debug: RD_free\n");*/
+	memptr = (RD_Memory_Struct*)mem;
+
+	//!First free data held in struct
+	Cilk_free(memptr->data);
+	memptr->data = NULL; //!< Prevents dangling pointers
+
+	//! Clear the lock
+	RD_mutex_destroy(ws, memptr);
+
+	//!Finally, free the struct itself
+	Cilk_free(mem);
+	mem = NULL; //!< Prevents dangling pointers
+}
+
+
+/*! Function that detects potential races on a given memory read
+  \param ws CilkWorkerState Node for program
+  \param memPtr The memory address of the struct used in checking
+  \return memory address of read location
+*/
+void Race_detect_read_b(CilkWorkerState * const ws,
+						const void * memPtr,
+						void * holder,
+						const char * func_name,
+						const int line_num,
+						int * rd_result)
+{
+
+	//!Get struct
+	RD_Memory_Struct * mem;
+
+	/*printf("Debug: Race_detect_Read\n");*/
+	mem = (RD_Memory_Struct *)memPtr;
+
+	//!Get lock
+	Cilk_mutex_wait(ws->context, ws,  &(mem->mutex) );
+	;//printf("Debug: Got lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+
+	//! Retrieve currentNode from workerstate
+	Runtime_node * currentNode = ws->current_node;
+
+	//! This is only true when it is the first read-node checked
+	if( (mem->left_r == NULL) && (mem->right_r == NULL) )
+	{
+		;//printf("Debug: Initalizes l&r read ptrs\n");
+		//! Initalize ptrs for struct
+		mem->left_r = mem->right_r = currentNode;
+	}
+
+	/*! Check if there is a race:
+	 * Race if another write occurs in parallel
+	 * (1)
+	 *   if the currentNode is before leftmost write in eng and
+	 *      the currentNode is after leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (2) or
+	 *   if the currentNode is after leftmost write in eng and
+	 *      the currentNode is before leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (3) or
+	 *   if the currentNode is before rightmost write in eng and
+	 *      the currentNode is after rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (4) or
+	 *   if the currentNode is after rightmost write in eng and
+	 *      the currentNode is before rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 */
+	if(
+		(
+			(mem->left_w != NULL)
+			&&
+			(
+				//(1)
+				(OM_DS_order(currentNode, mem->left_w, ENGLISH_ID) &&
+				 OM_DS_order(mem->left_w, currentNode, HEBREW_ID))
+				||  //(2)
+				(OM_DS_order(mem->left_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(currentNode, mem->left_w, HEBREW_ID))
+				)
+			)
+		||
+		(
+			(mem->right_w != NULL)
+			&&
+			(
+				//(3)
+				(OM_DS_order(currentNode, mem->right_w, ENGLISH_ID) &&
+				 OM_DS_order(mem->right_w, currentNode, HEBREW_ID))
+				||  //(4)
+				(OM_DS_order(mem->right_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(currentNode, mem->right_w, HEBREW_ID))
+				)
+			)
+		)
+	{
+		//!Make boolean true
+		*rd_result = 1;
+
+		//!Print that there's a race and continue
+		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
+	}
+	else
+		*rd_result = 0; //!< Make the bool 0
+
+	;//printf("Debug: Left_r: %i  right_r: %i and current: %i\n", mem->left_r->id, mem->right_r->id, currentNode->id);
+	//! Update nodes (if necessary)
+	if(OM_DS_order(currentNode, mem->left_r, ENGLISH_ID))
+		mem->left_r = currentNode;
+	if(OM_DS_order(mem->right_r, currentNode, ENGLISH_ID))
+		mem->right_r = currentNode;
+
+	//! Write the data into holder
+	memcpy(holder, mem->data, mem->size);
+
+	;//printf("Debug: About to release lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	//!No race, release lock
+	Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+	return;
+
+}
+
+/*! Function that detects potential races on a given memory read
+  \param ws CilkWorkerState Node for program
+  \param memPtr The memory address of the struct used in checking
+  \return memory address of read location
+*/
+void Race_detect_read(CilkWorkerState * const ws,
+					  const void * memPtr,
+					  void * holder,
+					  const char * func_name,
+					  const int line_num)
+{
+
+	//!Get struct
+	RD_Memory_Struct * mem;
+	/*printf("Debug: Race_detect_Read\n");*/
+	mem = (RD_Memory_Struct *)memPtr;
+
+	//!Get lock
+	Cilk_mutex_wait(ws->context, ws,  &(mem->mutex) );
+	;//printf("Debug: Got lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+
+	//! Retrieve currentNode from workerstate
+	Runtime_node * currentNode = ws->current_node;
+
+	//! This is only true when it is the first read-node checked
+	if( (mem->left_r == NULL) && (mem->right_r == NULL) )
+	{
+		//! Initalize ptrs for struct
+		mem->left_r = mem->right_r = currentNode;
+	}
+
+	/*! Check if there is a race:
+	 * Race if another write occurs in parallel
+	 * (1)
+	 *   if the currentNode is before leftmost write in eng and
+	 *      the currentNode is after leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (2) or
+	 *   if the currentNode is after leftmost write in eng and
+	 *      the currentNode is before leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (3) or
+	 *   if the currentNode is before rightmost write in eng and
+	 *      the currentNode is after rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (4) or
+	 *   if the currentNode is after rightmost write in eng and
+	 *      the currentNode is before rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 */
+	if(
+		(
+			(mem->left_w != NULL)
+			&&
+			(
+				//(1)
+				(OM_DS_order(currentNode, mem->left_w, ENGLISH_ID) &&
+				 OM_DS_order(mem->left_w, currentNode, HEBREW_ID))
+				||  //(2)
+				(OM_DS_order(mem->left_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(currentNode, mem->left_w, HEBREW_ID))
+				)
+			)
+		||
+		(
+			(mem->right_w != NULL)
+			&&
+			(
+				//(3)
+				(OM_DS_order(currentNode, mem->right_w, ENGLISH_ID) &&
+				 OM_DS_order(mem->right_w, currentNode, HEBREW_ID))
+				||  //(4)
+				(OM_DS_order(mem->right_w, currentNode, ENGLISH_ID) &&
+				 OM_DS_order(currentNode, mem->right_w, HEBREW_ID))
+				)
+			)
+		)
+	{
+		//!Print that there's a race and continue
+		printf("Detected Race: Read on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
+	}
+
+	//! Update nodes (if necessary)
+	if(OM_DS_order(currentNode, mem->left_r, ENGLISH_ID))
+		mem->left_r = currentNode;
+	if(OM_DS_order(mem->right_r, currentNode, ENGLISH_ID))
+		mem->right_r = currentNode;
+
+	//! Write the data into holder
+	memcpy(holder, mem->data, mem->size);
+
+	;//printf("Debug: About to release lock - RD_read in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	//!No race, release lock
+	Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+	return;
+
+}
+
+/*! Function that detects potential races on a given memory write
+  \param ws CilkWorkerState Node for program
+  \param memPtr Pointer to the memory address of the struct utilized (mem)
+  \param writeValue Manually passed in value to be written to mem->data
+*/
+void Race_detect_write_b(CilkWorkerState * const ws,
+						 void * memPtr,
+						 const void * writeValue,
+						 const char *func_name,
+						 const int line_num,
+						 int * rd_result)
+{
+
+	//!Get struct
+	RD_Memory_Struct * mem;
+	/*printf("Race_detect_write\n");*/
+	mem = (RD_Memory_Struct *)memPtr;
+
+	//!Get Lock
+	Cilk_mutex_wait(ws->context, ws, &(mem->mutex) );
+
+	;//printf("Debug: Got lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	//! Retrieve currentNode from workerstate
+	Runtime_node * currentNode = ws->current_node;
+
+	//! This is only true when it is the first write-node checked
+	if( (mem->left_w == NULL) && (mem->right_w == NULL) )
+	{
+		;//printf("Debug: Initalizes l&r write ptrs\n");
+
+		//!Inialize ptrs for struct
+		mem->left_w = mem->right_w = currentNode;
+
+		/*! ****Fuller Explanation of Race Detection Conditions Below****
+		 * In the event that the first write node is encounterd, races must be
+		 * check only with read nodes, for the conditionals below will detect a
+		 * "race" with itself (since at this point the left=right=current).
+		 * As a result, we check for races within this if and write instead
+		 */
+		if(
+			(
+				(mem->left_r != NULL)
+				&&
+				(
+					//(5)
+					(OM_DS_order(currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(mem->left_r, currentNode, HEBREW_ID))
+					||  //(6)
+					(OM_DS_order(mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->left_r, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_r != NULL)
+				&&
+				(
+					//(7)
+					(OM_DS_order(currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(mem->right_r, currentNode, HEBREW_ID))
+					||  //(8)
+					(OM_DS_order(mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->right_r, HEBREW_ID))
+					)
+				)
+			)
+		{
+			//! Print the race
+			printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
+
+			//!Make boolean true
+			*rd_result = 1;
+
+			//! Write the data
+			memcpy( mem->data, writeValue, mem->size);
+
+			;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+			//! Have to release lock
+			Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+			return;
+		} else {
+
+			//!Make boolean false
+			*rd_result = 0;
+
+			//! Write the data
+			memcpy( mem->data, writeValue, mem->size);
+
+			;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+			//! Have to release lock
+			Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+			return;
+		}
+	}
+
+	/*! Check if there is a race:
+	 * Race if another write/read occurs in parallel
+	 * (1)   == WRITES ==
+	 *   if the currentNode is before leftmost write in eng and
+	 *      the currentNode is after leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (2) or
+	 *   if the currentNode is after leftmost write in eng and
+	 *      the currentNode is before leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (3) or
+	 *   if the currentNode is before rightmost write in eng and
+	 *      the currentNode is after rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (4) or
+	 *   if the currentNode is after rightmost write in eng and
+	 *      the currentNode is before rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (5) or  == READS ==
+	 *   if the currentNode is before leftmost read in eng and
+	 *      the currentNode is after leftmost read in heb,
+	 *      then they are in parallel => race condition
+	 * (6) or
+	 *   if the currentNode is after leftmost read in eng and
+	 *      the currentNode is before leftmost read in heb,
+	 *      then they are in parallel => race condition
+	 * (7) or
+	 *   if the currentNode is before rightmost read in eng and
+	 *      the currentNode is after rightmost read in heb,
+	 *      then they are in parallel => race condition
+	 * (8) or
+	 *   if the currentNode is after rightmost read in eng and
+	 *      the currentNode is before rightmost read in heb,
+	 *      then they are in parallel => race condition
+	 */
+	if(
+
+		//! Check the writes for races
+		(
+			(
+				(mem->left_w != NULL)
+				&&
+				(
+					//(1)
+					(OM_DS_order(currentNode, mem->left_w, ENGLISH_ID) &&
+					 OM_DS_order(mem->left_w, currentNode, HEBREW_ID))
+					||  //(2)
+					(OM_DS_order(mem->left_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->left_w, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_w != NULL)
+				&&
+				(
+					//(3)
+					(OM_DS_order(currentNode, mem->right_w, ENGLISH_ID) &&
+					 OM_DS_order(mem->right_w, currentNode, HEBREW_ID))
+					||  //(4)
+					(OM_DS_order(mem->right_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->right_w, HEBREW_ID))
+					)
+				)
+			)
+
+		||
+
+		//! Now check the reads for races
+		(
+			(
+				(mem->left_r != NULL)
+				&&
+				(
+					//(5)
+					(OM_DS_order(currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(mem->left_r, currentNode, HEBREW_ID))
+					||  //(6)
+					(OM_DS_order(mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->left_r, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_r != NULL)
+				&&
+				(
+					//(7)
+					(OM_DS_order(currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(mem->right_r, currentNode, HEBREW_ID))
+					||  //(8)
+					(OM_DS_order(mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->right_r, HEBREW_ID))
+					)
+				)
+			)
+		)
+	{
+		//! Print the race
+		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
+
+		//!Make boolean true
+		*rd_result = 1;
+	}
+	else
+		*rd_result = 0; //!< Make bool 0
+
+	;//printf("Debug: Left_w: %i  right_w: %i and current: %i\n", mem->left_w->id, mem->right_w->id, currentNode->id);
+	//! Update nodes (if necessary)
+	if(OM_DS_order(currentNode, mem->left_w, ENGLISH_ID))
+		mem->left_w = currentNode;
+	if(OM_DS_order(mem->right_w, currentNode, ENGLISH_ID))
+		mem->right_w = currentNode;
+
+	//! Write the data
+	memcpy( mem->data, writeValue, mem->size);
+
+
+	;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	//!Release Lock
+	Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+}
+
+/*! Function that detects potential races on a given memory write
+  \param ws CilkWorkerState Node for program
+  \param memPtr Pointer to the memory address of the struct utilized (mem)
+  \param writeValue Manually passed in value to be written to mem->data
+*/
+void Race_detect_write(CilkWorkerState * const ws,
+					   void * memPtr,
+					   const void * writeValue,
+					   const char *func_name,
+					   const int line_num)
+{
+
+	//!Get struct
+	RD_Memory_Struct * mem;
+	/*printf("Race_detect_write\n");*/
+	mem = (RD_Memory_Struct *)memPtr;
+
+	//!Get Lock
+	Cilk_mutex_wait(ws->context, ws, &(mem->mutex) );
+
+	;//printf("Debug: Got lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	//! Retrieve currentNode from workerstate
+	Runtime_node * currentNode = ws->current_node;
+
+	//! This is only true when it is the first write-node checked
+	if( (mem->left_w == NULL) && (mem->right_w == NULL) )
+	{
+		//!Inialize ptrs for struct
+		mem->left_w = mem->right_w = currentNode;
+
+		/*! ****Fuller Explanation of Race Detection Conditions Below****
+		 * In the event that the first write node is encounterd, races must be
+		 * check only with read nodes, for the conditionals below will detect a
+		 * "race" with itself (since at this point the left=right=current).
+		 * As a result, we check for races within this if and write instead
+		 */
+		if(
+			(
+				(mem->left_r != NULL)
+				&&
+				(
+					//(5)
+					(OM_DS_order(currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(mem->left_r, currentNode, HEBREW_ID))
+					||  //(6)
+					(OM_DS_order(mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->left_r, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_r != NULL)
+				&&
+				(
+					//(7)
+					(OM_DS_order(currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(mem->right_r, currentNode, HEBREW_ID))
+					||  //(8)
+					(OM_DS_order(mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->right_r, HEBREW_ID))
+					)
+				)
+			)
+		{
+			//! Print the race
+			printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
+
+			//! Write the data
+			memcpy( mem->data, writeValue, mem->size);
+
+			;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+			//! Have to release lock
+			Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+			return;
+		} else {
+
+			//! Write the data
+			memcpy( mem->data, writeValue, mem->size);
+
+
+			;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+			//! Have to release lock
+			Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+			return;
+		}
+	}
+
+	/*! Check if there is a race:
+	 * Race if another write/read occurs in parallel
+	 * (1)   == WRITES ==
+	 *   if the currentNode is before leftmost write in eng and
+	 *      the currentNode is after leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (2) or
+	 *   if the currentNode is after leftmost write in eng and
+	 *      the currentNode is before leftmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (3) or
+	 *   if the currentNode is before rightmost write in eng and
+	 *      the currentNode is after rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (4) or
+	 *   if the currentNode is after rightmost write in eng and
+	 *      the currentNode is before rightmost write in heb,
+	 *      then they are in parallel => race condition
+	 * (5) or  == READS ==
+	 *   if the currentNode is before leftmost read in eng and
+	 *      the currentNode is after leftmost read in heb,
+	 *      then they are in parallel => race condition
+	 * (6) or
+	 *   if the currentNode is after leftmost read in eng and
+	 *      the currentNode is before leftmost read in heb,
+	 *      then they are in parallel => race condition
+	 * (7) or
+	 *   if the currentNode is before rightmost read in eng and
+	 *      the currentNode is after rightmost read in heb,
+	 *      then they are in parallel => race condition
+	 * (8) or
+	 *   if the currentNode is after rightmost read in eng and
+	 *      the currentNode is before rightmost read in heb,
+	 *      then they are in parallel => race condition
+	 */
+	if(
+
+		//! Check the writes for races
+		(
+			(
+				(mem->left_w != NULL)
+				&&
+				(
+					//(1)
+					(OM_DS_order(currentNode, mem->left_w, ENGLISH_ID) &&
+					 OM_DS_order(mem->left_w, currentNode, HEBREW_ID))
+					||  //(2)
+					(OM_DS_order(mem->left_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->left_w, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_w != NULL)
+				&&
+				(
+					//(3)
+					(OM_DS_order(currentNode, mem->right_w, ENGLISH_ID) &&
+					 OM_DS_order(mem->right_w, currentNode, HEBREW_ID))
+					||  //(4)
+					(OM_DS_order(mem->right_w, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->right_w, HEBREW_ID))
+					)
+				)
+			)
+
+		||
+
+		//! Now check the reads for races
+		(
+			(
+				(mem->left_r != NULL)
+				&&
+				(
+					//(5)
+					(OM_DS_order(currentNode, mem->left_r, ENGLISH_ID) &&
+					 OM_DS_order(mem->left_r, currentNode, HEBREW_ID))
+					||  //(6)
+					(OM_DS_order(mem->left_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->left_r, HEBREW_ID))
+					)
+				)
+			||
+			(
+				(mem->right_r != NULL)
+				&&
+				(
+					//(7)
+					(OM_DS_order(currentNode, mem->right_r, ENGLISH_ID) &&
+					 OM_DS_order(mem->right_r, currentNode, HEBREW_ID))
+					||  //(8)
+					(OM_DS_order(mem->right_r, currentNode, ENGLISH_ID) &&
+					 OM_DS_order(currentNode, mem->right_r, HEBREW_ID))
+					)
+				)
+			)
+		)
+	{
+		//! Print the race
+		printf("Detected Race: Write on Memory Address{%p} in function %s at line %d\n", mem, func_name, line_num);
+	}
+
+	//! Update nodes (if necessary)
+	if(OM_DS_order(currentNode, mem->left_w, ENGLISH_ID))
+		mem->left_w = currentNode;
+	if(OM_DS_order(mem->right_w, currentNode, ENGLISH_ID))
+		mem->right_w = currentNode;
+
+	//! Write the data
+	memcpy( mem->data, writeValue, mem->size);
+
+	;//printf("Debug: about to release lock - RD_write in node (%i) on memloc (%p) \n", ws->current_node->id, memPtr);
+	//!Release Lock
+	Cilk_mutex_signal(ws->context, &(mem->mutex) );
+
+}
+
+/* ============= End Order Maintenence Functions ============= */
 
 /*
  * initialization of the scheduler.
@@ -2061,7 +3127,7 @@ void Cilk_batchify_raw(CilkWorkerState *const ws,
 void Cilk_scheduler_init(CilkContext *const context)
 {
 	CILK_CHECK(USE_PARAMETER1(active_size) > 0,
-						 (context, NULL, "Partition size must be positive\n"));
+			   (context, NULL, "Partition size must be positive\n"));
 	create_deques(context);
 	Cilk_internal_malloc_global_init(context);
 	Cilk_internal_malloc_global_init_2(context);
@@ -2088,15 +3154,15 @@ void Cilk_scheduler_terminate_2(CilkContext *const UNUSED(context))
 
 void Cilk_scheduler_per_worker_init(CilkWorkerState *const ws)
 {
-  WHEN_CILK_TIMING(ws->cp_hack = 0);
+	WHEN_CILK_TIMING(ws->cp_hack = 0);
 	WHEN_CILK_TIMING(ws->work_hack = 0);
 
 	ws->cache.stack =
 		Cilk_malloc_fixed(USE_PARAMETER(options->stackdepth) *
-											sizeof(CilkStackFrame *));
+						  sizeof(CilkStackFrame *));
 	ws->ds_cache.stack =
 		Cilk_malloc_fixed(USE_PARAMETER(options->stackdepth) *
-											sizeof(CilkStackFrame *));
+						  sizeof(CilkStackFrame *));
 	ws->stackdepth = USE_PARAMETER(options->stackdepth);
 	Cilk_switch2core(ws);
 
@@ -2121,7 +3187,7 @@ void Cilk_scheduler_per_worker_terminate(CilkWorkerState *const ws)
  * a complete inlet.
  */
 static void make_exit_inlet_closure(CilkWorkerState *const ws,
-																		Closure *cl, int res)
+									Closure *cl, int res)
 {
 	struct InletClosure *p;
 

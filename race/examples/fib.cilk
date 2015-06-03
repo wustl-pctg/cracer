@@ -24,6 +24,7 @@ static const char *ident __attribute__((__unused__))
 #include <cilk-lib.cilkh>
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 cilk int fib(int n)
 {
@@ -42,14 +43,20 @@ cilk int main(int argc, char *argv[])
 {
 	int n, result;
 
+	clock_t start;
+
 	if (argc != 2) {
 	  fprintf(stderr, "Usage: fib [<cilk options>] <n>\n");
 	  Cilk_exit(1);
 	}
 	n = atoi(argv[1]);
+
+	start = clock();
+
 	result = spawn fib(n);
 	sync;
+	
 
-	printf("Result: %d\n", result);
+	printf("Result: %d\nTime: %f seconds\n", result, ((double)clock() - start) / CLOCKS_PER_SEC);
 	return 0;
 }

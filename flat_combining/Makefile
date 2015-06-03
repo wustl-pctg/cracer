@@ -3,8 +3,8 @@ TARGET		= test_intel64
 
 CPP		= g++
 
-CPPFLAGS	= -O3 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -lrt -pthread
-LFLAGS		= -O3 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -lrt -pthread
+CPPFLAGS	= -O3 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -pthread
+LFLAGS		= -O3 -m64 -DNDEBUG -DINTEL64 -D_REENTRANT -pthread
 
 OBJS		= $(CPPSRCS:.cpp=.o)
 
