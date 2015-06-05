@@ -5,6 +5,9 @@
 
 #include "conchash.cilkh"
 
+// @todo buckets are chains, not entries!
+// Really, I think a bucket should just contain a ptr to an item node,
+// plus maybe a lock and the size of the chain.
 struct bucket
 {
   data_t item;

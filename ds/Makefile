@@ -1,33 +1,32 @@
-CC = gcc
-CFLAGS = -Wall -UCILK -std=c99 -x c
+#CC = gcc
+CC = ../prob/support/cilkclocal
+CFLAGS = -Wall -DCILK
 LD =
 INC = -Iutil
-
 ds ?= pairheap dynarray conchash #skiplist btree dynarray
-
 TARGETS = $(ds)
 
 ifeq ($(mode),)
-	CFLAGS += -O3 -m64 -UDEBUG -DNDEBUG
+	CFLAGS += -O3 -march=native -DNDEBUG
 endif
 ifeq ($(mode),bench)
-	CFLAGS += -O3 -m64 -UDEBUG -DNDEBUG
+	CFLAGS += -O3 -march=native -DNDEBUG
 endif
 ifeq ($(mode),debug)
-	CFLAGS += -O0 -g -DDEBUG # -cilk-debug -save-temps
+	CFLAGS += -O0 -g -DDEBUG -cilk-debug -save-temps
 endif
 ifeq ($(mode),profile)
-	CFLAGS += -O3 -UDEBUG # -cilk-profile
+	CFLAGS += -O3 -cilk-profile
 endif
 
-all: test bench
+all: bench
 test: $(TARGETS:=_test)
 bench: $(TARGETS:=_bench)
 
-%_test: LD += -lcheck
-%_test: INC += -I.
-%_test: test/%_test.cilk %_bench.cilk %.cilk %.cilkh
-	$(CC) $(CFLAGS) test/$(@:=.cilk) -o $(@) $(INC) $(LD)
+# %_test: LD += -lcheck
+# %_test: INC += -I.
+# %_test: test/%_test.cilk %_bench.cilk %.cilk %.cilkh
+# 	$(CC) $(CFLAGS) test/$(@:=.cilk) -o $(@) $(INC) $(LD)
 
 %_bench: UTIL += util/benchopt.c util/timer.c
 %_bench: %_bench.cilk %.cilk %.cilkh

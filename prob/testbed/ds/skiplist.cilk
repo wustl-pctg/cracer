@@ -262,7 +262,8 @@ cilk void batch_mergeLists(int idx, void* infos){
   for (i=0; i<=level[idx];i++){
     if (y->forward[i] == NIL
         || compLT(update[i]->forward[i]->data, y->forward[i]->data) || compEQ(update[i]->forward[i]->data, y->forward[i]->data)) {
-      y->forward[i] = update[i]->forward[i];
+      if (update[i]->forward[i] != NIL)
+        y->forward[i] = update[i]->forward[i];
     }
     prev_node = prev_nodes[(maxlevel+1)*idx+i];
     /* if (prev_node!=-1){ */
@@ -282,10 +283,6 @@ cilk void batch_mergeLists(int idx, void* infos){
 cilk void batch_insert_par2(void* dataStruct, void* data,
                             size_t numElements, void* results)
 {
-  /* int done = 1; */
-  /* int* ops = (int*) data; */
-
-  // real
   int i,j,k,check;
   int* level = calloc(numElements,sizeof(int));
   //  int original_size = get_size();
@@ -303,29 +300,6 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
 
   Node* current = list.hdr;
   Node* back_node;
-
-  /* // fake */
-  /* size = get_size(); */
-  /* for (i = 0; i < numElements; i++) { */
-  /*   // Assume ops are add operations. */
-  /*   insertNode(ops[i]); */
-  /* } */
-
-  /* free(new_nodes_back); */
-  /* free(level); */
-  /* free(prev_nodes); */
-
-  /* /\* if (get_size() != size + numElements) { *\/ */
-  /* /\*   printf("Error in the batch function of worker %i.\n", _cilk_ws->self); *\/ */
-  /* /\*   for (i = 0; i < numElements; i++) { *\/ */
-  /* /\*     printf(" %i", ops[i]); *\/ */
-  /* /\*   } *\/ */
-  /* /\*   printf("\n"); *\/ */
-  /* /\* } *\/ */
-
-  /* if (done) return; */
-  /* // end fake */
-
 
   quicksort((int*)data, 0, numElements - 1);
   //remove duplicates
@@ -390,8 +364,14 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   }
 
   //Find the place for all the elements to merge list
-  spawn parforpar(0,numElements-1,1,&batch_mergeLists,mergeListArgs);
-  sync;
+  /* spawn parforpar(0,numElements-1,1,&batch_mergeLists,mergeListArgs); */
+  /* sync; */
+
+  for (i = 0; i < numElements; ++i) {
+    spawn batch_mergeLists(i, mergeListArgs);
+    sync;
+  }
+
   /* printf("--- After Merge lists\n"); */
   /* print_info(i, original_size, numElements, level, new_nodes, new_nodes_back, */
   /*            prev_nodes, maxInsertLevel); */
@@ -431,6 +411,8 @@ cilk void batch_insert_par2(void* dataStruct, void* data,
   free(new_nodes_back);
   free(level);
   free(prev_nodes);
+
+  Cilk_terminate_batch(_cilk_ws);
 }
 
 
@@ -494,8 +476,7 @@ Node *insertNode(T data)
   }
   x = x->forward[0];
   if (x != NIL && compEQ(x->data, data)) {
-    /* printf("%d already in skiplist. %i was originally responsible.\n", */
-    /*        x->data, resp[x->data]); */
+    //    printf("%d already in skiplist\n", x->data);
     return(x);
   }
 

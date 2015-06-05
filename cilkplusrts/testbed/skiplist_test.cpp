@@ -48,7 +48,7 @@ void run_insert_benchmark(SkipList* ds, int size)
 int main(int argc, char* argv[])
 {
   SkipList* ds;
-  int num_ops = 100000;
+  int num_ops = 10000;
   int initial_size = 1000000;
 
   ds = set_up(initial_size, num_ops);

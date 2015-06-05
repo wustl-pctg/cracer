@@ -5,9 +5,10 @@
 #include "util/defaults.h"
 #include <string.h>
 
-void usage() {
+/* void usage() {
   printf("progname <test_size> [-v]\n");
 }
+*/
 
 cilk void insertItem(hashTable * table, int* keys, int i){
   spawn hashTable_lockInsert(table,keys[i]);

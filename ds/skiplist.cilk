@@ -1,3 +1,10 @@
+/** @file skiplist.cilk
+ *  @brief Method implementations for a Skip List.
+ *  Parallel methods in skiplist_batch.cilk.  
+ *
+ *  @author Robert Utterback
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -14,7 +21,7 @@ struct sl
   size_t current_level;
   size_t size;
 };
-//#include "skiplist_batch.cilk"
+#include "skiplist_batch.cilk"
 
 /* Private methods */
 struct sl_node* find(SkipList this, data_t data)
@@ -42,25 +49,12 @@ bool sl_search(SkipList this, data_t data)
 }
 
 // Modifiers
-void sl_insert_seq(SkipList this, data_t data)
+void sl_insert(SkipList this, data_t data)
 {
 
 }
 
-bool sl_delete_seq(SkipList this, data_t data)
-{
-  return false;
-}
-
-// Parallel Methods
-void sl_insert_par(//CilkWorkerState* const ws,
-                   SkipList this, data_t data)
-{
-
-}
-
-bool sl_delete_par(//CilkWorkerState* const ws,
-                   SkipList this, data_t data)
+bool sl_delete(SkipList this, data_t data)
 {
   return false;
 }
@@ -71,7 +65,7 @@ bool sl_is_empty(SkipList this)
   return this->head == NULL;
 }
 
-size_t sl_size(SkipList this)
+size_t sl_get_size(SkipList this)
 {
   return this->size;
 }

@@ -1,9 +1,18 @@
-// A batched skip list.
-// Robert Utterback
-#ifndef _SKIP_LIST_H
-#define _SKIP_LIST_H
+/** @file skiplist.cilkh
+ *  @brief Function prototypes for a Skip List data structure.
+ *
+ *  @author Kefu Lu
+ *  @author Robert Utterback
+ *
+ *  @bug No known bugs.
+ *  @todo Everything.
+ */
+#ifndef _SKIP_LIST_CILKH
+#define _SKIP_LIST_CILKH
 
 #include <stdbool.h>
+
+#include "common.h"
 
 #define MAX_LEVEL 32
 typedef int data_t;
@@ -12,23 +21,25 @@ typedef struct sl* SkipList;
 SkipList sl_create();
 void sl_destroy(SkipList this);
 
-// Read-Only
-bool sl_search(SkipList this, data_t data);
-
-// Modifiers
-void sl_insert_seq(SkipList this, data_t data);
-bool sl_delete_seq(SkipList this, data_t data);
-
-// Parallel Methods
-void sl_insert_par(//CilkWorkerState* const ws,
-                   SkipList this, data_t data);
-bool sl_delete_par(//CilkWorkerState* const ws,
-                   SkipList this, data_t data);
-
-// Auxiliary methods
 bool sl_is_empty(SkipList this);
-size_t sl_size(SkipList this);
+size_t sl_get_size(SkipList this);
 
+bool sl_search(SkipList this, data_t data);
+void sl_insert(SkipList this, data_t data);
+bool sl_delete(SkipList this, data_t data);
 
+// Possibly, but not necessarily, parallel methods.
+cilk void sl_batch_insert(void* ds, void* data, size_t num_items, void* ds);
+cilk void sl_batch_delete(void* ds, void* data, size_t num_items, void* ds);
+cilk void sl_batch_both(void* ds, void* data, size_t num_items, void* ds);
 
+// Methods that only make sense in a parallel context.
+#ifdef CILK
+void sl_par_insert(CilkWorkerState* const ws, SkipList this, data_t data);
+bool sl_par_delete(CilkWorkerState* const ws, SkipList this, data_t data);
 #endif
+
+
+
+
+#endif // _SKIP_LIST_CILKH

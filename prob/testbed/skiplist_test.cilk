@@ -43,7 +43,7 @@ SkipList* set_up(size_t initial_size, size_t num_ops)
 
   for (i = -1*(int)initial_size; i < 0; i++) {
     insertNode(rand());
-    //insertNode(i);
+    //    insertNode(i);
   }
 
   // Prepare our array of random numbers.

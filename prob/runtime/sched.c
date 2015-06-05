@@ -1835,9 +1835,11 @@ void batch_scheduler(CilkWorkerState *const ws, unsigned int batch_id,
 			deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
 		}
 
-		if(!t && batch_done_yet(ws, ws->batch_id)) {
-			break;
-		}
+		/* if(!t && batch_done_yet(ws, ws->batch_id)) { */
+		/* 	break; */
+		/* } */
+    if (!t && batch_sleep(ws, USE_PARAMETER(sleeptime), batch_id)) break;
+
 
 		while (!t && !batch_done_yet(ws, ws->batch_id)) {
 			// Otherwise, steal
@@ -1911,11 +1913,6 @@ void Cilk_wait_for_stage(CilkWorkerState* const ws, int stage)
 
 void Cilk_init_batch(CilkWorkerState *const ws)
 {
-  /* deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); */
-  /* Closure* t = deque_peek_top(ws, ws->self, USE_PARAMETER(ds_deques)); */
-  /* t->frame = *(ws->ds_cache.tail - 1); */
-  /* deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques)); */
-
   Closure* t = USE_PARAMETER(invoke_batch);
   CilkStackFrame* f = *(--ws->current_cache->tail);
   deque_lock(ws, ws->self, USE_PARAMETER(ds_deques));
@@ -1928,13 +1925,8 @@ void Cilk_init_batch(CilkWorkerState *const ws)
   CILK_ASSERT(ws, f);
   CILK_ASSERT(ws, f->sig);
   CILK_ASSERT(ws, f->magic == CILK_STACKFRAME_MAGIC);
-  //poll_inlets(ws, t);
 
   Closure_unlock(ws, t);
-  /*
-   * MUST unlock the closure before locking the queue
-   * (rule A in file PROTOCOLS)
-   */
   deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques));
   deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
 }
@@ -1943,30 +1935,7 @@ void invoke_batch(CilkWorkerState *const ws, InternalBatchOperation op,
                   void* ds, void* work_array, unsigned int num_ops)
 {
   Closure* t = USE_PARAMETER(invoke_batch);
-  //  BatchFrame* f = USE_SHARED(batch_frame);
-  //  Closure* t = Closure_create(ws);
   Closure* t1;
-
-  /* f->args.op = op; */
-  /* f->args.ds = ds; */
-  /* f->args.work_array = work_array; */
-  /* f->args.num_ops = num_ops; */
-
-  /* deque_lock(ws, ws->self, USE_PARAMETER(ds_deques)); */
-  /* Closure_lock(ws, t); */
-
-  /* t->frame = NULL; */
-  /* t->parent = NULL; */
-  /* setup_for_execution(ws, t); */
-  /* CLOSURE_TAIL(t)--; */
-
-  /* Closure_unlock(ws, t); */
-  /* deque_add_bottom(ws, t, ws->self, USE_PARAMETER(ds_deques)); */
-  /* deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques)); */
-
-  //  printf("Batch %i started by worker %i\n", ws->batch_id, ws->self);
-  /* reset_batch_closure(ws->context); */
-  /* batch_scheduler(ws, ws->batch_id, t); */
 
   ws->current_cache->head = &ws->current_cache->stack[0];
   ws->current_cache->tail = &ws->current_cache->stack[0];
@@ -1978,13 +1947,8 @@ void invoke_batch(CilkWorkerState *const ws, InternalBatchOperation op,
     // Someone else might be using this closure to start a batch, but
     // I don't think this will affect anything.
     deque_xtract_bottom(ws, ws->self, USE_PARAMETER(ds_deques));
-    //  Closure_destroy(ws, t1);
   }
   deque_unlock(ws, ws->self, USE_PARAMETER(ds_deques));
-  /* if (t && t->parent == NULL) { */
-  /*   Cilk_terminate_batch(ws); */
-  /*   Closure_destroy(ws, t); */
-  /* } */
 }
 
 void Cilk_batchify(CilkWorkerState *const ws,

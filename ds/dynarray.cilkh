@@ -1,4 +1,4 @@
-/** @file dynarray.h
+/** @file dynarray.cilkh
  *  @brief Function prototypes for a Dynamic Array data structure.
  *
  *  @author Tyler Romero
@@ -8,8 +8,8 @@
  *  @todo Write batch function.
  */
 
-#ifndef _DYNARRAY_H
-#define _DYNARRAY_H
+#ifndef _DYNARRAY_CILKH
+#define _DYNARRAY_CILKH
 
 #include "common.h"
 
@@ -48,4 +48,4 @@ cilk void da_resize(DynamicArray this, size_t new_size);
 void da_par_push_back(CilkWorkerState* const ws, DynamicArray this, data_t item);
 #endif
 
-#endif // _DYNARRAY_H
+#endif // _DYNARRAY_CILKH

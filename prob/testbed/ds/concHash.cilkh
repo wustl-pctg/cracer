@@ -1,7 +1,7 @@
 #ifndef _CONCHASH_CILKH
 #define _CONCHASH_CILKH
 
-//Tyler Romero and Kefu Liu
+//Tyler Romero and Kefu Lu
 //The insert functions are finshed, the remove functions have some problem
 
 #define PARALLEL_CUTOFF 100	//!<The cutoff for converting from a parallel_for loop to a sequential for loop
