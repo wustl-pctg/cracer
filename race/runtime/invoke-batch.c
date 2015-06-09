@@ -8,18 +8,17 @@
 /***********************************************************!
  * Pre-declared functions from sched.c for OM_DS functions *
  ***********************************************************/
-void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const int FAST_NOT_SLOW);
+/* void OM_DS_before_spawn(CilkWorkerState *const ws, CilkStackFrame *frame, const int FAST_NOT_SLOW); */
 
-void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame);
+/* void OM_DS_sync_slow(CilkWorkerState *const ws, CilkStackFrame *frame); */
 
-void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame);
+/* void OM_DS_sync_fast(CilkWorkerState *const ws, CilkStackFrame *frame); */
 
-void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame);
+/* void OM_DS_new_thread_start(CilkWorkerState *const ws, CilkStackFrame *frame); */
 
 
 /************************************************************
  * Batcher-related routines
- ************************************************************/
 /* Remove closure for frame f from bottom of pn's deque, but don't
    free the memory. The only reason I know of to do this is for the
    batch closures and frames, which we don't want to have to malloc
@@ -307,7 +306,7 @@ void Batcher_cleanup(CilkContext *const context)
 	WHEN_CILK_DEBUG(t->magic = ~CILK_CLOSURE_MAGIC);
 	//	WHEN_CILK_DEBUG(CILK_ASSERT1(NULL, t->malloced));
 	//  Closure_clean(context, t);
-	//et  Cilk_free(t);
+	//  Cilk_free(t);
 
 
 	Cilk_free(USE_SHARED1(batch_work_array));

@@ -82,7 +82,7 @@
 
 #define CILK2C_BEFORE_SPAWN_FAST(){					\
   Cilk_cilk2c_before_spawn_fast_cp(_cilk_ws, &(_cilk_frame->header));	\
-  OM_DS_before_spawn(_cilk_ws, &(_cilk_frame->header), 1);			\
+  /* OM_DS_before_spawn(_cilk_ws, &(_cilk_frame->header), 1);	 */		\
 }
 
 /// Ignore OM_DS calls
@@ -94,7 +94,7 @@
 
 #define CILK2C_BEFORE_SPAWN_SLOW(){					\
   Cilk_cilk2c_before_spawn_slow_cp(_cilk_ws, &(_cilk_frame->header));	\
-  OM_DS_before_spawn(_cilk_ws, &(_cilk_frame->header), 0);			\
+  /* OM_DS_before_spawn(_cilk_ws, &(_cilk_frame->header), 0);		 */	\
 }
 
 #define CILK2C_AT_THREAD_BOUNDARY_SLOW() {		\
@@ -105,24 +105,24 @@
 
 #define CILK2C_AFTER_SPAWN_FAST() {					\
      Cilk_cilk2c_after_spawn_fast_cp(_cilk_ws, &(_cilk_frame->header));	\
-     OM_DS_after_spawn_fast(_cilk_ws, &(_cilk_frame->header));		\
+     /* OM_DS_after_spawn_fast(_cilk_ws, &(_cilk_frame->header));	 */	\
      Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);			\
 }
 
 #define CILK2C_AFTER_SPAWN_SLOW() { \
   Cilk_cilk2c_after_spawn_slow_cp(_cilk_ws, &(_cilk_frame->header));	\
-  OM_DS_after_spawn_slow(_cilk_ws, &(_cilk_frame->header));		\
-      }
+  /* OM_DS_after_spawn_slow(_cilk_ws, &(_cilk_frame->header));	 */	\
+  }
 #define CILK2C_START_THREAD_FAST() {					 \
      Cilk_cilk2c_start_thread_fast_cp(_cilk_ws, &(_cilk_frame->header)); \
      Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);			 \
-     OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));			 \
+     /* OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));  */ \
 }
 
 #define CILK2C_START_THREAD_SLOW() {					 \
      Cilk_cilk2c_start_thread_slow_cp(_cilk_ws, &(_cilk_frame->header)); \
      Cilk_cilk2c_start_thread_slow(_cilk_ws, &(_cilk_frame->header));	 \
-     OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));			 \
+     /* OM_DS_new_thread_start(_cilk_ws, &(_cilk_frame->header));         */ \
 }
 
 #define CILK2C_BEFORE_RETURN_FAST() {					  \
@@ -141,7 +141,7 @@
 
 #define CILK2C_BEFORE_SYNC_SLOW()	{				\
   Cilk_cilk2c_before_sync_slow_cp(_cilk_ws, &(_cilk_frame->header));	\
-  OM_DS_sync_slow(_cilk_ws, &(_cilk_frame->header));			\
+  /* OM_DS_sync_slow(_cilk_ws, &(_cilk_frame->header));		 */	\
 }
 
 #define CILK2C_AFTER_SYNC_SLOW()					\
@@ -150,5 +150,5 @@
 #define CILK2C_AT_SYNC_FAST() {						\
      Cilk_cilk2c_at_sync_fast_cp(_cilk_ws, &(_cilk_frame->header));	\
      Cilk_cilk2c_event_new_thread_maybe(_cilk_ws);			\
-     OM_DS_sync_fast(_cilk_ws, &(_cilk_frame->header));			\
+     /* OM_DS_sync_fast(_cilk_ws, &(_cilk_frame->header)); */ \
 }

@@ -223,7 +223,7 @@ struct CilkGlobalState_s{
 	/* End BATCHER */
 
 	/*! Order maintenance for race detect*/
-	Top_List * englishOM_DS, *hebrewOM_DS;
+  //	Top_List * englishOM_DS, *hebrewOM_DS;
 
 	/*End order maintenance*/
 
@@ -267,7 +267,6 @@ struct CilkGlobalState_s{
 /* handy syntactic sugar */
 #define USE_SHARED(id) (ws->context->Cilk_global_state->id)
 #define USE_SHARED1(id) (context->Cilk_global_state->id)
-
 
 /* external malloc */
 extern void Cilk_init_arena(size_t arenasize);

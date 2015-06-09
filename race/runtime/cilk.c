@@ -273,7 +273,7 @@ static void Cilk_global_init(CilkContext *const context)
   init_variables(context);
 
   /*! order maintenance for race detection */
-  OM_DS_init(context);
+  //  OM_DS_init(context);
 
   /*  ==== TODO: add race-detect ptr list for (de)allocation  ===== */
 
@@ -322,7 +322,7 @@ void Cilk_terminate(CilkContext *const context)
   Cilk_debug_terminate(context);
 
   /*! Free order maintenance for race detection space */
-  OM_DS_free_and_free_nodes(context);
+  //  OM_DS_free_and_free_nodes(context);
 
   /* Free the address space */
   Cilk_free_global_state(context);

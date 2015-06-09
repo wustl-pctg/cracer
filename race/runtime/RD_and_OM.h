@@ -10,7 +10,7 @@
 
 /// Various DS definitions
 #define BATCHIFY_WORKING
-#define PARALLEL_OM_DS
+//#define PARALLEL_OM_DS
 
 
 // Not really sure where this ever comes in - not even in C_g_s
