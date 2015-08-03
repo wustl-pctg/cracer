@@ -12,7 +12,7 @@ struct blist_node_s {
   label_t label;
   struct blist_node_s* next;
   struct blist_node_s* prev;
-  struct blist_s* list; // Needed for rebalancing.
+  struct blist_s* list; // Needed for node comparison
 };
 
 typedef bl_node node;
@@ -137,7 +137,6 @@ node* bl_insert_initial(blist* self)
   node* n = node_new();
   self->tail = self->head = n;
   n->next = n->prev = NULL;
-  n->list = NULL;
   n->label = 0;
   n->list = self;
   self->size = 1;
@@ -151,6 +150,7 @@ node* bl_insert(blist* self, node* base)
   /// node when we know we need it.
   node* n = node_new();
   insert_internal(self, base, n);
+  n->list = self;
   return n;
 }
 

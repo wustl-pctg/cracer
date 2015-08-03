@@ -42,8 +42,6 @@ START_TEST(test_insert_single)
   ck_assert_ptr_ne(t->head, NULL);
   ck_assert_ptr_ne(t->tail, NULL);
 
-
-
   om_free(t);
 }
 END_TEST
@@ -52,7 +50,7 @@ START_TEST(test_insert_several)
 {
   om* t = om_new();
 
-  bl_node* n0 = om_insert(t, NULL);
+  bl_node* n0 = om_insert_initial(t);
   bl_node* n2 = om_insert(t, n0);
   bl_node* n1 = om_insert(t, n0);
 
