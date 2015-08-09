@@ -1,10 +1,10 @@
 // The relabel-specific code for order-maintenance.
 
-int too_heavy(tl_node* n)
+#define FAST_LOG2(x) (sizeof(label_t)*8 - 1 - __builtin_clzl((label_t)(x)))
+#define FAST_LOG2_CEIL(x) (((x) - (1 << FAST_LOG2(x))) ? FAST_LOG2(x) + 1 : FAST_LOG2(x))
+
+int too_heavy(tl_node* n, size_t height)
 {
-  long height = 64; // @todo How to actually get? We don't normally store
-                    // this, and it could have changed with the
-                    // inserts from the lower-level tries...
   double threshold = 0.75 + 0.25 * (n->level / (double)height );
   double density = n->size / (1 << (MAX_LEVEL - n->level));
   return density <= threshold;
@@ -120,7 +120,7 @@ void rebalance(om* self)
     current = current->parent;
     while (current) {
       __sync_fetch_and_add(&current->size, additional_size);
-      if (too_heavy(current)) current->needs_rebalance = 1;
+      if (too_heavy(current, self->height)) current->needs_rebalance = 1;
       current = current->parent;
     }
   }
@@ -131,4 +131,95 @@ void rebalance(om* self)
   //    Parallel prefix (to get ptr to leaf) on leaves (we have an
   //    array of these)
   recursive_rebalance(self->root);
+
+  /// @todo update height values!
+}
+
+#define LEFT 0
+#define RIGHT 1
+
+tl_node* insert_top(blist** sublists, size_t start, size_t end, tl_node* top,
+                    unsigned char dir_flag)
+{
+  tl_node* node = tl_node_new();
+  node->parent = top;
+  node->size = end - start + 1;
+
+  if (dir_flag == LEFT) {
+    int bit_shifts = MAX_LEVEL - top->level;
+    node->label = ((top->label >> (bit_shifts)) << bit_shifts);
+    if (start != end) node->label++;
+  } else {
+    node->label = top->label;
+  }
+  
+  if (start == end) {
+    node->level = MAX_LEVEL;
+    node->below = sublists[start];
+
+    node->needs_rebalance = 0;
+
+    // Patch list of leaves
+    sublists[start]->above = node;
+    node->prev = NULL;
+    node->next = NULL;
+    if (start != 0) {
+      node->prev = sublists[start - 1]->above;
+      sublists[start - 1]->above->next = node;
+    }
+  } else {
+    node->level = top->level + 1;
+    node->below = NULL;
+    node->needs_rebalance = 0; ///@todo mark this here if necessary?
+
+    node->left = insert_top(sublists, start, end / 2, node, LEFT);
+    node->right = insert_top(sublists, (end / 2) + 1, end, node, RIGHT);
+  }
+  return node;
+}
+
+void relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
+{
+  for (int i = 0; i < num_heavy_lists; ++i) {
+    blist** new_lists;
+
+    // Split into several sublists.
+    size_t array_size = split(heavy_lists[i]->below, &new_lists);
+
+    // Insert new sublists into top level.
+    tl_node* old = heavy_lists[i];
+    assert(old->level == MAX_LEVEL);
+    tl_node* parent = old->parent;
+    if (old->prev) old->prev->next = old->next;
+    if (old->next) old->next->prev = old->prev;
+
+    unsigned char direction = (parent->right == old);
+    size_t height = FAST_LOG2_CEIL(array_size);
+    if (direction == LEFT && !parent->right) {
+      size_t middle = (array_size - 1) / 2;
+      parent->left = insert_top(new_lists, 0, middle, parent, LEFT);
+      parent->right = insert_top(new_lists, middle + 1, array_size - 1,
+                                 parent, RIGHT);
+      height--;
+    } else {
+      insert_top(new_lists, 0, array_size - 1, parent, direction);
+    }
+    
+    while (parent) {
+      //parent->size += array_size - 1;
+      __sync_fetch_and_add(&parent->size, array_size - 1);
+      height++;
+      parent = parent->parent;
+    }
+
+    size_t old_height = self->height;
+    while (height > old_height) {
+      old_height = __sync_val_compare_and_swap(&self->height, old_height, height);
+    }
+    
+    tl_node_free(old);
+    free(new_lists);
+  }
+
+  rebalance(self);
 }
