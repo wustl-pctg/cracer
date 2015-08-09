@@ -29,6 +29,7 @@ void bl_destroy(blist* self);
  *  @return A pointer to the new node.
  */
 bl_node* bl_insert(blist* self, bl_node* base);
+bl_node* bl_insert_initial(blist* self);
 
 /** Returns true if x precedes y in the order, false otherwise. */
 bool bl_precedes(const bl_node* x, const bl_node* y);

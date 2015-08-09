@@ -27,51 +27,53 @@ struct blist_s {
 };
 
 /** # Private methods */
-static size_t split(blist* self, blist*** lists);
+static size_t split(blist* self, blist*** lists) __attribute__((unused));
 
-/// Node allocated, have ptr to base node
+static label_t get_new_label(blist* self, node* base)
+{
+  label_t next_label = (base->next) ? base->next->label : MAX_LABEL;
+  label_t lab = (base->label >> 1) + (next_label >> 1);
+
+  // Correction for average two odd integers (integer division rounding)
+  if ((base->label & next_label & 0x1) == 0x1) lab++;
+
+  // Correction for adding to the end.
+  if (!base->next) lab++;
+  
+  /// I think it could only match the base's label...
+  return (base->label == lab) ? 0 : lab;
+}
+
+/// Node allocated, have ptr to base node, already have label
 static void insert_internal(blist* self, node* base, node* n)
 {
-  if (base == self->tail) { // i.e. insert at end
-    if (!base) { // i.e. empty list
-      n->label = 0;
-      self->head = n;
-    } else {
-      n->label = base->label + NODE_INTERVAL;
-      /// @todo check for overflow
-      base->next = n;
-    }
-    self->tail = n;
-    n->next = NULL;      
-
+  if (!base) {
+    self->tail = self->head = n;
+    n->next = n->prev = NULL;
+    n->label = 0;
   } else {
-    n->label = (base->label >> 1) + (base->next->label >> 1);
-    // Correction for average two odd integers (integer division rounding)
-    if ((base->label & base->next->label & 0x1) == 0x1) n->label++;
-
-    /// I think it could only match the base's label...
-
-    if (base->label == n->label) split(self, NULL);
-    /** @todo go straight to starting split? Eventually the
-        upper-level structure will handle the big split, so I don't
-        thnk this is a good idea. Instead, we should return null and
-        let someone else decide what to do.
-    */
-
-    n->next = base->next;
-    base->next->prev = n;
+    assert(n->label > base->label);
+    if (base == self->tail) { // i.e. insert at end
+      self->tail = n;
+      n->next = NULL;      
+    } else {
+      n->next = base->next;
+      base->next->prev = n;
+    }
     base->next = n;
+    n->prev = base;
   }
 
   // Finalize
-  n->prev = base;
   self->size++;
+  n->list = self;
 }
 
 static size_t split(blist* self, blist*** lists)
 {
   size_t array_size = self->size / SUBLIST_SIZE;
-  if (self->size % NODE_INTERVAL != 0) array_size++;
+  if (self->size < SUBLIST_SIZE && self->size % NODE_INTERVAL != 0)
+    array_size++;
   *lists = malloc(array_size * sizeof(blist*));
 
   node* current_node = self->head;
@@ -81,11 +83,14 @@ static size_t split(blist* self, blist*** lists)
     node* next;
 
     current_node->prev = NULL;
+    label_t current_label = 0;
     while (current_node) {
       next = current_node->next;
+      current_node->label = current_label;
       insert_internal(list, current_node->prev, current_node);
-      //      printf("added node %p to %p\n", current_node, list);
+
       current_node = next;
+      current_label += NODE_INTERVAL;
       if (list->size == SUBLIST_SIZE) break;
     }
   }
@@ -135,22 +140,18 @@ node* bl_insert_initial(blist* self)
 {
   assert(!self->head);
   node* n = node_new();
-  self->tail = self->head = n;
-  n->next = n->prev = NULL;
-  n->label = 0;
-  n->list = self;
-  self->size = 1;
+  insert_internal(self, NULL, n);
   return n;
 }
 
 node* bl_insert(blist* self, node* base)
 {
-
-  /// @todo this is not very good design. Should only allocate the
-  /// node when we know we need it.
+  assert(base);
+  label_t lab = get_new_label(self, base);
+  if (lab == 0) return NULL; // Only the initial insert has label 0.
   node* n = node_new();
+  n->label = lab;
   insert_internal(self, base, n);
-  n->list = self;
   return n;
 }
 
