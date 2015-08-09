@@ -5,7 +5,8 @@ typedef unsigned long label_t;
 typedef size_t label_t;
 
 #include <limits.h>
-#define MAX_LABEL ULONG_MAX
+//#define MAX_LABEL ULONG_MAX
+static label_t MAX_LABEL = ULONG_MAX;
 static label_t NODE_INTERVAL = (((label_t)1) << 58); // N / log_2 N = 2^58
 static label_t SUBLIST_SIZE = ((label_t)64); // log_2 N = 64
 
