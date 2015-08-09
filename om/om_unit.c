@@ -69,61 +69,85 @@ END_TEST
 
 START_TEST(test_insert_overflow)
 {
+  MAX_LABEL = (label_t) 3;
+  MAX_LEVEL = (label_t) 2;
   NODE_INTERVAL = (label_t)2; // 2 / log 1
   SUBLIST_SIZE = (label_t)1;
 
   om* t = om_new();
 
-  /* bl_node* n0 = om_insert(t, NULL); */
-  /* bl_node* n3 = om_insert(t, n0); */
-  /* bl_node* n2 = om_insert(t, n0); */
-  /* bl_node* n1 = om_insert(t, n0); */
-
-  /** Call the internal insert (bl_insert) and make sure it returns
-      NULL on the final insert. */
-
-  om_free(t);
-}
-END_TEST
-
-START_TEST(test_rebalance_one)
-{
-    NODE_INTERVAL = (label_t)2; // 2 / log 1
-  SUBLIST_SIZE = (label_t)1;
-
-  om* t = om_new();
-
-  bl_node* n0 = om_insert(t, NULL);
-  bl_node* n3 = om_insert(t, n0);
-  bl_node* n2 = om_insert(t, n0);
-  bl_node* n1 = om_insert(t, n0);
-
+  bl_node* n0 = om_insert_initial(t); // 0
+  bl_node* n3 = om_insert(t, n0); // 2
+  bl_node* n2 = om_insert(t, n0); // 1
+  bl_node* n1 = om_insert(t, n0); // fail
+  
   ck_assert_ptr_ne(n0, NULL);
-  ck_assert_ptr_ne(n1, NULL);
+  ck_assert_ptr_eq(n1, NULL);
   ck_assert_ptr_ne(n2, NULL);
   ck_assert_ptr_ne(n3, NULL);
 
-  /* printf("labels: %lu %lu %lu %lu\n", n0->label, n1->label, n2->label, n3->label); */
+  ck_assert(om_precedes(n0, n2) == true);
+  ck_assert(om_precedes(n0, n3) == true);
+  ck_assert(om_precedes(n2, n3) == true);
 
-  /* ck_assert(om_precedes(n0, n1) == true); */
-  /* ck_assert(om_precedes(n0, n2) == true); */
-  /* ck_assert(om_precedes(n1, n2) == true); */
-  /* ck_assert(om_precedes(n2, n3) == true); */
-  /* ck_assert(om_precedes(n1, n0) == false); */
-
-  /* ck_assert(n0->list == n1->list); */
-  /* ck_assert(n1->list != n2->list); */
-  /* ck_assert(n2->list == n3->list); */
+  ck_assert_ptr_eq(n0->list, n2->list);
+  ck_assert_ptr_eq(n2->list, n3->list);
+  ck_assert_ptr_eq(n3->list, n0->list);
 
   om_free(t);
 }
 END_TEST
 
-START_TEST(test_rebalance_many)
+START_TEST(test_relabel_simple)
 {
-  NODE_INTERVAL = (label_t)6; // 32 / log 32
-  SUBLIST_SIZE = (label_t)5;
+  MAX_LABEL = (label_t) 3;
+  MAX_LEVEL = (label_t) 2;
+  NODE_INTERVAL = (label_t) 2; // 2 / log 1
+  SUBLIST_SIZE = (label_t) 1;
 
+  om* t = om_new();
+
+  bl_node* n0 = om_insert_initial(t); // 0
+  bl_node* n3 = om_insert(t, n0); // 2
+  bl_node* n2 = om_insert(t, n0); // 1
+
+  g_marked_array_size = 1;
+  g_marked_array = malloc(sizeof(tl_node*));
+  g_marked_array[0] = n0->list->above;
+
+  relabel(t, g_marked_array, g_marked_array_size);
+  bl_node* n1 = om_insert(t, n0);
+
+  ck_assert(om_precedes(n0, n1) == true);
+  ck_assert(om_precedes(n0, n2) == true);
+  ck_assert(om_precedes(n1, n2) == true);
+  ck_assert(om_precedes(n0, n3) == true);
+  ck_assert(om_precedes(n2, n3) == true);
+
+  ck_assert_ptr_eq(n0->list, n1->list);
+  ck_assert_ptr_ne(n0->list, n2->list);
+  ck_assert_ptr_ne(n2->list, n3->list);
+  ck_assert_ptr_ne(n3->list, n0->list);
+
+  om_free(t);
+}
+END_TEST
+
+START_TEST(test_relabel_overflow )
+{
+  MAX_LABEL = (label_t) 3;
+  MAX_LEVEL = (label_t) 2;
+  NODE_INTERVAL = (label_t) 2; // 2 / log 1
+  SUBLIST_SIZE = (label_t) 1;
+}
+END_TEST
+
+START_TEST(test_rebalance)
+{
+  MAX_LABEL = (label_t) 3;
+  MAX_LEVEL = (label_t) 2;
+  NODE_INTERVAL = (label_t) 2; // 2 / log 1
+  SUBLIST_SIZE = (label_t) 1;
 }
 END_TEST
 
@@ -139,8 +163,9 @@ Suite* om_suite(void)
   tcase_add_test(tc_insert, test_insert_single);
   tcase_add_test(tc_insert, test_insert_several);
   tcase_add_test(tc_insert, test_insert_overflow);
-  tcase_add_test(tc_insert, test_rebalance_one);
-  tcase_add_test(tc_insert, test_rebalance_many);
+  tcase_add_test(tc_insert, test_relabel_simple);
+  tcase_add_test(tc_insert, test_relabel_overflow);
+  tcase_add_test(tc_insert, test_rebalance);
   suite_add_tcase(s, tc_insert);
 
   //  tcase_add_checked_fixture(tc_inserts, setup_inserts, teardown_inserts);
