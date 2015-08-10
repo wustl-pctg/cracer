@@ -36,7 +36,7 @@ struct om_s {
   struct tl_node_s* root;
   struct tl_node_s* head;
   struct tl_node_s* tail;
-  //  size_t size;
+  size_t height;
 };
 
 
@@ -60,6 +60,7 @@ void om_create(om* self)
   root->below = bl_new();
   root->level = 0;
   root->size = 1;
+  root->needs_rebalance = 0;
   root->parent = root->left = root->right = NULL;
 
   /// The label of an internal node is the highest possible leaf label
@@ -68,6 +69,7 @@ void om_create(om* self)
 
   self->root = root;
   self->head = self->tail = NULL;
+  self->height = 0;
 }
 
 om* om_new()
