@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <cassert>
 #include <cstdio>
 #include <algorithm>
@@ -183,8 +184,40 @@ void batch_mergeLists(int idx, void* infos)
   }
 }
 
+//int g_touched[1000];
+
+void parallel_foo(int* data, int i, size_t size)
+{
+  int j = 42 * 55 + 86;
+  j += i;
+  data[i % size] = j;
+  //  g_touched[i] = -1;
+}
+
+int bar(int x)
+{
+  for (int i = 0; i < 100; ++i) {
+    x += i;
+    x *= 2;
+    x /= 42;
+  }
+  return x;
+}
+
+void batch_insert_par(void* dataStruct, void* data,
+                      size_t numElements, void* results)
+{
+  //  memset(g_touched, 0, sizeof(int)*1000);
+  int* d = (int*) data;
+  cilk_for(int i = 0; i < 500 * numElements; ++i) {
+    parallel_foo(d, i, numElements);
+  }
+  //  d = (int*)bar(42);
+}
+
+
 void batch_insert_par2(void* dataStruct, void* data,
-                            size_t numElements, void* results)
+                       size_t numElements, void* results)
 {
   dataStruct = (void*) &slist;
   int i,j,k,check;
@@ -204,6 +237,13 @@ void batch_insert_par2(void* dataStruct, void* data,
 
   Node* current = slist.hdr;
   Node* back_node;
+
+  // static int g_total = 0;
+  // g_total += numElements;
+  // printf("Batch of size %i, total inserted %i\n", numElements,
+  //        g_total);
+  // if (g_total % 100 == 0) fprintf(stderr, ".");
+  // if (g_total % 1000 == 0) fprintf(stderr, "%i\n", g_total);
 
   std::sort((int*)data, ((int*)data) + numElements);
 
@@ -287,7 +327,7 @@ void batch_insert_par2(void* dataStruct, void* data,
 
 void SkipList_insert(int val)
 {
-  cilk_batchify(&batch_insert_par2, NULL, val, sizeof(int));
+  cilk_batchify(&batch_insert_par, NULL, val, sizeof(int));
 }
 
 Node *insertNode(T data)
