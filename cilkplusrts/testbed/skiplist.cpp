@@ -209,12 +209,13 @@ void batch_insert_par(void* dataStruct, void* data,
   const int size = num_per_elem * numElements;
   g_touched = (int*)calloc(size, sizeof(int));
 
-  cilk_for(int i = 0; i < num_per_elem * numElements; ++i) {
+  cilk_for(int i = 0; i < size; ++i) {
     touch(i);
   }
-  // cilk_spawn wait_for_steal();
-  // wait_for_steal();
-  // cilk_sync;
+
+  for (int i = 0; i < size; ++i) {
+    assert(g_touched[i] == -1);
+  }
 
   free(g_touched);
   //  __cilkrts_c_terminate_batch();
@@ -332,7 +333,7 @@ void batch_insert_par2(void* dataStruct, void* data,
 
 void SkipList_insert(int val)
 {
-  cilk_batchify(&batch_insert_par2, NULL, val, sizeof(int));
+  cilk_batchify(&batch_insert_par, NULL, val, sizeof(int));
 }
 
 Node *insertNode(T data)
