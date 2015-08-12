@@ -202,7 +202,7 @@ CILK_ABI_VOID __cilkrts_leave_frame(__cilkrts_stack_frame *sf)
         // for all spawn helper frames, even if we're processing an exception
         if ((sf->flags & CILK_FRAME_DETACHED))
         {
-	    update_pedigree_on_leave_frame(w, sf);
+          update_pedigree_on_leave_frame(w, sf);
         }
         return;
     }
