@@ -5,59 +5,57 @@
 #include <cilk/batcher.h>
 
 #include "timer.h"
-//#include "util/benchOptions.h"
 #include "skiplist.h"
 
-#define INIT_SIZE 20000
+#define DEFAULT_INIT_SIZE 20
+#define DEFAULT_NUM_OPS 100000
+#define SEQUENTIAL_VALS 0
 
-//BenchOptions g_options;
-int* vals;
+int* g_insert_vals;
 
 SkipList* set_up(size_t initial_size, size_t num_ops)
 {
-  int i;
   SkipList* ds = &slist;
 
   // Initialize the skip list.
   initList();
 
-  for (i = -1*(int)initial_size; i < 0; i++) {
-    insertNode(rand());
-    //insertNode(i);
+  for (int i = -1 * (int)initial_size; i < 0; ++i) {
+    int val = SEQUENTIAL_VALS ? i : rand();
+    insertNode(val);
   }
 
   // Prepare our array of random numbers.
-  vals = (int*) malloc(sizeof(int) * num_ops);
-  if (!vals)
+  g_insert_vals = (int*) malloc(sizeof(int) * num_ops);
+  if (!g_insert_vals)
     fprintf(stderr, "insufficient memory (vals)\n");
 
-  for (i = 0; i < num_ops; i++) {
-    vals[i] = rand();;
+  for (int i = 0; i < num_ops; ++i) {
+    int val = SEQUENTIAL_VALS ? i : rand();
+    g_insert_vals[i] = val;
   }
-
   return ds;
 }
 
 void run_insert_benchmark(SkipList* ds, int size)
 {
   cilk_for(int i = 0; i < size; ++i) {
-    SkipList_insert(vals[i]);
+    SkipList_insert(g_insert_vals[i]);
   }
 }
 
 int main(int argc, char* argv[])
 {
-  SkipList* ds;
-  int num_ops = 100000;
-  int initial_size = 10;
+  int num_ops = (argc == 2) ? atoi(argv[1]) : DEFAULT_NUM_OPS;
+  int initial_size = (argc == 3) ? atoi(argv[2]) : DEFAULT_INIT_SIZE;
 
-  ds = set_up(initial_size, num_ops);
+  SkipList* ds = set_up(initial_size, num_ops);
 
   startTimer();
   run_insert_benchmark(ds, num_ops);
   stopTimer();
 
-  printf("Time: %lf",getWallTime());
+  printf("Time: %lf", getWallTime());
   printf(" | Size: %d\n", get_size());
 
   return 0;
