@@ -145,6 +145,7 @@ static void do_return_from_spawn (__cilkrts_worker *w,
 static void do_sync (__cilkrts_worker *w,
                      full_frame *ff,
                      __cilkrts_stack_frame *sf);
+void batch_scheduler_function(cilk_fiber *fiber);
 
 // max is defined on Windows and VxWorks
 #if (! defined(_WIN32)) && (! defined(__VXWORKS__))
@@ -2902,6 +2903,13 @@ __cilkrts_worker *make_worker(global_state_t *g,
     w->l->original_pedigree_leaf = NULL;
     w->l->rand_seed = 0; /* the scheduler will overwrite this field */
 
+	START_INTERVAL(w, INTERVAL_FIBER_ALLOCATE) {
+    w->l->batch_scheduling_fiber = cilk_fiber_allocate(&w->l->fiber_pool);
+    CILK_ASSERT(w->l->batch_scheduling_fiber);
+    cilk_fiber_reset_state(w->l->batch_scheduling_fiber, batch_scheduler_function);
+    cilk_fiber_set_owner(w->l->batch_scheduling_fiber, w);
+  } STOP_INTERVAL(w, INTERVAL_FIBER_ALLOCATE);
+
     w->l->post_suspend = 0;
     w->l->suspended_stack = 0;
     w->l->fiber_to_free = NULL;
@@ -2962,6 +2970,18 @@ void destroy_worker(__cilkrts_worker *w)
         CILK_ASSERT(0 == ref_count);
         w->l->scheduling_fiber = NULL;
     }
+
+    CILK_ASSERT(w->l->batch_scheduling_fiber);
+    START_INTERVAL(w, INTERVAL_FIBER_DEALLOCATE) {
+        int ref_count =
+            cilk_fiber_remove_reference(w->l->batch_scheduling_fiber,
+                                        &w->l->fiber_pool);
+
+        // Scheduling fibers should never have extra references to them.
+        CILK_ASSERT(0 == ref_count);
+        w->l->batch_scheduling_fiber = NULL;
+    } STOP_INTERVAL(w, INTERVAL_FIBER_DEALLOCATE);
+
 
 #if CILK_PROFILE
     if (w->l->stats) {
