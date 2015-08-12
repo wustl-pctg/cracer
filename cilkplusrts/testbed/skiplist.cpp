@@ -184,35 +184,40 @@ void batch_mergeLists(int idx, void* infos)
   }
 }
 
-//int g_touched[1000];
+int* g_touched;
 
-void parallel_foo(int* data, int i, size_t size)
+void recur(int low, int high)
 {
-  int j = 42 * 55 + 86;
-  j += i;
-  data[i % size] = j;
-  //  g_touched[i] = -1;
-}
-
-int bar(int x)
-{
-  for (int i = 0; i < 100; ++i) {
-    x += i;
-    x *= 2;
-    x /= 42;
+  assert(high >= low);
+  if (high != low) {
+    int mid = low + ((high - low)/ 2);
+    cilk_spawn recur(low, mid);
+    recur(mid + 1, high);
+    cilk_sync;
+    return;
   }
-  return x;
+  g_touched[low] = -1;
 }
+
+void touch(int i) { g_touched[i] = -1; }
+void wait_for_steal() { usleep(100); }
 
 void batch_insert_par(void* dataStruct, void* data,
                       size_t numElements, void* results)
 {
-  //  memset(g_touched, 0, sizeof(int)*1000);
-  int* d = (int*) data;
-  cilk_for(int i = 0; i < 500 * numElements; ++i) {
-    parallel_foo(d, i, numElements);
+  const int num_per_elem = 500;
+  const int size = num_per_elem * numElements;
+  g_touched = (int*)calloc(size, sizeof(int));
+
+  cilk_for(int i = 0; i < num_per_elem * numElements; ++i) {
+    touch(i);
   }
-  //  d = (int*)bar(42);
+  // cilk_spawn wait_for_steal();
+  // wait_for_steal();
+  // cilk_sync;
+
+  free(g_touched);
+  //  __cilkrts_c_terminate_batch();
 }
 
 
@@ -327,7 +332,7 @@ void batch_insert_par2(void* dataStruct, void* data,
 
 void SkipList_insert(int val)
 {
-  cilk_batchify(&batch_insert_par, NULL, val, sizeof(int));
+  cilk_batchify(&batch_insert_par2, NULL, val, sizeof(int));
 }
 
 Node *insertNode(T data)
