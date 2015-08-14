@@ -3,7 +3,9 @@
 #include <check.h>
 
 #define TEST
-#include "blist.c"
+//#include "blist.c"
+//#include "blist_split.c"
+#include "om.c"
 
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
@@ -17,7 +19,7 @@ START_TEST(test_create)
   blist* list = bl_new();
 
   ck_assert_ptr_ne(list, NULL);
-  ck_assert_uint_eq(list->size, 0);
+  ck_assert_uint_eq(bl_size(list), 0);
   ck_assert_ptr_eq(list->head, NULL);
   ck_assert_ptr_eq(list->tail, NULL);
 
@@ -36,7 +38,7 @@ START_TEST(test_initial_insert)
   
   ck_assert_ptr_eq(g_list->head, x);
   ck_assert_ptr_eq(g_list->tail, x);
-  ck_assert_uint_eq(g_list->size, 1);
+  ck_assert_uint_eq(bl_size(g_list), 1);
 }
 END_TEST
 
@@ -48,7 +50,9 @@ START_TEST(test_insert_middle)
   bl_node* y0 = bl_insert(g_list, x);
   bl_node* y2 = bl_insert(g_list, y1);
   
-  ck_assert_ptr_ne(y0, NULL); ck_assert_ptr_ne(y1, NULL); ck_assert_ptr_ne(y2, NULL);
+  ck_assert_ptr_ne(y0, NULL);
+  ck_assert_ptr_ne(y1, NULL);
+  ck_assert_ptr_ne(y2, NULL);
   ck_assert_ptr_eq(x->prev, NULL); ck_assert_ptr_eq(x->next, y0);
   ck_assert_ptr_eq(y0->prev, x); ck_assert_ptr_eq(y0->next, y1); 
   ck_assert_ptr_eq(y1->prev, y0); ck_assert_ptr_eq(y1->next, y2); 
@@ -61,28 +65,28 @@ START_TEST(test_insert_middle)
   
   ck_assert_ptr_eq(g_list->head, x);
   ck_assert_ptr_eq(g_list->tail, z);
-  ck_assert_uint_eq(g_list->size, 5);
+  ck_assert_uint_eq(bl_size(g_list), 5);
 }
 END_TEST
 
 START_TEST(test_split_simple)
 {
-  NODE_INTERVAL = 1; SUBLIST_SIZE = 1;
+  NODE_INTERVAL = 2; SUBLIST_SIZE = 1;
   
   blist* list = bl_new();
   node* n0 = bl_insert_initial(list);
   node* n1 = bl_insert(list, n0);
 
-  blist** array;
+  tl_node** array;
   size_t array_size = split(list, &array);
 
   ck_assert(array_size == 2);
-  ck_assert(array[0]->size == 1); ck_assert(array[1]->size == 1);
+  ck_assert(bl_size(array[0]->below) == 1); ck_assert(bl_size(array[1]->below) == 1);
   ck_assert(n0->label == 0); ck_assert(n1->label == 0);
-  ck_assert(array[0]->head == n0); ck_assert(array[0]->tail == n0);
-  ck_assert(array[1]->head == n1); ck_assert(array[1]->tail == n1);
+  ck_assert(array[0]->below->head == n0); ck_assert(array[0]->below->tail == n0);
+  ck_assert(array[1]->below->head == n1); ck_assert(array[1]->below->tail == n1);
 
-  bl_free(array[0]); bl_free(array[1]);
+  bl_free(array[0]->below); bl_free(array[1]->below);
   free(array);
 }
 END_TEST
@@ -95,17 +99,22 @@ START_TEST(test_split_many)
   blist* list = bl_new();
   size_t num_nodes = 99;
   node** nodes = malloc(sizeof(node*) * num_nodes);
-  for (int i = 0; i < num_nodes; ++i) nodes[i] = bl_insert(list, nodes[i-1]);
-  ck_assert(list->size == num_nodes);
+  nodes[0] = bl_insert_initial(list);
+  for (int i = 1; i < num_nodes; ++i) {
+    nodes[i] = node_new();
+    nodes[i]->label = nodes[i-1]->label + NODE_INTERVAL;
+    insert_internal(list, nodes[i-1], nodes[i]);
+  }
+  ck_assert(bl_size(list) == num_nodes);
 
-  blist** lists;
+  tl_node** lists;
   size_t array_size = split(list, &lists);
   ck_assert(array_size == 20); // ceil(num_nodes / SUBLIST_SIZE)
 
   size_t n = 0;
   for (int i = 0; i < array_size - 1; ++i) {
-    blist* current_list = lists[i];
-    ck_assert(current_list->size == SUBLIST_SIZE);
+    blist* current_list = lists[i]->below;
+    ck_assert(bl_size(current_list) == SUBLIST_SIZE);
     
     node* current_node = current_list->head;
     label_t label = 0;
@@ -130,10 +139,11 @@ START_TEST(test_split_many)
   }
   
   // Check final list, may not be full size
-  ck_assert(lists[array_size - 1]->size == num_nodes % SUBLIST_SIZE);
-  ck_assert(n + lists[array_size - 1]->size == num_nodes);
+  ck_assert(bl_size(lists[array_size - 1]->below) == num_nodes % SUBLIST_SIZE);
+  ck_assert(n + bl_size(lists[array_size - 1]->below) == num_nodes);
 
-  for (int i = 0; i < array_size; ++i) bl_free(lists[i]);
+  for (int i = 0; i < array_size; ++i) bl_free(lists[i]->below);
+  free(lists);
 }
 END_TEST
 

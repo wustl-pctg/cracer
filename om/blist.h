@@ -10,19 +10,19 @@ typedef struct blist_s blist;
 struct blist_node_s;
 typedef struct blist_node_s bl_node;
 
+/** Initialize a pre-allocated list. */
+void bl_create(blist* self);
+
 /** Allocate a list from the heap and initialize.
   * @return An empty list.
 */
 blist* bl_new();
 
-/** Destroy and deallocate list. */
-void bl_free(blist* self);
-
-/** Initialize a pre-allocated list. */
-void bl_create(blist* self);
-
 /** Destroy, but do not de-allocate, list. */
 void bl_destroy(blist* self);
+
+/** Destroy and deallocate list. */
+void bl_free(blist* self);
 
 /** Insert a new item into the order.
  *  @param base Node after which to insert.
@@ -35,7 +35,9 @@ bl_node* bl_insert_initial(blist* self);
 bool bl_precedes(const bl_node* x, const bl_node* y);
 
 /** Verify all labels are in the correct order. */
-void bl_verify(const blist* self);
+int bl_verify(const blist* self);
+
+size_t bl_size(const blist* self);
 
 /** Print list to a file. */
 void bl_fprint(const blist* self, FILE* out);

@@ -20,14 +20,11 @@ typedef bl_node node;
 struct blist_s {
   node* head;
   node* tail;
-  size_t size;
+  //  size_t size;
 
   // Needed for interacting with top list.
   struct tl_node_s* above;
 };
-
-/** # Private methods */
-static size_t split(blist* self, blist*** lists) __attribute__((unused));
 
 static label_t get_new_label(blist* self, node* base)
 {
@@ -65,42 +62,8 @@ static void insert_internal(blist* self, node* base, node* n)
   }
 
   // Finalize
-  self->size++;
+  //  self->size++;
   n->list = self;
-}
-
-static size_t split(blist* self, blist*** lists)
-{
-  size_t array_size = self->size / SUBLIST_SIZE;
-  if (self->size < SUBLIST_SIZE && self->size % NODE_INTERVAL != 0)
-    array_size++;
-  *lists = malloc(array_size * sizeof(blist*));
-
-  node* current_node = self->head;
-  for (int list_index = 0; list_index < array_size; list_index++) {
-    blist* list = (*lists)[list_index] = bl_new();
-    
-    node* next;
-
-    current_node->prev = NULL;
-    label_t current_label = 0;
-    while (current_node) {
-      next = current_node->next;
-      current_node->label = current_label;
-      insert_internal(list, current_node->prev, current_node);
-
-      current_node = next;
-      current_label += NODE_INTERVAL;
-      if (list->size == SUBLIST_SIZE) break;
-    }
-  }
-
-  // Free the sublist itself, but not its nodes!
-  self->head = self->tail = NULL;
-  self->size = 0;
-  free(self);
-
-  return array_size;
 }
 
 /** Allocate a new, uninitialized node. */
@@ -118,7 +81,7 @@ blist* bl_new()
 void bl_create(blist* self)
 {
   self->head = self->tail = NULL;
-  self->size = 0;
+  //  self->size = 0;
 }
 
 void bl_destroy(blist* self)
@@ -155,15 +118,36 @@ node* bl_insert(blist* self, node* base)
   return n;
 }
 
-bool bl_precedes(const node* x, const node* y) { return x->label < y->label; }
+bool bl_precedes(const node* x, const node* y)
+{
+  assert(x->list == y->list);
+  return x->label < y->label;
+}
 
-void bl_verify(const blist* self)
+size_t bl_size(const blist* self)
+{
+#ifdef BL_HAS_SIZE_FIELD
+  return self->size;
+#else
+  size_t count = 0;
+  node* current = self->head;
+  while (current) {
+    count++;
+    current = current->next;
+  }
+  return count;
+#endif // BL_HAS_SIZE_FIELD  
+}
+
+int bl_verify(const blist* self)
 {
   /// @todo
+  return 0;
 }
 void bl_fprint(const blist* self, FILE* out)
 {
   /// @todo
+  assert(0);
 }
 
 void bl_print(const blist* self) { bl_fprint(self, stdout); }
