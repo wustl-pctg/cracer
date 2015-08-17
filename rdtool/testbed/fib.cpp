@@ -1,8 +1,8 @@
 #include <iostream>
 #include <chrono>
-#Include <cstdlib>
+#include <cstdlib>
 
-#include <cilk.h>
+#include <cilk/cilk.h>
 //#include <racedetect.h>
 
 #define spawn cilk_spawn
@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 
   std::cout << "Result: " << result << std::endl;
   std::cout << "Time: "
-            << std::chrono::duration_cast<std::chrono::milliseconds(end - start).count()
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
             << " ms."
             << std::endl;
 
