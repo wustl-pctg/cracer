@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <cassert>
 #include <cstdio>
 #include <algorithm>
@@ -183,8 +184,46 @@ void batch_mergeLists(int idx, void* infos)
   }
 }
 
+int* g_touched;
+
+void recur(int low, int high)
+{
+  assert(high >= low);
+  if (high != low) {
+    int mid = low + ((high - low)/ 2);
+    cilk_spawn recur(low, mid);
+    recur(mid + 1, high);
+    cilk_sync;
+    return;
+  }
+  g_touched[low] = -1;
+}
+
+void touch(int i) { g_touched[i] = -1; }
+void wait_for_steal() { usleep(100); }
+
+void batch_insert_par(void* dataStruct, void* data,
+                      size_t numElements, void* results)
+{
+  const int num_per_elem = 500;
+  const int size = num_per_elem * numElements;
+  g_touched = (int*)calloc(size, sizeof(int));
+
+  cilk_for(int i = 0; i < size; ++i) {
+    touch(i);
+  }
+
+  for (int i = 0; i < size; ++i) {
+    assert(g_touched[i] == -1);
+  }
+
+  free(g_touched);
+  //  __cilkrts_c_terminate_batch();
+}
+
+
 void batch_insert_par2(void* dataStruct, void* data,
-                            size_t numElements, void* results)
+                       size_t numElements, void* results)
 {
   dataStruct = (void*) &slist;
   int i,j,k,check;
@@ -204,6 +243,13 @@ void batch_insert_par2(void* dataStruct, void* data,
 
   Node* current = slist.hdr;
   Node* back_node;
+
+  // static int g_total = 0;
+  // g_total += numElements;
+  // printf("Batch of size %i, total inserted %i\n", numElements,
+  //        g_total);
+  // if (g_total % 100 == 0) fprintf(stderr, ".");
+  // if (g_total % 1000 == 0) fprintf(stderr, "%i\n", g_total);
 
   std::sort((int*)data, ((int*)data) + numElements);
 
@@ -287,7 +333,7 @@ void batch_insert_par2(void* dataStruct, void* data,
 
 void SkipList_insert(int val)
 {
-  cilk_batchify(&batch_insert_par2, NULL, val, sizeof(int));
+  cilk_batchify(&batch_insert_par, NULL, val, sizeof(int));
 }
 
 Node *insertNode(T data)

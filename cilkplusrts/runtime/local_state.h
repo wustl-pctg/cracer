@@ -287,6 +287,13 @@ struct local_state  /* COMMON_PORTABLE */
    */
   cilk_fiber* scheduling_fiber;
 
+  /**
+   * The fiber for the batch scheduling stacks.
+   * [local read/write]
+   */
+  cilk_fiber* batch_scheduling_fiber;
+
+
   // /**
   //  * A temporary holder for the core fiber that called
   //  * batchify.

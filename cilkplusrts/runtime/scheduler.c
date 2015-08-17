@@ -145,6 +145,7 @@ static void do_return_from_spawn (__cilkrts_worker *w,
 static void do_sync (__cilkrts_worker *w,
                      full_frame *ff,
                      __cilkrts_stack_frame *sf);
+void batch_scheduler_function(cilk_fiber *fiber);
 
 // max is defined on Windows and VxWorks
 #if (! defined(_WIN32)) && (! defined(__VXWORKS__))
@@ -519,13 +520,11 @@ static void increment_E(__cilkrts_worker *victim, deque* d)
     // victim->exc
     ASSERT_WORKER_LOCK_OWNED(victim);
 
-//    tmp = *victim->exc;
     tmp = d->exc;
     if (tmp != EXC_INFINITY) {
         /* On most x86 this pair of operations would be slightly faster
            as an atomic exchange due to the implicit memory barrier in
            an atomic instruction. */
-//        *victim->exc = tmp + 1;
         d->exc = tmp + 1;
         __cilkrts_fence();
     }
@@ -539,13 +538,11 @@ static void decrement_E(__cilkrts_worker *victim, deque* d)
     // victim->exc
     ASSERT_WORKER_LOCK_OWNED(victim);
 
-//    tmp = *victim->exc;
     tmp = d->exc;
     if (tmp != EXC_INFINITY) {
         /* On most x86 this pair of operations would be slightly faster
            as an atomic exchange due to the implicit memory barrier in
            an atomic instruction. */
-//        *victim->exc = tmp - 1;
         d->exc = tmp - 1;
         __cilkrts_fence(); /* memory fence not really necessary */
     }
@@ -573,8 +570,6 @@ static void reset_THE_exception(__cilkrts_worker *w)
 /* conditions under which victim->head can be stolen: */
 static int can_steal_from(__cilkrts_worker *victim, deque* d)
 {
-    /* return ((victim->l->core_head < victim->l->core_tail) &&  */
-    /*         (victim->l->core_head < victim->l->core_protected_tail)); */
     return ((d->head < d->tail) && (d->head < d->protected_tail));
 }
 
@@ -692,8 +687,10 @@ static full_frame *unroll_call_stack(__cilkrts_worker *w,
     /* Reverse the call stack to make a linked list ordered from parent
        to child.  sf->call_parent points to the child of SF instead of
        the parent.  */
+    int mask = CILK_FRAME_DETACHED | CILK_FRAME_STOLEN
+        | CILK_FRAME_LAST | CILK_FRAME_BATCH;
     do {
-        t_sf = (sf->flags & (CILK_FRAME_DETACHED|CILK_FRAME_STOLEN|CILK_FRAME_LAST))? 0 : sf->call_parent;
+        t_sf = (sf->flags & mask) ? 0 : sf->call_parent;
         sf->call_parent = rev_sf;
         rev_sf = sf;
         sf = t_sf;
@@ -731,7 +728,6 @@ static void detach_for_steal(__cilkrts_worker *w,
     __cilkrts_stack_frame *sf;
 
     // Teams don't matter for batch workers
-//    if (w->l->type != WORKER_BATCH) w->l->team = victim->l->team;
     if (w->l->batch_id == -1) w->l->team = victim->l->team;
 
     CILK_ASSERT(*w->l->frame_ff == 0 || w == victim);
@@ -765,8 +761,9 @@ static void detach_for_steal(__cilkrts_worker *w,
                 parent_ff, loot_ff);
 #endif
 
-        // @TODO change for batcher?
-        if (WORKER_USER == victim->l->type &&
+        /// @todo change this when free batch stealing is enabled
+        if (w->l->batch_id == -1 && // don't do this for a batch steal
+            WORKER_USER == victim->l->type &&
             NULL == victim->l->last_full_frame) {
             // Mark this looted frame as special: only the original user worker
             // may cross the sync.
@@ -2906,6 +2903,13 @@ __cilkrts_worker *make_worker(global_state_t *g,
     w->l->original_pedigree_leaf = NULL;
     w->l->rand_seed = 0; /* the scheduler will overwrite this field */
 
+	START_INTERVAL(w, INTERVAL_FIBER_ALLOCATE) {
+    w->l->batch_scheduling_fiber = cilk_fiber_allocate(&w->l->fiber_pool);
+    CILK_ASSERT(w->l->batch_scheduling_fiber);
+    cilk_fiber_reset_state(w->l->batch_scheduling_fiber, batch_scheduler_function);
+    cilk_fiber_set_owner(w->l->batch_scheduling_fiber, w);
+  } STOP_INTERVAL(w, INTERVAL_FIBER_ALLOCATE);
+
     w->l->post_suspend = 0;
     w->l->suspended_stack = 0;
     w->l->fiber_to_free = NULL;
@@ -2966,6 +2970,18 @@ void destroy_worker(__cilkrts_worker *w)
         CILK_ASSERT(0 == ref_count);
         w->l->scheduling_fiber = NULL;
     }
+
+    CILK_ASSERT(w->l->batch_scheduling_fiber);
+    START_INTERVAL(w, INTERVAL_FIBER_DEALLOCATE) {
+        int ref_count =
+            cilk_fiber_remove_reference(w->l->batch_scheduling_fiber,
+                                        &w->l->fiber_pool);
+
+        // Scheduling fibers should never have extra references to them.
+        CILK_ASSERT(0 == ref_count);
+        w->l->batch_scheduling_fiber = NULL;
+    } STOP_INTERVAL(w, INTERVAL_FIBER_DEALLOCATE);
+
 
 #if CILK_PROFILE
     if (w->l->stats) {

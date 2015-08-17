@@ -16,6 +16,7 @@ typedef void(*batch_function_t)(void* ds, void* data, size_t size, void* results
 //typedef size_t unsigned int;
 CILK_API(void) cilk_batchify(batch_function_t f, void* ds,
                              batch_data_t data, size_t data_size);
+CILK_API(void) __cilkrts_c_terminate_batch();
 CILK_API(void) __cilkrts_c_start_batch();
 
 enum BATCH_ITEM_STATUS { ITEM_WAITING, ITEM_IN_PROGRESS, ITEM_DONE };
@@ -26,7 +27,7 @@ struct batch_record {
   void*                  ds;
   size_t           data_size;
   batch_data_t           data;
-  enum BATCH_ITEM_STATUS status;
+  volatile enum BATCH_ITEM_STATUS status;
 };
 
 struct batch {
