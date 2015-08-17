@@ -1,17 +1,19 @@
-static size_t split(blist* self, tl_node*** lists)
+static size_t split(blist* self)
 {
-  size_t original_size = bl_size(self);
-  assert(original_size > SUBLIST_SIZE);
-  size_t array_size = original_size / SUBLIST_SIZE;
-  if (original_size % SUBLIST_SIZE != 0)
-    array_size++;
   size_t num_lists = 0;
-  *lists = malloc(array_size * sizeof(tl_node*));
+  assert(self->above->below == self);
+  assert(self->head);
 
   node* current_node = self->head;
+  tl_node* prev_tl_node = NULL;
   while (current_node) {
+
     tl_node* n = tl_node_new();
-    (*lists)[num_lists] = n;
+    n->next = NULL;
+    n->prev = prev_tl_node;
+    if (prev_tl_node) prev_tl_node->next = n;
+    else self->above->split_nodes = n;
+    
     blist* list = bl_new();
     n->below = list;
     list->above = n;
@@ -29,12 +31,20 @@ static size_t split(blist* self, tl_node*** lists)
       list_size++;
     }
     num_lists++;
+    prev_tl_node = n;
   }
+  /* tl_node* old = self->above; */
+  /* tl_node* first = self->above->split_nodes; */
+  /* prev_tl_node->next = old->next; */
+  /* if (old->next) old->next->prev = prev_tl_node; */
+  /* first->prev = old->prev; */
+  /* if (old->prev) old->prev->next = first; */
+  /* self->above->prev = self->above->next = NULL; */
 
   // Free the sublist itself, but not its nodes!
   self->head = self->tail = NULL;
   free(self);
 
-  assert(num_lists == array_size);
+  //  assert(num_lists == array_size);
   return num_lists;
 }
