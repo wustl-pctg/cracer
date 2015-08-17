@@ -6,11 +6,16 @@
 #include "om_common.h"
 #include "blist.c"
 
+typedef unsigned char flag_t;
+
 struct tl_node_s {
   label_t label;
   size_t level;
-  size_t size;
-  
+
+  union {
+    size_t size;
+    size_t num_leaves;
+  };
   
   struct tl_node_s* parent;
 
@@ -24,12 +29,19 @@ struct tl_node_s {
     struct tl_node_s* right;
     struct tl_node_s* next;
   };
+  /** Note:
+   *  Left/right pointers are only used for relabeling, and ONLY valid
+   *  after a split operation. It would be extra work to splice the
+   *  split nodes into the list of leaves while rebuilding (without a
+   *  race condition on freeing the old nodes), so I'm not going to
+   *  implement it unless we have a reason to always have a list of leaves.
+   */
 
-  // @todo this could be unioned with something else, but probably
-  // isn't necessary. Actually, I'm not sure this is necessary. We may
-  // be able to get away with an "upper" pointer from the bottom list only.
-  blist* below;
-  short needs_rebalance;
+  union {
+    blist* below;
+    tl_node* split_nodes;
+  };
+  flag_t needs_rebalance;
 };
 
 struct om_s {
@@ -59,7 +71,7 @@ void om_create(om* self)
   tl_node* root = tl_node_new();
   root->below = bl_new();
   root->level = 0;
-  root->size = 1;
+  root->num_leaves = 0;
   root->needs_rebalance = 0;
   root->parent = root->left = root->right = NULL;
 
@@ -102,7 +114,7 @@ void om_destroy(om* self) { destroy(self->root); }
 
 node* om_insert_initial(om* self)
 {
-  assert(self->root->size == 1);
+  assert(self->root->num_leaves == 0);
 
   // Make upper-level node first
   tl_node* t = tl_node_new();
@@ -115,7 +127,7 @@ node* om_insert_initial(om* self)
 
   self->root->left = t;
   self->head = self->tail = t;
-  self->root->size++;
+  self->root->num_leaves++;
 
   // Now create new bottom list and insert
   t->below = bl_new();
