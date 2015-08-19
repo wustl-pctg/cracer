@@ -5,8 +5,9 @@
 #define _OM_H
 
 #include <stdbool.h> // bool
+#include <stdio.h>
 
-typedef unsigned long label_t;
+#include "om_common.h"
 #include "blist.h"
 
 struct tl_node_s;
@@ -15,9 +16,6 @@ struct om_s;
 typedef struct om_s om;
 
 typedef bl_node om_node;
-
-size_t g_marked_array_size = 0;
-tl_node** g_marked_array = NULL;
 
 /** Allocate a tree from the heap and initialize.
   * @return An empty tree.
@@ -34,9 +32,12 @@ void om_free(om* self);
 void om_destroy(om* self);
 
 om_node* om_insert(om* self, om_node* base);
+om_node* om_insert_initial(om* self);
 
 /** Returns true if x precedes y in the order, false otherwise. */
 bool om_precedes(const om_node* x, const om_node* y);
+
+tl_node* om_get_tl(om_node* n);
 
 /** Verify all labels are in the correct order. */
 void om_verify(const om* self);
@@ -46,5 +47,7 @@ void om_fprint(const om* self, FILE* out);
 
 /** Print list to standard output. */
 void om_print(const om* self);
+
+void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists);
 
 #endif // ifndef _OM_H
