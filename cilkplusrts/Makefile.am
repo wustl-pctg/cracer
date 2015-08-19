@@ -47,6 +47,7 @@ CILK_SRC = \
   runtime/cilk_fiber.cpp           \
   runtime/cilk_fiber-unix.cpp      \
   runtime/cilk_malloc.c            \
+	runtime/cilktool_empty.c 				 \
   runtime/c_reducers.c             \
   runtime/except-gcc.cpp           \
   runtime/frame_malloc.c           \
