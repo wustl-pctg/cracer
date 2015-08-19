@@ -1,5 +1,5 @@
 #include <iostream>
-#include <chrono>
+//#include <chrono>
 #include <cstdlib>
 
 #include <cilk/cilk.h>
@@ -27,15 +27,15 @@ int main(int argc, char* argv[])
   }
 
   int n = std::atoi(argv[1]);
-  auto start = std::chrono::high_resolution_clock::now();
+  //  auto start = std::chrono::high_resolution_clock::now();
   int result = fib(n);
-  auto end = std::chrono::high_resolution_clock::now();
+  //  auto end = std::chrono::high_resolution_clock::now();
 
   std::cout << "Result: " << result << std::endl;
-  std::cout << "Time: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-            << " ms."
-            << std::endl;
+  // std::cout << "Time: "
+  //           << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+  //           << " ms."
+  //           << std::endl;
 
   return 0;
 }
