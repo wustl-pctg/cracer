@@ -181,7 +181,7 @@ static inline void rebalance(om* self)
   recursive_rebalance(self->root, self->height);
 }
 
-void relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
+void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
 {
   parfor (int i = 0; i < num_heavy_lists; ++i) {
     tl_node* current = heavy_lists[i];
