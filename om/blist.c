@@ -8,19 +8,11 @@
 struct blist_s;
 struct tl_node_s;
 
-struct blist_node_s {
-  label_t label;
-  struct blist_node_s* next;
-  struct blist_node_s* prev;
-  struct blist_s* list; // Needed for node comparison
-};
-
 typedef bl_node node;
 
 struct blist_s {
   node* head;
   node* tail;
-  //  size_t size;
 
   // Needed for interacting with top list.
   struct tl_node_s* above;

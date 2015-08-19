@@ -3,11 +3,18 @@
 #define _BLIST_H
 
 #include <stdbool.h> // bool
+#include <stdio.h>
 
 struct blist_s;
 typedef struct blist_s blist;
 
-struct blist_node_s;
+struct blist_node_s {
+  label_t label;
+  struct blist_node_s* next;
+  struct blist_node_s* prev;
+  struct blist_s* list; // Needed for node comparison
+};
+
 typedef struct blist_node_s bl_node;
 
 /** Initialize a pre-allocated list. */
