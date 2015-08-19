@@ -110,6 +110,11 @@ void destroy(tl_node* n)
   free(n);
 }
 
+tl_node* om_get_tl(node* n)
+{
+  return n->list->above;
+}
+
 void om_destroy(om* self) { destroy(self->root); }
 
 node* om_insert_initial(om* self)
