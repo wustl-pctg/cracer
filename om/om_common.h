@@ -2,7 +2,6 @@
 #define _OM_COMMON_H
 
 typedef unsigned long label_t;
-typedef size_t label_t;
 
 #include <limits.h>
 //#define MAX_LABEL ULONG_MAX
