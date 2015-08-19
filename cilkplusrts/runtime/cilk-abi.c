@@ -144,6 +144,27 @@ CILK_ABI_VOID __cilkrts_enter_frame_fast_1(__cilkrts_stack_frame *sf)
     sf->reserved = 0;
 }
 
+__attribute__((always_inline))
+CILK_ABI_VOID __cilkrts_detach(struct __cilkrts_stack_frame *self)
+{
+    struct __cilkrts_worker *w = self->worker;
+    struct __cilkrts_stack_frame *parent = self->call_parent;
+    struct __cilkrts_stack_frame *volatile *tail = *w->tail;
+
+    self->spawn_helper_pedigree = w->pedigree;
+    self->call_parent->parent_pedigree = w->pedigree;
+    w->pedigree.rank = 0;
+    w->pedigree.parent = &self->spawn_helper_pedigree;
+
+    /*assert (tail < w->ltq_limit);*/
+    *tail++ = parent;
+
+    /* The stores are separated by a store fence (noop on x86)
+     *  or the second store is a release (st8.rel on Itanium) */
+    *w->tail = tail;
+    self->flags |= CILK_FRAME_DETACHED;
+}
+
 /**
  * A component of the THE protocol.  __cilkrts_undo_detach checks whether
  * this frame's parent has been stolen.  If it hasn't, the frame can return
