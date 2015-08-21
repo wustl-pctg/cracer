@@ -6,8 +6,6 @@
 #include <stdio.h>
 
 struct blist_s;
-typedef struct blist_s blist;
-
 struct blist_node_s {
   label_t label;
   struct blist_node_s* next;
@@ -16,6 +14,17 @@ struct blist_node_s {
 };
 
 typedef struct blist_node_s bl_node;
+
+struct blist_s {
+  bl_node* head;
+  bl_node* tail;
+
+  // Needed for interacting with top list.
+  struct tl_node_s* above;
+  unsigned char half_full;
+};
+typedef struct blist_s blist;
+
 
 /** Initialize a pre-allocated list. */
 void bl_create(blist* self);

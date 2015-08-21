@@ -3,12 +3,14 @@ static size_t split(blist* self)
   size_t num_lists = 0;
   assert(self->above->below == self);
   assert(self->head);
+  //  assert(bl_size(self) > SUBLIST_SIZE);
 
   node* current_node = self->head;
   tl_node* prev_tl_node = NULL;
   while (current_node) {
 
     tl_node* n = tl_node_new();
+    n->level = 42;
     n->next = NULL;
     n->prev = prev_tl_node;
     if (prev_tl_node) prev_tl_node->next = n;
@@ -33,18 +35,10 @@ static size_t split(blist* self)
     num_lists++;
     prev_tl_node = n;
   }
-  /* tl_node* old = self->above; */
-  /* tl_node* first = self->above->split_nodes; */
-  /* prev_tl_node->next = old->next; */
-  /* if (old->next) old->next->prev = prev_tl_node; */
-  /* first->prev = old->prev; */
-  /* if (old->prev) old->prev->next = first; */
-  /* self->above->prev = self->above->next = NULL; */
 
   // Free the sublist itself, but not its nodes!
   self->head = self->tail = NULL;
   free(self);
 
-  //  assert(num_lists == array_size);
   return num_lists;
 }

@@ -5,18 +5,14 @@
 #include "blist.h"
 #include "om_common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct blist_s;
 struct tl_node_s;
 
 typedef bl_node node;
-
-struct blist_s {
-  node* head;
-  node* tail;
-
-  // Needed for interacting with top list.
-  struct tl_node_s* above;
-};
 
 static label_t get_new_label(blist* self, node* base)
 {
@@ -54,18 +50,17 @@ static void insert_internal(blist* self, node* base, node* n)
   }
 
   // Finalize
-  //  self->size++;
   n->list = self;
 }
 
 /** Allocate a new, uninitialized node. */
-static inline node* node_new(){ return malloc(sizeof(node)); }
+  static inline node* node_new(){ return (node*)malloc(sizeof(node)); }
 
 /** # Public methods */
 
 blist* bl_new()
 {
-  blist* self = malloc(sizeof(*self));
+  blist* self = (blist*)malloc(sizeof(struct blist_s));
   bl_create(self);
   return self;
 }
@@ -73,7 +68,8 @@ blist* bl_new()
 void bl_create(blist* self)
 {
   self->head = self->tail = NULL;
-  //  self->size = 0;
+  self->above = NULL;
+  self->half_full = 0;
 }
 
 void bl_destroy(blist* self)
@@ -138,8 +134,19 @@ int bl_verify(const blist* self)
 }
 void bl_fprint(const blist* self, FILE* out)
 {
-  /// @todo
-  assert(0);
+  node* current = self->head;
+  size_t size = 0;
+  fprintf(out, "Blist at %p\n", self);
+  while (current) {
+    size++;
+    fprintf(out, "->%zu", current->label);
+    current = current->next;
+  }
+  fprintf(out, "\nSize: %zu\n", size);
 }
 
 void bl_print(const blist* self) { bl_fprint(self, stdout); }
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

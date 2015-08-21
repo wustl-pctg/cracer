@@ -4,6 +4,10 @@
 #ifndef _OM_H
 #define _OM_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdbool.h> // bool
 #include <stdio.h>
 
@@ -49,5 +53,9 @@ void om_fprint(const om* self, FILE* out);
 void om_print(const om* self);
 
 void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists);
+
+#ifdef __cplusplus
+} // extern C
+#endif
 
 #endif // ifndef _OM_H

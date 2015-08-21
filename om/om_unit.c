@@ -1,5 +1,4 @@
 #include <stdio.h>
-
 #include <check.h>
 
 #define TEST
@@ -9,6 +8,9 @@
 #define EXIT_FAILURE 1
 
 om* g_om = NULL;
+size_t g_marked_array_size;
+tl_node** g_marked_array;
+
 void setup(void) { g_om = om_new(); }
 void teardown(void) { om_free(g_om); g_om = NULL; }
 
@@ -114,7 +116,7 @@ START_TEST(test_relabel_simple)
   g_marked_array = malloc(sizeof(tl_node*));
   g_marked_array[0] = n0->list->above;
 
-  relabel(t, g_marked_array, g_marked_array_size);
+  om_relabel(t, g_marked_array, g_marked_array_size);
   bl_node* n1 = om_insert(t, n0);
 
   ck_assert(om_precedes(n0, n1) == true);
@@ -157,11 +159,11 @@ START_TEST(test_relabel_twice)
   g_marked_array_size = 1;
   g_marked_array = malloc(sizeof(tl_node*));
   g_marked_array[0] = n0->list->above;
-  relabel(t, g_marked_array, g_marked_array_size);
+  om_relabel(t, g_marked_array, g_marked_array_size);
   
   bl_node* n1 = om_insert(t, n0);
   g_marked_array[0] = n0->list->above;
-  relabel(t, g_marked_array, g_marked_array_size);
+  om_relabel(t, g_marked_array, g_marked_array_size);
 
   ck_assert(om_precedes(n0, n1) == true);
   ck_assert(om_precedes(n0, n2) == true);
@@ -206,11 +208,11 @@ START_TEST(test_relabel_overflow)
   g_marked_array_size = 1;
   g_marked_array = malloc(sizeof(tl_node*));
   g_marked_array[0] = n0->list->above;
-  relabel(t, g_marked_array, g_marked_array_size);
+  om_relabel(t, g_marked_array, g_marked_array_size);
   
   bl_node* n2 = om_insert(t, n1);
   g_marked_array[0] = n1->list->above;
-  relabel(t, g_marked_array, g_marked_array_size);
+  om_relabel(t, g_marked_array, g_marked_array_size);
 
   ck_assert(om_precedes(n0, n1) == true);
   ck_assert(om_precedes(n0, n2) == true);
@@ -267,7 +269,7 @@ START_TEST(test_relabel_several)
   g_marked_array_size = 1;
   g_marked_array = malloc(sizeof(tl_node*) * 2);
   g_marked_array[0] = n0->list->above;
-  relabel(t, g_marked_array, g_marked_array_size);
+  om_relabel(t, g_marked_array, g_marked_array_size);
 
   ck_assert(n0->list != n2->list);
   ck_assert(n0->list->above != n2->list->above);
@@ -286,7 +288,7 @@ START_TEST(test_relabel_several)
   g_marked_array_size = 2;
   g_marked_array[0] = n0->list->above;
   g_marked_array[1] = n2->list->above;
-  relabel(t, g_marked_array, g_marked_array_size);
+  om_relabel(t, g_marked_array, g_marked_array_size);
 
   ck_assert(om_precedes(n0, n1) == true);
   ck_assert(om_precedes(n0, n2) == true);

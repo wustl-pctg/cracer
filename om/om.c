@@ -6,6 +6,10 @@
 #include "om_common.h"
 #include "blist.c"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef unsigned char flag_t;
 
 struct tl_node_s {
@@ -51,8 +55,7 @@ struct om_s {
   size_t height;
 };
 
-
-tl_node* tl_node_new() { return malloc(sizeof(tl_node)); }
+tl_node* tl_node_new() { return (tl_node*)malloc(sizeof(tl_node)); }
 
 void tl_node_free(tl_node* n)
 {
@@ -86,7 +89,7 @@ void om_create(om* self)
 
 om* om_new()
 {
-  om* self = malloc(sizeof(*self));
+  om* self = (om*) malloc(sizeof(*self));
   om_create(self);
   return self;
 }
@@ -112,6 +115,7 @@ void destroy(tl_node* n)
 
 tl_node* om_get_tl(node* n)
 {
+  assert(n->list->above->level == MAX_LEVEL);
   return n->list->above;
 }
 
@@ -145,6 +149,7 @@ node* om_insert_initial(om* self)
 
 node* om_insert(om* self, node* base)
 {
+  assert(base->list->above->level == MAX_LEVEL);
   assert(base->list->above->below == base->list);
   return bl_insert(base->list, base);
 }
@@ -167,3 +172,8 @@ void om_fprint(const om* self, FILE* out)
 }
 
 void om_print(const om* self) { om_fprint(self, stdout); }
+
+
+#ifdef __cplusplus
+} // extern C
+#endif
