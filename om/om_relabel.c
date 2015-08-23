@@ -10,23 +10,23 @@
 #define spawn
 #define sync
 
-/// @todo remove after testing
-//extern node* g_base;
+static inline int is_leaf(tl_node* n)
+{
+  return n->level == MAX_LEVEL || (n->prev == NULL && n->right == NULL);
+}
 
 static inline label_t range_right(tl_node* n) { return n->label; }
 static inline label_t range_left(tl_node* n)
 {
   // Need signed to do arithmetic shift
-  long lab = 1 << (MAX_LEVEL - 1);
+  long lab = (long)MAX_LABEL; // all 1s
+  lab <<= (MAX_LEVEL - 1);
   lab >>= (n->level - 1);
   return ((label_t)lab) & range_right(n);
 }
 
-
 static inline double density(tl_node* n)
 {
-  /// @todo I've changed the size to mean the number of leaves...does
-  /// this change this formula?
   return n->size / (double)(1 << (MAX_LEVEL - n->level));
 }
 
@@ -37,6 +37,7 @@ static inline size_t capacity(tl_node* n)
 
 int too_heavy(tl_node* n, size_t height)
 {
+  if (!n->needs_rebalance) return 0;
   double threshold = 0.75 + 0.25 * (n->level / (double)height );
   return density(n) >= threshold;
 }
@@ -50,7 +51,7 @@ void build_array_of_leaves(tl_node* n, tl_node** array,
 {
   if (!n) return; ///@todo assert?
 
-  if (n->level == MAX_LEVEL) {
+  if (is_leaf(n)) {
     size_t index = left_index;
     if (n->size == 1) {
       array[index] = n;
@@ -59,9 +60,6 @@ void build_array_of_leaves(tl_node* n, tl_node** array,
       tl_node* current = n->split_nodes;
 
       while (current) {
-        
-        assert(current->level == 42);
-        current->level = 43;
         array[index] = current;
 
         if (current->next) assert(current->next->prev == current);
@@ -88,25 +86,31 @@ void build_array_of_leaves(tl_node* n, tl_node** array,
 }
 
 // Rebuild a subtree rooted at node n.
-void rebuild_subtree(tl_node* n)
+void rebuild(tl_node* n)
 {
-  assert(n->level < MAX_LEVEL);
-  assert(n->needs_rebalance == 0);
   size_t array_size = n->size;
   tl_node** array = (tl_node**)malloc(array_size * sizeof(tl_node*));
   
   // will remove extra scaffolding
   build_array_of_leaves(n, array, 0, array_size);
-  //  assert(g_base->list->above->level == 43); /// @todo remove
+
+  if (is_leaf(n) && n->parent) {
+    // Change this node to be an internal node.
+    if (n->parent->right == n) { // is right child
+      n->label = n->parent->label;
+    } else { // is left child
+      n->label = (range_right(n->parent) - range_left(n->parent)) / 2;
+    }
+    n->level = n->parent->level + 1;
+  }
   n->left = n->right = NULL;
 
   label_t llab = range_left(n);
   label_t rlab = n->label;
-  label_t spacing = (rlab - llab + 1) / array_size;
-  assert(spacing > 0);
-  
+  assert(rlab % 2 == 1);
+
   size_t mindex = array_size / 2;
-  label_t mlab = llab + spacing * mindex - 1;
+  label_t mlab = llab + ((rlab - llab) / 2 + 1) - 1;
 
   n->left = spawn rebuild_recursive(n, array, 0, mindex,
                                     llab, mlab);
@@ -133,91 +137,49 @@ tl_node* rebuild_recursive(tl_node* parent, tl_node** array,
     n->label = llab;
     n->level = MAX_LEVEL;
     n->left = n->right = NULL;
-    /* assert(array[left_index]->next = NULL); */
-    /* assert(array[left_index]->prev = NULL); */
-    /* if (left_index > 0) { */
-    /*   assert(n->label > 0); */
-    /*   n->prev = array[left_index - 1]; */
-    /*   array[left_index - 1]->next = n; */
-    /* } */
   } else {
     n->level = n->parent->level + 1;
 
     size_t mindex = lindex + size / 2;
-    label_t spacing = (rlab - llab + 1) / size;
-    label_t mlab = llab + spacing * (mindex - lindex) - 1;
+    label_t mlab = llab + ((rlab - llab) / 2 + 1) - 1;
 
     n->left = spawn rebuild_recursive(n, array, lindex, mindex, llab, mlab);
     n->right = rebuild_recursive(n, array, mindex, rindex, mlab + 1, rlab);
     sync;
     
-    n->label = array[rindex - 1]->label;
+    //    n->label = array[rindex - 1]->label;
+    n->label = rlab;
+    assert(rlab % 2 == 1);
   }
   
   return n;
 }
 
-void rebuild_leaf(tl_node* n)
-{
-  assert(n->level == MAX_LEVEL && n->parent && n->size > 1);
-  assert(n->left == NULL && n->right == NULL);
-
-  size_t array_size = n->size;
-  tl_node** array = (tl_node**)malloc(array_size * sizeof(tl_node*));
-  
-  // will remove extra scaffolding
-  n->level = MAX_LEVEL; // reset for build_array_of_leaves
-  build_array_of_leaves(n, array, 0, array_size);
-
-  // Change this node to be an internal node.
-  if (n->parent->right == n) { // is right child
-    n->label = n->parent->label;
-  } else { // is left child
-    n->label = (range_right(n->parent) - range_left(n->parent)) / 2;
-  }
-  n->level = n->parent->level + 1;
-  label_t llab = range_left(n);
-  label_t rlab = range_right(n);
-  
-  //  right_lab++; // we pass in a higher label than we will use.
-  assert(rlab % 2 == 1);
-  label_t spacing = (rlab - llab + 1) / n->size;
-  size_t mindex = n->size / 2;
-  label_t mlab = llab + spacing * mindex - 1;
-
-  n->left = spawn rebuild_recursive(n, array, 0, mindex, llab, mlab);
-  n->right = rebuild_recursive(n, array, mindex, n->size, mlab + 1, rlab);
-  sync;
-
-}
-
-void recursive_rebalance(tl_node* n, size_t height)
+void rebalance(tl_node* n, size_t height)
 {
   if (!n || !n->needs_rebalance) return; // stop here
   n->needs_rebalance = 0;
 
-  if (n->level == MAX_LEVEL) return rebuild_leaf(n);
-  assert(n->left);
+  //  if (n->level == MAX_LEVEL) return rebuild_leaf(n);
+  if (is_leaf(n)) return rebuild(n);
+  //  assert(n->left);
+  if (capacity(n) < n->size) {
+    printf("stop here because osx sucks.\n");
+    exit(1);
+  }
   assert(capacity(n) >= n->size);
   if (too_heavy(n->left, height) || (n->right && too_heavy(n->right, height))) {
-    rebuild_subtree(n);
-    /* assert(!too_heavy(n, height) || n->parent == NULL); */
-    /* assert(!too_heavy(n->left, height)); */
-    /* assert(n->right); */
-    /* assert(!too_heavy(n->right, height)); */
-    /* assert(capacity(n) > n->size); */
+    return rebuild(n);
   }
-
-
   
-  spawn recursive_rebalance(n->left, height);
-  recursive_rebalance(n->right, height);
+  spawn rebalance(n->left, height);
+  rebalance(n->right, height);
 }
 
 
-static inline void rebalance(om* self)
+static inline void om_rebalance(om* self)
 {
-  recursive_rebalance(self->root, self->height);
+  rebalance(self->root, self->height);
 }
 
 void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
@@ -227,11 +189,15 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
     tl_node* current = heavy_lists[i];
 
     assert(current->level == MAX_LEVEL);
+    assert(current->parent);
     
     // Split into several sublists.
     size_t num_split_lists = split(current->below);//, &new_lists);
 
     if (num_split_lists > 1) {
+
+      current->level = current->parent->level + 1;
+      current->next = current->prev = NULL; /// @todo is this okay?
 
       // Update sizes up the tree, while also calculating the height
       // from the current node.
@@ -265,7 +231,7 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
     fprintf(stderr, "OM data structure is full!\n");
     exit(1);
   } else {
-    rebalance(self);
+    om_rebalance(self);
     //    printf("Base's tl level: %zu\n", g_base->list->above->level);
   }
 }
