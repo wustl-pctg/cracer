@@ -274,7 +274,7 @@ START_TEST(test_relabel_several)
   ck_assert(n0->list != n2->list);
   ck_assert(n0->list->above != n2->list->above);
   ck_assert(n0->list->above->parent == n2->list->above->parent);
-  ck_assert(n0->list->above->parent->parent == t->root);
+  ck_assert(n0->list->above->parent == t->root);
 
   bl_node* n1 = om_insert(t, n0);
   bl_node* n3 = om_insert(t, n2);
