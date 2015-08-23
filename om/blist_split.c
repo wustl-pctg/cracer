@@ -3,14 +3,13 @@ static size_t split(blist* self)
   size_t num_lists = 0;
   assert(self->above->below == self);
   assert(self->head);
-  //  assert(bl_size(self) > SUBLIST_SIZE);
 
   node* current_node = self->head;
   tl_node* prev_tl_node = NULL;
   while (current_node) {
 
     tl_node* n = tl_node_new();
-    n->level = 42;
+    n->level = MAX_LEVEL;
     n->next = NULL;
     n->prev = prev_tl_node;
     if (prev_tl_node) prev_tl_node->next = n;
