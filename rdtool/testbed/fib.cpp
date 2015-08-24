@@ -1,8 +1,10 @@
 #include <iostream>
-//#include <chrono>
+#include <chrono>
 #include <cstdlib>
+#include <cassert>
 
 #include <cilk/cilk.h>
+//#include "../../om/om.h"
 //#include <racedetect.h>
 
 #define spawn cilk_spawn
@@ -11,6 +13,7 @@
 
 int fib(int n)
 {
+  //  std::cout << "fib(" << n << ")\n";
   if (n < 2) return n;
   int x, y;
   x = spawn fib(n - 1);
@@ -27,15 +30,20 @@ int main(int argc, char* argv[])
   }
 
   int n = std::atoi(argv[1]);
-  //  auto start = std::chrono::high_resolution_clock::now();
+  auto start = std::chrono::high_resolution_clock::now();
   int result = fib(n);
-  //  auto end = std::chrono::high_resolution_clock::now();
+  auto end = std::chrono::high_resolution_clock::now();
 
-  std::cout << "Result: " << result << std::endl;
-  // std::cout << "Time: "
-  //           << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-  //           << " ms."
-  //           << std::endl;
+  // Run a second time to make sure we can handle entering separate
+  // cilk functions
+  int result2 = fib(n);
+  assert(result == result2);
+
+  //std::cout << "Result: " << result << std::endl;
+  std::cout << "Time: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+            << " ms."
+            << std::endl;
 
   return 0;
 }
