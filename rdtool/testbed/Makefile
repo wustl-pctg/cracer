@@ -1,7 +1,7 @@
 CXX=clang++
 CC=clang
-CFLAGS=-g -O0 -std=c99 -DNDEBUG
-CXXFLAGS=-g -O0 -std=c++11 -DNDEBUG
+CFLAGS=-g -O0 -std=c99 
+CXXFLAGS=-g -O0 -std=c++11
 CILKFLAGS=-fcilkplus -fcilktool -fno-inline-detach
 RUNTIME=/home/rob/cilkplus/lib/x86_64/libcilkrts.a
 INC=-I/home/rob/devel/batch/cilkplusrts/include
