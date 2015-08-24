@@ -452,3 +452,8 @@ CILK_API_VOID cilk_batchify(batch_function_t f, void* ds,
   switch_to_core_deque(w);
   CILK_ASSERT(!w->l->batch_frame_ff);
 }
+
+CILK_API(int) __cilkrts_get_batch_id(__cilkrts_worker* w)
+{
+  return w->l->batch_id;
+}
