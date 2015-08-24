@@ -19,12 +19,7 @@ void cilk_tool_print(void) { }
 void cilk_tool_c_function_enter(void* this_fn, void* rip) { }
 void cilk_tool_c_function_leave(void* rip) { }
                                 
-void cilk_enter_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip)
-{ 
-  printf("cilk_enter_begin: empty version.\n");
-}
-
-
+void cilk_enter_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip) { }
 void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip) { }
 void cilk_enter_end (__cilkrts_stack_frame* sf, void* rsp) { }
 void cilk_spawn_prepare (__cilkrts_stack_frame* sf) { }
