@@ -512,6 +512,12 @@ CILK_ABI(__cilkrts_worker_ptr) __cilkrts_get_tls_worker(void);
 CILK_ABI(__cilkrts_worker_ptr) __cilkrts_get_tls_worker_fast(void);
 
 /**
+ * Why was this not already exposed?
+ */                                  
+CILK_API(int) __cilkrts_get_nworkers(void);
+CILK_API(int) __cilkrts_get_worker_number(void);
+
+/**
  * Binds a thread to the runtime by associating a __cilkrts_worker with
  * it.  Called if __cilkrts_get_tls_worker returns NULL.  This function will
  * initialize the runtime the first time it is called.
