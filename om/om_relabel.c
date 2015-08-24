@@ -19,6 +19,7 @@ static inline label_t range_right(tl_node* n) { return n->label; }
 static inline label_t range_left(tl_node* n)
 {
   // Need signed to do arithmetic shift
+  if (!n->parent) return 0;
   long lab = (long)MAX_LABEL; // all 1s
   lab <<= (MAX_LEVEL - 1);
   lab >>= (n->level - 1);
@@ -32,6 +33,7 @@ static inline double density(tl_node* n)
 
 static inline size_t capacity(tl_node* n)
 {
+  if (!n->parent) return MAX_LABEL;
   return range_right(n) - range_left(n) + 1;
 }
 
@@ -160,13 +162,7 @@ void rebalance(tl_node* n, size_t height)
   if (!n || !n->needs_rebalance) return; // stop here
   n->needs_rebalance = 0;
 
-  //  if (n->level == MAX_LEVEL) return rebuild_leaf(n);
   if (is_leaf(n)) return rebuild(n);
-  //  assert(n->left);
-  if (capacity(n) < n->size) {
-    printf("stop here because osx sucks.\n");
-    exit(1);
-  }
   assert(capacity(n) >= n->size);
   if (too_heavy(n->left, height) || (n->right && too_heavy(n->right, height))) {
     return rebuild(n);
@@ -192,7 +188,7 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
     assert(current->parent);
     
     // Split into several sublists.
-    size_t num_split_lists = split(current->below);//, &new_lists);
+    size_t num_split_lists = split(current->below);
 
     if (num_split_lists > 1) {
 
@@ -223,8 +219,10 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
       current->split_nodes->level = MAX_LEVEL;
       tl_node_free(current->split_nodes);
       current->below = list;
+      list->above = current;
     }
   }
+
   size_t new_size = self->root->num_leaves;
   if (new_size < old_size // overflow
       || ((MAX_LABEL + 1 != 0) && new_size > MAX_LABEL + 1)) {
