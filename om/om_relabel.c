@@ -1,7 +1,6 @@
 // The relabel-specific code for order-maintenance.
 
 #include <string.h> // memcpy
-
 #include "blist_split.c"
 
 #define FAST_LOG2(x) (sizeof(label_t)*8 - 1 - __builtin_clzl((label_t)(x)))
@@ -90,11 +89,16 @@ void build_array_of_leaves(tl_node* n, tl_node** array,
 // Rebuild a subtree rooted at node n.
 void rebuild(tl_node* n)
 {
+  //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD);
   size_t array_size = n->size;
+  //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD_MALLOC);
   tl_node** array = (tl_node**)malloc(array_size * sizeof(tl_node*));
+  //  RDTOOL_INTERVAL_END(OM_REBUILD_MALLOC);
   
   // will remove extra scaffolding
+  //RDTOOL_INTERVAL_BEGIN(OM_BUILD_ARRAY_OF_LEAVES);
   build_array_of_leaves(n, array, 0, array_size);
+  //  RDTOOL_INTERVAL_END(OM_BUILD_ARRAY_OF_LEAVES);
 
   if (is_leaf(n) && n->parent) {
     // Change this node to be an internal node.
@@ -120,6 +124,7 @@ void rebuild(tl_node* n)
                                mlab + 1, rlab);
   sync;
   free(array);
+  //  RDTOOL_INTERVAL_END(OM_REBUILD);
 }
 
 tl_node* rebuild_recursive(tl_node* parent, tl_node** array,
@@ -127,7 +132,9 @@ tl_node* rebuild_recursive(tl_node* parent, tl_node** array,
                            label_t llab, label_t rlab)
 {
   size_t size = rindex - lindex;
+  //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD_MALLOC);
   tl_node* n = (size == 1) ? array[lindex] : tl_node_new();
+  //  RDTOOL_INTERVAL_END(OM_REBUILD_MALLOC);
   n->size = size;
   n->parent = parent;
   n->needs_rebalance = 0;
@@ -180,7 +187,9 @@ static inline void om_rebalance(om* self)
 
 void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
 {
+  //RDTOOL_INTERVAL_BEGIN(OM_RELABEL);
   size_t old_size = self->root->num_leaves; // to check for overflow
+  printf("Splitting %zu lists.\n", num_heavy_lists);
   parfor (int i = 0; i < num_heavy_lists; ++i) {
     tl_node* current = heavy_lists[i];
 
@@ -188,8 +197,11 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
     assert(current->parent);
     
     // Split into several sublists.
+    //    RDTOOL_INTERVAL_BEGIN(BLIST_SPLIT);
     size_t num_split_lists = split(current->below);
+    //    RDTOOL_INTERVAL_END(BLIST_SPLIT);
 
+    //    RDTOOL_INTERVAL_BEGIN(OM_UPDATE_SIZES);
     if (num_split_lists > 1) {
 
       current->level = current->parent->level + 1;
@@ -221,6 +233,7 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
       current->below = list;
       list->above = current;
     }
+    //RDTOOL_INTERVAL_END(OM_UPDATE_SIZES);
   }
 
   size_t new_size = self->root->num_leaves;
@@ -229,7 +242,10 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
     fprintf(stderr, "OM data structure is full!\n");
     exit(1);
   } else {
+    //RDTOOL_INTERVAL_BEGIN(OM_REBALANCE);
     om_rebalance(self);
+    //    RDTOOL_INTERVAL_END(OM_REBALANCE);
     //    printf("Base's tl level: %zu\n", g_base->list->above->level);
   }
+  //  RDTOOL_INTERVAL_END(OM_RELABEL);
 }
