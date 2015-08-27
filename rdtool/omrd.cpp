@@ -2,11 +2,69 @@
 
 #include <internal/abi.h>
 #include <cilk/batcher.h>
-//#include "../om/om.h"
-#include "../om/om.c"
 #include "stack.h"
 
 int g_tool_init = 0;
+
+typedef enum {
+  TOOL = 0,
+  TOOL_INSERT,
+  OM_INSERT,
+  OM_RELABEL,
+  SHADOW_STACK_MANIP,
+  HEAVY_ARRAY_MANIP,
+  BLIST_SPLIT,
+  OM_UPDATE_SIZES,
+  OM_REBALANCE,
+  OM_BUILD_ARRAY_OF_LEAVES,
+  OM_REBUILD,
+  OM_REBUILD_MALLOC,
+  OM_MALLOC,
+  NUM_INTERVAL_TYPES,
+} interval_types;
+
+unsigned long g_num_relabels = 0;
+unsigned long g_num_inserts = 0;
+
+#ifdef STATS
+// #include <chrono>
+// using time_point_t = std::chrono::high_resolution_clock::time_point;
+// using time_interval_t = std::chrono::milliseconds;
+// time_point_t EMPTY_TIME_POINT;
+// time_interval_t g_timing_events[NUM_INTERVAL_TYPES];
+// time_point_t g_timing_event_starts[NUM_INTERVAL_TYPES];
+// time_point_t g_timing_event_ends[NUM_INTERVAL_TYPES];
+
+// #define ZERO_DURATION std::chrono::high_resolution_clock::duration::zero()  
+// #define INTERVAL_CAST(x) std::chrono::duration_cast<time_interval_t>((x))
+
+// #define RDTOOL_INTERVAL_BEGIN(i)                                        \
+//   g_timing_event_starts[(i)] = std::chrono::high_resolution_clock::now();
+
+// #define RDTOOL_INTERVAL_END(i) \
+//   g_timing_event_ends[(i)] = std::chrono::high_resolution_clock::now(); \
+//   g_timing_events[(i)] += INTERVAL_CAST(g_timing_event_ends[(i)] - g_timing_event_starts[(i)]); \
+//   g_timing_event_starts[(i)] = EMPTY_TIME_POINT;
+#include <time.h>
+time_t g_timing_events[NUM_INTERVAL_TYPES];
+struct timespec g_timing_event_starts[NUM_INTERVAL_TYPES];
+struct timespec g_timing_event_ends[NUM_INTERVAL_TYPES];
+struct timespec EMPTY_TIME_POINT;
+#define ZERO_DURATION 0
+#define INTERVAL_CAST(x) x
+#define RDTOOL_INTERVAL_BEGIN(i) clock_gettime(CLOCK_REALTIME, &g_timing_event_starts[(i)])
+#define RDTOOL_INTERVAL_END(i) clock_gettime(CLOCK_REALTIME, &g_timing_event_ends[(i)]); \
+  g_timing_events[(i)] += (g_timing_event_ends[(i)].tv_sec - g_timing_event_starts[(i)].tv_sec) * 1000 + \
+    (g_timing_event_ends[(i)].tv_nsec - g_timing_event_starts[(i)].tv_nsec) / 1000000; \
+  g_timing_event_starts[(i)].tv_sec = 0; \
+  g_timing_event_starts[(i)].tv_nsec = 0;
+#else // no stats
+#define RDTOOL_INTERVAL_BEGIN(i)
+#define RDTOOL_INTERVAL_END(i)
+#endif // ifdef STATS
+
+#include "../om/om.c"
+
 om* g_english;
 om* g_hebrew;
 
@@ -33,9 +91,12 @@ Stack_t<tl_node*> heavy_hebrew;
 
 void init_strand(int worker_id)
 {
-  //  std::cout << "initial push\n";
-  assert(frames[worker_id].size() == 1);
+  assert(frames[worker_id].empty());
+  //  RDTOOL_INTERVAL_BEGIN(SHADOW_STACK_MANIP);
+  frames[worker_id].push();
+  //  RDTOOL_INTERVAL_END(SHADOW_STACK_MANIP);
   FrameData_t* f = frames[worker_id].head();
+
   f->type = USER;
   f->current_english = om_insert_initial(g_english);
   f->current_hebrew = om_insert_initial(g_hebrew);
@@ -43,11 +104,6 @@ void init_strand(int worker_id)
   f->cont_hebrew = NULL;
   f->sync_english = NULL;
   f->sync_hebrew = NULL;
-}
-
-int get_all_locks()
-{
-  return 1;
 }
 
 // Brian Kernighan's algorithm
@@ -64,81 +120,126 @@ size_t count_set_bits(label_t label)
 om_node* insert_or_relabel(__cilkrts_worker* w, om* ds,
                            Stack_t<tl_node*>& heavy_nodes, om_node* base)
 {
+  g_num_inserts++;
+  //  RDTOOL_INTERVAL_BEGIN(TOOL_INSERT);
   // Get worker om lock
+  //  RDTOOL_INTERVAL_BEGIN(OM_INSERT);
   om_node* n = om_insert(ds, base);
+  //  RDTOOL_INTERVAL_END(OM_INSERT);
   while (!n) {
+    //    RDTOOL_INTERVAL_BEGIN(HEAVY_ARRAY_MANIP);
     if (!base->list->half_full) {
-      *heavy_nodes.head() = om_get_tl(base);
+      //      printf("Could not fit into list of size %zu.\n", base->list->size);
       heavy_nodes.push();
+      *heavy_nodes.head() = om_get_tl(base);
     }
+    //    RDTOOL_INTERVAL_END(HEAVY_ARRAY_MANIP);
 
-    om_relabel(ds, heavy_nodes.at(0), heavy_nodes.size() - 1);
+    //    RDTOOL_INTERVAL_BEGIN(OM_RELABEL);
+    om_relabel(ds, heavy_nodes.at(0), heavy_nodes.size());
+    g_num_relabels++;
+    //    RDTOOL_INTERVAL_END(OM_RELABEL);
     heavy_nodes.reset();
 
+    //    RDTOOL_INTERVAL_BEGIN(OM_INSERT);
     n = om_insert(ds, base);
+    //    RDTOOL_INTERVAL_END(OM_INSERT);
   }
+  //  RDTOOL_INTERVAL_BEGIN(HEAVY_ARRAY_MANIP);
   if (!n->list->half_full
       && count_set_bits(n->label) >= HALF_BITS) {
     n->list->half_full = 1;
-    *heavy_nodes.head() = om_get_tl(n);
+    //    printf("List marked as half full with %zu items.\n", n->list->size);
     heavy_nodes.push();
+    *heavy_nodes.head() = om_get_tl(n);
   }
+  //RDTOOL_INTERVAL_END(HEAVY_ARRAY_MANIP);
+
+  //  RDTOOL_INTERVAL_END(TOOL_INSERT);
   return n;
 }
 
 extern "C" void cilk_tool_init(void) 
-{ 
-  g_tool_init = 1;
+{
+  //  RDTOOL_INTERVAL_BEGIN(TOOL);
+#ifdef STATS
+  //  EMPTY_TIME_POINT = std::chrono::high_resolution_clock::now();
+  clock_gettime(CLOCK_REALTIME, &EMPTY_TIME_POINT);
+  for (int i = 0; i < NUM_INTERVAL_TYPES; ++i) {
+    g_timing_events[i] = INTERVAL_CAST(ZERO_DURATION);
+    // g_timing_event_starts[i] = EMPTY_TIME_POINT;
+    // g_timing_event_ends[i] = EMPTY_TIME_POINT;
+    g_timing_event_starts[i].tv_sec = 0;
+    g_timing_event_starts[i].tv_nsec = 0;
+    g_timing_event_ends[i].tv_sec = 0; 
+    g_timing_event_ends[i].tv_nsec = 0;
+  }
+#endif
   g_english = om_new();
   g_hebrew = om_new();
-  frames = new Stack_t<FrameData_t>[__cilkrts_get_nworkers()];
 
-  init_strand(__cilkrts_get_worker_number());
+  //  RDTOOL_INTERVAL_BEGIN(SHADOW_STACK_MANIP);
+  frames = new Stack_t<FrameData_t>[__cilkrts_get_nworkers()];
+  //  RDTOOL_INTERVAL_END(SHADOW_STACK_MANIP);
+
+  g_tool_init = 1;
+
   /// @todo allocate worker locks
+  //  RDTOOL_INTERVAL_END(TOOL);
 }
 
 // Currently, I don't think this is ever called. @todo
 extern "C" void cilk_tool_destroy(void) 
-{ 
+{
+  //  RDTOOL_INTERVAL_BEGIN(TOOL);
   om_free(g_english);
   om_free(g_hebrew);
-
+  //  RDTOOL_INTERVAL_BEGIN(SHADOW_STACK_MANIP);
   delete[] frames;
+  //  RDTOOL_INTERVAL_END(SHADOW_STACK_MANIP);
+  //  RDTOOL_INTERVAL_END(TOOL);
 }
 
-extern "C" void cilk_tool_print(void) { }
+extern "C" void cilk_tool_print(void)
+{
+#ifdef STATS
+  for (int i = 0; i < NUM_INTERVAL_TYPES; ++i) {
+    assert(g_timing_event_starts[i] == EMPTY_TIME_POINT);
+    std::cout << "\t\t" << g_timing_events[i];
+  }
+  std::cout << std::endl;
+#endif
+  std::cout << "Num relabels: " << g_num_relabels << std::endl;
+  std::cout << "Num inserts: " << g_num_inserts << std::endl;
+}
 
 extern "C" void cilk_tool_c_function_enter(void* this_fn, void* rip)
-{ 
+{
+  //  RDTOOL_INTERVAL_BEGIN(TOOL);
   int id = __cilkrts_get_worker_number();
-  if (frames[id].size() > 1) assert(frames[id].head()->type == USER);
+  if (!frames[id].empty()) assert(frames[id].head()->type == USER);
+  //  RDTOOL_INTERVAL_END(TOOL);
 }
 extern "C" void cilk_tool_c_function_leave(void* rip) { }
 
-extern "C" void cilk_enter_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip)
-{
-  /// Need to call it like this because sf->worker may not be
-  /// correctly initialized.
-  __cilkrts_worker* w = __cilkrts_get_tls_worker();
-  if (w && __cilkrts_get_batch_id(w) != -1) return;
-
-  if (!g_tool_init) cilk_tool_init();
-  else if (w) assert(frames[w->self].head()->type == USER);
-}
+extern "C" void cilk_enter_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip){ }
 
 extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip)
-{ 
+{
   __cilkrts_worker* w = __cilkrts_get_tls_worker();
   if (__cilkrts_get_batch_id(w) != -1) return;
-  assert(frames[w->self].size() > 0); // want non-empty, but stack returns
-                             // _head + 1
+  //  RDTOOL_INTERVAL_BEGIN(TOOL);
+  assert(!frames[w->self].empty());
 
   FrameData_t* parent = frames[w->self].head(); // helper frame parent
   assert(parent->type == USER);
-  frames[w->self].push(); frames[w->self].head()->type = HELPER;
-
+  //  RDTOOL_INTERVAL_BEGIN(SHADOW_STACK_MANIP);
   frames[w->self].push();
+  frames[w->self].head()->type = HELPER;
+  frames[w->self].push();
+  //  RDTOOL_INTERVAL_END(SHADOW_STACK_MANIP);
   FrameData_t* f = frames[w->self].head();
+
   f->type = USER;
 
   if (!parent->sync_english) { // first of spawn group
@@ -162,15 +263,27 @@ extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn
   f->cont_english = NULL; f->cont_hebrew = NULL;
   f->sync_english = NULL; f->sync_hebrew = NULL;
   parent->current_english = NULL; parent->current_hebrew = NULL;
+  //  RDTOOL_INTERVAL_END(TOOL);
 }
 
-extern "C" void cilk_enter_end (__cilkrts_stack_frame* sf, void* rsp) { }
+extern "C" void cilk_enter_end (__cilkrts_stack_frame* sf, void* rsp)
+{
+  if (__cilkrts_get_batch_id(sf->worker) != -1) return;
+  //  RDTOOL_INTERVAL_BEGIN(TOOL);
+
+  if (frames[sf->worker->self].empty()) init_strand(sf->worker->self);
+  else assert(frames[sf->worker->self].head()->type == USER);
+
+  //  RDTOOL_INTERVAL_END(TOOL);
+}
 
 extern "C" void cilk_spawn_prepare (__cilkrts_stack_frame* sf) { }
 
 extern "C" void cilk_spawn_or_continue (int in_continuation)
-{ 
+{
+  //  RDTOOL_INTERVAL_BEGIN(TOOL);
   assert(!in_continuation);
+  //  RDTOOL_INTERVAL_END(TOOL);
 }
 
 extern "C" void cilk_detach_begin (__cilkrts_stack_frame* parent) { }
@@ -180,8 +293,9 @@ extern "C" void cilk_detach_end (void) { }
 extern "C" void cilk_sync_begin (__cilkrts_stack_frame* sf) { }
 
 extern "C" void cilk_sync_end (__cilkrts_stack_frame* sf)
-{ 
+{
   if (__cilkrts_get_batch_id(sf->worker) != -1) return;
+  //  RDTOOL_INTERVAL_BEGIN(TOOL);
   FrameData_t* f = frames[sf->worker->self].head();
   assert(f->current_english); assert(f->current_hebrew);
   assert(!f->cont_english); assert(!f->cont_hebrew);
@@ -195,18 +309,22 @@ extern "C" void cilk_sync_end (__cilkrts_stack_frame* sf)
     assert(!f->sync_english); assert(!f->sync_hebrew);
   }
 
+  //  RDTOOL_INTERVAL_END(TOOL);
 }
 
 extern "C" void cilk_leave_begin (__cilkrts_stack_frame *sf)
-{ 
-  if (__cilkrts_get_batch_id(sf->worker) != -1) return;
+{
+  //  RDTOOL_INTERVAL_BEGIN(TOOL);
+  if (__cilkrts_get_batch_id(sf->worker) != -1) goto exit;
 
-  if (frames[sf->worker->self].size() == 1) { // empty
-    //    frames[sf->worker->self].pop();
-  } else {
+  if (frames[sf->worker->self].size() > 1) {
     frame_t type = frames[sf->worker->self].head()->type;
+
+    //    RDTOOL_INTERVAL_BEGIN(SHADOW_STACK_MANIP);
     frames[sf->worker->self].pop();
-    if (type == HELPER) return;
+    //    RDTOOL_INTERVAL_END(SHADOW_STACK_MANIP);
+
+    if (type == HELPER) goto exit;
     FrameData_t* current = frames[sf->worker->self].ancestor(1);
     assert(!current->current_english);
     assert(!current->current_hebrew);
@@ -219,9 +337,9 @@ extern "C" void cilk_leave_begin (__cilkrts_stack_frame *sf)
     current->cont_english = NULL;
     current->cont_hebrew = NULL;
   }
+ exit:
+  ;
+  //  RDTOOL_INTERVAL_END(TOOL);
 }
 
-extern "C" void cilk_leave_end (void)
-{
-  // std::cout << __FUNCTION__ << std::endl;
-}
+extern "C" void cilk_leave_end (void){ }
