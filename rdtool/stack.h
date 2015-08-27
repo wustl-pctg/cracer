@@ -71,7 +71,7 @@ public:
    */
   Stack_t() :
     _capacity(DEFAULT_CAPACITY),
-    _head(0)
+    _head((uint32_t)-1)
   { _stack = new STACK_DATA_T[_capacity]; }
 
   /*
@@ -83,7 +83,7 @@ public:
    * Reset, effectively removing all data.
    */
   void reset() {
-    _head = 0;
+    _head = (uint32_t)-1;
   }
 
   /*
@@ -148,6 +148,10 @@ public:
    */
   uint32_t size() const {
     return _head + 1;
+  }
+
+  bool empty() const {
+    return size() == 0;
   }
 
 };
