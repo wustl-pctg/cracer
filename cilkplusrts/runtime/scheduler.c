@@ -3030,6 +3030,8 @@ void __cilkrts_deinit_internal(global_state_t *g)
     if (NULL == g)
         return;
 
+    cilk_tool_destroy();
+
 #ifdef CILK_PROFILE
     __cilkrts_dump_stats_to_stderr(g);
 #endif
@@ -3216,6 +3218,8 @@ void __cilkrts_init_internal(int start)
         // We think the state has not been published yet.
         // Grab the lock and try to initialize/publish.
         global_os_mutex_lock();
+
+        cilk_tool_init();
 
         if (cilkg_is_published()) {
             // Some other thread must have snuck in and published.
