@@ -7,7 +7,7 @@ RUNTIME=/home/rob/cilkplus/lib/x86_64/libcilkrts.a
 INC=-I/home/rob/devel/batch/cilkplusrts/include
 
 
-all: fib_check fib_nocheck fib_stats
+all: fib_stats #fib_check fib_nocheck fib_stats
 
 fib.o: fib.cpp
 	$(CXX) $(CILKFLAGS) $(CXXFLAGS) -std=c++11 -c fib.cpp -o fib.o
@@ -40,7 +40,7 @@ fib_nocheck: fib.o
 	$(CXX) -ldl -lpthread -o fib_nocheck fib.o $(RUNTIME)
 
 fib_stats: fibrd.stats.o libomrd.stats.a
-	$(CXX) -ldl -lpthread -Wl,--whole-archive ../libomrd.stats.a -Wl,--no-whole-archive -o fib_stats fibrd.stats.o $(RUNTIME) 
+	$(CXX) -ldl -lpthread -ltcmalloc -Wl,--whole-archive ../libomrd.stats.a -Wl,--no-whole-archive -o fib_stats fibrd.stats.o $(RUNTIME) 
 
 clean:
 	rm -rf fib.o fibrd.o fib_nocheck fib_check ../libomrd.a ../omrd.o ../libomrd.stats.a ../omrd.stats.o fibrd.stats.o fib_stats

@@ -1,5 +1,5 @@
 // The relabel-specific code for order-maintenance.
-#include <unistd.h> // sbrk for debugging
+
 #include <string.h> // memcpy
 #include "blist_split.c"
 
@@ -53,6 +53,7 @@ void build_array_of_leaves(tl_node* n, tl_node** array,
   if (!n) return; ///@todo assert?
 
   if (is_leaf(n)) {
+    //    assert(right_index - left_index == n->size);
     size_t index = left_index;
     if (n->size == 1) {
       array[index] = n;
@@ -75,6 +76,10 @@ void build_array_of_leaves(tl_node* n, tl_node** array,
   } else {
     assert(n->left);
     size_t mid = left_index + n->left->size;
+    if (right_index - left_index != n->left->size + ((n->right) ? n->right->size : 0)) {
+      printf("hmm\n");
+    }
+    assert(n->size == n->left->size + (n->right ? n->right->size : 0));
     spawn build_array_of_leaves(n->left, array, left_index, mid);
     build_array_of_leaves(n->right, array, mid, right_index);
     sync;
@@ -86,24 +91,19 @@ void build_array_of_leaves(tl_node* n, tl_node** array,
   return;
 }
 
+#define MAX(X,Y) (((X) > (Y)) ? (X) : (Y))
+
 size_t get_height(tl_node* n)
 {
   if (!n) return 0;
-  if (n->level == MAX_LEVEL || (n->left == NULL && n->right == NULL)) return 0;
-  size_t left = get_height(n->left);
-  size_t right = get_height(n->right);
-  return (left > right) ? left + 1 : right + 1;
+  if (is_leaf(n)) return 1;
+  return MAX(get_height(n->left), get_height(n->right)) + 1;
 }
 
 // Rebuild a subtree rooted at node n.
 void rebuild(tl_node* n)
 {
-  printf("Height before %zu (%zu leaves)\n", get_height(n), n->size);
-  /* printf("Avg malloc time for %u calls in between rebuilds: %f\n", */
-  /*        g_num_malloc_calls, */
-  /*        (g_timing_events[OM_REBUILD_MALLOC] - g_malloc_begin) / g_num_malloc_calls); */
-  /* g_num_malloc_calls = 0; */
-  /* g_malloc_begin = g_timing_events[OM_REBUILD_MALLOC]; */
+  //  printf("Rebuilding a tree of old height %zu.\n", get_height(n));
   //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD);
   size_t array_size = n->size;
   //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD_MALLOC);
@@ -130,20 +130,87 @@ void rebuild(tl_node* n)
   label_t rlab = n->label;
   assert(rlab % 2 == 1);
 
-  size_t mindex = array_size - array_size / 2;
+  size_t mindex = array_size / 2;
   label_t mlab = llab + ((rlab - llab) / 2 + 1) - 1;
 
-  n->left = spawn rebuild_recursive(n, array, 0, mindex,
-                                    llab, mlab);
-  n->right = rebuild_recursive(n, array, mindex, array_size,
-                               mlab + 1, rlab);
-  sync;
+  /* n->left = spawn rebuild_recursive(n, array, 0, mindex, */
+  /*                                   llab, mlab); */
+  /* n->right = rebuild_recursive(n, array, mindex, array_size, */
+  /*                              mlab + 1, rlab); */
+  /* sync; */
+  size_t new_height = FAST_LOG2_CEIL(n->size);
+
+  tl_node** future_parents = (tl_node**) malloc(sizeof(tl_node*) * (1 << new_height));
+  tl_node** parents = (tl_node**) malloc(sizeof(tl_node*) * (1 << new_height));
+  assert((1 << new_height) >= n->size);
+  future_parents[0] = n;
+
+  //  assert(n->level + new_height == MAX_LEVEL);
+  for (unsigned int level = n->level + 1; level < n->level + new_height; ++level) {
+    size_t num_nodes = 1 << (level - n->level);
+    assert(num_nodes < n->size);
+
+    tl_node** tmp = parents;
+    parents = future_parents;
+    future_parents = tmp;
+
+    for (int i = 0; i < num_nodes; ++i) {
+      tl_node* parent = parents[i / 2];
+      size_t size = (!parent->left) ? parent->size - parent->size/2 : parent->size/2;
+      if (size == 1 || parent->level + 1 < level) { // leaf!
+        future_parents[i] = parent;
+        continue;
+      }
+      tl_node* current = tl_node_new();
+      current->left = current->right = NULL;
+      current->parent = parent;
+      size_t left_size = (parent->size + 1) / 2;
+      if (!parent->left) {
+        current->size = left_size;
+        parent->left = current;
+        current->label = range_left(parent)
+          + ((range_right(parent) - range_left(parent)) / 2);
+      } else {
+        current->size = current->parent->size - left_size;
+        parent->right = current;
+        current->label = parent->label;
+      }
+      current->level = parent->level + 1;
+      future_parents[i] = current;
+    }
+  }
+  tl_node** tmp = parents;
+  parents = future_parents;
+  future_parents = tmp;
+  for (int i = 0; i < n->size; ++i) { // leaves
+    tl_node* current = array[i];
+    current->size = 1;
+    current->level = MAX_LEVEL;
+    current->parent = parents[i/2];
+    current->left = current->right = NULL;
+    //    assert(current->parent->left == NULL || current->parent->right == NULL);
+
+    if (!current->parent->left) { // left child, only works sequentially!
+      current->parent->left = current;
+      current->label = range_left(current->parent);
+    } else {
+      /* tl_node* t = current->parent->left; */
+      /* while (t->right) t = t->right; */
+      /* assert(t == array[i-1]); */
+      current->parent->right = current;
+      if (current->parent->level == MAX_LEVEL - 1) current->label = current->parent->label;
+      else {
+        current->label = range_left(current->parent)
+          + ((range_right(current->parent) - range_left(current->parent)) / 2) + 1;
+      }
+    }
+  }
+  free(parents);
+  free(future_parents);
   free(array);
-  printf("Height after: %zu\n", get_height(n));
-  /* printf("Avg malloc time for %u calls in rebuild: %f\n", g_num_malloc_calls, */
-  /*        (g_timing_events[OM_REBUILD_MALLOC] - g_malloc_begin) / g_num_malloc_calls); */
-  /* g_malloc_begin = g_timing_events[OM_REBUILD_MALLOC]; */
   //  RDTOOL_INTERVAL_END(OM_REBUILD);
+
+  //  printf("Subtree now has height %zu and %zu leaves.\n", get_height(n), n->size);
 }
 
 tl_node* rebuild_recursive(tl_node* parent, tl_node** array,
@@ -151,15 +218,9 @@ tl_node* rebuild_recursive(tl_node* parent, tl_node** array,
                            label_t llab, label_t rlab)
 {
   size_t size = rindex - lindex;
-  tl_node* n;
-
-  if (size == 1) n = array[lindex];
-  else {
-    //    g_num_malloc_calls++;
-    //    RDTOOL_INTERVAL_BEGIN(OM_REBUILD_MALLOC);
-    n = tl_node_new();
-    //    RDTOOL_INTERVAL_END(OM_REBUILD_MALLOC);
-  }
+  //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD_MALLOC);
+  tl_node* n = (size == 1) ? array[lindex] : tl_node_new();
+  //  RDTOOL_INTERVAL_END(OM_REBUILD_MALLOC);
   n->size = size;
   n->parent = parent;
   n->needs_rebalance = 0;
@@ -174,14 +235,13 @@ tl_node* rebuild_recursive(tl_node* parent, tl_node** array,
   } else {
     n->level = n->parent->level + 1;
 
-    size_t mindex = lindex + (size - size / 2);
+    size_t mindex = lindex + size / 2;
     label_t mlab = llab + ((rlab - llab) / 2 + 1) - 1;
 
     n->left = spawn rebuild_recursive(n, array, lindex, mindex, llab, mlab);
     n->right = rebuild_recursive(n, array, mindex, rindex, mlab + 1, rlab);
     sync;
     
-    //    n->label = array[rindex - 1]->label;
     n->label = rlab;
     assert(rlab % 2 == 1);
   }
@@ -195,7 +255,7 @@ void rebalance(tl_node* n, size_t height)
   n->needs_rebalance = 0;
 
   if (is_leaf(n)) return rebuild(n);
-  assert(capacity(n) >= n->size || capacity(n) == MAX_LABEL);
+  assert(capacity(n) >= n->size || n->size - 1 == MAX_LABEL);
   if (too_heavy(n->left, height) || (n->right && too_heavy(n->right, height))) {
     return rebuild(n);
   }
@@ -214,7 +274,6 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
 {
   //RDTOOL_INTERVAL_BEGIN(OM_RELABEL);
   size_t old_size = self->root->num_leaves; // to check for overflow
-  //  printf("Splitting %zu lists.\n", num_heavy_lists);
   parfor (int i = 0; i < num_heavy_lists; ++i) {
     tl_node* current = heavy_lists[i];
 
@@ -223,7 +282,9 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
     
     // Split into several sublists.
     //    RDTOOL_INTERVAL_BEGIN(BLIST_SPLIT);
+    printf("Splitting a bottom list of size %zu.\n", bl_size(current->below));
     size_t num_split_lists = split(current->below);
+    printf("Split the blist into %zu.\n", num_split_lists);
     //    RDTOOL_INTERVAL_END(BLIST_SPLIT);
 
     //    RDTOOL_INTERVAL_BEGIN(OM_UPDATE_SIZES);
@@ -234,7 +295,7 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
 
       // Update sizes up the tree, while also calculating the height
       // from the current node.
-    
+
       // -1 because we increment it below for the current node
       size_t height = FAST_LOG2_CEIL(num_split_lists) - 1;
       while (current) {

@@ -2,10 +2,10 @@
 #include <chrono>
 #include <cstdlib>
 #include <cassert>
+#include <unistd.h> // for sbrk
 
 #include <cilk/cilk.h>
-//#include "../../om/om.h"
-//#include <racedetect.h>
+#include "../omrd.h"
 
 #define spawn cilk_spawn
 #define sync cilk_sync
@@ -24,6 +24,7 @@ int fib(int n)
 
 int main(int argc, char* argv[])
 {
+  char* old_brk = (char*)sbrk(0);
   if (argc != 2) {
     std::cerr << "Usage: fib <n>" << std::endl;
     exit(1);
@@ -34,16 +35,15 @@ int main(int argc, char* argv[])
   int result = fib(n);
   auto end = std::chrono::high_resolution_clock::now();
 
-  // Run a second time to make sure we can handle entering separate
-  // cilk functions
-  int result2 = fib(n);
-  assert(result == result2);
+  std::cout << "Heap size increase: " << ((char*)sbrk(0)) - old_brk << std::endl;
 
-  //std::cout << "Result: " << result << std::endl;
-  std::cout << "Time: "
-            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-            << " ms."
-            << std::endl;
+  // std::cout << "Time: "
+  //           << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+  //           << " ms."
+  //           << std::endl;
+
+  std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+  cilk_tool_destroy();
 
   return 0;
 }
