@@ -27,26 +27,8 @@ unsigned long g_num_relabels = 0;
 unsigned long g_num_inserts = 0;
 
 #ifdef STATS
-// #include <chrono>
-// using time_point_t = std::chrono::high_resolution_clock::time_point;
-// using time_interval_t = std::chrono::milliseconds;
-// time_point_t EMPTY_TIME_POINT;
-// time_interval_t g_timing_events[NUM_INTERVAL_TYPES];
-// time_point_t g_timing_event_starts[NUM_INTERVAL_TYPES];
-// time_point_t g_timing_event_ends[NUM_INTERVAL_TYPES];
-
-// #define ZERO_DURATION std::chrono::high_resolution_clock::duration::zero()  
-// #define INTERVAL_CAST(x) std::chrono::duration_cast<time_interval_t>((x))
-
-// #define RDTOOL_INTERVAL_BEGIN(i)                                        \
-//   g_timing_event_starts[(i)] = std::chrono::high_resolution_clock::now();
-
-// #define RDTOOL_INTERVAL_END(i) \
-//   g_timing_event_ends[(i)] = std::chrono::high_resolution_clock::now(); \
-//   g_timing_events[(i)] += INTERVAL_CAST(g_timing_event_ends[(i)] - g_timing_event_starts[(i)]); \
-//   g_timing_event_starts[(i)] = EMPTY_TIME_POINT;
 #include <time.h>
-time_t g_timing_events[NUM_INTERVAL_TYPES];
+double g_timing_events[NUM_INTERVAL_TYPES];
 struct timespec g_timing_event_starts[NUM_INTERVAL_TYPES];
 struct timespec g_timing_event_ends[NUM_INTERVAL_TYPES];
 struct timespec EMPTY_TIME_POINT;
@@ -54,8 +36,8 @@ struct timespec EMPTY_TIME_POINT;
 #define INTERVAL_CAST(x) x
 #define RDTOOL_INTERVAL_BEGIN(i) clock_gettime(CLOCK_REALTIME, &g_timing_event_starts[(i)])
 #define RDTOOL_INTERVAL_END(i) clock_gettime(CLOCK_REALTIME, &g_timing_event_ends[(i)]); \
-  g_timing_events[(i)] += (g_timing_event_ends[(i)].tv_sec - g_timing_event_starts[(i)].tv_sec) * 1000 + \
-    (g_timing_event_ends[(i)].tv_nsec - g_timing_event_starts[(i)].tv_nsec) / 1000000; \
+  g_timing_events[(i)] += (g_timing_event_ends[(i)].tv_sec - g_timing_event_starts[(i)].tv_sec) * 1000.0 + \
+    (g_timing_event_ends[(i)].tv_nsec - g_timing_event_starts[(i)].tv_nsec) / 1000000.0; \
   g_timing_event_starts[(i)].tv_sec = 0; \
   g_timing_event_starts[(i)].tv_nsec = 0;
 #else // no stats
@@ -98,8 +80,8 @@ void init_strand(int worker_id)
   FrameData_t* f = frames[worker_id].head();
 
   f->type = USER;
-  f->current_english = om_insert_initial(g_english);
-  f->current_hebrew = om_insert_initial(g_hebrew);
+  f->current_english = om_insert_initial(g_english); g_num_inserts++;
+  f->current_hebrew = om_insert_initial(g_hebrew); g_num_inserts++;
   f->cont_english = NULL;
   f->cont_hebrew = NULL;
   f->sync_english = NULL;
@@ -138,6 +120,7 @@ om_node* insert_or_relabel(__cilkrts_worker* w, om* ds,
     //    RDTOOL_INTERVAL_BEGIN(OM_RELABEL);
     om_relabel(ds, heavy_nodes.at(0), heavy_nodes.size());
     g_num_relabels++;
+    //    om_print(ds);
     //    RDTOOL_INTERVAL_END(OM_RELABEL);
     heavy_nodes.reset();
 
@@ -163,16 +146,13 @@ extern "C" void cilk_tool_init(void)
 {
   //  RDTOOL_INTERVAL_BEGIN(TOOL);
 #ifdef STATS
-  //  EMPTY_TIME_POINT = std::chrono::high_resolution_clock::now();
-  clock_gettime(CLOCK_REALTIME, &EMPTY_TIME_POINT);
+  EMPTY_TIME_POINT.tv_sec = 0; EMPTY_TIME_POINT.tv_nsec = 0;
   for (int i = 0; i < NUM_INTERVAL_TYPES; ++i) {
     g_timing_events[i] = INTERVAL_CAST(ZERO_DURATION);
-    // g_timing_event_starts[i] = EMPTY_TIME_POINT;
-    // g_timing_event_ends[i] = EMPTY_TIME_POINT;
-    g_timing_event_starts[i].tv_sec = 0;
-    g_timing_event_starts[i].tv_nsec = 0;
-    g_timing_event_ends[i].tv_sec = 0; 
-    g_timing_event_ends[i].tv_nsec = 0;
+    g_timing_event_starts[i].tv_sec = EMPTY_TIME_POINT.tv_sec;
+    g_timing_event_starts[i].tv_nsec = EMPTY_TIME_POINT.tv_nsec;
+    g_timing_event_ends[i].tv_sec = EMPTY_TIME_POINT.tv_sec;
+    g_timing_event_ends[i].tv_nsec = EMPTY_TIME_POINT.tv_nsec;
   }
 #endif
   g_english = om_new();
@@ -188,29 +168,31 @@ extern "C" void cilk_tool_init(void)
   //  RDTOOL_INTERVAL_END(TOOL);
 }
 
-// Currently, I don't think this is ever called. @todo
-extern "C" void cilk_tool_destroy(void) 
-{
-  //  RDTOOL_INTERVAL_BEGIN(TOOL);
-  om_free(g_english);
-  om_free(g_hebrew);
-  //  RDTOOL_INTERVAL_BEGIN(SHADOW_STACK_MANIP);
-  delete[] frames;
-  //  RDTOOL_INTERVAL_END(SHADOW_STACK_MANIP);
-  //  RDTOOL_INTERVAL_END(TOOL);
-}
-
 extern "C" void cilk_tool_print(void)
 {
 #ifdef STATS
   for (int i = 0; i < NUM_INTERVAL_TYPES; ++i) {
-    assert(g_timing_event_starts[i] == EMPTY_TIME_POINT);
+    assert(g_timing_event_starts[i].tv_sec == EMPTY_TIME_POINT.tv_sec);
+    assert(g_timing_event_starts[i].tv_nsec == EMPTY_TIME_POINT.tv_nsec);
     std::cout << "\t\t" << g_timing_events[i];
   }
   std::cout << std::endl;
 #endif
   std::cout << "Num relabels: " << g_num_relabels << std::endl;
   std::cout << "Num inserts: " << g_num_inserts << std::endl;
+  //  om_print(g_english);
+}
+
+extern "C" void cilk_tool_destroy(void) 
+{
+  //  RDTOOL_INTERVAL_BEGIN(TOOL);
+  cilk_tool_print();
+  om_free(g_english);
+  om_free(g_hebrew);
+  //  RDTOOL_INTERVAL_BEGIN(SHADOW_STACK_MANIP);
+  delete[] frames;
+  //  RDTOOL_INTERVAL_END(SHADOW_STACK_MANIP);
+  //  RDTOOL_INTERVAL_END(TOOL);
 }
 
 extern "C" void cilk_tool_c_function_enter(void* this_fn, void* rip)
@@ -259,7 +241,7 @@ extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn
     insert_or_relabel(w, g_hebrew, heavy_hebrew, parent->current_hebrew);
   f->current_hebrew =
     insert_or_relabel(w, g_hebrew, heavy_hebrew, parent->cont_hebrew);
-
+  
   f->cont_english = NULL; f->cont_hebrew = NULL;
   f->sync_english = NULL; f->sync_hebrew = NULL;
   parent->current_english = NULL; parent->current_hebrew = NULL;
