@@ -43,8 +43,8 @@ bool om_precedes(const om_node* x, const om_node* y);
 
 tl_node* om_get_tl(om_node* n);
 
-/** Verify all labels are in the correct order. */
-void om_verify(const om* self);
+/** Verify all labels are in the correct order and struct is valid. */
+int om_verify(const om* self);
 
 /** Print list to a file. */
 void om_fprint(const om* self, FILE* out);

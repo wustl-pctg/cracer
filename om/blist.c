@@ -54,7 +54,14 @@ static void insert_internal(blist* self, node* base, node* n)
 }
 
 /** Allocate a new, uninitialized node. */
-  static inline node* node_new(){ return (node*)malloc(sizeof(node)); }
+static inline node* node_new()
+{ 
+  //  g_num_malloc_calls++;
+  //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD_MALLOC);
+  node* n = (node*)malloc(sizeof(node)); 
+  //  RDTOOL_INTERVAL_END(OM_REBUILD_MALLOC);
+  return n;
+}
 
 /** # Public methods */
 

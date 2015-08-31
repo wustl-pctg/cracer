@@ -1,5 +1,5 @@
 // The relabel-specific code for order-maintenance.
-
+#include <unistd.h> // sbrk for debugging
 #include <string.h> // memcpy
 #include "blist_split.c"
 
@@ -89,6 +89,11 @@ void build_array_of_leaves(tl_node* n, tl_node** array,
 // Rebuild a subtree rooted at node n.
 void rebuild(tl_node* n)
 {
+  /* printf("Avg malloc time for %u calls in between rebuilds: %f\n", */
+  /*        g_num_malloc_calls, */
+  /*        (g_timing_events[OM_REBUILD_MALLOC] - g_malloc_begin) / g_num_malloc_calls); */
+  /* g_num_malloc_calls = 0; */
+  /* g_malloc_begin = g_timing_events[OM_REBUILD_MALLOC]; */
   //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD);
   size_t array_size = n->size;
   //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD_MALLOC);
@@ -115,7 +120,7 @@ void rebuild(tl_node* n)
   label_t rlab = n->label;
   assert(rlab % 2 == 1);
 
-  size_t mindex = array_size / 2;
+  size_t mindex = array_size - array_size / 2;
   label_t mlab = llab + ((rlab - llab) / 2 + 1) - 1;
 
   n->left = spawn rebuild_recursive(n, array, 0, mindex,
@@ -124,6 +129,9 @@ void rebuild(tl_node* n)
                                mlab + 1, rlab);
   sync;
   free(array);
+  /* printf("Avg malloc time for %u calls in rebuild: %f\n", g_num_malloc_calls, */
+  /*        (g_timing_events[OM_REBUILD_MALLOC] - g_malloc_begin) / g_num_malloc_calls); */
+  /* g_malloc_begin = g_timing_events[OM_REBUILD_MALLOC]; */
   //  RDTOOL_INTERVAL_END(OM_REBUILD);
 }
 
@@ -132,9 +140,15 @@ tl_node* rebuild_recursive(tl_node* parent, tl_node** array,
                            label_t llab, label_t rlab)
 {
   size_t size = rindex - lindex;
-  //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD_MALLOC);
-  tl_node* n = (size == 1) ? array[lindex] : tl_node_new();
-  //  RDTOOL_INTERVAL_END(OM_REBUILD_MALLOC);
+  tl_node* n;
+
+  if (size == 1) n = array[lindex];
+  else {
+    //    g_num_malloc_calls++;
+    //    RDTOOL_INTERVAL_BEGIN(OM_REBUILD_MALLOC);
+    n = tl_node_new();
+    //    RDTOOL_INTERVAL_END(OM_REBUILD_MALLOC);
+  }
   n->size = size;
   n->parent = parent;
   n->needs_rebalance = 0;
@@ -149,7 +163,7 @@ tl_node* rebuild_recursive(tl_node* parent, tl_node** array,
   } else {
     n->level = n->parent->level + 1;
 
-    size_t mindex = lindex + size / 2;
+    size_t mindex = lindex + (size - size / 2);
     label_t mlab = llab + ((rlab - llab) / 2 + 1) - 1;
 
     n->left = spawn rebuild_recursive(n, array, lindex, mindex, llab, mlab);
@@ -170,7 +184,7 @@ void rebalance(tl_node* n, size_t height)
   n->needs_rebalance = 0;
 
   if (is_leaf(n)) return rebuild(n);
-  assert(capacity(n) >= n->size);
+  assert(capacity(n) >= n->size || capacity(n) == MAX_LABEL);
   if (too_heavy(n->left, height) || (n->right && too_heavy(n->right, height))) {
     return rebuild(n);
   }
@@ -189,7 +203,7 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
 {
   //RDTOOL_INTERVAL_BEGIN(OM_RELABEL);
   size_t old_size = self->root->num_leaves; // to check for overflow
-  printf("Splitting %zu lists.\n", num_heavy_lists);
+  //  printf("Splitting %zu lists.\n", num_heavy_lists);
   parfor (int i = 0; i < num_heavy_lists; ++i) {
     tl_node* current = heavy_lists[i];
 

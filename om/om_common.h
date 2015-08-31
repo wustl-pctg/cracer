@@ -26,7 +26,11 @@ static label_t MAX_LEVEL = (sizeof(label_t) * 8);
 /* static label_t NODE_INTERVAL = (label_t)5; // 3 / log 1 */
 /* static label_t SUBLIST_SIZE = (label_t)4; */
 
-
+/* static label_t MAX_LABEL = (label_t) 3; */
+/* static label_t MAX_LEVEL = (label_t) 2; */
+/* static label_t NODE_INTERVAL = (label_t)2; */
+/* static label_t SUBLIST_SIZE = (label_t)2; */
+  
 #ifdef __cplusplus
 } // extern "C"
 #endif

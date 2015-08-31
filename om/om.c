@@ -4,6 +4,9 @@
 
 #include "om.h"
 #include "om_common.h"
+
+unsigned int g_num_malloc_calls;
+double g_malloc_begin;
 #include "blist.c"
 
 #ifdef __cplusplus
@@ -55,7 +58,7 @@ struct om_s {
   size_t height;
 };
 
-tl_node* tl_node_new() { return (tl_node*)malloc(sizeof(tl_node)); }
+tl_node* tl_node_new() { return (tl_node*)malloc(1 * sizeof(tl_node)); }
 
 void tl_node_free(tl_node* n)
 {
@@ -160,15 +163,63 @@ bool om_precedes(const node* x, const node* y)
   return x->list->above->label < y->list->above->label;
 }
 
-void om_verify(const om* self)
+int om_verify(const om* self)
 {
-  /// @todo [#C]
+  return 1; /// @todo [#C]
 }
 
 void om_fprint(const om* self, FILE* out)
 {
-  /// @todo [#C]
-  fprintf(out, "Print not implemented.");
+  if (!om_verify(self)) fprintf(out, "Warning: OM is not valid!\n");
+
+  size_t num_leaves = 1 << MAX_LEVEL;
+
+  tl_node** future = (tl_node**) calloc(num_leaves, sizeof(tl_node*));
+  tl_node** current = (tl_node**) calloc(num_leaves, sizeof(tl_node*));
+  future[0] = self->root;
+
+  for (int level = 0; level < MAX_LEVEL; ++level) {
+
+    tl_node** tmp = current;
+    current = future;
+    future = tmp;
+
+    size_t num_nodes = 1 << level;
+    size_t spacing = 1 << (MAX_LEVEL - level);
+    for (int i = 0; i < num_nodes; ++i) {
+      tl_node* n = current[i];
+
+
+      for (int j = 0; j < spacing; ++j) fprintf(out, "\t");
+      if (!n || n->level != level) fprintf(out, "-");
+      else fprintf(out, "%lu", n->label);
+      for (int j = 0; j < spacing; ++j) fprintf(out, "\t");
+
+      tl_node *left, *right;
+      if (!n) {
+        left = right = NULL;
+      } else if (n->level == MAX_LEVEL) {
+        left = n;
+        right = NULL;
+      } else {
+        left = n->left;
+        right = n->right;
+      }
+      future[i * 2] = left;
+      future[i * 2 + 1] = right;
+    }
+    fprintf(out, "\n");
+  }
+  for (int i = 0; i < num_leaves; ++i) { // leaves
+    tl_node* leaf = future[i];
+    fprintf(out, "\t");
+    if (leaf) fprintf(out, "%lu", leaf->label);
+    else fprintf(out, "-");
+    fprintf(out, "\t");
+  }
+  fprintf(out, "\n");
+  free(future);
+  free(current);
 }
 
 void om_print(const om* self) { om_fprint(self, stdout); }
