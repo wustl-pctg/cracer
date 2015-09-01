@@ -22,7 +22,7 @@
 #  <http://www.gnu.org/licenses/>.
 
 AC_INIT([Cilk Runtime Library], [2.0], [cilk@intel.com])
-AC_PREREQ([2.64])
+AC_PREREQ([2.63])
 # AM_INIT_AUTOMAKE([1.11 no-define])
 AM_INIT_AUTOMAKE(foreign no-dist)
 
