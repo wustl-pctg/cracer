@@ -98,7 +98,6 @@ size_t get_height(tl_node* n)
 // Rebuild a subtree rooted at node n.
 void rebuild(tl_node* n)
 {
-  printf("Height before %zu (%zu leaves)\n", get_height(n), n->size);
   /* printf("Avg malloc time for %u calls in between rebuilds: %f\n", */
   /*        g_num_malloc_calls, */
   /*        (g_timing_events[OM_REBUILD_MALLOC] - g_malloc_begin) / g_num_malloc_calls); */
@@ -139,7 +138,6 @@ void rebuild(tl_node* n)
                                mlab + 1, rlab);
   sync;
   free(array);
-  printf("Height after: %zu\n", get_height(n));
   /* printf("Avg malloc time for %u calls in rebuild: %f\n", g_num_malloc_calls, */
   /*        (g_timing_events[OM_REBUILD_MALLOC] - g_malloc_begin) / g_num_malloc_calls); */
   /* g_malloc_begin = g_timing_events[OM_REBUILD_MALLOC]; */
