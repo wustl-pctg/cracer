@@ -3,8 +3,8 @@ CC=clang
 CFLAGS=-O3 -g -std=c99 -DNDEBUG
 CXXFLAGS=-O3 -g -std=c++11 -DNDEBUG
 CILKFLAGS=-fcilkplus -fcilktool -fno-inline-detach
-RUNTIME=/home/rob/cilkplus/lib/x86_64/libcilkrts.a
-INC=-I/home/rob/devel/batch/cilkplusrts/include
+RUNTIME=$(HOME)/llvm-cilk/lib/x86_64/libcilkrts.a
+INC=-I../cilkplusrts/include
 
 
 all: fib_stats #fib_check fib_nocheck fib_stats
