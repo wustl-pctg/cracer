@@ -1,5 +1,6 @@
+#include <tsan/rtl/tsan_interface.h>
+#include <tsan/rtl/tsan_interface_atomic.h>
 
-extern "C" {
 static bool TOOL_INITIALIZED = false;
 static bool check_enable_instrumentation = true;
 
@@ -77,5 +78,3 @@ void __tsan_write2(void *addr) { tsan_write(addr, 2, __builtin_return_address(0)
 void __tsan_write4(void *addr) { tsan_write(addr, 4, __builtin_return_address(0)); }
 void __tsan_write8(void *addr) { tsan_write(addr, 8, __builtin_return_address(0)); }
 void __tsan_write16(void *addr) { tsan_write(addr, 16, __builtin_return_address(0)); }
-
-}
