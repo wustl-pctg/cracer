@@ -13,18 +13,17 @@
 
 int fib(int n)
 {
-  //  std::cout << "fib(" << n << ")\n";
+  //std::cout << "fib(" << n << ")\n";
   if (n < 2) return n;
   int x, y;
   x = spawn fib(n - 1);
-  y = spawn fib(n - 2);
+  y = fib(n - 2);
   sync;
   return x + y;
 }
 
 int main(int argc, char* argv[])
 {
-  char* old_brk = (char*)sbrk(0);
   if (argc != 2) {
     std::cerr << "Usage: fib <n>" << std::endl;
     exit(1);
@@ -34,13 +33,6 @@ int main(int argc, char* argv[])
   auto start = std::chrono::high_resolution_clock::now();
   int result = fib(n);
   auto end = std::chrono::high_resolution_clock::now();
-
-  std::cout << "Heap size increase: " << ((char*)sbrk(0)) - old_brk << std::endl;
-
-  // std::cout << "Time: "
-  //           << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-  //           << " ms."
-  //           << std::endl;
 
   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
   cilk_tool_destroy();
