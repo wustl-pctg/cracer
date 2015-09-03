@@ -1,8 +1,9 @@
 CXX=clang++
 CC=clang
-CFLAGS=-O3 -std=c99 -DNDEBUG
-CXXFLAGS=-O3 -std=c++11 -DNDEBUG
+CFLAGS=-O0 -std=c99 -g
+CXXFLAGS=-O0 -std=c++11 -g
 CILKFLAGS=-fcilkplus -fcilktool -fno-inline-detach
+RDFLAGS=-fsanitize=thread
 RUNTIME=$(HOME)/llvm-cilk/lib/x86_64/libcilkrts.a
 INC=-I../cilkplusrts/include
 MALLOC= #-ltcmalloc #-ltbbmalloc_proxy
@@ -16,7 +17,7 @@ fib.o: fib.cpp
 	$(CXX) $(CILKFLAGS) $(CXXFLAGS) -std=c++11 -c fib.cpp -o fib.o
 
 fibrd.o: fib.cpp
-	$(CXX) $(CILKFLAGS) $(CXXFLAGS) -DSTATS -DRACEDETECT -std=c++11 -c fib.cpp -o fibrd.o
+	$(CXX) $(CILKFLAGS) $(RDFLAGS) $(CXXFLAGS) -I../../cilkplusrts/include -DSTATS -DRACEDETECT -std=c++11 -c fib.cpp -o fibrd.o
 
 getoptions.o: getoptions.cpp
 	$(CXX) $(CXXFLAGS) -c getoptions.cpp
@@ -25,7 +26,7 @@ matmul.o: matmul.cpp
 	$(CXX) $(CILKFLAGS) $(CXXFLAGS) -std=c++11 -c matmul.cpp -o matmul.o
 
 matmulrd.o: matmul.cpp
-	$(CXX) $(CILKFLAGS) $(CXXFLAGS) -DSTATS -DRACEDETECT -std=c++11 -c matmul.cpp -o matmulrd.o
+	$(CXX) $(CILKFLAGS) $(RDFLAGS) $(CXXFLAGS) -DSTATS -DRACEDETECT -std=c++11 -c matmul.cpp -o matmulrd.o
 
 # om.o: ../../om/om.c
 # 	cd ../../om && $(CC) $(CFLAGS) -c om.c && mv om.o ../rdtool/ && cd -
@@ -36,14 +37,15 @@ omrd.o: ../omrd.cpp ../../om/om.c
 libomrd.a: omrd.o #om.o
 	cd .. && ar -r libomrd.a omrd.o && cd -
 
+#-Wl,--whole-archive 
 fib_check: fibrd.o libomrd.a
-	$(CXX) -ldl -lpthread $(MALLOC) -Wl,--whole-archive ../libomrd.a -Wl,--no-whole-archive -o fib_check fibrd.o $(RUNTIME) 
+	$(CXX) fibrd.o ../libomrd.a $(RUNTIME) -ldl -lpthread $(MALLOC) -o fib_check
 
 fib_nocheck: fib.o
 	$(CXX) -ldl -lpthread $(MALLOC) -o fib_nocheck fib.o $(RUNTIME)
 
 matmul_check: matmulrd.o libomrd.a
-	$(CXX) -ldl -lpthread $(MALLOC) -Wl,--whole-archive ../libomrd.a -Wl,--no-whole-archive -o matmul_check matmulrd.o getoptions.o $(RUNTIME)
+	$(CXX) -ldl -lpthread $(MALLOC) $(RDFLAGS) -Wl,--whole-archive ../libomrd.a -Wl,--no-whole-archive -o matmul_check matmulrd.o getoptions.o $(RUNTIME)
 
 matmul_nocheck: matmul.o
 	$(CXX) -ldl -lpthread $(MALLOC) -o matmul_nocheck matmul.o getoptions.o $(RUNTIME)
