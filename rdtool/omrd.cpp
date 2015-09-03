@@ -4,6 +4,8 @@
 #include <cilk/batcher.h>
 #include "stack.h"
 
+#include "tsan.cpp"
+
 typedef enum {
   TOOL = 0,
   TOOL_INSERT,
