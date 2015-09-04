@@ -40,13 +40,13 @@ omrd.o: ../omrd.cpp ../../om/om.c
 libomrd.a: omrd.o
 	cd .. && ar $(ARFLAGS) -r libomrd.a omrd.o && cd -
 
-fib_check: fibrd.o libomrd.a
+fib_check: fibrd.o ../libomrd.a
 	$(CXX) fibrd.o ../libomrd.a $(RUNTIME) -ldl -lpthread $(MALLOC) -o fib_check
 
 fib_nocheck: fib.o
 	$(CXX) fib.o $(RUNTIME) -ldl -lpthread $(MALLOC) -o fib_nocheck
 
-matmul_check: matmulrd.o libomrd.a
+matmul_check: matmulrd.o ../libomrd.a
 	$(CXX) matmulrd.o getoptions.o ../libomrd.a $(RUNTIME) -ldl -lpthread $(MALLOC) -o matmul_check
 
 matmul_nocheck: matmul.o
