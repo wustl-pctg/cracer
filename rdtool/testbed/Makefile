@@ -34,25 +34,25 @@ matmul.o: matmul.cpp
 matmulrd.o: matmul.cpp
 	$(CXX) $(CILKFLAGS) $(CXXFLAGS) $(USERINC) $(RDFLAGS) -c matmul.cpp -o matmulrd.o
 
-omrd.o: ../omrd.cpp ../../om/om.c
+omrd: ../omrd.cpp ../../om/om.c
 	cd .. && $(CXX) $(CILKFLAGS) $(CXXFLAGS) $(OMINC) -DSTATS -c omrd.cpp && cd -
 
-libomrd.a: omrd.o
+libomrd: omrd
 	cd .. && ar $(ARFLAGS) -r libomrd.a omrd.o && cd -
 
-fib_check: fibrd.o ../libomrd.a
+fib_check: fibrd.o libomrd
 	$(CXX) fibrd.o ../libomrd.a $(RUNTIME) -ldl -lpthread $(MALLOC) -o fib_check
 
 fib_nocheck: fib.o
 	$(CXX) fib.o $(RUNTIME) -ldl -lpthread $(MALLOC) -o fib_nocheck
 
-matmul_check: matmulrd.o ../libomrd.a
+matmul_check: matmulrd.o libomrd
 	$(CXX) matmulrd.o getoptions.o ../libomrd.a $(RUNTIME) -ldl -lpthread $(MALLOC) -o matmul_check
 
 matmul_nocheck: matmul.o
 	$(CXX) matmul.o getoptions.o $(RUNTIME) -ldl -lpthread $(MALLOC) -o matmul_nocheck
 
-.PHONY: all fib matmul clean
+.PHONY: all fib matmul clean libomrd omrd
 clean:
 	rm -rf ../libomrd.a ../omrd.o
 	rm -rf fib.o fibrd.o fib_nocheck fib_check
