@@ -807,7 +807,7 @@ static void detach_for_steal(__cilkrts_worker *w,
             make_runnable(victim, child_ff, d);
         } END_WITH_FRAME_LOCK(w, child_ff);
     } END_WITH_FRAME_LOCK(w, parent_ff);
-
+    cilk_steal_success(w, victim, loot_ff->call_stack);
 }
 
 /**

@@ -2,6 +2,7 @@
 #define INCLUDED_CILKTOOL_DOT_H
 
 typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
+typedef struct __cilkrts_worker __cilkrts_worker;
 
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {
@@ -33,6 +34,9 @@ void __attribute__((weak)) cilk_sync_begin(__cilkrts_stack_frame* sf);
 void __attribute__((weak)) cilk_sync_end(__cilkrts_stack_frame* sf);
 void __attribute__((weak)) cilk_leave_begin(__cilkrts_stack_frame *sf);
 void __attribute__((weak)) cilk_leave_end(void);
+
+void __attribute__((weak))
+cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim, __cilkrts_stack_frame* sf);
 
 EXTERN_C_END
 

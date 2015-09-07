@@ -10,8 +10,6 @@
 
 EXTERN_C
 
-typedef struct __cilkrts_stack_frame __cilkrts_stack_frame;
-
 void cilk_tool_init(void) { }
 void cilk_tool_destroy(void) { }
 void cilk_tool_print(void) { }
@@ -30,5 +28,5 @@ void cilk_sync_begin (__cilkrts_stack_frame* sf) { }
 void cilk_sync_end (__cilkrts_stack_frame* sf) { }
 void cilk_leave_begin (__cilkrts_stack_frame *sf) { }
 void cilk_leave_end (void) { }
-
+void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim, __cilkrts_stack_frame* sf) { }
 EXTERN_C_END
