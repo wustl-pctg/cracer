@@ -1,16 +1,57 @@
-#include <tsan/rtl/tsan_interface.h>
-#include <tsan/rtl/tsan_interface_atomic.h>
+#include <dlfcn.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <internal/abi.h>
+#include "debug_util.h" 
+#include "mem_access.h" 
+#include "omrd.h" 
+
+/* defined in omrd.cpp */
+extern "C" void 
+do_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip);
+extern "C" int do_enter_end(__cilkrts_stack_frame* sf, void* rsp);
+extern "C" void do_sync_begin(__cilkrts_stack_frame* sf);
+extern "C" int do_leave_begin(__cilkrts_stack_frame *sf);
+extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size); 
+extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size);
+extern "C" void clear_shadow_memory(size_t start, size_t end); 
+
+
+// declared in cilksan; for debugging only
+// enable it later
+// #if OM_DEBUG
+// extern enum EventType_t last_event;  
+// #endif
+
 
 static bool TOOL_INITIALIZED = false;
-static bool check_enable_instrumentation = true;
 
+/* XXX: Honestly these should be part of detector state */
+__thread static bool check_enable_instrumentation = true;
 // When either is set to false, no errors are output
-static bool instrumentation = false;
+__thread static bool instrumentation = false;
 // needs to be reentrant due to reducer operations; 0 means checking
-static int checking_disabled = 0;
+__thread static int checking_disabled = 0;
+// a flag indicating that next time we encounter tsan_func_exit, we should
+// clear the shadow memory corresponding to a worker's stack; set in
+// leave_frame_begin
+__thread static bool clear_stack = false;
+
+// need to clear the accesses to C stack off shadow memory; for that purpose,
+// need to keep a stack_low_water_mark (stack grows downward)
+// the high_water_mark is simply the rbp (frame base pointer value) stored in
+// shadow_frame in leave_begin, since we just need to clear the shadow memory
+// when we return from a spawn helper.
+//
+// Unfortunately, we can't keep track of where the stack is using proc_map,
+// since during parallel execution, workers use stacks allocated by the
+// runtime, which can be anywhere in the heap.
+__thread static uint64_t stack_low_watermark = (uint64_t)(-1);
 
 static void tsan_destroy(void) {}
-void __tsan_init()
+
+extern "C" void __tsan_init()
 {
   if(TOOL_INITIALIZED) return;
 
@@ -22,26 +63,218 @@ void __tsan_init()
   TOOL_INITIALIZED = true;
 }
 
-void __tsan_func_entry(void *pc) { }
-void __tsan_func_exit() {}
-void __tsan_vptr_read(void **vptr_p) {}
-void __tsan_vptr_update(void **vptr_p, void *new_val) {}
+__attribute__((always_inline))
+static void enable_instrumentation() {
+  DBG_TRACE(DEBUG_BASIC, "Enable instrumentation.\n");
+  instrumentation = true;
+}
 
-// get_user_code_rip calls the system backtrace to walk the stack to obtain 
-// list of return addresses sitting on the cucrrent stack.  
-// Buffer[0] always stores the return address for the backtrace call.  
-// Where we find the rip for the access performed in the user program 
-// depends on how deeply the backtrace call is nested, which is provided
-// as an arg to get_user_code_rip. 
-/*
-static inline void *get_user_code_rip(int depth) {
-    disable_checking();
-    void *buffer[depth];
-    int res = backtrace(buffer, depth);
-    cilksan_assert(res == depth);
-    enable_checking();
-    return buffer[depth-1];
-} */
+__attribute__((always_inline))
+static void disable_instrumentation() {
+  DBG_TRACE(DEBUG_BASIC, "Disable instrumentation.\n");
+  instrumentation = false;
+}
+
+__attribute__((always_inline))
+static void enable_checking() {
+  checking_disabled--;
+  DBG_TRACE(DEBUG_BASIC, "%d: Enable checking.\n", checking_disabled);
+  om_assert(checking_disabled >= 0);
+}
+
+__attribute__((always_inline))
+static void disable_checking() {
+  om_assert(checking_disabled >= 0);
+  checking_disabled++;
+  DBG_TRACE(DEBUG_BASIC, "%d: Disable checking.\n", checking_disabled);
+}
+
+// outside world (including runtime).
+// Non-inlined version for user code to use
+extern "C" void __om_enable_checking() {
+  checking_disabled--;
+  om_assert(checking_disabled >= 0);
+  DBG_TRACE(DEBUG_BASIC, "External enable checking (%d).\n", checking_disabled);
+}
+
+// Non-inlined version for user code to use
+extern "C" void __om_disable_checking() {
+  om_assert(checking_disabled >= 0);
+  checking_disabled++;
+  DBG_TRACE(DEBUG_BASIC, "External disable checking (%d).\n", checking_disabled);
+}
+
+__attribute__((always_inline))
+static bool should_check() {
+  return(instrumentation && checking_disabled == 0); 
+}
+
+/* Need to get the stack_low_watermark (where the stack ends) so that
+ * we can clean the shadow mem corresponding to cactus stack.
+ */
+extern "C" void __tsan_func_entry(void *pc) { 
+  disable_checking();
+  uint64_t res = (uint64_t) __builtin_frame_address(0);
+  if(stack_low_watermark > res) {
+    stack_low_watermark = res;
+    DBG_TRACE(DEBUG_CALLBACK, 
+            "tsan_func_enter, set stack_low_watermark %lx.\n", res);
+  }
+  enable_checking();
+}
+
+/* We would like to clear the shadow memory correponding to the cactus
+ * stack whenever we leave a Cilk function.  Unfortunately, variables are 
+ * still being read after cilk_leave_frame_begin (such as return value 
+ * stored on stack, so we really have to clean the shadow mem for stack 
+ * at the vary last moment, right before we return, which seems to be 
+ * where tsan_func_exit is called.  So instead, we set a thread-local 
+ * flag to tell this worker to clean the shadow mem correponding to its 
+ * stack at cilk_leave_begin, but check the flag and actually do the cleaning
+ * in __tsan_func_exit.
+ */
+extern "C" void __tsan_func_exit() { 
+  disable_checking();
+  if(clear_stack) {
+    // the spawn helper that's exiting is calling tsan_func_exit, 
+    // so the spawn helper's base pointer is the stack_high_watermark
+    // to clear (stack grows downward)
+    uint64_t stack_high_watermark = (uint64_t)__builtin_frame_address(1);
+    DBG_TRACE(DEBUG_CALLBACK, 
+              "tsan_func_exit, stack_high_watermark: %lx.\n", 
+              stack_high_watermark);
+    om_assert( stack_low_watermark != ((uint64_t)-1) );
+    om_assert( stack_low_watermark <= stack_high_watermark );
+
+    clear_shadow_memory(stack_low_watermark, stack_high_watermark);
+    // now the high watermark becomes the low watermark
+    stack_low_watermark = stack_high_watermark;
+    clear_stack = 0;
+  }
+  enable_checking();
+}
+
+extern "C" void __tsan_vptr_read(void **vptr_p) {}
+extern "C" void __tsan_vptr_update(void **vptr_p, void *new_val) {}
+
+
+extern "C" void cilk_enter_begin() {
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_begin.\n");
+  disable_checking();
+  om_assert(TOOL_INITIALIZED);
+}
+
+extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, 
+                             void* this_fn, void* rip) {
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_helper_begin.\n");
+  disable_checking();
+  do_enter_helper_begin(sf, this_fn, rip);
+}
+
+extern "C" void cilk_enter_end(__cilkrts_stack_frame *sf, void *rsp) {
+
+  int first_frame = do_enter_end(sf, rsp);
+  if(first_frame && __builtin_expect(check_enable_instrumentation, 0)) {
+    check_enable_instrumentation = false;
+    // turn on instrumentation now for this worker
+    enable_instrumentation();
+    // reset low watermark here, since we are possibly using a brand new stack
+    stack_low_watermark = (uint64_t)(-1);
+  }
+  enable_checking();
+  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_enter_end.\n");
+}
+
+extern "C" void cilk_spawn_prepare() {
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_spawn_prepare.\n");
+  disable_checking();
+  // om_assert(last_event == NONE);
+  // WHEN_OM_DEBUG( last_event = SPAWN_PREPARE; ) 
+}
+
+extern "C" void cilk_spawn_or_continue(int in_continuation) {
+  // om_assert( (!in_continuation && last_event == SPAWN_PREPARE) 
+  //                     || (in_continuation && last_event == RUNTIME_LOOP) );
+  // WHEN_OM_DEBUG( last_event = NONE; ) 
+  enable_checking();
+  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_spawn_or_continue.\n");
+}
+
+extern "C" void 
+cilk_detach_begin(__cilkrts_stack_frame *parent_sf) { 
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_detach_begin.\n");
+  disable_checking(); 
+}
+
+extern "C" void cilk_detach_end() { 
+  enable_checking(); 
+  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_detach_end.\n");
+}
+
+extern "C" void cilk_sync_begin(__cilkrts_stack_frame* sf) {
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_sync_begin.\n");
+  disable_checking();
+  om_assert(TOOL_INITIALIZED);
+  do_sync_begin(sf);
+}
+
+extern "C" void cilk_sync_end() {
+  om_assert(TOOL_INITIALIZED);
+  enable_checking();
+  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_sync_end.\n");
+}
+
+extern "C" void cilk_leave_begin(__cilkrts_stack_frame* sf) {
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_begin.\n");
+  disable_checking();
+  int is_last_frame = do_leave_begin(sf);
+  if(is_last_frame) {
+    disable_instrumentation();
+    check_enable_instrumentation = true;
+  }
+
+//   if(sf->flags & CILK_FRAME_DETACHED) {
+    // This is the point where we need to set flag to clear accesses to stack 
+    // out of the shadow memory.  The spawn helper of this leave_begin
+    // is about to return, and we want to clear stack accesses below 
+    // (and including) spawn helper's stack frame.  Set the flag here
+    // and the stack will be cleared in tsan_func_exit.
+    clear_stack = true;
+//  }
+}
+
+extern "C" void cilk_leave_end() {
+  enable_checking();
+  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_leave_end.\n");
+}
+
+typedef void*(*malloc_t)(size_t);
+static malloc_t real_malloc = NULL;
+
+extern "C" void* malloc(size_t s) {
+
+  DBG_TRACE(DEBUG_CALLBACK, "malloc called.\n");
+  // make it 8-byte aligned; easier to erase from shadow mem
+  uint64_t new_size = ALIGN_BY_NEXT_MAX_GRAIN_SIZE(s);
+
+  // Don't try to init, since that needs malloc.  
+  if (real_malloc==NULL) {
+    real_malloc = (malloc_t)dlsym(RTLD_NEXT, "malloc");
+    char *error = dlerror();
+    if (error != NULL) {
+      fputs(error, stderr);
+      fflush(stderr);
+      abort();
+    }
+  }
+  void *r = real_malloc(new_size);
+
+  if(TOOL_INITIALIZED && should_check()) {
+    clear_shadow_memory((size_t)r, (size_t)r+new_size);
+  }
+
+  return r;
+}
 
 // Assuming tsan_read/write is inlined, the stack should look like this:
 //
@@ -58,23 +291,47 @@ static inline void *get_user_code_rip(int depth) {
 // right before the corresponding read / write in the user code.
 // the return addr of __tsan_read/write[1-16] is the rip for the read / write
 
-static inline void tsan_read(void *addr, size_t size, void *rip)
-{
-
+static inline void tsan_read(void *addr, size_t size, void *rip) {
+  om_assert(TOOL_INITIALIZED);
+  if(should_check()) {
+    disable_checking();
+    DBG_TRACE(DEBUG_MEMORY, "%s read %p\n", __FUNCTION__, addr);
+    do_read((uint64_t)rip, (uint64_t)addr, size);
+    enable_checking();
+  } else {
+    DBG_TRACE(DEBUG_MEMORY, "SKIP %s read %p\n", __FUNCTION__, addr);
+  }
 }
 
-static inline void tsan_write(void *addr, size_t size, void *rip)
-{
-
+static inline void tsan_write(void *addr, size_t size, void *rip) {
+  om_assert(TOOL_INITIALIZED);
+  if(should_check()) {
+    disable_checking();
+    DBG_TRACE(DEBUG_MEMORY, "%s wrote %p\n", __FUNCTION__, addr);
+    do_write((uint64_t)rip, (uint64_t)addr, size);
+    enable_checking();
+  } else {
+    DBG_TRACE(DEBUG_MEMORY, "SKIP %s wrote %p\n", __FUNCTION__, addr);
+  }
 }
 
-void __tsan_read1(void *addr) { tsan_read(addr, 1, __builtin_return_address(0)); }
-void __tsan_read2(void *addr) { tsan_read(addr, 2, __builtin_return_address(0)); }
-void __tsan_read4(void *addr) { tsan_read(addr, 4, __builtin_return_address(0)); }
-void __tsan_read8(void *addr) { tsan_read(addr, 8, __builtin_return_address(0)); }
-void __tsan_read16(void *addr) { tsan_read(addr, 16, __builtin_return_address(0)); }
-void __tsan_write1(void *addr) { tsan_write(addr, 1, __builtin_return_address(0)); }
-void __tsan_write2(void *addr) { tsan_write(addr, 2, __builtin_return_address(0)); }
-void __tsan_write4(void *addr) { tsan_write(addr, 4, __builtin_return_address(0)); }
-void __tsan_write8(void *addr) { tsan_write(addr, 8, __builtin_return_address(0)); }
-void __tsan_write16(void *addr) { tsan_write(addr, 16, __builtin_return_address(0)); }
+extern "C" void 
+__tsan_read1(void *addr) { tsan_read(addr, 1, __builtin_return_address(0)); }
+extern "C" void 
+__tsan_read2(void *addr) { tsan_read(addr, 2, __builtin_return_address(0)); }
+extern "C" void 
+__tsan_read4(void *addr) { tsan_read(addr, 4, __builtin_return_address(0)); }
+extern "C" void 
+__tsan_read8(void *addr) { tsan_read(addr, 8, __builtin_return_address(0)); }
+extern "C" void 
+__tsan_read16(void *addr) { tsan_read(addr, 16, __builtin_return_address(0)); }
+extern "C" void 
+__tsan_write1(void *addr) { tsan_write(addr, 1, __builtin_return_address(0)); }
+extern "C" void 
+__tsan_write2(void *addr) { tsan_write(addr, 2, __builtin_return_address(0)); }
+extern "C" void 
+__tsan_write4(void *addr) { tsan_write(addr, 4, __builtin_return_address(0)); }
+extern "C" void 
+__tsan_write8(void *addr) { tsan_write(addr, 8, __builtin_return_address(0)); }
+extern "C" void 
+__tsan_write16(void *addr) { tsan_write(addr, 16, __builtin_return_address(0)); }

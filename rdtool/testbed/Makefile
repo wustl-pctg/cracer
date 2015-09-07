@@ -10,7 +10,7 @@ USE_GOLD=true
 CFLAGS=-std=c99 -g -O0
 CXXFLAGS=-std=c++11 -g -O0
 CILKFLAGS=-fcilkplus -fno-inline-detach
-RDFLAGS=-DRACEDETECT -fcilktool #-fsanitize=thread 
+RDFLAGS=-DRACEDETECT -fcilktool -fsanitize=thread 
 ARFLAGS=#--plugin $(COMPILER_HOME)/lib/LLVMgold.so
 LDFLAGS=
 OMINC=-I../cilkplusrts/include -I$(COMPILER_HOME)/src/projects/compiler-rt/lib
@@ -37,10 +37,13 @@ matmulrd.o: matmul.cpp
 	$(CXX) $(CILKFLAGS) $(CXXFLAGS) $(USERINC) $(RDFLAGS) -c matmul.cpp -o matmulrd.o
 
 omrd: ../omrd.cpp ../../om/om.c ../stack.h
-	cd .. && $(CXX) $(CILKFLAGS) $(CXXFLAGS) $(OMINC) -DSTATS=$(STAT_LEVEL) -c omrd.cpp && cd -
+	cd ..; $(CXX) $(CILKFLAGS) $(CXXFLAGS) $(OMINC) -DSTATS=$(STAT_LEVEL) -c omrd.cpp
+	cd ..; $(CXX) $(CXXFLAGS) $(OMINC) -c tsan.cpp
+	cd ..; $(CXX) $(CXXFLAGS) -c debug_util.cpp
+	cd ..; $(CXX) $(CXXFLAGS) -c mem_access.cpp
 
 libomrd: omrd
-	cd .. && ar $(ARFLAGS) -r libomrd.a omrd.o && cd -
+	cd ..; ar $(ARFLAGS) -r libomrd.a omrd.o tsan.o debug_util.o mem_access.o
 
 fib_check: fibrd.o libomrd
 	$(CXX) $(LDFLAGS) fibrd.o ../libomrd.a $(RUNTIME) -ldl -lpthread $(MALLOC) -o fib_check

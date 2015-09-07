@@ -1,15 +1,12 @@
 #include <iostream>
-
-/** @todo clang won't compile the gcc 4.4.7 mutex header, so I'll have
-    to write my own.
- */
-//#include <mutex>
-#include <pthread.h>
+#include <pthread.h> /// @todo clang doesn't like gcc 4.4.7 mutex header...
 
 #include <internal/abi.h>
 #include <cilk/batcher.h>
+#include "print_addr.h"
+#include "shadow_mem.h"
+#include "mem_access.h"
 #include "stack.h"
-#include "tsan.cpp"
 #include "../om/om.c"
 
 typedef enum {
@@ -66,10 +63,10 @@ unsigned long g_num_inserts = 0;
 #endif
 
 int g_tool_init = 0;
-
 om* g_english;
 om* g_hebrew;
 __thread __cilkrts_worker* t_worker;
+__thread int self = -1;
 pthread_spinlock_t g_relabel_mutex;
 pthread_spinlock_t* g_worker_mutexes;
 
@@ -80,8 +77,15 @@ typedef struct FrameData_s {
   om_node* cont_hebrew;
   om_node* sync_english;
   om_node* sync_hebrew;
-  size_t enter_counter;
-  size_t spawn_counter;
+  // we only create frames for the first Cilk function and whenever
+  // we spawn, so multiple Cilk functions can be represented by this frame
+  // (i.e., a Cilk function calls another Cilk function)
+  // this counter is counting the # of Cilk functions this frame represents
+  int enter_counter; 
+  // store the value of enter_counter for the Cilk function that spawned to
+  // cause the sync node to be set; we should only switch the current node
+  // to the sync node when precisely that Cilk function is executing the sync
+  int enter_counter_for_sync;
 } FrameData_t;
 
 AtomicStack_t<FrameData_t>* frames;
@@ -90,6 +94,21 @@ AtomicStack_t<FrameData_t>* frames;
 /// list of heavy nodes to rebalance.
 AtomicStack_t<tl_node*> heavy_english;
 AtomicStack_t<tl_node*> heavy_hebrew;
+
+// XXX Need to synchronize access to it when update
+static ShadowMem<MemAccessList_t> shadow_mem;
+/*
+ It turns out that we don't need to know where the stack is
+uint64_t stack_low_addr = 0;
+uint64_t stack_high_addr = 0;
+
+__attribute__((always_inline)) 
+static bool is_on_stack(uint64_t addr) {
+  om_assert(stack_high_addr != stack_low_addr);                            
+  return (addr <= stack_high_addr && addr >= stack_low_addr);                   
+} 
+*/
+
 
 #define HALF_BITS ((sizeof(label_t) * 8) / 2)
 
@@ -113,10 +132,11 @@ void init_strand(__cilkrts_worker* w, FrameData_t* init)
     f->cont_english = NULL;
     f->cont_hebrew = NULL;
     f->enter_counter = init->enter_counter;
-    f->spawn_counter = init->spawn_counter;
+    f->enter_counter_for_sync = init->enter_counter_for_sync;
   }  else {
-    f->enter_counter = 0;
-    f->spawn_counter = 0;
+    // special case; this one starts with 1, since this is called from enter_end
+    f->enter_counter = 1;
+    f->enter_counter_for_sync = -1; // -1 for unset value
     f->current_english = om_insert_initial(g_english);
     f->current_hebrew = om_insert_initial(g_hebrew);
     RD_STATS(__sync_fetch_and_add(&g_num_inserts, 2));
@@ -207,6 +227,8 @@ om_node* insert_or_relabel(__cilkrts_worker* w, om* ds,
 
 extern "C" void cilk_tool_init(void) 
 {
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_print called.\n");
+
 #if STATS > 1
   EMPTY_TIME_POINT.tv_sec = 0; EMPTY_TIME_POINT.tv_nsec = 0;
   for (int i = 0; i < NUM_INTERVAL_TYPES; ++i) {
@@ -226,11 +248,16 @@ extern "C" void cilk_tool_init(void)
     pthread_spin_init(&g_worker_mutexes[i], PTHREAD_PROCESS_PRIVATE);
   }
   pthread_spin_init(&g_relabel_mutex, PTHREAD_PROCESS_PRIVATE);
+
+  // XXX: Can I assume this is called before everything?
+  //  read_proc_maps(); /// @todo shakespeare has problems compiling print_addr.cpp
   g_tool_init = 1;
 }
 
 extern "C" void cilk_tool_print(void)
 {
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_print called.\n");
+
 #if STATS > 1
   for (int i = 0; i < NUM_INTERVAL_TYPES; ++i) {
     assert(g_timing_event_starts[i].tv_sec == EMPTY_TIME_POINT.tv_sec);
@@ -247,6 +274,8 @@ extern "C" void cilk_tool_print(void)
 
 extern "C" void cilk_tool_destroy(void) 
 {
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_destroy called.\n");
+
   cilk_tool_print();
   om_free(g_english);
   om_free(g_hebrew);
@@ -258,6 +287,7 @@ extern "C" void cilk_tool_destroy(void)
   pthread_spin_destroy(&g_relabel_mutex);
 
   delete[] g_worker_mutexes;
+  //  delete_proc_maps(); /// @todo shakespeare has problems compiling print_addr.cpp
 }
 
 extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
@@ -271,54 +301,68 @@ extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim
   free(loot);
 }
 
-extern "C" void cilk_tool_c_function_enter(void* this_fn, void* rip){ }
-extern "C" void cilk_tool_c_function_leave(void* rip) { }
-extern "C" void cilk_enter_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip)
-{ 
-}
-
-extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip)
+// XXX Some of these should be done in detach --- args are evaluated between
+// enter_helper_begin and detach
+extern "C" void do_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip)
 {
-  if (!t_worker) {
-    __cilkrts_worker* w = __cilkrts_get_tls_worker();
-    assert(frames[w->self].empty());
-    RD_DEBUG("Initial inserts by worker %i\n", w->self);
-    init_strand(w, NULL); // sets t_worker
-  }
-  if (__cilkrts_get_batch_id(t_worker) != -1) return;
-  int worker_id = t_worker->self;
+  DBG_TRACE(DEBUG_CALLBACK, "do_enter_helper_begin, sf %p and worker %d.\n", sf, self);
+  DBG_TRACE(DEBUG_CALLBACK, "do_enter_helper_begin, parent sf %p.\n", sf->call_parent);
 
-  assert(!frames[worker_id].empty());
+  __cilkrts_worker* w = __cilkrts_get_tls_worker();
+  if (__cilkrts_get_batch_id(w) != -1) return;
 
-  FrameData_t* parent = frames[worker_id].head(); // helper frame parent
-  parent->spawn_counter++;
-  frames[worker_id].push();
-  FrameData_t* f = frames[worker_id].head();
-  f->enter_counter = 0;
-  f->spawn_counter = 0;
+  // can't be empty now that we init strand in do_enter_end
+  om_assert(!frames[w->self].empty());
+
+  FrameData_t* parent = frames[w->self].head(); // helper frame parent
+  frames[w->self].push();
+  FrameData_t* f = frames[w->self].head();
+  f->enter_counter = 0; // eventually gets incremented in enter_end
+  f->enter_counter_for_sync = -1; 
   RD_DEBUG("helper_begin: enter_counter = 0 -- ");
 
   if (!parent->sync_english) { // first of spawn group
-    assert(!parent->sync_hebrew);
+    om_assert(!parent->sync_hebrew);
+    om_assert(parent->enter_counter_for_sync == -1);
     RD_DEBUG("first of spawn group\n");
+
+    parent->enter_counter_for_sync = parent->enter_counter;
     parent->sync_english =
-      insert_or_relabel(t_worker, g_english, heavy_english, parent->current_english);
+      insert_or_relabel(w, g_english, heavy_english, parent->current_english);
     parent->sync_hebrew =
-      insert_or_relabel(t_worker, g_hebrew, heavy_hebrew, parent->current_hebrew);
+      insert_or_relabel(w, g_hebrew, heavy_hebrew, parent->current_hebrew);
+
+    DBG_TRACE(DEBUG_CALLBACK, 
+        "do_enter_helper_begin, parent enter counter for sync %d.\n",
+        parent->enter_counter_for_sync);
+
+    DBG_TRACE(DEBUG_CALLBACK, 
+        "do_enter_helper_begin, setting parent sync_eng %p and sync heb %p.\n",
+        parent->sync_english, parent->sync_hebrew);
   } else {
+    DBG_TRACE(DEBUG_CALLBACK, 
+              "do_enter_helper_begin, NOT first spawn, parent sync eng %p.\n", 
+              parent->sync_english);
     RD_DEBUG("NOT first of spawn group\n");
   }
 
   f->current_english =
-    insert_or_relabel(t_worker, g_english, heavy_english, parent->current_english);
+    insert_or_relabel(w, g_english, heavy_english, parent->current_english);
   parent->cont_english =
-    insert_or_relabel(t_worker, g_english, heavy_english, f->current_english);
+    insert_or_relabel(w, g_english, heavy_english, f->current_english);
 
   parent->cont_hebrew =
-    insert_or_relabel(t_worker, g_hebrew, heavy_hebrew, parent->current_hebrew);
+    insert_or_relabel(w, g_hebrew, heavy_hebrew, parent->current_hebrew);
   f->current_hebrew =
-    insert_or_relabel(t_worker, g_hebrew, heavy_hebrew, parent->cont_hebrew);
+    insert_or_relabel(w, g_hebrew, heavy_hebrew, parent->cont_hebrew);
   
+  DBG_TRACE(DEBUG_CALLBACK, 
+            "do_enter_helper_begin, f curr eng: %p and parent cont eng: %p.\n", 
+            f->current_english, parent->cont_english);
+  DBG_TRACE(DEBUG_CALLBACK, 
+            "do_enter_helper_begin, f curr heb: %p and parent cont heb: %p.\n", 
+            f->current_hebrew, parent->cont_hebrew);
+
   f->cont_english = NULL;
   f->cont_hebrew = NULL;
   f->sync_english = NULL; 
@@ -327,87 +371,217 @@ extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn
   parent->current_hebrew = NULL;
 }
 
-extern "C" void cilk_enter_end (__cilkrts_stack_frame* sf, void* rsp)
+/* return 1 if we are entering top-level user frame and 0 otherwise */
+extern "C" int do_enter_end (__cilkrts_stack_frame* sf, void* rsp)
 {
-  if (__cilkrts_get_batch_id(sf->worker) != -1) return;
-  if (!frames[sf->worker->self].empty()) {
+  DBG_TRACE(DEBUG_CALLBACK, "do_enter_end, sf %p and worker %d.\n", sf, self);
+
+  __cilkrts_worker* w = sf->worker;
+  if (__cilkrts_get_batch_id(w) != -1) return 0;
+
+  if (frames[w->self].empty()) {
+    self = w->self;
+    init_strand(w, NULL); // enter_counter already set to 1 in init_strand
+    return 1;
+  } else {
     FrameData_t* f = frames[sf->worker->self].head();
     f->enter_counter++;
     RD_DEBUG("cilk_enter_end: incrementing enter_counter to %zu\n", f->enter_counter);
+    return 0;
   }
 }
 
-extern "C" void cilk_spawn_prepare (__cilkrts_stack_frame* sf) { }
-extern "C" void cilk_spawn_or_continue (int in_continuation){ }
-extern "C" void cilk_detach_begin (__cilkrts_stack_frame* parent) { }
-extern "C" void cilk_detach_end (void) { }
-
-extern "C" void cilk_sync_begin (__cilkrts_stack_frame* sf)
-{ 
-  if (__cilkrts_get_batch_id(sf->worker) != -1) return;
-  if (frames[sf->worker->self].empty()) return;
-  FrameData_t* f = frames[sf->worker->self].head();
-  RD_DEBUG("cilk_sync_begin with g_enter_counter == %zu\n", f->enter_counter);
-
-  /// @todo this isn't always correct!
-  // Cilk function boo calls bar, which spawns quack, then immediately syncs
-  //  if (f->enter_counter != 0) return;
-  if (f->spawn_counter != 0) return;
-  // real sync
-
-  assert(f->current_english);
-  assert(f->current_hebrew);
-  assert(!f->cont_english); 
-  assert(!f->cont_hebrew);
-
-   if (f->sync_english) { // spawned
-     assert(f->sync_hebrew);
-       RD_DEBUG("function spawned (in cilk_sync_begin)\n");
-       f->current_english = f->sync_english;
-       f->current_hebrew = f->sync_hebrew;
-       f->sync_english = NULL; 
-       f->sync_hebrew = NULL;
-  } else { // function didn't spawn
-    assert(!f->sync_english); 
-    assert(!f->sync_hebrew);
-  }
-}
-
-extern "C" void cilk_sync_end (__cilkrts_stack_frame* sf){ }
-
-extern "C" void cilk_leave_begin (__cilkrts_stack_frame *sf)
+extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
 {
+  DBG_TRACE(DEBUG_CALLBACK, "do_sync_begin, sf %p and worker %d.\n", sf, self);
+
+  om_assert(self != -1);
+  om_assert(!frames[self].empty());
+
+  if (__cilkrts_get_batch_id(sf->worker) != -1) return;
+
+  FrameData_t* f = frames[self].head();
+  RD_DEBUG("cilk_sync_begin with g_enter_counter == %zu\n", f->enter_counter);
+  // since each frame can account for multiple Cilk functions, we are only
+  // switching the current to the sync node when we reach the corresponding
+  // sync statement 
+  om_assert(f->enter_counter >= f->enter_counter_for_sync);
+  if (f->enter_counter > f->enter_counter_for_sync) return;
+
+  om_assert(f->current_english); 
+  om_assert(f->current_hebrew);
+  om_assert(!f->cont_english); 
+  om_assert(!f->cont_hebrew);
+
+  if (f->sync_english) { // spawned
+    om_assert(f->sync_hebrew);
+    RD_DEBUG("function spawned (in cilk_sync_begin)\n");
+    f->current_english = f->sync_english;
+    f->current_hebrew = f->sync_hebrew;
+    DBG_TRACE(DEBUG_CALLBACK, 
+              "do_sync_begin, setting eng to %p.\n", f->current_english);
+    DBG_TRACE(DEBUG_CALLBACK, 
+              "do_sync_begin, setting heb to %p.\n", f->current_hebrew);
+    f->sync_english = NULL; 
+    f->sync_hebrew = NULL;
+    f->enter_counter_for_sync = -1;
+  } else { // function didn't spawn
+    om_assert(!f->sync_english); 
+    om_assert(!f->sync_hebrew);
+    om_assert(f->enter_counter_for_sync == -1);
+  }
 }
 
-extern "C" void cilk_leave_end (void)
-{ 
-  if (__cilkrts_get_batch_id(t_worker) != -1) return;
+/* return 1 if we are leaving last frame and 0 otherwise */
+extern "C" int do_leave_begin (__cilkrts_stack_frame *sf)
+{
+  DBG_TRACE(DEBUG_CALLBACK, "do_leave_begin, sf %p and worker %d.\n", sf, self);
+  if (__cilkrts_get_batch_id(sf->worker) != -1) return 0;
 
   RD_DEBUG("cilk_leave_begin\n");
+  om_assert(self != -1);
+  om_assert(!frames[self].empty());
 
-  /// @todo this shouldn't be necessary
-  if (frames[t_worker->self].size() <= 1) return;
+  FrameData_t* current = frames[self].head();
+  om_assert(current->enter_counter > current->enter_counter_for_sync);
 
-  FrameData_t* current = frames[t_worker->self].head();
   current->enter_counter--;
   RD_DEBUG("cilk_leave_begin, decrementing g_enter_counter to %zu\n", current->enter_counter);
 
-  if (current->enter_counter == 0) { // leaving a spawn helper
+  if (current->enter_counter == 0) {
     RD_DEBUG("cilk_leave_begin: popping and changing nodes.\n");
 
-    frames[t_worker->self].pop();
-    current = frames[t_worker->self].head();
-    current->spawn_counter--;
-    assert(!current->current_english);
-    assert(!current->current_hebrew);
-    assert(current->cont_english);
-    assert(current->cont_hebrew);
-    assert(current->sync_english);
-    assert(current->sync_hebrew);
-    current->current_english = current->cont_english;
-    current->current_hebrew = current->cont_hebrew;
-    current->cont_english = NULL;
-    current->cont_hebrew = NULL;
+    frames[self].pop();
+    if( !frames[self].empty() ) {
+      current = frames[self].head();
+      om_assert(!current->current_english);
+      om_assert(!current->current_hebrew);
+      om_assert(current->cont_english);
+      om_assert(current->cont_hebrew);
+      om_assert(current->sync_english);
+      om_assert(current->sync_hebrew);
+      current->current_english = current->cont_english;
+      current->current_hebrew = current->cont_hebrew;
+      current->cont_english = NULL;
+      current->cont_hebrew = NULL;
+    }
   }
 
+  // we are leaving the last frame if the shadow stack is empty
+  return frames[self].empty();
 }
+
+// called by record_memory_read/write, with the access broken down 
+// into 8-byte aligned memory accesses
+static void 
+record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
+                  uint32_t mem_size) {
+
+  om_assert(self != -1);
+  FrameData_t *f = frames[self].head();
+  MemAccessList_t *val = shadow_mem.find( ADDR_TO_KEY(addr) );
+
+  if( val == NULL ) {
+    // not in shadow memory; create a new MemAccessList_t and insert
+    MemAccess_t *acc = 
+        new MemAccess_t(f->current_english, f->current_hebrew, inst_addr);
+    MemAccessList_t *mem_list = 
+        new MemAccessList_t(addr, is_read, acc, mem_size);
+    shadow_mem.insert(ADDR_TO_KEY(addr), mem_list);
+  } else {
+    // else check for race and update the existing MemAccessList_t 
+    MemAccessList_t *mem_list = val;
+    om_assert(mem_list != NULL);
+    mem_list->check_races_and_update(is_read, inst_addr, addr, mem_size, 
+                                     f->current_english, f->current_hebrew);
+  }
+}
+
+// XXX: We can only read 1,2,4,8,16 bytes; optimize later
+extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size) {
+
+  DBG_TRACE(DEBUG_MEMORY, "record read of %lu bytes at addr %p and rip %p.\n", 
+            mem_size, addr, inst_addr);
+
+  // handle the prefix
+  uint64_t next_addr = ALIGN_BY_NEXT_MAX_GRAIN_SIZE(addr); 
+  size_t prefix_size = next_addr - addr;
+  om_assert(prefix_size >= 0 && prefix_size < MAX_GRAIN_SIZE);
+
+  if(prefix_size >= mem_size) { // access falls within a max grain sized block
+    record_mem_helper(true, inst_addr, addr, mem_size);
+  } else { 
+    om_assert( prefix_size <= mem_size );
+    if(prefix_size) { // do the prefix first
+      record_mem_helper(true, inst_addr, addr, prefix_size);
+      mem_size -= prefix_size;
+    }
+    addr = next_addr;
+    // then do the rest of the max-grain size aligned blocks
+    uint32_t i;
+    for(i = 0; (i+MAX_GRAIN_SIZE) < mem_size; i += MAX_GRAIN_SIZE) {
+      record_mem_helper(true, inst_addr, addr + i, MAX_GRAIN_SIZE);
+    }
+    // trailing bytes
+    record_mem_helper(true, inst_addr, addr+i, mem_size-i);
+  }
+}
+
+// XXX: We can only read 1,2,4,8,16 bytes; optimize later
+extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size) {
+
+  DBG_TRACE(DEBUG_MEMORY, "record write of %lu bytes at addr %p and rip %p.\n", 
+            mem_size, addr, inst_addr);
+
+  // handle the prefix
+  uint64_t next_addr = ALIGN_BY_NEXT_MAX_GRAIN_SIZE(addr); 
+  size_t prefix_size = next_addr - addr;
+  om_assert(prefix_size >= 0 && prefix_size < MAX_GRAIN_SIZE);
+
+  if(prefix_size >= mem_size) { // access falls within a max grain sized block
+    record_mem_helper(false, inst_addr, addr, mem_size);
+  } else {
+    om_assert( prefix_size <= mem_size );
+    if(prefix_size) { // do the prefix first
+      record_mem_helper(false, inst_addr, addr, prefix_size);
+      mem_size -= prefix_size;
+    }
+    addr = next_addr;
+    // then do the rest of the max-grain size aligned blocks
+    uint32_t i=0;
+    for(i=0; (i+MAX_GRAIN_SIZE) < mem_size; i += MAX_GRAIN_SIZE) {
+      record_mem_helper(false, inst_addr, addr + i, MAX_GRAIN_SIZE);
+    }
+    // trailing bytes
+    record_mem_helper(false, inst_addr, addr+i, mem_size-i);
+  }
+}
+
+// clear the memory block at [start-end) (end is exclusive).
+extern "C" void clear_shadow_memory(size_t start, size_t end) {
+
+  DBG_TRACE(DEBUG_MEMORY, "Clear shadow memory %p--%p (%u).\n", 
+            start, end, end-start);
+  om_assert(ALIGN_BY_NEXT_MAX_GRAIN_SIZE(end) == end); 
+
+  while(start != end) {
+    // DBG_TRACE(DEBUG_MEMORY, "Erasing mem %p.\n", (void *)start);
+    shadow_mem.erase( ADDR_TO_KEY(start) );
+    start += MAX_GRAIN_SIZE;
+  }
+}
+
+// extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip){}
+// extern "C" void cilk_enter_end (__cilkrts_stack_frame* sf, void* rsp) {}
+// extern "C" void cilk_spawn_prepare (__cilkrts_stack_frame* sf) { }
+// extern "C" void cilk_spawn_or_continue (int in_continuation){ }
+// extern "C" void cilk_detach_begin (__cilkrts_stack_frame* parent) { }
+// extern "C" void cilk_detach_end (void) { }
+// extern "C" void cilk_sync_begin (__cilkrts_stack_frame* sf) { }
+// extern "C" void cilk_sync_end (__cilkrts_stack_frame* sf){ }
+// extern "C" void cilk_leave_begin (__cilkrts_stack_frame *sf){ }
+// extern "C" void cilk_leave_end (void) { }
+// extern "C" void cilk_tool_c_function_enter(void* this_fn, void* rip){ }
+// extern "C" void cilk_tool_c_function_leave(void* rip) { }
+// extern "C" void cilk_enter_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip){ }
+
