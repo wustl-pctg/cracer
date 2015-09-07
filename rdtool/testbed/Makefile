@@ -10,7 +10,7 @@ USE_GOLD=true
 CFLAGS=-std=c99 -g -O0
 CXXFLAGS=-std=c++11 -g -O0
 CILKFLAGS=-fcilkplus -fno-inline-detach
-RDFLAGS=-DRACEDETECT -fcilktool -fsanitize=thread 
+RDFLAGS=-DRACEDETECT -fcilktool #-fsanitize=thread 
 ARFLAGS=#--plugin $(COMPILER_HOME)/lib/LLVMgold.so
 LDFLAGS=
 OMINC=-I../cilkplusrts/include -I$(COMPILER_HOME)/src/projects/compiler-rt/lib

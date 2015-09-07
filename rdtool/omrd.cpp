@@ -70,6 +70,8 @@ __thread int self = -1;
 pthread_spinlock_t g_relabel_mutex;
 pthread_spinlock_t* g_worker_mutexes;
 
+enum frame_t { FRAME_USER, FRAME_HELPER };
+
 typedef struct FrameData_s {
   om_node* current_english;
   om_node* current_hebrew;
@@ -81,11 +83,12 @@ typedef struct FrameData_s {
   // we spawn, so multiple Cilk functions can be represented by this frame
   // (i.e., a Cilk function calls another Cilk function)
   // this counter is counting the # of Cilk functions this frame represents
-  int enter_counter; 
+  //  int enter_counter; 
   // store the value of enter_counter for the Cilk function that spawned to
   // cause the sync node to be set; we should only switch the current node
   // to the sync node when precisely that Cilk function is executing the sync
-  int enter_counter_for_sync;
+  //  int enter_counter_for_sync;
+  enum frame_t type;
 } FrameData_t;
 
 AtomicStack_t<FrameData_t>* frames;
@@ -114,6 +117,7 @@ static bool is_on_stack(uint64_t addr) {
 
 void init_strand(__cilkrts_worker* w, FrameData_t* init)
 {
+  self = w->self;
   t_worker = w;
   assert(frames[w->self].empty());
   frames[w->self].push();
@@ -131,12 +135,14 @@ void init_strand(__cilkrts_worker* w, FrameData_t* init)
     f->sync_hebrew = init->sync_hebrew;
     f->cont_english = NULL;
     f->cont_hebrew = NULL;
-    f->enter_counter = init->enter_counter;
-    f->enter_counter_for_sync = init->enter_counter_for_sync;
+    //    f->enter_counter = init->enter_counter;
+    //    f->enter_counter_for_sync = init->enter_counter_for_sync;
+    f->type = init->type;
   }  else {
     // special case; this one starts with 1, since this is called from enter_end
-    f->enter_counter = 1;
-    f->enter_counter_for_sync = -1; // -1 for unset value
+    //    f->enter_counter = 1;
+    //    f->enter_counter_for_sync = -1; // -1 for unset value
+    f->type = FRAME_USER;
     f->current_english = om_insert_initial(g_english);
     f->current_hebrew = om_insert_initial(g_hebrew);
     RD_STATS(__sync_fetch_and_add(&g_num_inserts, 2));
@@ -297,8 +303,23 @@ extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim
   frames[w->self].reset();
   FrameData_t* loot = (FrameData_t*)malloc(sizeof(FrameData_t));
   frames[victim->self].steal_top(loot);
+  if (loot->type == FRAME_HELPER) frames[victim->self].steal_top(loot);
+  assert(loot->type == FRAME_USER);
   init_strand(w, loot);
   free(loot);
+}
+
+extern "C" void do_enter_begin()
+{
+  if (self == -1) return;
+  frames[self].push();
+  FrameData_t* parent = frames[self].ancestor(1);
+  FrameData_t* f = frames[self].head();
+  f->type = FRAME_USER;
+  f->cont_english = f->cont_hebrew = NULL;
+  f->sync_english = f->sync_hebrew = NULL;
+  f->current_english = parent->current_english;
+  f->current_hebrew = parent->current_hebrew;
 }
 
 // XXX Some of these should be done in detach --- args are evaluated between
@@ -314,27 +335,33 @@ extern "C" void do_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, 
   // can't be empty now that we init strand in do_enter_end
   om_assert(!frames[w->self].empty());
 
-  FrameData_t* parent = frames[w->self].head(); // helper frame parent
+  // Can't do this, since the stack may resize
+  //  FrameData_t* parent = frames[w->self].head(); // helper frame parent
+
   frames[w->self].push();
+  FrameData_t* parent = frames[w->self].ancestor(1);
   FrameData_t* f = frames[w->self].head();
-  f->enter_counter = 0; // eventually gets incremented in enter_end
-  f->enter_counter_for_sync = -1; 
+  assert(parent + 1 == f);
+  //  f->enter_counter = 0; // eventually gets incremented in enter_end
+  //  f->enter_counter_for_sync = -1; 
+  assert(parent->type == FRAME_USER);
+  f->type = FRAME_HELPER;
   RD_DEBUG("helper_begin: enter_counter = 0 -- ");
 
   if (!parent->sync_english) { // first of spawn group
     om_assert(!parent->sync_hebrew);
-    om_assert(parent->enter_counter_for_sync == -1);
+    //    om_assert(parent->enter_counter_for_sync == -1);
     RD_DEBUG("first of spawn group\n");
 
-    parent->enter_counter_for_sync = parent->enter_counter;
+    //    parent->enter_counter_for_sync = parent->enter_counter;
     parent->sync_english =
       insert_or_relabel(w, g_english, heavy_english, parent->current_english);
     parent->sync_hebrew =
       insert_or_relabel(w, g_hebrew, heavy_hebrew, parent->current_hebrew);
 
-    DBG_TRACE(DEBUG_CALLBACK, 
-        "do_enter_helper_begin, parent enter counter for sync %d.\n",
-        parent->enter_counter_for_sync);
+    // DBG_TRACE(DEBUG_CALLBACK, 
+    //     "do_enter_helper_begin, parent enter counter for sync %d.\n",
+    //     parent->enter_counter_for_sync);
 
     DBG_TRACE(DEBUG_CALLBACK, 
         "do_enter_helper_begin, setting parent sync_eng %p and sync heb %p.\n",
@@ -385,8 +412,8 @@ extern "C" int do_enter_end (__cilkrts_stack_frame* sf, void* rsp)
     return 1;
   } else {
     FrameData_t* f = frames[sf->worker->self].head();
-    f->enter_counter++;
-    RD_DEBUG("cilk_enter_end: incrementing enter_counter to %zu\n", f->enter_counter);
+    //    f->enter_counter++;
+    //    RD_DEBUG("cilk_enter_end: incrementing enter_counter to %zu\n", f->enter_counter);
     return 0;
   }
 }
@@ -401,12 +428,12 @@ extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
   if (__cilkrts_get_batch_id(sf->worker) != -1) return;
 
   FrameData_t* f = frames[self].head();
-  RD_DEBUG("cilk_sync_begin with g_enter_counter == %zu\n", f->enter_counter);
+  //  RD_DEBUG("cilk_sync_begin with g_enter_counter == %zu\n", f->enter_counter);
   // since each frame can account for multiple Cilk functions, we are only
   // switching the current to the sync node when we reach the corresponding
   // sync statement 
-  om_assert(f->enter_counter >= f->enter_counter_for_sync);
-  if (f->enter_counter > f->enter_counter_for_sync) return;
+  //  om_assert(f->enter_counter >= f->enter_counter_for_sync);
+  //  if (f->enter_counter > f->enter_counter_for_sync) return;
 
   om_assert(f->current_english); 
   om_assert(f->current_hebrew);
@@ -424,11 +451,11 @@ extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
               "do_sync_begin, setting heb to %p.\n", f->current_hebrew);
     f->sync_english = NULL; 
     f->sync_hebrew = NULL;
-    f->enter_counter_for_sync = -1;
+    //    f->enter_counter_for_sync = -1;
   } else { // function didn't spawn
     om_assert(!f->sync_english); 
     om_assert(!f->sync_hebrew);
-    om_assert(f->enter_counter_for_sync == -1);
+    //    om_assert(f->enter_counter_for_sync == -1);
   }
 }
 
@@ -442,29 +469,34 @@ extern "C" int do_leave_begin (__cilkrts_stack_frame *sf)
   om_assert(self != -1);
   om_assert(!frames[self].empty());
 
-  FrameData_t* current = frames[self].head();
-  om_assert(current->enter_counter > current->enter_counter_for_sync);
+  FrameData_t* child = frames[self].head();
+  //  om_assert(current->enter_counter > current->enter_counter_for_sync);
 
-  current->enter_counter--;
-  RD_DEBUG("cilk_leave_begin, decrementing g_enter_counter to %zu\n", current->enter_counter);
+  //  current->enter_counter--;
+  //  RD_DEBUG("cilk_leave_begin, decrementing g_enter_counter to %zu\n", current->enter_counter);
 
-  if (current->enter_counter == 0) {
+  //  if (current->enter_counter == 0) {
+  if (frames[self].size() > 1) {
     RD_DEBUG("cilk_leave_begin: popping and changing nodes.\n");
-
-    frames[self].pop();
-    if( !frames[self].empty() ) {
-      current = frames[self].head();
-      om_assert(!current->current_english);
-      om_assert(!current->current_hebrew);
-      om_assert(current->cont_english);
-      om_assert(current->cont_hebrew);
-      om_assert(current->sync_english);
-      om_assert(current->sync_hebrew);
-      current->current_english = current->cont_english;
-      current->current_hebrew = current->cont_hebrew;
-      current->cont_english = NULL;
-      current->cont_hebrew = NULL;
+    FrameData_t* parent = frames[self].ancestor(1);
+    if (child->type == FRAME_USER) { // parent called current
+      om_assert(parent->current_english == child->current_english
+		|| om_precedes(parent->current_english, child->current_english));
+      om_assert(parent->current_hebrew == child->current_hebrew
+		|| om_precedes(parent->current_hebrew, child->current_hebrew));
+      om_assert(!parent->cont_english);
+      om_assert(!parent->cont_hebrew);
+      parent->current_english = child->current_english;
+      parent->current_hebrew = child->current_hebrew;
+    } else { // parent spawned current
+      om_assert(!parent->current_english); om_assert(!parent->current_hebrew);
+      om_assert(parent->cont_english); om_assert(parent->cont_hebrew);
+      om_assert(parent->sync_english); om_assert(parent->sync_hebrew);
+      parent->current_english = parent->cont_english;
+      parent->current_hebrew = parent->cont_hebrew;
+      parent->cont_english = parent->cont_hebrew = NULL;
     }
+    frames[self].pop();
   }
 
   // we are leaving the last frame if the shadow stack is empty
