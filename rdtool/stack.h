@@ -7,9 +7,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <inttypes.h>
+#include <pthread.h>
 
 //#include "debug_util.h"
-
 
 // TB 20130123: I'm using my own custom stack type to let me
 // performance engineer this later.
@@ -19,7 +19,7 @@
  */
 template <typename STACK_DATA_T>
 class Stack_t {
-private:
+protected:
   /* Default capacity for call stack.  Tunable to minimize
    * resizing. */
   static const uint32_t DEFAULT_CAPACITY = 128;
@@ -30,6 +30,7 @@ private:
   uint32_t _capacity;
   /* current head of call stack */
   uint32_t _head;
+  uint32_t _tail;
 
   /* General method to resize the call stack.
    * Called by _double_cap() and _halve_cap().
@@ -71,7 +72,8 @@ public:
    */
   Stack_t() :
     _capacity(DEFAULT_CAPACITY),
-    _head((uint32_t)-1)
+    _head((uint32_t)-1),
+    _tail(0)
   { _stack = new STACK_DATA_T[_capacity]; }
 
   /*
@@ -84,6 +86,7 @@ public:
    */
   void reset() {
     _head = (uint32_t)-1;
+    _tail = 0;
   }
 
   /*
@@ -154,6 +157,57 @@ public:
     return size() == 0;
   }
 
+  // void steal_top(STACK_DATA_T* f) {
+  //   assert(this->_head >= this->_tail);
+  //   *f = this->_stack[this->_tail];
+  //   this->_tail++;
+  //   return;
+  // }
+
 };
+
+// Simple atomic class
+template <typename T>
+class AtomicStack_t : public Stack_t<T> {
+private:
+  pthread_spinlock_t _slock;
+public:
+  AtomicStack_t() {
+    pthread_spin_init(&_slock, PTHREAD_PROCESS_PRIVATE);
+  }
+  ~AtomicStack_t() { 
+    pthread_spin_destroy(&_slock);
+  }
+  void push() {
+    pthread_spin_lock(&_slock);
+    Stack_t<T>::push();
+    pthread_spin_unlock(&_slock);
+  }
+
+  void reset() {
+    pthread_spin_lock(&_slock);
+    Stack_t<T>::reset();
+    pthread_spin_unlock(&_slock);
+  }
+
+  void pop() {
+    pthread_spin_lock(&_slock);
+    Stack_t<T>::pop();
+    pthread_spin_unlock(&_slock);
+  }
+
+  void steal_top(T* f) {
+    pthread_spin_lock(&_slock);
+    assert(this->_head >= this->_tail);
+    *f = this->_stack[this->_tail];
+    this->_tail++;
+    pthread_spin_unlock(&_slock);
+    return;
+  }
+
+
+};
+
+
 
 #endif // #define _STACK_H

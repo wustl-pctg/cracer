@@ -11,6 +11,23 @@
 #define sync cilk_sync
 #define parfor cilk_for
 
+int fib(int n);
+
+int bar(int n)
+{
+  spawn fib(n);
+  sync;
+  return 0;
+}
+
+int foo(int n)
+{
+  int x = spawn fib(n);
+  sync;
+  bar(n);
+  return x;
+}
+
 int fib(int n)
 {
   //std::cout << "fib(" << n << ")\n";
@@ -31,7 +48,10 @@ int main(int argc, char* argv[])
 
   int n = std::atoi(argv[1]);
   auto start = std::chrono::high_resolution_clock::now();
+  // int result = spawn foo(n);
+  // sync;
   int result = fib(n);
+
   auto end = std::chrono::high_resolution_clock::now();
 
   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
