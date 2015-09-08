@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <inttypes.h>
+#include <pthread.h>
 
 #include "../om/om.h"
 #include "debug_util.h"
@@ -51,12 +52,16 @@ typedef struct MemAccess_t {
     bool prec_in_hebrew  = om_precedes(hstrand, curr_hstrand);
     // race if the ordering in english and hebrew differ
     bool has_race = (prec_in_english == !prec_in_hebrew);
-if(has_race) {
-fprintf(stderr, "Race: eng: %p, and curr eng: %p, prec: %d.\n", 
-        estrand, curr_estrand, prec_in_english);
-fprintf(stderr, "Race: heb: %p, and curr heb: %p, prec: %d.\n", 
-        hstrand, curr_hstrand, prec_in_hebrew);
-}
+#if OM_DEBUG
+    if(has_race) {
+      DBG_TRACE(DEBUG_MEMORY, 
+            "Race with estrand: %p, and curr estrand: %p, prec: %d.\n", 
+            estrand, curr_estrand, prec_in_english);
+      DBG_TRACE(DEBUG_MEMORY, 
+            "Race with hstrand: %p, and curr hstrand: %p, prec: %d.\n", 
+            hstrand, curr_hstrand, prec_in_hebrew);
+    }
+#endif
 
     return has_race;
   }
@@ -78,6 +83,11 @@ private:
   MemAccess_t *rreaders[MAX_GRAIN_SIZE];
   enum GrainType_t writer_gtype;
   MemAccess_t *writers[MAX_GRAIN_SIZE];
+
+  // locks for updating lreaders, rreaders, and writers
+  pthread_spinlock_t lreader_lock;
+  pthread_spinlock_t rreader_lock;
+  pthread_spinlock_t writer_lock;
 
   __attribute__((always_inline))
   static enum GrainType_t mem_size_to_gtype(size_t size) {

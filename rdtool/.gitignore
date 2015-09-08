@@ -1,0 +1,5 @@
+libomrd.a
+*.o
+testbed/*.o
+testbed/fib
+testbed/fib_check

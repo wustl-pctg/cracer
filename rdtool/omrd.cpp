@@ -519,14 +519,16 @@ record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
         new MemAccess_t(f->current_english, f->current_hebrew, inst_addr);
     MemAccessList_t *mem_list = 
         new MemAccessList_t(addr, is_read, acc, mem_size);
-    shadow_mem.insert(ADDR_TO_KEY(addr), mem_list);
-  } else {
-    // else check for race and update the existing MemAccessList_t 
-    MemAccessList_t *mem_list = val;
-    om_assert(mem_list != NULL);
-    mem_list->check_races_and_update(is_read, inst_addr, addr, mem_size, 
-                                     f->current_english, f->current_hebrew);
+    val = shadow_mem.insert(ADDR_TO_KEY(addr), mem_list);
+    // insert failed; someone got to the slot first;
+    // delete new mem_list and fall through to check race with it 
+    if( val != mem_list ) { delete mem_list; }
+    else { return; } // else we are done
   }
+  // check for race and possibly update the existing MemAccessList_t 
+  om_assert(val != NULL);
+  val->check_races_and_update(is_read, inst_addr, addr, mem_size, 
+                              f->current_english, f->current_hebrew);
 }
 
 // XXX: We can only read 1,2,4,8,16 bytes; optimize later
