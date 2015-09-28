@@ -17,8 +17,8 @@ enum debug_levels {
 
 
 #if OM_DEBUG
-static int debug_level = DEBUG_CALLBACK | DEBUG_MEMORY;
-// static int debug_level = 0;
+// static int debug_level = DEBUG_CALLBACK | DEBUG_MEMORY;
+static int debug_level = 0;
 #else
 static int debug_level = 0;
 #endif

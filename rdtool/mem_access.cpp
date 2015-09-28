@@ -62,7 +62,7 @@ void MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
       writer = writers[i]; // can be NULL
     }
     if( writer && writer->races_with(curr_estrand, curr_hstrand) ) {
-      //      report_race(writer->rip, inst_addr, start_addr+i, WR_RACE);
+      report_race(writer->rip, inst_addr, start_addr+i, WR_RACE);
     }
   }
 
@@ -72,9 +72,13 @@ update:
 
   // now we update the left-most readers list with this access 
   if( lreader_gtype == UNINIT ) {
+    pthread_spin_lock(&lreader_lock);
     lreader_gtype = gtype;
+    pthread_spin_unlock(&lreader_lock);
   } else if( lreader_gtype > gtype ) {
+    pthread_spin_lock(&lreader_lock);
     break_list_into_smaller_gtype(lreaders, &lreader_gtype, gtype);
+    pthread_spin_unlock(&lreader_lock);
   }
   // now lreader_gtype = min{ old lreader_gtype, gtype };
   om_assert(lreader_gtype <= gtype);
@@ -84,8 +88,10 @@ update:
   for(int i = start; i < end; i += gtype_to_mem_size[lreader_gtype]) {
     reader = lreaders[i];
     if(reader == NULL) {
+      pthread_spin_lock(&lreader_lock);
       new_reader->inc_ref_count();
       lreaders[i] = new_reader;
+      pthread_spin_unlock(&lreader_lock);
     } else { // potentially update the left-most reader 
       // replace it if 
       // - the new reader is to the left of the old lreader 
@@ -93,20 +99,26 @@ update:
       // - there is a path from old lreader to this reader
       if( om_precedes(curr_estrand, reader->estrand) 
             || om_precedes(reader->hstrand, curr_hstrand) ) {
+        pthread_spin_lock(&lreader_lock);
         if(reader->dec_ref_count() == 0) {
           delete reader;
         }
         new_reader->inc_ref_count();
         lreaders[i] = new_reader;
+        pthread_spin_unlock(&lreader_lock);
       }
     }
   }
 
   // now we update the right-most readers list with this access 
   if( rreader_gtype == UNINIT ) {
+    pthread_spin_lock(&rreader_lock);
     rreader_gtype = gtype;
+    pthread_spin_unlock(&rreader_lock);
   } else if( rreader_gtype > gtype ) {
+    pthread_spin_lock(&rreader_lock);
     break_list_into_smaller_gtype(rreaders, &rreader_gtype, gtype);
+    pthread_spin_unlock(&rreader_lock);
   }
   // now rreader_gtype = min{ old rreader_gtype, gtype };
   om_assert(rreader_gtype <= gtype);
@@ -115,8 +127,10 @@ update:
   for(int i = start; i < end; i += gtype_to_mem_size[rreader_gtype]) {
     reader = rreaders[i];
     if(reader == NULL) {
+      pthread_spin_lock(&rreader_lock);
       new_reader->inc_ref_count();
       rreaders[i] = new_reader;
+      pthread_spin_unlock(&rreader_lock);
     } else { // potentially update the right-most reader 
       // replace it if 
       // - the new reader is to the right of the old rreader 
@@ -125,16 +139,18 @@ update:
       // but actually the second condition subsumes the first, so if the 
       // first condition is false, there is no point checking the second
       if( om_precedes(reader->estrand, curr_estrand) ) {
+        pthread_spin_lock(&rreader_lock);
         if(reader->dec_ref_count() == 0) {
           delete reader;
         }
         new_reader->inc_ref_count();
         rreaders[i] = new_reader;
+        pthread_spin_unlock(&rreader_lock);
       }
     }
   }
-  if(new_reader->ref_count == 0) delete new_reader;
 
+  if(new_reader->ref_count == 0) delete new_reader;
 }
 
 // Check races on memory represented by this mem list with this write access
@@ -156,9 +172,13 @@ void MemAccessList_t::check_races_and_update_with_write(uint64_t inst_addr,
   om_assert(start >= 0 && start < end && end <= MAX_GRAIN_SIZE);
 
   if( writer_gtype == UNINIT ) {
+    pthread_spin_lock(&writer_lock);
     writer_gtype = gtype;
+    pthread_spin_unlock(&writer_lock);
   } else if( writer_gtype > gtype ) {
+    pthread_spin_lock(&writer_lock);
     break_list_into_smaller_gtype(writers, &writer_gtype, gtype);
+    pthread_spin_unlock(&writer_lock);
   }
   // now writer_gtype = min{ old writer_gtype, gtype };
   om_assert(writer_gtype <= gtype); 
@@ -170,13 +190,16 @@ void MemAccessList_t::check_races_and_update_with_write(uint64_t inst_addr,
   for(int i = start; i < end; i += gtype_to_mem_size[writer_gtype]) {
     writer = writers[i];
     if(writer == NULL) {
+      pthread_spin_lock(&writer_lock);
       new_writer->inc_ref_count();
       writers[i] = new_writer;
+      pthread_spin_unlock(&writer_lock);
     } else { // last writer exists; possibly report race and replace it
       if( writer->races_with(curr_estrand, curr_hstrand) ) { 
         // report race
-	//        report_race(writer->rip, inst_addr, start_addr+i, WW_RACE);
+        report_race(writer->rip, inst_addr, start_addr+i, WW_RACE);
       }
+      pthread_spin_lock(&writer_lock);
       // replace the last writer regardless
       if(writer->dec_ref_count() == 0) {
         delete writer;
@@ -184,6 +207,7 @@ void MemAccessList_t::check_races_and_update_with_write(uint64_t inst_addr,
       // note that ref count is decremented regardless
       new_writer->inc_ref_count();
       writers[i] = new_writer;
+      pthread_spin_unlock(&writer_lock);
     }
   }
   if(new_writer->ref_count == 0) delete new_writer;
@@ -206,7 +230,7 @@ void MemAccessList_t::check_races_and_update_with_write(uint64_t inst_addr,
       reader = lreaders[i];
     }
     if( reader && reader->races_with(curr_estrand, curr_hstrand) ) {
-      //      report_race(reader->rip, inst_addr, start_addr+i, RW_RACE);
+      report_race(reader->rip, inst_addr, start_addr+i, RW_RACE);
     }
   }
 
@@ -228,7 +252,7 @@ check_rreaders:
       reader = rreaders[i];
     }
     if( reader && reader->races_with(curr_estrand, curr_hstrand) ) {
-      //      report_race(reader->rip, inst_addr, start_addr+i, RW_RACE);
+      report_race(reader->rip, inst_addr, start_addr+i, RW_RACE);
     }
   }
 }
@@ -261,6 +285,14 @@ MemAccessList_t::MemAccessList_t(uint64_t addr, bool is_read,
         writers[i] = acc;
     }
   }
+
+  if( pthread_spin_init(&lreader_lock, PTHREAD_PROCESS_PRIVATE) ||  
+      pthread_spin_init(&rreader_lock, PTHREAD_PROCESS_PRIVATE) ||
+      pthread_spin_init(&writer_lock, PTHREAD_PROCESS_PRIVATE) ) {
+    fprintf(stderr, 
+            "spin_lock initialization for MemAccessList_t failed.  Exit.\n");
+    exit(1);
+  }
 }
 
 MemAccessList_t::~MemAccessList_t() {
@@ -268,7 +300,7 @@ MemAccessList_t::~MemAccessList_t() {
   if(lreader_gtype != UNINIT) {
     for(int i=0; i < MAX_GRAIN_SIZE; i+=gtype_to_mem_size[lreader_gtype]) {
       acc = lreaders[i]; 
-      if(acc && acc->ref_count == 0) {
+      if(acc && acc->dec_ref_count() == 0) {
         delete acc;
         lreaders[i] = 0;
       }
@@ -278,7 +310,7 @@ MemAccessList_t::~MemAccessList_t() {
   if(rreader_gtype != UNINIT) {
     for(int i=0; i < MAX_GRAIN_SIZE; i+=gtype_to_mem_size[rreader_gtype]) {
       acc = rreaders[i]; 
-      if(acc && acc->ref_count == 0) {
+      if(acc && acc->dec_ref_count() == 0) {
         delete acc;
         rreaders[i] = 0;
       }
@@ -288,10 +320,13 @@ MemAccessList_t::~MemAccessList_t() {
   if(writer_gtype != UNINIT) {
     for(int i=0; i < MAX_GRAIN_SIZE; i+=gtype_to_mem_size[writer_gtype]) {
       acc = writers[i]; 
-      if(acc && acc->ref_count == 0) {
+      if(acc && acc->dec_ref_count() == 0) {
         delete acc;
         writers[i] = 0;
       }
     }
   }
+  pthread_spin_destroy(&lreader_lock);
+  pthread_spin_destroy(&rreader_lock);
+  pthread_spin_destroy(&writer_lock);
 }
