@@ -16,6 +16,7 @@ typedef bl_node node;
 
 static label_t get_new_label(blist* self, node* base)
 {
+  if (base->next) assert(base->next->label > base->label);
   label_t next_label = (base->next) ? base->next->label : MAX_LABEL;
   label_t lab = (base->label >> 1) + (next_label >> 1);
 
@@ -26,7 +27,9 @@ static label_t get_new_label(blist* self, node* base)
   if (!base->next) lab++;
   
   /// I think it could only match the base's label...
-  return (base->label == lab) ? 0 : lab;
+  lab = (base->label == lab) ? 0 : lab;
+  assert(lab == 0 || lab > base->label);
+  return lab;
 }
 
 /// Node allocated, have ptr to base node, already have label

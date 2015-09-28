@@ -51,10 +51,10 @@ fib_check: fibrd.o libomrd
 fib_nocheck: fib.o
 	$(CXX) fib.o $(RUNTIME) -ldl -lpthread $(MALLOC) -o fib_nocheck
 
-matmul_check: matmulrd.o libomrd
+matmul_check: matmulrd.o libomrd getoptions.o
 	$(CXX) $(LDFLAGS) matmulrd.o getoptions.o ../libomrd.a $(RUNTIME) -ldl -lpthread $(MALLOC) -o matmul_check
 
-matmul_nocheck: matmul.o
+matmul_nocheck: matmul.o getoptions.o
 	$(CXX) matmul.o getoptions.o $(RUNTIME) -ldl -lpthread $(MALLOC) -o matmul_nocheck
 
 .PHONY: all fib matmul clean libomrd omrd

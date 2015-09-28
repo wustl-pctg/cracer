@@ -14,6 +14,7 @@ extern "C" void do_enter_begin();
 extern "C" int do_enter_end(__cilkrts_stack_frame* sf, void* rsp);
 extern "C" void do_sync_begin(__cilkrts_stack_frame* sf);
 extern "C" int do_leave_begin(__cilkrts_stack_frame *sf);
+extern "C" int do_leave_end();
 extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size); 
 extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size);
 extern "C" void clear_shadow_memory(size_t start, size_t end); 
@@ -229,7 +230,7 @@ extern "C" void cilk_sync_end() {
 extern "C" void cilk_leave_begin(__cilkrts_stack_frame* sf) {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_begin.\n");
   //  disable_checking();
-  int is_last_frame = do_leave_begin(sf);
+  //  int is_last_frame = do_leave_begin(sf);
   // if(is_last_frame) {
   //   disable_instrumentation();
   //   check_enable_instrumentation = true;
@@ -248,6 +249,7 @@ extern "C" void cilk_leave_begin(__cilkrts_stack_frame* sf) {
 extern "C" void cilk_leave_end() {
   //  enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_leave_end.\n");
+  int is_last_frame = do_leave_end();
 }
 
 typedef void*(*malloc_t)(size_t);
@@ -255,7 +257,7 @@ static malloc_t real_malloc = NULL;
 
 extern "C" void* malloc(size_t s) {
 
-  DBG_TRACE(DEBUG_CALLBACK, "malloc called.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "malloc called.\n");
   // make it 8-byte aligned; easier to erase from shadow mem
   uint64_t new_size = ALIGN_BY_NEXT_MAX_GRAIN_SIZE(s);
 

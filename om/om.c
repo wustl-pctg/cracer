@@ -76,14 +76,23 @@ void om_create(om* self)
 {
   tl_node* root = tl_node_new();
   root->below = bl_new();
+  root->below->above = root;
+
+  // fast version
   root->level = 0;
   root->num_leaves = 0;
+  root->label = MAX_LABEL;
+
+  // slow but almost assuredly correct version:
+  /* root->level = MAX_LEVEL; */
+  /* root->num_leaves = 1; */
+  /* root->label = 0; */
+
   root->needs_rebalance = 0;
   root->parent = root->left = root->right = NULL;
 
   /// The label of an internal node is the highest possible leaf label
   /// it could possibly contain.
-  root->label = MAX_LABEL;
 
   self->root = root;
   self->head = self->tail = NULL;
@@ -145,6 +154,7 @@ node* om_insert_initial(om* self)
   t->below = bl_new();
   t->below->above = t;
 
+  //  node* n = bl_insert_initial(self->root->below);
   node* n = bl_insert_initial(t->below);
   assert(n->list == t->below);
   return n;
@@ -154,7 +164,9 @@ node* om_insert(om* self, node* base)
 {
   assert(base->list->above->level == MAX_LEVEL);
   assert(base->list->above->below == base->list);
-  return bl_insert(base->list, base);
+  node* n = bl_insert(base->list, base);
+  if (n) assert(n->label > base->label);
+  return n;
 }
 
 bool om_precedes(const node* x, const node* y)

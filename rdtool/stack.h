@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring> /// for memset, @todo remove later
 #include <inttypes.h>
 #include <pthread.h>
 
@@ -73,7 +74,7 @@ public:
   Stack_t() :
     _capacity(DEFAULT_CAPACITY),
     _head((uint32_t)-1),
-    _tail(0)
+    _tail((uint32_t)0)
   { _stack = new STACK_DATA_T[_capacity]; }
 
   /*
@@ -86,7 +87,7 @@ public:
    */
   void reset() {
     _head = (uint32_t)-1;
-    _tail = 0;
+    _tail = (uint32_t)0;
   }
 
   /*
@@ -178,6 +179,14 @@ public:
   ~AtomicStack_t() { 
     pthread_spin_destroy(&_slock);
   }
+  void push_helper() {
+    pthread_spin_lock(&_slock);
+    assert(this->_head != (uint32_t)-1);
+    assert(!(Stack_t<T>::head()->flags & FRAME_HELPER_MASK));
+    Stack_t<T>::push();
+    pthread_spin_unlock(&_slock);
+  }
+
   void push() {
     pthread_spin_lock(&_slock);
     Stack_t<T>::push();
@@ -186,25 +195,80 @@ public:
 
   void reset() {
     pthread_spin_lock(&_slock);
+    memset((void*)this->_stack, 0xff, sizeof(T)*this->_capacity);
     Stack_t<T>::reset();
     pthread_spin_unlock(&_slock);
   }
 
   void pop() {
     pthread_spin_lock(&_slock);
-    Stack_t<T>::pop();
-    pthread_spin_unlock(&_slock);
-  }
-
-  void steal_top(T* f) {
-    pthread_spin_lock(&_slock);
     assert(this->_head >= this->_tail);
-    *f = this->_stack[this->_tail];
-    this->_tail++;
+    Stack_t<T>::pop();
+    if (this->_head <= this->_tail && this->_tail > 0) {
+      if (this->_head == this->_tail)
+	assert(this->_stack[this->_head].flags & FRAME_HELPER_MASK);
+      T* f;
+      do {
+	f = &this->_stack[--this->_tail];
+      } while (!(f->flags & FRAME_HELPER_MASK) && this->_tail > 0);
+
+    }
     pthread_spin_unlock(&_slock);
-    return;
   }
 
+  T* steal_top(AtomicStack_t<T>& thief) {
+    pthread_spin_lock(&_slock);
+    assert(this->_tail != (uint32_t)-1);
+    assert(this->_head >= this->_tail);
+    assert(thief.empty());
+
+    if (this->_tail > 0) {
+      assert(!(this->_stack[this->_tail-1].flags & FRAME_HELPER_MASK));
+      assert(this->_stack[this->_tail].flags & FRAME_HELPER_MASK);
+    }
+
+    // Copy up to the tail
+    for (uint32_t i = 0; i < this->_tail; ++i) {
+      thief.push();
+      *(thief.head()) = this->_stack[i];
+      thief.head()->flags |= FRAME_FULL_MASK;
+    }
+
+    // Now copy up to next HELPER frame
+    // Note: there MUST be another helper frame, since stealing is possible
+    T* f = &this->_stack[this->_tail];
+    //    assert(!(f->flags & FRAME_HELPER_MASK));
+    thief.push();
+    *(thief.head()) = *f;
+    f = &this->_stack[++this->_tail];
+
+    while (!(f->flags & FRAME_HELPER_MASK)) {
+      assert(this->_tail < this->_head);
+      thief.push();
+      *(thief.head()) = *f;
+      f = &this->_stack[++this->_tail];
+    }
+    assert(f->flags & FRAME_HELPER_MASK);
+    assert(this->_tail <= this->_head);
+    
+    
+    pthread_spin_unlock(&_slock);
+    return thief.head();
+  }
+
+  void transfer(AtomicStack_t<T>& orig)
+  {
+    // Not true, b/c we currently only reset on a successful steal...
+    //    assert(orig.empty());
+    pthread_spin_lock(&_slock);
+    orig.reset();
+    for (int i = 0; i <= this->_head; ++i) {
+      orig.push();
+      *(orig.head()) = this->_stack[i];
+    }
+
+    pthread_spin_unlock(&_slock);
+  }
 
 };
 

@@ -49,6 +49,7 @@
 #include "cilk_malloc.h"
 #include "pedigrees.h"
 #include "record-replay.h"
+#include "cilktool.h"
 
 #include <limits.h>
 #include <string.h> /* memcpy */
@@ -422,7 +423,7 @@ void __cilkrts_push_next_frame(__cilkrts_worker *w, full_frame *ff)
  * of the full frame will have been incremented by the corresponding push
  * event.  See __cilkrts_push_next_frame, above.
  */
-// @HACK: static
+/// @HACK: static
 full_frame *pop_next_frame(__cilkrts_worker *w)
 {
     full_frame *ff;
@@ -667,7 +668,7 @@ static inline __cilkrts_stack_frame *__cilkrts_advance_frame(__cilkrts_stack_fra
  * the call stack, with each full frame also pointing to its parent. 
  *
  * The method returns the full frame created for loot_sf, i.e., the
- * youngest full frame.
+          * youngest full frame.
  */
 static full_frame *unroll_call_stack(__cilkrts_worker *w, 
                                      full_frame *ff, 
@@ -1143,6 +1144,7 @@ enum provably_good_steal_t provably_good_steal(__cilkrts_worker *w,
                 // the frame is if the original user worker is spinning without
                 // work.
 
+                cilk_return_to_first_frame(w, w->l->team, ff->call_stack);
                 unset_sync_master(w->l->team, ff);
                 __cilkrts_push_next_frame(w->l->team, ff);
 
@@ -1150,6 +1152,7 @@ enum provably_good_steal_t provably_good_steal(__cilkrts_worker *w,
                 if (w == w->l->team)
                     result = CONTINUE_EXECUTION;
             } else {
+
                 __cilkrts_push_next_frame(w, ff);
                 result = CONTINUE_EXECUTION;  // Continue working on this thread
             }

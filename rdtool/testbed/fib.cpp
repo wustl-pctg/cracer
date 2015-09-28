@@ -11,26 +11,41 @@
 #define sync cilk_sync
 #define parfor cilk_for
 
+extern __thread int self;
+extern "C" void cilk_tool_set(int);
+
 int fib(int n);
 
 int bar(int n)
 {
-  spawn fib(n);
+  int real = fib(n);
+  int x = spawn fib(10);
+  int y = fib(9);
   sync;
-  return 0;
+  return real;
 }
 
 int foo(int n)
 {
-  int x = spawn fib(n);
+  int real = bar(n);
+  int x = spawn fib(10);
+  int y = fib(9);
   sync;
-  bar(n);
-  return x;
+  return real;
+}
+
+int start_fib(int n)
+{
+  int real = spawn foo(n);
+  int x = spawn fib(10);
+  int y = fib(9);
+  sync;
+  return real;
 }
 
 int fib(int n)
 {
-  //std::cout << "fib(" << n << ")\n";
+  cilk_tool_set(n);
   if (n < 2) return n;
   int x, y;
   x = spawn fib(n - 1);
@@ -41,6 +56,9 @@ int fib(int n)
 
 int main(int argc, char* argv[])
 {
+#ifdef RACEDETECT
+  __om_disable_checking();
+#endif
   if (argc != 2) {
     std::cerr << "Usage: fib <n>" << std::endl;
     exit(1);
@@ -48,8 +66,7 @@ int main(int argc, char* argv[])
 
   int n = std::atoi(argv[1]);
   auto start = std::chrono::high_resolution_clock::now();
-  // int result = spawn foo(n);
-  // sync;
+  //  int result = start_fib(n);
   int result = fib(n);
 
   auto end = std::chrono::high_resolution_clock::now();
