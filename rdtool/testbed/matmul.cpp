@@ -177,8 +177,6 @@ void iter_matmul(REAL *A, REAL *B, REAL *C, int n) {
     }
 }
 
-extern "C" void cilk_tool_set_matmul(int x1, int x2, int x3);
-
 /*
  * A \in M(m, n)
  * B \in M(n, p)
@@ -186,8 +184,6 @@ extern "C" void cilk_tool_set_matmul(int x1, int x2, int x3);
  */
 void rec_matmul(REAL *A, REAL *B, REAL *C, 
     int m, int n, int p, int ld, int add) {
-
-  cilk_tool_set_matmul(m,n,p);
 
   if ((m + n + p) <= 64) {
     int i, j, k;
