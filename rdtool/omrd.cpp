@@ -60,7 +60,7 @@ unsigned long g_num_relabels = 0;
 unsigned long g_num_inserts = 0;
 #endif
 
-#ifdef STATS
+#if STATS > 0
 #define RD_STATS(...) __VA_ARGS__
 #else
 #define RD_STATS(...)
@@ -81,34 +81,10 @@ typedef struct FrameData_s {
   om_node* cont_hebrew;
   om_node* sync_english;
   om_node* sync_hebrew;
-  //  enum frame_t type;
   uint32_t flags;
-  int num1;
-  int num2;
-  int num3;
 } FrameData_t;
 
 AtomicStack_t<FrameData_t>* frames;
-
-extern "C" void cilk_tool_set(int n)
-{
-  if (self == -1) return;
-  FrameData_t* f = frames[self].head();
-  //  assert(f->type == FRAME_USER);
-  assert(!(f->flags & FRAME_HELPER_MASK));
-  f->num1 = n;
-}
-
-extern "C" void cilk_tool_set_matmul(int x1, int x2, int x3)
-{
-  if (self == -1) return;
-  FrameData_t* f = frames[self].head();
-  //  assert(f->type == FRAME_USER);
-  assert(!(f->flags & FRAME_HELPER_MASK));
-  f->num1 = x1;
-  f->num2 = x2;
-  f->num3 = x3;
-}
 
 /// @todo A different design would be to have each OM itself contain a
 /// list of heavy nodes to rebalance.
@@ -268,13 +244,13 @@ om_node* insert_or_relabel(__cilkrts_worker* w, om* ds,
     }
   }
   pthread_spin_unlock(mut);
-  __sync_fetch_and_add(&g_num_inserts, 1);
+  RD_STATS(__sync_fetch_and_add(&g_num_inserts, 1));
   return n;
 }
 
 extern "C" void cilk_tool_init(void) 
 {
-  DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_print called.\n");
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_init called.\n");
 
 #if STATS > 1
   EMPTY_TIME_POINT.tv_sec = 0; EMPTY_TIME_POINT.tv_nsec = 0;
@@ -298,7 +274,7 @@ extern "C" void cilk_tool_init(void)
   pthread_spin_init(&g_insert_lock, PTHREAD_PROCESS_PRIVATE);
 
   // XXX: Can I assume this is called before everything?
-  //  read_proc_maps(); /// @todo shakespeare has problems compiling print_addr.cpp
+  read_proc_maps();
   g_tool_init = 1;
 }
 
@@ -339,8 +315,8 @@ extern "C" void cilk_tool_destroy(void)
   //  delete_proc_maps(); /// @todo shakespeare has problems compiling print_addr.cpp
 }
 
-extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
-				  __cilkrts_stack_frame* sf)
+extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
+                                 __cilkrts_stack_frame* sf)
 {
   DBG_TRACE(DEBUG_CALLBACK, "Worker %i stole from %i with ...", w->self, victim->self);
 
@@ -509,10 +485,13 @@ extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
     om_assert(!f->sync_hebrew);
   }
 }
-
 /* return 1 if we are leaving last frame and 0 otherwise */
+extern "C" int do_leave_begin (__cilkrts_stack_frame *sf)
+{
+  return frames[sf->worker->self].empty();
+}
 
-//extern "C" int do_leave_begin (__cilkrts_stack_frame *sf)
+
 extern "C" int do_leave_end()
 {
   //  DBG_TRACE(DEBUG_CALLBACK, "do_leave_end, sf %p and worker %d.\n", sf, self);
@@ -528,7 +507,7 @@ extern "C" int do_leave_end()
     DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): popping and changing nodes.\n", self);
     FrameData_t* parent = frames[self].ancestor(1);
     if (!(child->flags & FRAME_HELPER_MASK)) { // parent called current
-      DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): returning from call(%d) to %d.\n", self, child->num1, parent->num1);
+      DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): returning from call.\n", self);
 
       pthread_spin_lock(&g_worker_mutexes[self]);
       assert(parent->current_english == child->current_english
@@ -542,7 +521,7 @@ extern "C" int do_leave_end()
       parent->current_english = child->current_english;
       parent->current_hebrew = child->current_hebrew;
     } else { // parent spawned current
-      DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): parent %d spawned child.\n", self, parent->num1);
+      DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): parent spawned child.\n", self);
       om_assert(!parent->current_english); om_assert(!parent->current_hebrew);
       om_assert(parent->cont_english); om_assert(parent->cont_hebrew);
       om_assert(parent->sync_english); om_assert(parent->sync_hebrew);
