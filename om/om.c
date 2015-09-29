@@ -171,6 +171,8 @@ node* om_insert(om* self, node* base)
 
 bool om_precedes(const node* x, const node* y)
 {
+  if (x == NULL) return true;
+  if (y == NULL) return false;
   if (x->list == y->list) return x->label < y->label;
   return x->list->above->label < y->list->above->label;
 }
