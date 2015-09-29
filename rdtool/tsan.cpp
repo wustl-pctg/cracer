@@ -15,6 +15,8 @@ extern "C" int do_enter_end(__cilkrts_stack_frame* sf, void* rsp);
 extern "C" void do_sync_begin(__cilkrts_stack_frame* sf);
 extern "C" int do_leave_begin(__cilkrts_stack_frame *sf);
 extern "C" int do_leave_end();
+extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
+                      __cilkrts_stack_frame* sf);
 extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size); 
 extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size);
 extern "C" void clear_shadow_memory(size_t start, size_t end); 
@@ -53,18 +55,6 @@ __thread static uint64_t stack_low_watermark = (uint64_t)(-1);
 
 static void tsan_destroy(void) {}
 
-extern "C" void __tsan_init()
-{
-  if(TOOL_INITIALIZED) return;
-
-  atexit(tsan_destroy);
-  //init_internal();
-  // moved this later when we enter the first Cilk frame
-  // cilksan_init();
-  // enable_instrumentation();
-  TOOL_INITIALIZED = true;
-}
-
 __attribute__((always_inline))
 static void enable_instrumentation() {
   DBG_TRACE(DEBUG_BASIC, "Enable instrumentation.\n");
@@ -91,6 +81,18 @@ static void disable_checking() {
   DBG_TRACE(DEBUG_BASIC, "%d: Disable checking.\n", checking_disabled);
 }
 
+extern "C" void __tsan_init()
+{
+  if(TOOL_INITIALIZED) return;
+
+  atexit(tsan_destroy);
+  //init_internal();
+  // moved this later when we enter the first Cilk frame
+  // cilksan_init();
+  //  enable_instrumentation();
+  TOOL_INITIALIZED = true;
+}
+
 // outside world (including runtime).
 // Non-inlined version for user code to use
 extern "C" void __om_enable_checking() {
@@ -115,14 +117,14 @@ static bool should_check() {
  * we can clean the shadow mem corresponding to cactus stack.
  */
 extern "C" void __tsan_func_entry(void *pc) { 
-  // disable_checking();
-  // uint64_t res = (uint64_t) __builtin_frame_address(0);
-  // if(stack_low_watermark > res) {
-  //   stack_low_watermark = res;
-  //   DBG_TRACE(DEBUG_CALLBACK, 
-  //           "tsan_func_enter, set stack_low_watermark %lx.\n", res);
-  // }
-  // enable_checking();
+  disable_checking();
+  uint64_t res = (uint64_t) __builtin_frame_address(0);
+  if(stack_low_watermark > res) {
+    stack_low_watermark = res;
+    DBG_TRACE(DEBUG_CALLBACK, 
+              "tsan_func_enter, set stack_low_watermark %lx.\n", res);
+  }
+  enable_checking();
 }
 
 /* We would like to clear the shadow memory correponding to the cactus
@@ -136,24 +138,24 @@ extern "C" void __tsan_func_entry(void *pc) {
  * in __tsan_func_exit.
  */
 extern "C" void __tsan_func_exit() { 
-  // disable_checking();
-  // if(clear_stack) {
-  //   // the spawn helper that's exiting is calling tsan_func_exit, 
-  //   // so the spawn helper's base pointer is the stack_high_watermark
-  //   // to clear (stack grows downward)
-  //   uint64_t stack_high_watermark = (uint64_t)__builtin_frame_address(1);
-  //   DBG_TRACE(DEBUG_CALLBACK, 
-  //             "tsan_func_exit, stack_high_watermark: %lx.\n", 
-  //             stack_high_watermark);
-  //   om_assert( stack_low_watermark != ((uint64_t)-1) );
-  //   om_assert( stack_low_watermark <= stack_high_watermark );
+  disable_checking();
+  if(clear_stack) {
+    // the spawn helper that's exiting is calling tsan_func_exit, 
+    // so the spawn helper's base pointer is the stack_high_watermark
+    // to clear (stack grows downward)
+    uint64_t stack_high_watermark = (uint64_t)__builtin_frame_address(1);
+    DBG_TRACE(DEBUG_CALLBACK, 
+              "tsan_func_exit, stack_high_watermark: %lx.\n", 
+              stack_high_watermark);
+    om_assert( stack_low_watermark != ((uint64_t)-1) );
+    om_assert( stack_low_watermark <= stack_high_watermark );
 
-  //   clear_shadow_memory(stack_low_watermark, stack_high_watermark);
-  //   // now the high watermark becomes the low watermark
-  //   stack_low_watermark = stack_high_watermark;
-  //   clear_stack = 0;
-  // }
-  // enable_checking();
+    clear_shadow_memory(stack_low_watermark, stack_high_watermark);
+    // now the high watermark becomes the low watermark
+    stack_low_watermark = stack_high_watermark;
+    clear_stack = 0;
+  }
+  enable_checking();
 }
 
 extern "C" void __tsan_vptr_read(void **vptr_p) {}
@@ -162,92 +164,101 @@ extern "C" void __tsan_vptr_update(void **vptr_p, void *new_val) {}
 
 extern "C" void cilk_enter_begin() {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_begin.\n");
-  //  disable_checking();
+  disable_checking();
   do_enter_begin();
-  //  om_assert(TOOL_INITIALIZED);
+  om_assert(TOOL_INITIALIZED);
 }
 
 extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, 
-                             void* this_fn, void* rip) {
+                                        void* this_fn, void* rip) {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_helper_begin.\n");
-  //  disable_checking();
+  disable_checking();
   do_enter_helper_begin(sf, this_fn, rip);
 }
 
 extern "C" void cilk_enter_end(__cilkrts_stack_frame *sf, void *rsp) {
 
   int first_frame = do_enter_end(sf, rsp);
-  // if(first_frame && __builtin_expect(check_enable_instrumentation, 0)) {
-  //   check_enable_instrumentation = false;
-  //   // turn on instrumentation now for this worker
-  //   enable_instrumentation();
-  //   // reset low watermark here, since we are possibly using a brand new stack
-  //   stack_low_watermark = (uint64_t)(-1);
-  // }
-  // enable_checking();
+  if(first_frame && __builtin_expect(check_enable_instrumentation, 0)) {
+    check_enable_instrumentation = false;
+    // turn on instrumentation now for this worker
+    enable_instrumentation();
+    // reset low watermark here, since we are possibly using a brand new stack
+    stack_low_watermark = (uint64_t)(-1);
+  }
+  enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_enter_end.\n");
 }
 
 extern "C" void cilk_spawn_prepare() {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_spawn_prepare.\n");
-  // disable_checking();
-  // // om_assert(last_event == NONE);
-  // // WHEN_OM_DEBUG( last_event = SPAWN_PREPARE; ) 
+  disable_checking();
+   // om_assert(last_event == NONE);
+   // WHEN_OM_DEBUG( last_event = SPAWN_PREPARE; ) 
+}
+
+extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
+                                   __cilkrts_stack_frame* sf)
+{
+  disable_checking();
+  do_steal_success(w, victim, sf);
+  enable_checking();
 }
 
 extern "C" void cilk_spawn_or_continue(int in_continuation) {
-  // // om_assert( (!in_continuation && last_event == SPAWN_PREPARE) 
-  // //                     || (in_continuation && last_event == RUNTIME_LOOP) );
-  // // WHEN_OM_DEBUG( last_event = NONE; ) 
-  // enable_checking();
+   // om_assert( (!in_continuation && last_event == SPAWN_PREPARE) 
+   //                     || (in_continuation && last_event == RUNTIME_LOOP) );
+   // WHEN_OM_DEBUG( last_event = NONE; ) 
+  if (in_continuation == 0) /// this seems correct, but I'm not sure @rob
+    enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_spawn_or_continue.\n");
 }
 
 extern "C" void 
 cilk_detach_begin(__cilkrts_stack_frame *parent_sf) { 
   DBG_TRACE(DEBUG_CALLBACK, "cilk_detach_begin.\n");
-  //  disable_checking(); 
+  disable_checking(); 
 }
 
 extern "C" void cilk_detach_end() { 
-  //  enable_checking(); 
+  enable_checking(); 
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_detach_end.\n");
 }
 
 extern "C" void cilk_sync_begin(__cilkrts_stack_frame* sf) {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_sync_begin.\n");
-  // disable_checking();
-  // om_assert(TOOL_INITIALIZED);
+  disable_checking();
+  om_assert(TOOL_INITIALIZED);
   do_sync_begin(sf);
 }
 
 extern "C" void cilk_sync_end() {
-  // om_assert(TOOL_INITIALIZED);
-  // enable_checking();
+  om_assert(TOOL_INITIALIZED);
+  enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_sync_end.\n");
 }
 
 extern "C" void cilk_leave_begin(__cilkrts_stack_frame* sf) {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_begin.\n");
-  //  disable_checking();
-  //  int is_last_frame = do_leave_begin(sf);
-  // if(is_last_frame) {
-  //   disable_instrumentation();
-  //   check_enable_instrumentation = true;
-  // }
+  disable_checking();
+  int is_last_frame = do_leave_begin(sf);
+  if(is_last_frame) {
+    disable_instrumentation();
+    check_enable_instrumentation = true;
+  }
 
-//   if(sf->flags & CILK_FRAME_DETACHED) {
+  if(sf->flags & CILK_FRAME_DETACHED) {
     // This is the point where we need to set flag to clear accesses to stack 
     // out of the shadow memory.  The spawn helper of this leave_begin
     // is about to return, and we want to clear stack accesses below 
     // (and including) spawn helper's stack frame.  Set the flag here
     // and the stack will be cleared in tsan_func_exit.
     clear_stack = true;
-//  }
+  }
 }
 
 extern "C" void cilk_leave_end() {
-  //  enable_checking();
+  enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_leave_end.\n");
   int is_last_frame = do_leave_end();
 }
@@ -257,7 +268,7 @@ static malloc_t real_malloc = NULL;
 
 extern "C" void* malloc(size_t s) {
 
-  //  DBG_TRACE(DEBUG_CALLBACK, "malloc called.\n");
+  DBG_TRACE(DEBUG_CALLBACK, "malloc called.\n");
   // make it 8-byte aligned; easier to erase from shadow mem
   uint64_t new_size = ALIGN_BY_NEXT_MAX_GRAIN_SIZE(s);
 
@@ -273,9 +284,9 @@ extern "C" void* malloc(size_t s) {
   }
   void *r = real_malloc(new_size);
 
-  // if(TOOL_INITIALIZED && should_check()) {
-  //   clear_shadow_memory((size_t)r, (size_t)r+new_size);
-  // }
+  if(TOOL_INITIALIZED && should_check()) {
+    clear_shadow_memory((size_t)r, (size_t)r+new_size);
+  }
 
   return r;
 }
@@ -296,27 +307,27 @@ extern "C" void* malloc(size_t s) {
 // the return addr of __tsan_read/write[1-16] is the rip for the read / write
 
 static inline void tsan_read(void *addr, size_t size, void *rip) {
-  // om_assert(TOOL_INITIALIZED);
-  // if(should_check()) {
-  //   disable_checking();
-  //   DBG_TRACE(DEBUG_MEMORY, "%s read %p\n", __FUNCTION__, addr);
-  //   do_read((uint64_t)rip, (uint64_t)addr, size);
-  //   enable_checking();
-  // } else {
-  //   DBG_TRACE(DEBUG_MEMORY, "SKIP %s read %p\n", __FUNCTION__, addr);
-  // }
+  om_assert(TOOL_INITIALIZED);
+  if(should_check()) {
+    disable_checking();
+    DBG_TRACE(DEBUG_MEMORY, "%s read %p\n", __FUNCTION__, addr);
+    do_read((uint64_t)rip, (uint64_t)addr, size);
+    enable_checking();
+  } else {
+    DBG_TRACE(DEBUG_MEMORY, "SKIP %s read %p\n", __FUNCTION__, addr);
+  }
 }
 
 static inline void tsan_write(void *addr, size_t size, void *rip) {
-  // om_assert(TOOL_INITIALIZED);
-  // if(should_check()) {
-  //   disable_checking();
-  //   DBG_TRACE(DEBUG_MEMORY, "%s wrote %p\n", __FUNCTION__, addr);
-  //   do_write((uint64_t)rip, (uint64_t)addr, size);
-  //   enable_checking();
-  // } else {
-  //   DBG_TRACE(DEBUG_MEMORY, "SKIP %s wrote %p\n", __FUNCTION__, addr);
-  // }
+  om_assert(TOOL_INITIALIZED);
+  if(should_check()) {
+    disable_checking();
+    DBG_TRACE(DEBUG_MEMORY, "%s wrote %p\n", __FUNCTION__, addr);
+    do_write((uint64_t)rip, (uint64_t)addr, size);
+    enable_checking();
+  } else {
+    DBG_TRACE(DEBUG_MEMORY, "SKIP %s wrote %p\n", __FUNCTION__, addr);
+  }
 }
 
 extern "C" void 
