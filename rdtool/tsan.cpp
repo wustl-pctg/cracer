@@ -28,6 +28,14 @@ extern "C" void clear_shadow_memory(size_t start, size_t end);
 // extern enum EventType_t last_event;  
 // #endif
 
+// This makes me very nervous. jmp_buf is simply declared as an array
+// of longs. It is implementation-dependent which one is the stack pointer...
+#if ! defined(_MSC_VER)
+#define GET_SP(sf) sf->ctx[6]
+#else
+#error "This code doesn't work in Windows yet."
+#endif
+
 
 static bool TOOL_INITIALIZED = false;
 
@@ -201,16 +209,21 @@ extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim
                                    __cilkrts_stack_frame* sf)
 {
   disable_checking();
+  stack_low_watermark = (uint64_t)GET_SP(sf);
   do_steal_success(w, victim, sf);
   enable_checking();
 }
 
+/// in_continuation == 0 when a spawn helper is called, i.e. the first
+/// time that
+/// if (!setjmp(...)) { call spawn_helper }
+/// is reached. Otherwise, in_continuation == 1, i.e. the runtime
+/// resumes the continuation by longjmping
 extern "C" void cilk_spawn_or_continue(int in_continuation) {
    // om_assert( (!in_continuation && last_event == SPAWN_PREPARE) 
    //                     || (in_continuation && last_event == RUNTIME_LOOP) );
    // WHEN_OM_DEBUG( last_event = NONE; ) 
-  if (in_continuation == 0) /// this seems correct, but I'm not sure @rob
-    enable_checking();
+  enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_spawn_or_continue.\n");
 }
 
@@ -261,6 +274,22 @@ extern "C" void cilk_leave_end() {
   enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_leave_end.\n");
   int is_last_frame = do_leave_end();
+}
+
+// This is called when cilkrts_c_THE_exception_check realizes the
+// parent is stolen and control should longjmp into the runtime
+// (switch to scheduling fiber). Thus we don't need to
+// enable_checking, but otherwise need to do the same as cilk_leave_end()
+void cilk_leave_stolen(__cilkrts_stack_frame *saved_sf)
+{ 
+  // While I don't think it would /hurt/ do call do_leave_end(), it's
+  // also not really necessary. This worker will return to the runtime
+  // and steal. A successful steal will reset this worker's shadow
+  // stack, and in the meantime it has no frames to be stolen.
+  // Also, the parent is being executed, meaning that the current OM
+  // nodes were already switched to the continuation nodes.
+  clear_stack = true;
+  __tsan_func_exit();
 }
 
 typedef void*(*malloc_t)(size_t);
