@@ -2431,6 +2431,10 @@ void __cilkrts_c_THE_exception_check(__cilkrts_worker *w,
         // will match the cilk_leave_begin in the compiled code
         NOTIFY_ZC_INTRINSIC("cilk_leave_stolen", saved_sf);
 
+        /// @rob I don't really understand how the above works, so I'm
+        /// adding a manual call:
+        cilk_leave_stolen(saved_sf);
+
         DBGPRINTF ("%d: longjmp_into_runtime from __cilkrts_c_THE_exception_check\n", w->self);
         longjmp_into_runtime(w, do_return_from_spawn, 0);
         DBGPRINTF ("%d: returned from longjmp_into_runtime from __cilkrts_c_THE_exception_check?!\n", w->self);

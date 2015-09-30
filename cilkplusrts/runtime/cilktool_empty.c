@@ -28,6 +28,7 @@ void cilk_sync_begin (__cilkrts_stack_frame* sf) { }
 void cilk_sync_end (__cilkrts_stack_frame* sf) { }
 void cilk_leave_begin (__cilkrts_stack_frame *sf) { }
 void cilk_leave_end (void) { }
+void cilk_leave_stolen(__cilkrts_stack_frame *saved_sf) { }
 void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim, __cilkrts_stack_frame* sf) { }
 void cilk_return_to_first_frame(__cilkrts_worker* w, __cilkrts_worker* team, __cilkrts_stack_frame* sf) { }
 

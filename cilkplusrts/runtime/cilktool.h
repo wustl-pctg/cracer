@@ -34,6 +34,7 @@ void __attribute__((weak)) cilk_sync_begin(__cilkrts_stack_frame* sf);
 void __attribute__((weak)) cilk_sync_end(__cilkrts_stack_frame* sf);
 void __attribute__((weak)) cilk_leave_begin(__cilkrts_stack_frame *sf);
 void __attribute__((weak)) cilk_leave_end(void);
+void __attribute__((weak)) cilk_leave_stolen(__cilkrts_stack_frame *saved_sf);
 
 void __attribute__((weak))
 cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim, __cilkrts_stack_frame* sf);
