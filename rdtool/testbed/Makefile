@@ -1,16 +1,17 @@
 CC=clang #-flto
 CXX=clang++ #-flto
+#USE_GOLD=true
 COMPILER_HOME=$(HOME)/llvm-cilk
 RUNTIME=$(COMPILER_HOME)/lib/x86_64/libcilkrts.a
 MALLOC= 
 #MALLOC=-ltcmalloc
 #MALLOC=-ltbbmalloc_proxy
-USE_GOLD=true
+
 
 CFLAGS=-std=c99 -O0 -g
 CXXFLAGS=-std=c++11 -O0 -g #-DNDEBUG
 CILKFLAGS=-fcilkplus -fno-inline-detach
-RDFLAGS=-DRACEDETECT -fcilktool #-fsanitize=thread 
+RDFLAGS=-DRACEDETECT -fcilktool -fsanitize=thread 
 ARFLAGS=#--plugin $(COMPILER_HOME)/lib/LLVMgold.so
 LDFLAGS=
 OMINC=-I../cilkplusrts/include #-I$(COMPILER_HOME)/src/projects/compiler-rt/lib
