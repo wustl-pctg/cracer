@@ -637,18 +637,3 @@ extern "C" void clear_shadow_memory(size_t start, size_t end) {
     start += MAX_GRAIN_SIZE;
   }
 }
-
-// extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip){}
-// extern "C" void cilk_enter_end (__cilkrts_stack_frame* sf, void* rsp) {}
-// extern "C" void cilk_spawn_prepare (__cilkrts_stack_frame* sf) { }
-// extern "C" void cilk_spawn_or_continue (int in_continuation){ }
-// extern "C" void cilk_detach_begin (__cilkrts_stack_frame* parent) { }
-// extern "C" void cilk_detach_end (void) { }
-// extern "C" void cilk_sync_begin (__cilkrts_stack_frame* sf) { }
-// extern "C" void cilk_sync_end (__cilkrts_stack_frame* sf){ }
-// extern "C" void cilk_leave_begin (__cilkrts_stack_frame *sf){ }
-// extern "C" void cilk_leave_end (void) { }
-// extern "C" void cilk_tool_c_function_enter(void* this_fn, void* rip){ }
-// extern "C" void cilk_tool_c_function_leave(void* rip) { }
-// extern "C" void cilk_enter_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip){ }
-
