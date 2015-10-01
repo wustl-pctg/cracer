@@ -29,9 +29,10 @@ extern "C" void clear_shadow_memory(size_t start, size_t end);
 // #endif
 
 // This makes me very nervous. jmp_buf is simply declared as an array
-// of longs. It is implementation-dependent which one is the stack pointer...
+// of longs. It is implementation-dependent which one is the stack
+// pointer...
 #if ! defined(_MSC_VER)
-#define GET_SP(sf) sf->ctx[6]
+#define GET_SP(sf) sf->ctx[0]
 #else
 #error "This code doesn't work in Windows yet."
 #endif
@@ -43,7 +44,10 @@ static bool TOOL_INITIALIZED = false;
 __thread static bool check_enable_instrumentation = true;
 // When either is set to false, no errors are output
 __thread static bool instrumentation = false;
-// needs to be reentrant due to reducer operations; 0 means checking
+
+/// needs to be reentrant due to reducer operations; 0 means checking
+/// Start with this enabled? Shouldn't it actually be disabled,
+/// especially for all threads > 0?
 __thread static int checking_disabled = 0;
 // a flag indicating that next time we encounter tsan_func_exit, we should
 // clear the shadow memory corresponding to a worker's stack; set in
@@ -208,7 +212,10 @@ extern "C" void cilk_spawn_prepare() {
 extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
                                    __cilkrts_stack_frame* sf)
 {
+  /// @todo shouldn't checking already be disabled? This is called
+  /// from the runtime, so...
   disable_checking();
+
   stack_low_watermark = (uint64_t)GET_SP(sf);
   do_steal_success(w, victim, sf);
   enable_checking();
@@ -223,7 +230,11 @@ extern "C" void cilk_spawn_or_continue(int in_continuation) {
    // om_assert( (!in_continuation && last_event == SPAWN_PREPARE) 
    //                     || (in_continuation && last_event == RUNTIME_LOOP) );
    // WHEN_OM_DEBUG( last_event = NONE; ) 
-  enable_checking();
+
+  // The way things currently work, if in_continuation == 1, the frame
+  // was just stolen and the thief already has checking enabled
+  if (in_continuation == 0)
+    enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_spawn_or_continue.\n");
 }
 
@@ -280,7 +291,7 @@ extern "C" void cilk_leave_end() {
 // parent is stolen and control should longjmp into the runtime
 // (switch to scheduling fiber). Thus we don't need to
 // enable_checking, but otherwise need to do the same as cilk_leave_end()
-void cilk_leave_stolen(__cilkrts_stack_frame *saved_sf)
+extern "C" void cilk_leave_stolen(__cilkrts_stack_frame *saved_sf)
 { 
   // While I don't think it would /hurt/ do call do_leave_end(), it's
   // also not really necessary. This worker will return to the runtime
