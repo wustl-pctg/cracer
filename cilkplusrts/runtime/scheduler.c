@@ -862,6 +862,7 @@ void fiber_proc_to_resume_user_code_for_random_steal(cilk_fiber *fiber)
         // Notify the Intel tools that we're stealing code
         ITT_SYNC_ACQUIRED(sf->worker);
         NOTIFY_ZC_INTRINSIC("cilk_continue", sf);
+        cilk_continue(sf, new_sp);
 
         // TBD: We'd like to move TBB-interop methods into the fiber
         // eventually.
@@ -1586,6 +1587,7 @@ user_code_resume_after_switch_into_runtime(cilk_fiber *fiber)
     // Notify the Intel tools that we're stealing code
     ITT_SYNC_ACQUIRED(sf->worker);
     NOTIFY_ZC_INTRINSIC("cilk_continue", sf);
+    cilk_continue(sf, ff->sync_sp);
     cilk_fiber_invoke_tbb_stack_op(fiber, CILK_TBB_STACK_ADOPT);
 
     // Actually jump to user code.
@@ -2233,6 +2235,8 @@ NORETURN __cilkrts_c_sync(__cilkrts_worker *w,
             cilkos_get_current_thread_id(), w->self, ff);
 #endif    
 
+    CILK_ASSERT(w->l->fiber_to_free);
+    cilk_done_with_stack(sf_at_sync, cilk_fiber_get_stack_base(w->l->fiber_to_free));
     longjmp_into_runtime(w, do_sync, sf_at_sync);
 }
 
@@ -2309,6 +2313,9 @@ static void do_sync(__cilkrts_worker *w, full_frame *ff,
         NOTIFY_ZC_INTRINSIC("cilk_sync_abandon", 0);
     }
 #endif // defined ENABLE_NOTIFY_ZC_INTRINSIC
+    if (ABANDON_EXECUTION == steal_result) {
+        cilk_sync_abandon(sf);
+    }
 
     return; /* back to scheduler loop */
 }
@@ -2430,10 +2437,13 @@ void __cilkrts_c_THE_exception_check(__cilkrts_worker *w,
         // going to abandon this work and go do something else.  This
         // will match the cilk_leave_begin in the compiled code
         NOTIFY_ZC_INTRINSIC("cilk_leave_stolen", saved_sf);
-
-        /// @rob I don't really understand how the above works, so I'm
-        /// adding a manual call:
-        cilk_leave_stolen(saved_sf);
+        cilk_fiber_data* fiber_child = ((cilk_fiber_data*)ff->parent->fiber_child);
+        char* base = fiber_child ?
+            cilk_fiber_get_stack_base(ff->parent->fiber_child) :
+            cilk_fiber_get_stack_base(w->l->fiber_to_free);
+        cilk_leave_stolen(w, saved_sf,
+                          ff->parent && fiber_child && fiber_child->owner == w,
+                          base);
 
         DBGPRINTF ("%d: longjmp_into_runtime from __cilkrts_c_THE_exception_check\n", w->self);
         longjmp_into_runtime(w, do_return_from_spawn, 0);
