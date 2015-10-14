@@ -19,6 +19,7 @@ CILK_API(void) cilk_batchify(batch_function_t f, void* ds,
 CILK_API(void) __cilkrts_c_terminate_batch();
 CILK_API(void) __cilkrts_c_start_batch();
 CILK_API(int) __cilkrts_get_batch_id(__cilkrts_worker* w);
+CILK_API(void) cilk_set_next_batch_owner();
 
 enum BATCH_ITEM_STATUS { ITEM_WAITING, ITEM_IN_PROGRESS, ITEM_DONE };
 

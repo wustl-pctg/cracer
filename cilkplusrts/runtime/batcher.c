@@ -390,7 +390,10 @@ cilk_fiber* try_to_start_batch(__cilkrts_worker* w)
 {
   CILK_ASSERT(w->head == &w->l->batch_head);
 
-  int is_batch_owner = __cilkrts_mutex_trylock(w, &w->g->batch_lock);
+  // Have to do this differently for race detection
+  //  int is_batch_owner = __cilkrts_mutex_trylock(w, &w->g->batch_lock);
+  int is_batch_owner = w->g->batch_lock.owner == w;
+
   w->current_stack_frame = NULL; // @todo ???
 
   if (is_batch_owner) {
@@ -401,6 +404,15 @@ cilk_fiber* try_to_start_batch(__cilkrts_worker* w)
   }
 
   return NULL;
+}
+
+CILK_API_VOID cilk_set_next_batch_owner()
+{
+	__cilkrts_worker *w = __cilkrts_get_tls_worker();
+
+  // In the context of race detection this should never fail.
+  int result = __cilkrts_mutex_trylock(w, &w->g->batch_lock);
+  CILK_ASSERT(result);
 }
 
 void execute_until_op_done(__cilkrts_worker* w, cilk_fiber* current_fiber)
