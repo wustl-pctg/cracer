@@ -222,6 +222,9 @@ public:
     assert(this->_head >= this->_tail);
     assert(thief.empty());
 
+    // Take victim's tail
+    thief._tail = this->_tail;
+
     if (this->_tail > 0) {
       assert(!(this->_stack[this->_tail-1].flags & FRAME_HELPER_MASK));
       assert(this->_stack[this->_tail].flags & FRAME_HELPER_MASK);
@@ -250,7 +253,6 @@ public:
     }
     assert(f->flags & FRAME_HELPER_MASK);
     assert(this->_tail <= this->_head);
-    
     
     pthread_spin_unlock(&_slock);
     return thief.head();
