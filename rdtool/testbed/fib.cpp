@@ -2,7 +2,6 @@
 #include <chrono>
 #include <cstdlib>
 #include <cassert>
-#include <unistd.h> // for sbrk
 
 #include <cilk/cilk.h>
 #include "../omrd.h"
@@ -10,8 +9,6 @@
 #define spawn cilk_spawn
 #define sync cilk_sync
 #define parfor cilk_for
-
-extern __thread int self;
 
 int fib(int n)
 {
@@ -25,9 +22,6 @@ int fib(int n)
 
 int main(int argc, char* argv[])
 {
-#ifdef RACEDETECT
-  __om_disable_checking();
-#endif
   if (argc != 2) {
     std::cerr << "Usage: fib <n>" << std::endl;
     exit(1);
