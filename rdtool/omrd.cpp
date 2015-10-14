@@ -58,6 +58,7 @@ struct timespec EMPTY_TIME_POINT;
 #if STATS > 0
 unsigned long g_num_relabels = 0;
 unsigned long g_num_inserts = 0;
+unsigned long g_relabel_size = 0;
 #endif
 
 #if STATS > 0
@@ -69,7 +70,7 @@ unsigned long g_num_inserts = 0;
 int g_tool_init = 0;
 om* g_english;
 om* g_hebrew;
-__thread __cilkrts_worker* t_worker;
+__thread __cilkrts_worker* t_worker = NULL;
 __thread int self = -1;
 pthread_spinlock_t g_relabel_mutex;
 pthread_spinlock_t* g_worker_mutexes;
@@ -82,6 +83,7 @@ typedef struct FrameData_s {
   om_node* sync_english;
   om_node* sync_hebrew;
   uint32_t flags;
+  int n;
 } FrameData_t;
 
 AtomicStack_t<FrameData_t>* frames;
@@ -93,17 +95,6 @@ AtomicStack_t<tl_node*> heavy_hebrew;
 
 // XXX Need to synchronize access to it when update
 static ShadowMem<MemAccessList_t> shadow_mem;
-/*
- It turns out that we don't need to know where the stack is
-uint64_t stack_low_addr = 0;
-uint64_t stack_high_addr = 0;
-
-__attribute__((always_inline)) 
-static bool is_on_stack(uint64_t addr) {
-  om_assert(stack_high_addr != stack_low_addr);                            
-  return (addr <= stack_high_addr && addr >= stack_low_addr);                   
-} 
-*/
 
 pthread_spinlock_t g_insert_lock;
 om_node* insert_wrapper(om* ds, om_node* base)
@@ -174,16 +165,33 @@ size_t count_set_bits(label_t label)
   return count;
 }
 
+/// @todo either find a way to pass this through batchify or store it
+/// in the OM DS.
+__thread AtomicStack_t<tl_node*>* saved_heavy_nodes;
+
+// We actually only need the DS.
+void batch_relabel(void* ds, void* data, size_t size, void* results)
+{
+  om_assert(saved_heavy_nodes != NULL);
+  om_relabel((om*)ds, saved_heavy_nodes->at(0), saved_heavy_nodes->size());
+  saved_heavy_nodes = NULL;
+}
+
 void join_batch()
 {
   RD_DEBUG("Worker %i joining a relabel operation.\n", t_worker->self);
+  //  cilk_batchify(batch_relabel, 0, 0, sizeof(int));
 }
 
 void start_batch(om* ds, AtomicStack_t<tl_node*>& heavy_nodes)
 {
   RD_STATS(g_num_relabels++);
-  RD_DEBUG("Begin relabel %zu.\n", g_num_relabels)
+  RD_STATS(g_relabel_size += heavy_nodes.size());
+  RD_DEBUG("Begin relabel %zu.\n", g_num_relabels);
 
+  // cilk_set_next_batch_owner();
+  // saved_heavy_nodes = &heavy_nodes;
+  // cilk_batchify(batch_relabel, ds, 0, sizeof(int));
   om_relabel(ds, heavy_nodes.at(0), heavy_nodes.size());
   heavy_nodes.reset();
 
@@ -293,6 +301,7 @@ extern "C" void cilk_tool_print(void)
 #if STATS > 0  
   std::cout << "Num relabels: " << g_num_relabels << std::endl;
   std::cout << "Num inserts: " << g_num_inserts << std::endl;
+  std::cout << "Avg size per relabel: " << (double)g_relabel_size / (double)g_num_relabels << std::endl;
 #endif
 }
 
@@ -318,17 +327,18 @@ extern "C" void cilk_tool_destroy(void)
 extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
                                  __cilkrts_stack_frame* sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "Worker %i stole from %i with ...", w->self, victim->self);
+  DBG_TRACE(DEBUG_CALLBACK, "Worker %i stole from %i.\n", w->self, victim->self);
 
   // Lock b/c we might copy om_nodes that are being relabeled...
   // Actually, these shouldn't be necessary, because the bottom level
   // nodes never actually change, just the pointers to the above
   // tl_nodes
   /// @todo remove lock
-  pthread_spin_lock(&g_worker_mutexes[w->self]);
+  //  pthread_spin_lock(&g_worker_mutexes[w->self]);
   frames[w->self].reset();
   FrameData_t* loot = frames[victim->self].steal_top(frames[w->self]);
-  pthread_spin_unlock(&g_worker_mutexes[w->self]);
+  //  pthread_spin_unlock(&g_worker_mutexes[w->self]);
+  om_assert(!(loot->flags & FRAME_HELPER_MASK));
   init_strand(w, loot);
 }
 
@@ -460,7 +470,7 @@ extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
     return; /// @todo is this correct? this only seems to happen on the initial frame, when it is stolen
   }
 
-  assert(!(f->flags & FRAME_HELPER_MASK));
+  //  assert(!(f->flags & FRAME_HELPER_MASK));
   om_assert(f->current_english); 
   om_assert(f->current_hebrew);
   om_assert(!f->cont_english); 
@@ -480,11 +490,41 @@ extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
               "do_sync_begin, setting heb to %p.\n", f->current_hebrew);
     f->sync_english = NULL; 
     f->sync_hebrew = NULL;
-  } else { // function didn't spawn
+  } else { // function didn't spawn, or this is a function-ending sync
     om_assert(!f->sync_english); 
     om_assert(!f->sync_hebrew);
   }
 }
+
+// Noticed that the frame was stolen.
+extern "C" void do_leave_stolen(__cilkrts_stack_frame* sf)
+{
+  DBG_TRACE(DEBUG_CALLBACK, "do_leave_stolen, sf %p and worker %d.\n", sf, self);
+
+  // We *should* still have a helper frame on the shadow stack, since
+  // cilk_leave_end will not be called
+  FrameData_t* child = frames[self].head();
+  FrameData_t* parent = frames[self].ancestor(1);
+
+  om_assert(child->flags & FRAME_HELPER_MASK);
+  om_assert(!(parent->flags & FRAME_HELPER_MASK));
+  om_assert(parent->current_english == NULL);
+  om_assert(parent->current_hebrew == NULL);
+  om_assert(parent->cont_english);
+  om_assert(parent->cont_hebrew);
+  om_assert(parent->sync_english);
+  om_assert(parent->sync_hebrew);
+
+  parent->current_english = parent->sync_english;
+  parent->current_hebrew = parent->sync_hebrew;
+  parent->cont_english = NULL;
+  parent->cont_hebrew = NULL;
+  parent->sync_english = NULL;
+  parent->sync_hebrew = NULL;
+
+  frames[self].pop();
+}
+
 /* return 1 if we are leaving last frame and 0 otherwise */
 extern "C" int do_leave_begin (__cilkrts_stack_frame *sf)
 {
@@ -630,6 +670,8 @@ extern "C" void clear_shadow_memory(size_t start, size_t end) {
   DBG_TRACE(DEBUG_MEMORY, "Clear shadow memory %p--%p (%u).\n", 
             start, end, end-start);
   om_assert(ALIGN_BY_NEXT_MAX_GRAIN_SIZE(end) == end); 
+  om_assert(start < end);
+  //  om_assert(end-start < 4096);
 
   while(start != end) {
     // DBG_TRACE(DEBUG_MEMORY, "Erasing mem %p.\n", (void *)start);
