@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include <internal/abi.h>
+#include <cilk/batcher.h>
 #include "debug_util.h" 
 #include "mem_access.h" 
 #include "omrd.h" 
@@ -15,6 +16,7 @@ extern "C" int do_enter_end(__cilkrts_stack_frame* sf, void* rsp);
 extern "C" void do_sync_begin(__cilkrts_stack_frame* sf);
 extern "C" int do_leave_begin(__cilkrts_stack_frame *sf);
 extern "C" int do_leave_end();
+extern "C" int do_leave_stolen(__cilkrts_stack_frame* sf);
 extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
                       __cilkrts_stack_frame* sf);
 extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size); 
@@ -37,18 +39,18 @@ extern "C" void clear_shadow_memory(size_t start, size_t end);
 #error "This code doesn't work in Windows yet."
 #endif
 
+extern __thread __cilkrts_worker *t_worker;
+
 
 static bool TOOL_INITIALIZED = false;
 
 /* XXX: Honestly these should be part of detector state */
-__thread static bool check_enable_instrumentation = true;
+static bool check_enable_instrumentation = true;
 // When either is set to false, no errors are output
-__thread static bool instrumentation = false;
+//__thread
+static bool instrumentation = false;
 
-/// needs to be reentrant due to reducer operations; 0 means checking
-/// Start with this enabled? Shouldn't it actually be disabled,
-/// especially for all threads > 0?
-__thread static int checking_disabled = 0;
+__thread static int checking_disabled = 1;
 // a flag indicating that next time we encounter tsan_func_exit, we should
 // clear the shadow memory corresponding to a worker's stack; set in
 // leave_frame_begin
@@ -103,6 +105,7 @@ extern "C" void __tsan_init()
   // cilksan_init();
   //  enable_instrumentation();
   TOOL_INITIALIZED = true;
+  enable_checking();
 }
 
 // outside world (including runtime).
@@ -120,6 +123,12 @@ extern "C" void __om_disable_checking() {
   DBG_TRACE(DEBUG_BASIC, "External disable checking (%d).\n", checking_disabled);
 }
 
+extern "C" void __om_disable_instrumentation() {
+  DBG_TRACE(DEBUG_BASIC, "Disable instrumentation.\n");
+  check_enable_instrumentation = false;
+  instrumentation = false;
+}
+
 __attribute__((always_inline))
 static bool should_check() {
   return(instrumentation && checking_disabled == 0); 
@@ -129,6 +138,7 @@ static bool should_check() {
  * we can clean the shadow mem corresponding to cactus stack.
  */
 extern "C" void __tsan_func_entry(void *pc) { 
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   disable_checking();
   uint64_t res = (uint64_t) __builtin_frame_address(0);
   if(stack_low_watermark > res) {
@@ -150,6 +160,7 @@ extern "C" void __tsan_func_entry(void *pc) {
  * in __tsan_func_exit.
  */
 extern "C" void __tsan_func_exit() { 
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   disable_checking();
   if(clear_stack) {
     // the spawn helper that's exiting is calling tsan_func_exit, 
@@ -175,6 +186,7 @@ extern "C" void __tsan_vptr_update(void **vptr_p, void *new_val) {}
 
 
 extern "C" void cilk_enter_begin() {
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_begin.\n");
   disable_checking();
   do_enter_begin();
@@ -183,13 +195,14 @@ extern "C" void cilk_enter_begin() {
 
 extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, 
                                         void* this_fn, void* rip) {
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_helper_begin.\n");
   disable_checking();
   do_enter_helper_begin(sf, this_fn, rip);
 }
 
 extern "C" void cilk_enter_end(__cilkrts_stack_frame *sf, void *rsp) {
-
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   int first_frame = do_enter_end(sf, rsp);
   if(first_frame && __builtin_expect(check_enable_instrumentation, 0)) {
     check_enable_instrumentation = false;
@@ -203,6 +216,7 @@ extern "C" void cilk_enter_end(__cilkrts_stack_frame *sf, void *rsp) {
 }
 
 extern "C" void cilk_spawn_prepare() {
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   DBG_TRACE(DEBUG_CALLBACK, "cilk_spawn_prepare.\n");
   disable_checking();
    // om_assert(last_event == NONE);
@@ -212,13 +226,11 @@ extern "C" void cilk_spawn_prepare() {
 extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
                                    __cilkrts_stack_frame* sf)
 {
-  /// @todo shouldn't checking already be disabled? This is called
-  /// from the runtime, so...
-  disable_checking();
-
-  stack_low_watermark = (uint64_t)GET_SP(sf);
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
+  DBG_TRACE(DEBUG_CALLBACK, "%i stealing from %i.\n", w->self, victim->self);
+  //  om_assert(checking_disabled > 0);
+  om_assert(!should_check());
   do_steal_success(w, victim, sf);
-  enable_checking();
 }
 
 /// in_continuation == 0 when a spawn helper is called, i.e. the first
@@ -227,29 +239,26 @@ extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim
 /// is reached. Otherwise, in_continuation == 1, i.e. the runtime
 /// resumes the continuation by longjmping
 extern "C" void cilk_spawn_or_continue(int in_continuation) {
-   // om_assert( (!in_continuation && last_event == SPAWN_PREPARE) 
-   //                     || (in_continuation && last_event == RUNTIME_LOOP) );
-   // WHEN_OM_DEBUG( last_event = NONE; ) 
-
-  // The way things currently work, if in_continuation == 1, the frame
-  // was just stolen and the thief already has checking enabled
-  if (in_continuation == 0)
-    enable_checking();
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
+  enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_spawn_or_continue.\n");
 }
 
 extern "C" void 
 cilk_detach_begin(__cilkrts_stack_frame *parent_sf) { 
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   DBG_TRACE(DEBUG_CALLBACK, "cilk_detach_begin.\n");
   disable_checking(); 
 }
 
 extern "C" void cilk_detach_end() { 
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   enable_checking(); 
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_detach_end.\n");
 }
 
 extern "C" void cilk_sync_begin(__cilkrts_stack_frame* sf) {
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   DBG_TRACE(DEBUG_CALLBACK, "cilk_sync_begin.\n");
   disable_checking();
   om_assert(TOOL_INITIALIZED);
@@ -257,12 +266,14 @@ extern "C" void cilk_sync_begin(__cilkrts_stack_frame* sf) {
 }
 
 extern "C" void cilk_sync_end() {
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   om_assert(TOOL_INITIALIZED);
   enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_sync_end.\n");
 }
 
 extern "C" void cilk_leave_begin(__cilkrts_stack_frame* sf) {
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_begin.\n");
   disable_checking();
   int is_last_frame = do_leave_begin(sf);
@@ -282,6 +293,7 @@ extern "C" void cilk_leave_begin(__cilkrts_stack_frame* sf) {
 }
 
 extern "C" void cilk_leave_end() {
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_leave_end.\n");
   int is_last_frame = do_leave_end();
@@ -291,16 +303,81 @@ extern "C" void cilk_leave_end() {
 // parent is stolen and control should longjmp into the runtime
 // (switch to scheduling fiber). Thus we don't need to
 // enable_checking, but otherwise need to do the same as cilk_leave_end()
-extern "C" void cilk_leave_stolen(__cilkrts_stack_frame *saved_sf)
+extern "C" void cilk_leave_stolen(__cilkrts_worker* w,
+                                  __cilkrts_stack_frame *saved_sf,
+                                  int is_original,
+                                  char* stack_base)
 { 
-  // While I don't think it would /hurt/ do call do_leave_end(), it's
-  // also not really necessary. This worker will return to the runtime
-  // and steal. A successful steal will reset this worker's shadow
-  // stack, and in the meantime it has no frames to be stolen.
-  // Also, the parent is being executed, meaning that the current OM
-  // nodes were already switched to the continuation nodes.
-  clear_stack = true;
-  __tsan_func_exit();
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
+  om_assert(clear_stack == true); 
+
+  //  __tsan_func_exit();
+  // We can't just call __tsan_func_exit because now the stack now
+  //  looks like:
+  // Spawning (stolen) function
+  // __cilk_spawn_helper
+  // __cilkrts_leave_frame
+  // __cilkrts_c_THE_exception_check
+  // cilk_leave_stolen
+
+  //  if (saved_sf == NULL || w != saved_sf->worker) {
+  uint64_t stack_high_watermark;
+  if (is_original) stack_high_watermark = (uint64_t)__builtin_frame_address(4);
+  else stack_high_watermark = (uint64_t)stack_base;
+
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_stolen, stack_high_watermark: %lx.\n", 
+            stack_high_watermark);
+  om_assert( stack_low_watermark != ((uint64_t)-1) );
+  om_assert( stack_low_watermark <= stack_high_watermark );
+
+  clear_shadow_memory(stack_low_watermark, stack_high_watermark);
+  // We're jumping back to the runtime, but keep this in case we do a
+  // provably good steal
+  stack_low_watermark = stack_high_watermark;
+  clear_stack = 0;
+
+  do_leave_stolen(saved_sf);
+}
+
+// Currently having a linking issue that requires me to define this,
+// even though the weak symbol version defined the runtime should be used.
+extern "C" void cilk_sync_abandon(__cilkrts_stack_frame* sf) { }
+
+/** We are done with a stack (fiber), and so should clear the
+    associated shadow memory. Originally I wanted to use
+    cilk_sync_abandon for this, which already exists as a ZC_INTRINSIC
+    call. Unfortunately when cilk_sync_abandon is called, the
+    associated fiber has already been freed (the worker is calling
+    from a scheduling fiber), so it may already be recycled and in
+    use. So I have added the following function, which is called right
+    before longjmp_into_runtime from __cilkrts_c_sync.
+*/
+extern "C" void cilk_done_with_stack(__cilkrts_stack_frame *sf_at_sync,
+                                     char* stack_base)
+{
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
+  om_assert(stack_base != NULL);
+  uint64_t stack_high_watermark = (uint64_t)stack_base;
+  om_assert(stack_low_watermark != ((uint64_t)-1) );
+  om_assert(stack_low_watermark <= stack_high_watermark);
+  clear_shadow_memory(stack_low_watermark, stack_high_watermark);
+  stack_low_watermark = ((uint64_t)-1);
+  clear_stack = 0;
+
+  // If we got here, then we called cilk_sync_begin with no
+  // corresponding cilk_sync_end, so checking is already disabled.
+  //  disable_checking();
+}
+
+// The worker is about to jump back into user code, either because (1)
+// it randomly stole work, or (2) it is resuming a suspended frame.
+extern "C" void cilk_continue(__cilkrts_stack_frame* sf, char* new_sp)
+{
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
+  if (new_sp != NULL) {
+    stack_low_watermark = (uint64_t) new_sp; //GET_SP(sf);
+  }
+  //  enable_checking();
 }
 
 typedef void*(*malloc_t)(size_t);
@@ -323,6 +400,8 @@ extern "C" void* malloc(size_t s) {
     }
   }
   void *r = real_malloc(new_size);
+
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return r;
 
   if(TOOL_INITIALIZED && should_check()) {
     clear_shadow_memory((size_t)r, (size_t)r+new_size);
@@ -347,6 +426,7 @@ extern "C" void* malloc(size_t s) {
 // the return addr of __tsan_read/write[1-16] is the rip for the read / write
 
 static inline void tsan_read(void *addr, size_t size, void *rip) {
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   om_assert(TOOL_INITIALIZED);
   if(should_check()) {
     disable_checking();
@@ -358,7 +438,9 @@ static inline void tsan_read(void *addr, size_t size, void *rip) {
   }
 }
 
-static inline void tsan_write(void *addr, size_t size, void *rip) {
+static inline void tsan_write(void *addr, size_t size, void *rip)
+{
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return; 
   om_assert(TOOL_INITIALIZED);
   if(should_check()) {
     disable_checking();
