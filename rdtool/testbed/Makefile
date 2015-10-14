@@ -7,18 +7,18 @@ MALLOC=
 #MALLOC=-ltcmalloc
 #MALLOC=-ltbbmalloc_proxy
 
-
-CFLAGS=-std=c99 -O0 -g
-CXXFLAGS=-std=c++11 -O0 -g #-DNDEBUG
+FLAGS=-O0 -g -fno-omit-frame-pointer #-DNDEBUG
+CFLAGS=-std=c99 $(FLAGS)
+CXXFLAGS=-std=c++11 $(FLAGS)
 CILKFLAGS=-fcilkplus -fno-inline-detach
 RDFLAGS=-DRACEDETECT -fcilktool -fsanitize=thread 
 ARFLAGS=#--plugin $(COMPILER_HOME)/lib/LLVMgold.so
 LDFLAGS=
 OMINC=-I../cilkplusrts/include #-I$(COMPILER_HOME)/src/projects/compiler-rt/lib
 USERINC=-I$(COMPILER_HOME)/include
-STAT_LEVEL=0
+STAT_LEVEL=1
 
-all: matmul fib
+all: matmul fib foo
 fib: fib_check fib_nocheck
 matmul: matmul_check matmul_nocheck
 
