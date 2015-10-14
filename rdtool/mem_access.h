@@ -30,7 +30,8 @@ static const int gtype_to_mem_size[4] = { 1, 2, 4, 8 };
 #define IS_ALIGNED_WITH_GTYPE(addr, gtype) \
   ((addr & (uint64_t)gtype_to_mem_size[gtype]-1) == 0)
 
-
+extern pthread_spinlock_t* g_worker_mutexes;
+extern __thread int self;
 
 // Struct to hold strands corresponding to left / right readers and last writer
 typedef struct MemAccess_t {
@@ -48,8 +49,14 @@ typedef struct MemAccess_t {
   inline bool races_with(om_node *curr_estrand, om_node *curr_hstrand) {
     om_assert(estrand); om_assert(hstrand);
     om_assert(curr_estrand); om_assert(curr_hstrand);
+
+    /// @todo Is it worth it to join the batch relabel here?
+    om_assert(self > -1);
+    pthread_spin_lock(&g_worker_mutexes[self]);
     bool prec_in_english = om_precedes(estrand, curr_estrand);
     bool prec_in_hebrew  = om_precedes(hstrand, curr_hstrand);
+    pthread_spin_unlock(&g_worker_mutexes[self]);
+
     // race if the ordering in english and hebrew differ
     bool has_race = (prec_in_english == !prec_in_hebrew);
 #if OM_DEBUG
