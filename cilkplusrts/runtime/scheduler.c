@@ -2437,13 +2437,17 @@ void __cilkrts_c_THE_exception_check(__cilkrts_worker *w,
         // going to abandon this work and go do something else.  This
         // will match the cilk_leave_begin in the compiled code
         NOTIFY_ZC_INTRINSIC("cilk_leave_stolen", saved_sf);
-        cilk_fiber_data* fiber_child = ((cilk_fiber_data*)ff->parent->fiber_child);
-        char* base = fiber_child ?
-            cilk_fiber_get_stack_base(ff->parent->fiber_child) :
-            cilk_fiber_get_stack_base(w->l->fiber_to_free);
-        cilk_leave_stolen(w, saved_sf,
-                          ff->parent && fiber_child && fiber_child->owner == w,
-                          base);
+        cilk_fiber *current_fiber = ( w->l->fiber_to_free ?
+                                      w->l->fiber_to_free :
+                                      ff->parent->fiber_child );
+        CILK_ASSERT(current_fiber);
+        int is_original = 1;
+        if (ff->parent && ff->parent->fiber_child) {
+            cilk_fiber_data* fdata = ((cilk_fiber_data*)ff->parent->fiber_child);
+            is_original = fdata->owner == w;
+        }
+        char* base = cilk_fiber_get_stack_base(current_fiber);
+        cilk_leave_stolen(w, saved_sf, is_original, base);
 
         DBGPRINTF ("%d: longjmp_into_runtime from __cilkrts_c_THE_exception_check\n", w->self);
         longjmp_into_runtime(w, do_return_from_spawn, 0);
