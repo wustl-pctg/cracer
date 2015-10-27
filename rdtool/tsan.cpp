@@ -11,6 +11,8 @@
 /* defined in omrd.cpp */
 extern "C" void 
 do_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip);
+extern "C" void do_detach_begin(__cilkrts_stack_frame* parent);
+//extern "C" void do_detach_end();
 extern "C" void do_enter_begin();
 extern "C" int do_enter_end(__cilkrts_stack_frame* sf, void* rsp);
 extern "C" void do_sync_begin(__cilkrts_stack_frame* sf);
@@ -22,6 +24,9 @@ extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
 extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size); 
 extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size);
 extern "C" void clear_shadow_memory(size_t start, size_t end); 
+extern "C" void do_tool_init(void);
+extern "C" void do_tool_print(void);
+extern "C" void do_tool_destroy(void);
 
 
 // declared in cilksan; for debugging only
@@ -138,6 +143,7 @@ static bool should_check() {
  * we can clean the shadow mem corresponding to cactus stack.
  */
 extern "C" void __tsan_func_entry(void *pc) { 
+/*
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   disable_checking();
   uint64_t res = (uint64_t) __builtin_frame_address(0);
@@ -147,7 +153,33 @@ extern "C" void __tsan_func_entry(void *pc) {
               "tsan_func_enter, set stack_low_watermark %lx.\n", res);
   }
   enable_checking();
+*/
 }
+
+extern "C" void cilk_tool_init(void)
+{
+  disable_checking();
+  disable_instrumentation();
+  do_tool_init();
+  enable_checking();
+}
+
+extern "C" void cilk_tool_print(void)
+{
+  disable_checking();
+  disable_instrumentation();
+  do_tool_print();
+  enable_checking();
+}
+
+extern "C" void cilk_tool_destroy(void)
+{
+  disable_checking();
+  disable_instrumentation();
+  do_tool_destroy();
+  enable_checking();
+}
+
 
 /* We would like to clear the shadow memory correponding to the cactus
  * stack whenever we leave a Cilk function.  Unfortunately, variables are 
@@ -162,6 +194,14 @@ extern "C" void __tsan_func_entry(void *pc) {
 extern "C" void __tsan_func_exit() { 
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   disable_checking();
+
+  uint64_t res = (uint64_t) __builtin_frame_address(0);
+  if(stack_low_watermark > res) {
+    stack_low_watermark = res;
+    DBG_TRACE(DEBUG_CALLBACK, 
+              "tsan_func_exit, set stack_low_watermark %lx.\n", res);
+  }
+
   if(clear_stack) {
     // the spawn helper that's exiting is calling tsan_func_exit, 
     // so the spawn helper's base pointer is the stack_high_watermark
@@ -249,10 +289,12 @@ cilk_detach_begin(__cilkrts_stack_frame *parent_sf) {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   DBG_TRACE(DEBUG_CALLBACK, "cilk_detach_begin.\n");
   disable_checking(); 
+  do_detach_begin(parent_sf);
 }
 
 extern "C" void cilk_detach_end() { 
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
+  //  do_detach_end();
   enable_checking(); 
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_detach_end.\n");
 }
