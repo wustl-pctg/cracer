@@ -323,6 +323,7 @@ void batch_scheduler_function(cilk_fiber *fiber)
           BATCH_DBGPRINTF("Worker %i restarting a batch.\n", w->self);
 
           w->l->batch_id = w->g->pending_batch.id;
+          w->current_stack_frame = NULL;
           cilk_fiber_suspend_self_and_resume_other(fiber, new_fiber);
         }
       }
@@ -392,9 +393,7 @@ cilk_fiber* try_to_start_batch(__cilkrts_worker* w)
 
   // Have to do this differently for race detection
   //  int is_batch_owner = __cilkrts_mutex_trylock(w, &w->g->batch_lock);
-  int is_batch_owner = w->g->batch_lock.owner == w;
-
-  w->current_stack_frame = NULL; // @todo ???
+  int is_batch_owner = cilk_tool_om_try_lock_all(w);
 
   if (is_batch_owner) {
     if (w->g->batch_records[w->self].status == ITEM_WAITING)
@@ -404,6 +403,11 @@ cilk_fiber* try_to_start_batch(__cilkrts_worker* w)
   }
 
   return NULL;
+}
+
+int batcher_trylock(__cilkrts_worker* w)
+{
+  return __cilkrts_mutex_trylock(w, &w->g->batch_lock);
 }
 
 CILK_API_VOID cilk_set_next_batch_owner()
