@@ -58,7 +58,11 @@ struct om_s {
   size_t height;
 };
 
-tl_node* tl_node_new() { return (tl_node*)malloc(1 * sizeof(tl_node)); }
+tl_node* tl_node_new()
+{
+  tl_node* x = (tl_node*)malloc(1 * sizeof(tl_node));
+  return x;
+}
 
 void tl_node_free(tl_node* n)
 {
