@@ -5,13 +5,17 @@
 
 #define FAST_LOG2(x) (sizeof(label_t)*8 - 1 - __builtin_clzl((label_t)(x)))
 #define FAST_LOG2_CEIL(x) (((x) - (1 << FAST_LOG2(x))) ? FAST_LOG2(x) + 1 : FAST_LOG2(x))
-#define parfor for
-#define spawn
-#define sync
+/* #define parfor for */
+/* #define spawn */
+/* #define sync */
+#include <cilk/cilk.h>
+#define parfor cilk_for
+#define spawn cilk_spawn
+#define sync cilk_sync
 
 static inline int is_leaf(tl_node* n)
 {
-  return n->level == MAX_LEVEL || (n->prev == NULL && n->right == NULL);
+return n->level == MAX_LEVEL || (n->prev == NULL && n->right == NULL);
 }
 
 static inline label_t range_right(tl_node* n) { return n->label; }
@@ -82,6 +86,7 @@ void build_array_of_leaves(tl_node* n, tl_node** array,
   }
 
   // We don't want to free the root of this subtree...
+  assert(n->left == NULL); assert(n->right == NULL);
   if (n->needs_rebalance) tl_node_free(n);
   return;
 }
@@ -219,8 +224,8 @@ void om_relabel_slow(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
     while (current) {
       node* n = current->below->head;
       while(n->next) {
-	assert(n->label < n->next->label);
-	n = n->next;
+        assert(n->label < n->next->label);
+        n = n->next;
       }
       current = current->next;
     }
@@ -235,18 +240,18 @@ void om_relabel_slow(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
     if (current->needs_rebalance) {
       n = current->split_nodes;
       if (current == self->root) {
-	n->size = self->root->size;
-	self->root = n;
+        n->size = self->root->size;
+        self->root = n;
       }
       if (current->prev) current->prev->next = n;
       n->prev = current->prev;
       while (n->next) {
-	n->level = MAX_LEVEL;
-	n->needs_rebalance = 0;
-	n->label = lab;
-	lab = (MAX_LABEL - lab < interval) ? MAX_LABEL : lab + interval;
-	n->next->prev = n;
-	n = n->next;
+        n->level = MAX_LEVEL;
+        n->needs_rebalance = 0;
+        n->label = lab;
+        lab = (MAX_LABEL - lab < interval) ? MAX_LABEL : lab + interval;
+        n->next->prev = n;
+        n = n->next;
       }
       n->level = MAX_LEVEL;
       n->needs_rebalance = 0;

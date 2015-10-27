@@ -61,7 +61,7 @@ static inline node* node_new()
 { 
   //  g_num_malloc_calls++;
   //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD_MALLOC);
-  node* n = (node*)malloc(sizeof(node)); 
+  node* n = (node*)malloc(sizeof(node));
   //  RDTOOL_INTERVAL_END(OM_REBUILD_MALLOC);
   return n;
 }
