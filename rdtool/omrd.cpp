@@ -1,8 +1,8 @@
 #include <iostream>
-#include <pthread.h> /// @todo clang doesn't like gcc 4.4.7 mutex header...
 
 #include <internal/abi.h>
 #include <cilk/batcher.h>
+#include "omrd.h"
 #include "print_addr.h"
 #include "shadow_mem.h"
 #include "mem_access.h"
@@ -67,13 +67,14 @@ unsigned long g_relabel_size = 0;
 #define RD_STATS(...)
 #endif
 
+local_mut* g_worker_mutexes;
+
 int g_tool_init = 0;
 om* g_english;
 om* g_hebrew;
 __thread __cilkrts_worker* t_worker = NULL;
 __thread int self = -1;
 pthread_spinlock_t g_relabel_mutex;
-pthread_spinlock_t* g_worker_mutexes;
 
 typedef struct FrameData_s {
   om_node* current_english;
@@ -83,7 +84,6 @@ typedef struct FrameData_s {
   om_node* sync_english;
   om_node* sync_hebrew;
   uint32_t flags;
-  int n;
 } FrameData_t;
 
 AtomicStack_t<FrameData_t>* frames;
@@ -96,17 +96,20 @@ AtomicStack_t<tl_node*> heavy_hebrew;
 // XXX Need to synchronize access to it when update
 static ShadowMem<MemAccessList_t> shadow_mem;
 
-pthread_spinlock_t g_insert_lock;
+pthread_spinlock_t g_insert_lock; /// @todo remove
 om_node* insert_wrapper(om* ds, om_node* base)
 {
   om_node* n;
-  pthread_spin_lock(&g_insert_lock);
+  //  pthread_spin_lock(&g_insert_lock);
   if (base == NULL) n = om_insert_initial(ds);
   else n = om_insert(ds, base);
-  // if (n) {
-  //   printf("Inserted %p after %p.\n", n, base);
-  // }
-  pthread_spin_unlock(&g_insert_lock);
+  if (base) {
+    om_assert(base->list->above);
+  }
+  if (n) {
+    om_assert(n->list->above);
+  }
+  //  pthread_spin_unlock(&g_insert_lock);
   return n;
 }
 
@@ -123,14 +126,10 @@ void init_strand(__cilkrts_worker* w, FrameData_t* init)
     assert(!(init->flags & FRAME_HELPER_MASK));
     assert(!init->current_english);
     assert(!init->current_hebrew);
-    assert(init->cont_english);
-    assert(init->cont_hebrew);
-    assert(init->sync_english);
-    assert(init->sync_hebrew);
     locked_assert(om_precedes(init->cont_english, init->sync_english));
     locked_assert(om_precedes(init->cont_hebrew, init->sync_hebrew));
 
-    pthread_spin_lock(&g_worker_mutexes[self]);
+    //    pthread_spin_lock(&g_worker_mutexes[self]);
     f->current_english = init->cont_english;
     f->current_hebrew = init->cont_hebrew;
     f->sync_english = init->sync_english;
@@ -138,7 +137,7 @@ void init_strand(__cilkrts_worker* w, FrameData_t* init)
     f->cont_english = NULL;
     f->cont_hebrew = NULL;
     f->flags = init->flags;
-    pthread_spin_unlock(&g_worker_mutexes[self]);
+    //    pthread_spin_unlock(&g_worker_mutexes[self]);
   }  else {
     assert(frames[w->self].empty());
     frames[w->self].push();
@@ -168,54 +167,61 @@ size_t count_set_bits(label_t label)
 /// @todo either find a way to pass this through batchify or store it
 /// in the OM DS.
 __thread AtomicStack_t<tl_node*>* saved_heavy_nodes;
+int g_batch_owner_id = -1;
 
 // We actually only need the DS.
 void batch_relabel(void* ds, void* data, size_t size, void* results)
 {
-  om_assert(saved_heavy_nodes != NULL);
-  om_relabel((om*)ds, saved_heavy_nodes->at(0), saved_heavy_nodes->size());
-  saved_heavy_nodes = NULL;
-}
-
-void join_batch()
-{
-  RD_DEBUG("Worker %i joining a relabel operation.\n", t_worker->self);
-  //  cilk_batchify(batch_relabel, 0, 0, sizeof(int));
-}
-
-void start_batch(om* ds, AtomicStack_t<tl_node*>& heavy_nodes)
-{
-  RD_STATS(g_num_relabels++);
-  RD_STATS(g_relabel_size += heavy_nodes.size());
   RD_DEBUG("Begin relabel %zu.\n", g_num_relabels);
+  om_assert(saved_heavy_nodes != NULL);
 
-  // cilk_set_next_batch_owner();
-  // saved_heavy_nodes = &heavy_nodes;
-  // cilk_batchify(batch_relabel, ds, 0, sizeof(int));
-  om_relabel(ds, heavy_nodes.at(0), heavy_nodes.size());
-  heavy_nodes.reset();
+  // Save this because a different thread may return. @todo change
+  // batcher so this doesn't happen
+  AtomicStack_t<tl_node*>* heavy_nodes = saved_heavy_nodes;
+  if (!heavy_nodes->empty())
+    om_relabel((om*)ds, saved_heavy_nodes->at(0), saved_heavy_nodes->size());
 
-  for (int i = 0; i < __cilkrts_get_nworkers(); ++i) {
-    pthread_spin_unlock(&g_worker_mutexes[i]);
-  }
-  pthread_spin_unlock(&g_relabel_mutex);
+  RD_STATS(g_num_relabels++);
+  RD_STATS(g_relabel_size += heavy_nodes->size());
+
+  heavy_nodes->reset();
+
 }
 
-bool trylock_all(pthread_spinlock_t* muts, size_t num)
+void join_batch(om* ds, AtomicStack_t<tl_node*>& heavy_nodes)
 {
-  if (pthread_spin_trylock(&g_relabel_mutex) != 0) return false;
-  for (int i = 0; i < num; ++i) {
-    pthread_spin_lock(&muts[i]);
+  RD_DEBUG("Worker %i calling batchify.\n", self);
+  saved_heavy_nodes = &heavy_nodes;
+  cilk_batchify(batch_relabel, ds, 0, sizeof(int));
+  saved_heavy_nodes = NULL;
+  if (self == g_batch_owner_id) {
+    g_batch_owner_id = -1;
+    for (int i = 0; i < __cilkrts_get_nworkers(); ++i) {
+      pthread_spin_unlock(&g_worker_mutexes[i].mut);
+    }
+    pthread_spin_unlock(&g_relabel_mutex);
   }
-  return true;
+}
+
+extern "C" int cilk_tool_om_try_lock_all(__cilkrts_worker* w)
+{
+  if (pthread_spin_trylock(&g_relabel_mutex) != 0) return 0;
+  int p = __cilkrts_get_nworkers();
+  for (int i = 0; i < p; ++i) {
+    pthread_spin_lock(&g_worker_mutexes[i].mut);
+  }
+  cilk_set_next_batch_owner();
+  om_assert(g_batch_owner_id == -1);
+  g_batch_owner_id = w->self;
+  return 1;
 }
 
 om_node* insert_or_relabel(__cilkrts_worker* w, om* ds,
                            AtomicStack_t<tl_node*>& heavy_nodes, om_node* base)
 {
-  pthread_spinlock_t* mut = &g_worker_mutexes[w->self];
+  pthread_spinlock_t* mut = &g_worker_mutexes[w->self].mut;
   while (pthread_spin_trylock(mut) != 0) {
-    join_batch();
+    join_batch(ds, heavy_nodes);
   }
 
   om_node* n = insert_wrapper(ds, base);
@@ -229,15 +235,16 @@ om_node* insert_or_relabel(__cilkrts_worker* w, om* ds,
     }
 
     pthread_spin_unlock(mut);
-    if (trylock_all(g_worker_mutexes, __cilkrts_get_nworkers())) {
-      if (heavy_nodes.empty()) assert(base->list->half_full == 0);
-      else start_batch(ds, heavy_nodes);
-    } else {
-      join_batch();
-    }
+    // if (cilk_tool_om_try_lock_all(w)) {
+    //   if (heavy_nodes.empty()) assert(base->list->half_full == 0);
+    //   else start_batch(ds, heavy_nodes);
+    // } else {
+    //   join_batch();
+    // }
+    join_batch(ds, heavy_nodes);
     
-    while (pthread_spin_trylock(&g_worker_mutexes[w->self]) != 0) {
-      join_batch();
+    while (pthread_spin_trylock(mut) != 0) {
+      join_batch(ds, heavy_nodes);
     }
     n = insert_wrapper(ds, base);
   }
@@ -256,7 +263,7 @@ om_node* insert_or_relabel(__cilkrts_worker* w, om* ds,
   return n;
 }
 
-extern "C" void cilk_tool_init(void) 
+extern "C" void do_tool_init(void) 
 {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_init called.\n");
 
@@ -274,9 +281,10 @@ extern "C" void cilk_tool_init(void)
   g_hebrew = om_new();
   int p = __cilkrts_get_nworkers();
   frames = new AtomicStack_t<FrameData_t>[p];
-  g_worker_mutexes = new pthread_spinlock_t[p];
+  //  g_worker_mutexes = new pthread_spinlock_t[p];
+  g_worker_mutexes = (local_mut*)memalign(64, sizeof(local_mut)*p);
   for (int i = 0; i < p; ++i) {
-    pthread_spin_init(&g_worker_mutexes[i], PTHREAD_PROCESS_PRIVATE);
+    pthread_spin_init(&g_worker_mutexes[i].mut, PTHREAD_PROCESS_PRIVATE);
   }
   pthread_spin_init(&g_relabel_mutex, PTHREAD_PROCESS_PRIVATE);
   pthread_spin_init(&g_insert_lock, PTHREAD_PROCESS_PRIVATE);
@@ -286,7 +294,7 @@ extern "C" void cilk_tool_init(void)
   g_tool_init = 1;
 }
 
-extern "C" void cilk_tool_print(void)
+extern "C" void do_tool_print(void)
 {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_print called.\n");
 
@@ -305,22 +313,23 @@ extern "C" void cilk_tool_print(void)
 #endif
 }
 
-extern "C" void cilk_tool_destroy(void) 
+extern "C" void do_tool_destroy(void) 
 {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_destroy called.\n");
 
-  cilk_tool_print();
+  do_tool_print();
   om_free(g_english);
   om_free(g_hebrew);
   delete[] frames;
 
   for (int i = 0; i < __cilkrts_get_nworkers(); ++i) {
-    pthread_spin_destroy(&g_worker_mutexes[i]);
+    pthread_spin_destroy(&g_worker_mutexes[i].mut);
   }
   pthread_spin_destroy(&g_relabel_mutex);
   pthread_spin_destroy(&g_insert_lock);
 
-  delete[] g_worker_mutexes;
+  //  delete[] g_worker_mutexes;
+  free(g_worker_mutexes);
   //  delete_proc_maps(); /// @todo shakespeare has problems compiling print_addr.cpp
 }
 
@@ -362,15 +371,18 @@ extern "C" void do_enter_begin()
   f->current_hebrew = parent->current_hebrew;
 }
 
-// XXX Some of these should be done in detach --- args are evaluated between
-// enter_helper_begin and detach
-extern "C" void do_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip)
+  //  DBG_TRACE(DEBUG_CALLBACK, "do_detach_begin, parent sf %p.\n", sf->call_parent);
+extern "C" void do_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip) { }
+
+extern "C" void do_detach_begin(__cilkrts_stack_frame* parent_sf)
+//extern "C" void do_detach_end()
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_enter_helper_begin, sf %p and worker %d.\n", sf, self);
-  DBG_TRACE(DEBUG_CALLBACK, "do_enter_helper_begin, parent sf %p.\n", sf->call_parent);
+  // DBG_TRACE(DEBUG_CALLBACK, "do_detach_begin, parent %p and worker %d.\n",
+  //           parent_sf, self);
+  DBG_TRACE(DEBUG_CALLBACK, "do_detach_end, worker %d.\n", self);
+
 
   __cilkrts_worker* w = __cilkrts_get_tls_worker();
-  if (__cilkrts_get_batch_id(w) != -1) return;
 
   // can't be empty now that we init strand in do_enter_end
   om_assert(!frames[w->self].empty());
@@ -392,40 +404,40 @@ extern "C" void do_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, 
     parent->sync_hebrew =
       insert_or_relabel(w, g_hebrew, heavy_hebrew, parent->current_hebrew);
 
-    pthread_spin_lock(&g_worker_mutexes[self]);
-    assert(om_precedes(parent->current_english, parent->sync_english));
-    assert(om_precedes(parent->current_hebrew, parent->sync_hebrew));
-    pthread_spin_unlock(&g_worker_mutexes[self]);
+    // pthread_spin_lock(&g_worker_mutexes[self]);
+    // assert(om_precedes(parent->current_english, parent->sync_english));
+    // assert(om_precedes(parent->current_hebrew, parent->sync_hebrew));
+    // pthread_spin_unlock(&g_worker_mutexes[self]);
 
     DBG_TRACE(DEBUG_CALLBACK, 
-        "do_enter_helper_begin, setting parent sync_eng %p and sync heb %p.\n",
+        "do_detach_begin, setting parent sync_eng %p and sync heb %p.\n",
         parent->sync_english, parent->sync_hebrew);
   } else {
     DBG_TRACE(DEBUG_CALLBACK, 
-              "do_enter_helper_begin, NOT first spawn, parent sync eng %p.\n", 
+              "do_detach_begin, NOT first spawn, parent sync eng %p.\n", 
               parent->sync_english);
     RD_DEBUG("NOT first of spawn group\n");
   }
 
   f->current_english =
     insert_or_relabel(w, g_english, heavy_english, parent->current_english);
-  locked_assert(om_precedes(parent->current_english, f->current_english));
+  //  locked_assert(om_precedes(parent->current_english, f->current_english));
   parent->cont_english =
     insert_or_relabel(w, g_english, heavy_english, f->current_english);
-  locked_assert(om_precedes(f->current_english, parent->cont_english));
+  //  locked_assert(om_precedes(f->current_english, parent->cont_english));
 
   parent->cont_hebrew =
     insert_or_relabel(w, g_hebrew, heavy_hebrew, parent->current_hebrew);
-  locked_assert(om_precedes(parent->current_hebrew, parent->cont_hebrew));
+  //  locked_assert(om_precedes(parent->current_hebrew, parent->cont_hebrew));
   f->current_hebrew =
     insert_or_relabel(w, g_hebrew, heavy_hebrew, parent->cont_hebrew);
-  locked_assert(om_precedes(parent->cont_hebrew, f->current_hebrew));
+  //  locked_assert(om_precedes(parent->cont_hebrew, f->current_hebrew));
   
   DBG_TRACE(DEBUG_CALLBACK, 
-            "do_enter_helper_begin, f curr eng: %p and parent cont eng: %p.\n", 
+            "do_detach_begin, f curr eng: %p and parent cont eng: %p.\n", 
             f->current_english, parent->cont_english);
   DBG_TRACE(DEBUG_CALLBACK, 
-            "do_enter_helper_begin, f curr heb: %p and parent cont heb: %p.\n", 
+            "do_detach_begin, f curr heb: %p and parent cont heb: %p.\n", 
             f->current_hebrew, parent->cont_hebrew);
 
   f->cont_english = NULL;
@@ -549,12 +561,12 @@ extern "C" int do_leave_end()
     if (!(child->flags & FRAME_HELPER_MASK)) { // parent called current
       DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): returning from call.\n", self);
 
-      pthread_spin_lock(&g_worker_mutexes[self]);
-      assert(parent->current_english == child->current_english
-	     || om_precedes(parent->current_english, child->current_english));
-      assert(parent->current_hebrew == child->current_hebrew
-	     || om_precedes(parent->current_hebrew, child->current_hebrew));
-      pthread_spin_unlock(&g_worker_mutexes[self]);
+      // pthread_spin_lock(&g_worker_mutexes[self]);
+      // assert(parent->current_english == child->current_english
+	    //  || om_precedes(parent->current_english, child->current_english));
+      // assert(parent->current_hebrew == child->current_hebrew
+	    //  || om_precedes(parent->current_hebrew, child->current_hebrew));
+      // pthread_spin_unlock(&g_worker_mutexes[self]);
 
       om_assert(!parent->cont_english);
       om_assert(!parent->cont_hebrew);
@@ -605,8 +617,8 @@ record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
 }
 
 // XXX: We can only read 1,2,4,8,16 bytes; optimize later
-extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size) {
-
+extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size)
+{
   DBG_TRACE(DEBUG_MEMORY, "record read of %lu bytes at addr %p and rip %p.\n", 
             mem_size, addr, inst_addr);
 
@@ -635,8 +647,8 @@ extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size) {
 }
 
 // XXX: We can only read 1,2,4,8,16 bytes; optimize later
-extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size) {
-
+extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size)
+{
   DBG_TRACE(DEBUG_MEMORY, "record write of %lu bytes at addr %p and rip %p.\n", 
             mem_size, addr, inst_addr);
 
