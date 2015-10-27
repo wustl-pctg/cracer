@@ -47,6 +47,8 @@ cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim, __cilkrts_stac
 void __attribute__((weak))
 cilk_return_to_first_frame(__cilkrts_worker* w, __cilkrts_worker* team, __cilkrts_stack_frame* sf);
 
+int __attribute__((weak))
+cilk_tool_om_try_lock_all(__cilkrts_worker* w);
 
 EXTERN_C_END
 
