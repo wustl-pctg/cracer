@@ -10,6 +10,7 @@
 
 #include "../om/om.h"
 #include "debug_util.h"
+#include "omrd.h"
 
 #define MAX_GRAIN_SIZE 8
 // a mask that keeps all the bits set except for the least significant bits
@@ -30,7 +31,8 @@ static const int gtype_to_mem_size[4] = { 1, 2, 4, 8 };
 #define IS_ALIGNED_WITH_GTYPE(addr, gtype) \
   ((addr & (uint64_t)gtype_to_mem_size[gtype]-1) == 0)
 
-extern pthread_spinlock_t* g_worker_mutexes;
+//extern pthread_spinlock_t* g_worker_mutexes;
+extern local_mut* g_worker_mutexes;
 extern __thread int self;
 
 // Struct to hold strands corresponding to left / right readers and last writer
@@ -52,10 +54,10 @@ typedef struct MemAccess_t {
 
     /// @todo Is it worth it to join the batch relabel here?
     om_assert(self > -1);
-    pthread_spin_lock(&g_worker_mutexes[self]);
+    pthread_spin_lock(&g_worker_mutexes[self].mut);
     bool prec_in_english = om_precedes(estrand, curr_estrand);
     bool prec_in_hebrew  = om_precedes(hstrand, curr_hstrand);
-    pthread_spin_unlock(&g_worker_mutexes[self]);
+    pthread_spin_unlock(&g_worker_mutexes[self].mut);
 
     // race if the ordering in english and hebrew differ
     bool has_race = (prec_in_english == !prec_in_hebrew);
