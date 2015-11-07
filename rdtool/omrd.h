@@ -3,12 +3,20 @@
 
 #include <pthread.h>
 #include <malloc.h> // for memalign
+#include "../om/om.h"
 
 extern "C" void cilk_tool_print(void);
 extern "C" void cilk_tool_destroy(void);
 extern "C" void __om_enable_checking(); 
 extern "C" void __om_disable_checking();
 extern "C" void __om_disable_instrumentation();
+extern "C" void __om_init();
+extern "C" om_node* get_current_english();
+extern "C" om_node* get_current_hebrew();
+
+extern "C" void record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
+                                  uint32_t mem_size);
+
 
 #define PADDING char pad[(64 - sizeof(pthread_spinlock_t))]
 

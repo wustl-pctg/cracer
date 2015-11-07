@@ -87,6 +87,8 @@ typedef struct FrameData_s {
 } FrameData_t;
 
 AtomicStack_t<FrameData_t>* frames;
+om_node* base_english = NULL;
+om_node* base_hebrew = NULL;
 
 /// @todo A different design would be to have each OM itself contain a
 /// list of heavy nodes to rebalance.
@@ -143,9 +145,11 @@ void init_strand(__cilkrts_worker* w, FrameData_t* init)
     frames[w->self].push();
     f = frames[w->self].head();
     f->flags = 0;
-    f->current_english = insert_wrapper(g_english, NULL);
-    f->current_hebrew = insert_wrapper(g_hebrew, NULL);
-    RD_STATS(__sync_fetch_and_add(&g_num_inserts, 2));
+    f->current_english = base_english ? base_english : insert_wrapper(g_english, NULL);
+    f->current_hebrew = base_hebrew ? base_hebrew : insert_wrapper(g_hebrew, NULL);
+    // f->current_english = insert_wrapper(g_english, NULL);
+    // f->current_hebrew = insert_wrapper(g_hebrew, NULL);
+    //    RD_STATS(__sync_fetch_and_add(&g_num_inserts, 2));
     f->cont_english = NULL;
     f->cont_hebrew = NULL;
     f->sync_english = NULL;
@@ -263,6 +267,16 @@ om_node* insert_or_relabel(__cilkrts_worker* w, om* ds,
   return n;
 }
 
+extern "C" void __om_init()
+{
+  g_english = om_new();
+  g_hebrew = om_new();
+  base_english = om_insert_initial(g_english);
+  base_hebrew = om_insert_initial(g_hebrew);
+  RD_STATS(__sync_fetch_and_add(&g_num_inserts, 2));
+}
+
+
 extern "C" void do_tool_init(void) 
 {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_init called.\n");
@@ -277,8 +291,10 @@ extern "C" void do_tool_init(void)
     g_timing_event_ends[i].tv_nsec = EMPTY_TIME_POINT.tv_nsec;
   }
 #endif
-  g_english = om_new();
-  g_hebrew = om_new();
+  if (!base_english) {
+    g_english = om_new();
+    g_hebrew = om_new();
+  }
   int p = __cilkrts_get_nworkers();
   frames = new AtomicStack_t<FrameData_t>[p];
   //  g_worker_mutexes = new pthread_spinlock_t[p];
@@ -294,6 +310,9 @@ extern "C" void do_tool_init(void)
   g_tool_init = 1;
 }
 
+
+int g_counter = 0;
+
 extern "C" void do_tool_print(void)
 {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_print called.\n");
@@ -306,6 +325,7 @@ extern "C" void do_tool_print(void)
   }
   std::cout << std::endl;
 #endif
+  std::cout << "counter: " << g_counter << std::endl;
 #if STATS > 0  
   std::cout << "Num relabels: " << g_num_relabels << std::endl;
   std::cout << "Num inserts: " << g_num_inserts << std::endl;
@@ -332,6 +352,21 @@ extern "C" void do_tool_destroy(void)
   free(g_worker_mutexes);
   //  delete_proc_maps(); /// @todo shakespeare has problems compiling print_addr.cpp
 }
+
+extern "C" om_node* get_current_english()
+{
+  __cilkrts_worker* w = __cilkrts_get_tls_worker();
+  if (!frames) return NULL;
+  return frames[w->self].head()->current_english;
+}
+
+extern "C" om_node* get_current_hebrew()
+{
+  __cilkrts_worker* w = __cilkrts_get_tls_worker();
+  if (!frames) return NULL;
+  return frames[w->self].head()->current_hebrew;
+}
+
 
 extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
                                  __cilkrts_stack_frame* sf)
@@ -590,20 +625,23 @@ extern "C" int do_leave_end()
 
 // called by record_memory_read/write, with the access broken down 
 // into 8-byte aligned memory accesses
-static void 
+void 
 record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
-                  uint32_t mem_size) {
-
+                  uint32_t mem_size)
+{
   om_assert(self != -1);
   FrameData_t *f = frames[self].head();
   MemAccessList_t *val = shadow_mem.find( ADDR_TO_KEY(addr) );
+  MemAccess_t *acc = NULL;
+  MemAccessList_t *mem_list = NULL;
 
   if( val == NULL ) {
+    g_counter++;
     // not in shadow memory; create a new MemAccessList_t and insert
-    MemAccess_t *acc = 
-        new MemAccess_t(f->current_english, f->current_hebrew, inst_addr);
-    MemAccessList_t *mem_list = 
-        new MemAccessList_t(addr, is_read, acc, mem_size);
+    //    if (acc == NULL) {
+      acc = new MemAccess_t(f->current_english, f->current_hebrew, inst_addr);
+      mem_list = new MemAccessList_t(addr, is_read, acc, mem_size);
+      //    }
     val = shadow_mem.insert(ADDR_TO_KEY(addr), mem_list);
     // insert failed; someone got to the slot first;
     // delete new mem_list and fall through to check race with it 
