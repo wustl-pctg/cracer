@@ -28,22 +28,6 @@ extern "C" void do_tool_init(void);
 extern "C" void do_tool_print(void);
 extern "C" void do_tool_destroy(void);
 
-
-// declared in cilksan; for debugging only
-// enable it later
-// #if OM_DEBUG
-// extern enum EventType_t last_event;  
-// #endif
-
-// This makes me very nervous. jmp_buf is simply declared as an array
-// of longs. It is implementation-dependent which one is the stack
-// pointer...
-#if ! defined(_MSC_VER)
-#define GET_SP(sf) sf->ctx[0]
-#else
-#error "This code doesn't work in Windows yet."
-#endif
-
 extern __thread __cilkrts_worker *t_worker;
 
 
@@ -105,10 +89,6 @@ extern "C" void __tsan_init()
   if(TOOL_INITIALIZED) return;
 
   atexit(tsan_destroy);
-  //init_internal();
-  // moved this later when we enter the first Cilk frame
-  // cilksan_init();
-  //  enable_instrumentation();
   TOOL_INITIALIZED = true;
   enable_checking();
 }
@@ -142,19 +122,7 @@ static bool should_check() {
 /* Need to get the stack_low_watermark (where the stack ends) so that
  * we can clean the shadow mem corresponding to cactus stack.
  */
-extern "C" void __tsan_func_entry(void *pc) { 
-/*
-  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  disable_checking();
-  uint64_t res = (uint64_t) __builtin_frame_address(0);
-  if(stack_low_watermark > res) {
-    stack_low_watermark = res;
-    DBG_TRACE(DEBUG_CALLBACK, 
-              "tsan_func_enter, set stack_low_watermark %lx.\n", res);
-  }
-  enable_checking();
-*/
-}
+extern "C" void __tsan_func_entry(void *pc){ }
 
 extern "C" void cilk_tool_init(void)
 {
@@ -179,7 +147,6 @@ extern "C" void cilk_tool_destroy(void)
   do_tool_destroy();
   enable_checking();
 }
-
 
 /* We would like to clear the shadow memory correponding to the cactus
  * stack whenever we leave a Cilk function.  Unfortunately, variables are 
@@ -259,8 +226,6 @@ extern "C" void cilk_spawn_prepare() {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   DBG_TRACE(DEBUG_CALLBACK, "cilk_spawn_prepare.\n");
   disable_checking();
-   // om_assert(last_event == NONE);
-   // WHEN_OM_DEBUG( last_event = SPAWN_PREPARE; ) 
 }
 
 extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
@@ -362,7 +327,6 @@ extern "C" void cilk_leave_stolen(__cilkrts_worker* w,
   // __cilkrts_c_THE_exception_check
   // cilk_leave_stolen
 
-  //  if (saved_sf == NULL || w != saved_sf->worker) {
   uint64_t stack_high_watermark;
   if (is_original) stack_high_watermark = (uint64_t)__builtin_frame_address(4);
   else stack_high_watermark = (uint64_t)stack_base;
@@ -467,28 +431,28 @@ extern "C" void* malloc(size_t s) {
 // right before the corresponding read / write in the user code.
 // the return addr of __tsan_read/write[1-16] is the rip for the read / write
 
-static inline void tsan_read(void *addr, size_t size, void *rip) {
-  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
+static inline void tsan_read(void *addr, size_t mem_size, void *rip) {
   om_assert(TOOL_INITIALIZED);
   if(should_check()) {
-    disable_checking();
+    //    disable_checking();
     DBG_TRACE(DEBUG_MEMORY, "%s read %p\n", __FUNCTION__, addr);
-    do_read((uint64_t)rip, (uint64_t)addr, size);
-    enable_checking();
+    //    do_read((uint64_t)rip, (uint64_t)addr, mem_size);
+    record_mem_helper(true, (uint64_t)rip, (uint64_t)addr, mem_size);
+    //    enable_checking();
   } else {
     DBG_TRACE(DEBUG_MEMORY, "SKIP %s read %p\n", __FUNCTION__, addr);
   }
 }
 
-static inline void tsan_write(void *addr, size_t size, void *rip)
+static inline void tsan_write(void *addr, size_t mem_size, void *rip)
 {
-  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return; 
   om_assert(TOOL_INITIALIZED);
   if(should_check()) {
-    disable_checking();
+    //    disable_checking();
     DBG_TRACE(DEBUG_MEMORY, "%s wrote %p\n", __FUNCTION__, addr);
-    do_write((uint64_t)rip, (uint64_t)addr, size);
-    enable_checking();
+    //    do_write((uint64_t)rip, (uint64_t)addr, mem_size);
+    record_mem_helper(false, (uint64_t)rip, (uint64_t)addr, mem_size);
+    //    enable_checking();
   } else {
     DBG_TRACE(DEBUG_MEMORY, "SKIP %s wrote %p\n", __FUNCTION__, addr);
   }
