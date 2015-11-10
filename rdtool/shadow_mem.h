@@ -14,8 +14,10 @@ private:
   struct shadow_tbl { T *shadow_entries[1<<LOG_TBL_SIZE]; };
 
   struct shadow_tbl **shadow_dir;
+  int m_counter;
+  //  shadow_tbl *m_tbl;
 
-  T** find_slot(uint64_t key, bool alloc) {
+  inline T** find_slot(uint64_t key, bool alloc) {
     /* I think this volatile is necessary and sufficient ... */
     shadow_tbl *volatile *dest = &(shadow_dir[key>>LOG_TBL_SIZE]);
     shadow_tbl *tbl = *dest;
@@ -23,7 +25,10 @@ private:
     if (!alloc && !tbl) {
       return NULL;
     } else if (tbl == NULL) {
-      struct shadow_tbl *new_tbl = new struct shadow_tbl();
+      //  if (m_tbl == NULL) m_tbl = new struct shadow_tbl();
+      shadow_tbl *new_tbl = new struct shadow_tbl();
+      m_counter++;
+      //      struct shadow_tbl *new_tbl = new struct shadow_tbl();
       do {
         tbl = __sync_val_compare_and_swap(dest, tbl, new_tbl);
       } while(tbl == NULL);
@@ -41,9 +46,10 @@ public:
   ShadowMem() {
     shadow_dir = 
       new struct shadow_tbl *[1<<(48 - LOG_TBL_SIZE - LOG_KEY_SIZE)]();
+    m_counter = 0;
   }
 
-  T* find(uint64_t key) {
+  inline T* find(uint64_t key) {
     T **slot = find_slot(key, false);
     if (slot == NULL)
       return NULL;
@@ -54,13 +60,15 @@ public:
   //  return the value at the memory location when insert occurs
   //  If the value returned != val, insertion failed because someone
   //  else got to the slot first.  
-  T * insert(uint64_t key, T *val) {
+  inline T * insert(uint64_t key, T *val) {
     T *volatile *slot = find_slot(key, true);
     T *old_val = *slot;
     
     while(old_val == NULL) {
       // retry as long as the old_val is still NULL
-      old_val = __sync_val_compare_and_swap(slot, old_val, val);
+      old_val = __sync_val_compare_and_swap(slot, old_val,val);
+      /* *slot = val; */
+      /* old_val = val; */
     }
     om_assert(old_val != NULL);    
     // Note that old_val may not be val if someone else got to insert first
@@ -79,6 +87,10 @@ public:
     T **slot = find_slot(key, false);
     if (slot != NULL)
       *slot = NULL;
+  }
+
+  ~ShadowMem() {
+    printf("Table allocated %i times.\n", m_counter);
   }
 
 };
