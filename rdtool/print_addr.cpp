@@ -138,7 +138,7 @@ get_info_on_mem_access(uint64_t inst_addr) {
 }
 
 static void print_race_info(const RaceInfo_t& race) {
-  
+
   std::cerr << "Race detected at address " 
             << std::hex << "0x" << race.addr << std::dec << std::endl;
   std::string first_acc_info = get_info_on_mem_access(race.first_inst); 
@@ -188,6 +188,7 @@ void report_race(uint64_t first_inst, uint64_t second_inst,
     print_race_info(race);
     races_found.insert( std::make_pair(key, race) );
   }
+  //  std::exit(1);
 }
 
 // Report viewread race
