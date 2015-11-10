@@ -1,6 +1,8 @@
 #ifndef PRINT_ADDR_H
 #define PRINT_ADDR_H
 
+#include <stdint.h>
+
 #if defined (__cplusplus)
 extern "C" {
 #endif
