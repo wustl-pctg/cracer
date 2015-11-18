@@ -39,13 +39,23 @@
 #include <iostream>
 #include <chrono>
 #include "../omrd.h"
-//#include "cilksan.h"
+#include "../rd.h"
+#include "../print_addr.h"
+
+#ifdef RACEDETECT
+#define RD_ENABLE __om_enable_checking()
+#define RD_DISABLE __om_disable_checking()
+#else
+#define RD_ENABLE
+#define RD_DISABLE
+#endif
 
 #ifndef RAND_MAX
 #define RAND_MAX 32767
 #endif
 
 #define REAL float
+
 
 unsigned long rand_nxt = 0;
 
@@ -183,29 +193,41 @@ void iter_matmul(REAL *A, REAL *B, REAL *C, int n) {
  * C \in M(m, p)
  */
 void rec_matmul(REAL *A, REAL *B, REAL *C, 
-    int m, int n, int p, int ld, int add) {
+                int m, int n, int p, int ld, int add) {
 
   if ((m + n + p) <= 64) {
     int i, j, k;
     /* base case */
+    RD_ENABLE;
     if (add) {
       for (i = 0; i < m; i++)
         for (k = 0; k < p; k++) {
           REAL c = 0.0;
-          for (j = 0; j < n; j++)
+          for (j = 0; j < n; j++) {
+            //            RD_ENABLE;
             c += A[i * ld + j] * B[j * ld + k];
+            //            RD_DISABLE;
+
+          }
+          //          RD_ENABLE;
           C[i * ld + k] += c;
+          //          RD_DISABLE;
         }
     } else {
       for (i = 0; i < m; i++)
         for (k = 0; k < p; k++) {
           REAL c = 0.0;
-          for (j = 0; j < n; j++)
+          for (j = 0; j < n; j++) {
+            //            RD_ENABLE;
             c += A[i * ld + j] * B[j * ld + k];
+            //            RD_DISABLE;
+          }
+          //          RD_ENABLE;
           C[i * ld + k] = c;
+          //RD_DISABLE;
         }
     }
-
+    RD_DISABLE;
     return;
   } 
 
@@ -284,8 +306,12 @@ void mat_vec_mul(REAL *A, REAL *R, REAL *P, int m, int n, int ld, int add) {
 const char *specifiers[] = {"-n", "-c", "-rc", "-h", 0};
 int opt_types[] = {INTARG, BOOLARG, BOOLARG, BOOLARG, 0};
 
-int main(int argc, char *argv[]) { 
-
+int main(int argc, char *argv[])
+{ 
+  // __om_disable_instrumentation();
+  //  __om_disable_checking();
+  //  __om_init();
+  RD_DISABLE;
   int n = 1024; // default input size 
   int check = 0, rand_check = 0, help = 0; // default options
 
@@ -299,11 +325,11 @@ int main(int argc, char *argv[]) {
 
   if(help) {
     fprintf(stderr, 
-        "Usage: matmul [-n size] [-c] [-rc] [-h] [<cilk options>]\n");
+            "Usage: matmul [-n size] [-c] [-rc] [-h] [<cilk options>]\n");
     fprintf(stderr, "if -c is set, "
-        "check result against iterative matrix multiply O(n^3).\n");
+            "check result against iterative matrix multiply O(n^3).\n");
     fprintf(stderr, "if -rc is set, check "
-        "result against randomlized algo. due to Freivalds O(n^2).\n");
+            "result against randomlized algo. due to Freivalds O(n^2).\n");
     exit(1);
   }
 
@@ -322,13 +348,14 @@ int main(int argc, char *argv[]) {
     zero(C2, n);
   }
 
+  RD_ENABLE;
   init(A, n);
   init(B, n);
+  zero(C, n);  /* initialization and reset */
+  RD_DISABLE; 
 
   //  printf("\nCalculate using recursive method ... \n");
 
-  /* initialization and reset */
-  zero(C, n); 
   auto start = std::chrono::high_resolution_clock::now();
   rec_matmul(A, B, C, n, n, n, n, 0); 
   auto end = std::chrono::high_resolution_clock::now();
@@ -366,7 +393,7 @@ int main(int argc, char *argv[]) {
     free(C2);
   }
 
-  //  assert(__cilksan_error_count() == 0);
+assert(get_num_races_found() == 0);
 
   return 0;
 }
