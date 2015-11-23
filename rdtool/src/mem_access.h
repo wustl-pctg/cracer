@@ -8,9 +8,9 @@
 #include <inttypes.h>
 #include <pthread.h>
 
-#include "../om/om.h"
 #include "debug_util.h"
-#include "omrd.h"
+#include "shadow_stack.h" // is this necessary?
+#include "om/om.h"
 
 #define MAX_GRAIN_SIZE 8
 // a mask that keeps all the bits set except for the least significant bits
