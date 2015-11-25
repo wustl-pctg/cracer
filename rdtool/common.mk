@@ -1,18 +1,25 @@
--include ../config.mk
-CC ?= $(COMPILER_HOME)/bin/clang #-flto
-CXX ?= $(COMPILER_HOME)/bin/clang++ #-flto
+TOOL_HOME:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+include $(TOOL_HOME)/config.mk
+
+#TOOL_HOME ?= $(shell pwd)
+TOOL_NAME = rd
+LIB_DIR ?= $(TOOL_HOME)/lib
+INC_DIR ?= $(TOOL_HOME)/include
+
+CC = $(COMPILER_HOME)/bin/clang #-flto
+CXX = $(COMPILER_HOME)/bin/clang++ #-flto
 
 OPT_FLAG ?= -O3
-# -fno-omit-frame-pointer required to work properly
-FLAGS += $(OPT_FLAG) -Wall -g -fno-omit-frame-pointer #-DNDEBUG
-CFLAGS += $(BASIC_FLAGS) -std=c99
-CXXFLAGS += $(BASIC_FLAGS) -std=c++11
-
 CILKFLAGS += -fcilkplus -fno-inline-detach
-INC += -I../include/
+INC = -I$(INC_DIR) -I$(COMPILER_HOME)/include
+# -fno-omit-frame-pointer required to work properly
+FLAGS += $(OPT_FLAG) -Wall -g -fno-omit-frame-pointer $(CILKFLAGS) $(INC) #-DNDEBUG
+CFLAGS += $(FLAGS) -std=c99
+CXXFLAGS += $(FLAGS) -std=c++11
+LDFLAGS = 
+
+ARFLAGS=
 # #ARFLAGS=--plugin $(COMPILE_HOME/lib/LLVMgold.so
-LDFLAGS += $(MALLOC)
-# LDFLAGS = -L$(LIB_DIR) $(APP_LDFLAGS)
 # LDLIBS = $(TOOL_LDLIBS) $(APP_LDLIBS)
 
 ## Each C source file will have a corresponding file of prerequisites.
@@ -37,14 +44,14 @@ LDFLAGS += $(MALLOC)
 	rm -f $@.$$$$
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ -c $<
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $<
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ -c $<
 
 #$(LIB_DIR)
 $(LIB_DIR)/lib%.a: $(OBJ)
-	ar rcs $@ $(OBJ)
+	ar $(ARFLAGS) -r $@ $(OBJ)
 
 #$(LIB_DIR)
 $(LIB_DIR)/lib%.so: $(OBJ)
