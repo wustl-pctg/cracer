@@ -1,14 +1,15 @@
-TARGETS := matmul fib
+include ../test.mk
+TARGETS := matmul
 
 #fib fib-serial fibx cholesky cilksort fft heat knapsack lu \
 matmul nqueens rectmul strassen qsort # throw foo
 
-default : $(TARGETS)
+default : $(TARGETS:=_bench)
 
 ALL_TESTS = $(TARGETS)
-LIB = ../libomrd.a
+LIB = $(LIB_DIR)/lib$(TOOL_NAME).a
 
-fib: fib.o $(LIB)
+# fib: fib.o $(LIB)
 # fib-serial: fib-serial.o 
 # fibx: fibx.o
 # cholesky: getoptions.o cholesky.o
@@ -17,11 +18,12 @@ fib: fib.o $(LIB)
 # heat: getoptions.o heat.o
 # knapsack: getoptions.o knapsack.o
 # lu: getoptions.o lu.o
-matmul: getoptions.o matmul.o $(LIB)
+# matmul: getoptions.o matmul.o $(LIB)
 # nqueens: getoptions.o nqueens.o
 # rectmul: getoptions.o rectmul.o
 # strassen: getoptions.o strassen.o
 # loop-matmul: loop-matmul.o
 # qsort: qsort.o
 
-include ../test.mk
+%_bench: %.o getoptions.o $(LIB)
+	$(CXX) $< getoptions.o $(LIB) $(LDFLAGS) -o $(@:_bench=)
