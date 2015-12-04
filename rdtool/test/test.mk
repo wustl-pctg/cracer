@@ -7,7 +7,7 @@ include $(TEST_MK_DIR)/../common.mk
 
 RDFLAGS = -DRACEDETECT -fcilktool -fsanitize=thread
 LDFLAGS += $(RUNTIME_LIB) -ldl -lpthread $(MALLOC)
-CFLAGS += $(RDFLAGS) $(LDFLAGS)
-CXXFLAGS += $(RDFLAGS) $(LDFLAGS)
+CFLAGS += $(RDFLAGS)
+CXXFLAGS += $(RDFLAGS)
 
 #LDFLAGS += -L$(LIB_DIR)
