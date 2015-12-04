@@ -43,17 +43,17 @@ ARFLAGS=
 # 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 # 	rm -f $@.$$$$
 
-%.o: %.c
-	$(CC) $(CFLAGS) -o $@ -c $<
+$(OBJ_DIR)/%.o: %.c
+	mkdir -p $(OBJ_DIR)
+	$(CC) $(CFLAGS) -o $(OBJ_DIR)/$@ -c $<
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -o $@ -c $<
+$(OBJ_DIR)/%.o: %.cpp
+	mkdir -p $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -o $(OBJ_DIR)$@ -c $<
 
-#$(LIB_DIR)
 $(LIB_DIR)/lib%.a: $(OBJ)
 	ar $(ARFLAGS) -r $@ $(OBJ)
 
-#$(LIB_DIR)
 $(LIB_DIR)/lib%.so: $(OBJ)
 	$(CC) $(OBJ) -shared -o $@
 
