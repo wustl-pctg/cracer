@@ -16,7 +16,7 @@ INC = -I$(INC_DIR) -I$(COMPILER_HOME)/include
 FLAGS += $(OPT_FLAG) -Wall -g -fno-omit-frame-pointer $(CILKFLAGS) $(INC) #-DNDEBUG
 CFLAGS += $(FLAGS) -std=c99
 CXXFLAGS += $(FLAGS) -std=c++11
-LDFLAGS = 
+LDFLAGS += 
 
 ARFLAGS=
 # #ARFLAGS=--plugin $(COMPILE_HOME/lib/LLVMgold.so

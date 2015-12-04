@@ -6,8 +6,6 @@ TEST_MK_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 include $(TEST_MK_DIR)/../common.mk
 
 RDFLAGS = -DRACEDETECT -fcilktool -fsanitize=thread
-LDFLAGS += $(RUNTIME_LIB) -ldl -lpthread $(MALLOC)
-CFLAGS += $(RDFLAGS)
-CXXFLAGS += $(RDFLAGS)
-
-#LDFLAGS += -L$(LIB_DIR)
+LDFLAGS += -ldl -lpthread $(MALLOC)
+CFLAGS += 
+CXXFLAGS += 
