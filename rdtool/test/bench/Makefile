@@ -1,7 +1,7 @@
 include ../test.mk
 TARGETS := matmul sum
 TARGETS_BENCH := $(TARGETS:=_bench)
-#TARGETS_BASE := $(TARGETS:=_base)
+TARGETS_BASE := $(TARGETS:=_base)
 
 #fib fib-serial fibx cholesky cilksort fft heat knapsack lu \
 matmul nqueens rectmul strassen qsort # throw foo
@@ -12,6 +12,9 @@ bench: $(TARGETS_BENCH)
 
 ALL_TESTS = $(TARGETS)
 LIB = $(LIB_DIR)/lib$(TOOL_NAME).a
+
+$(TARGETS): %: %_bench
+	touch %_bench
 
 # fib: fib.o $(LIB)
 # fib-serial: fib-serial.o 
@@ -35,4 +38,7 @@ LIB = $(LIB_DIR)/lib$(TOOL_NAME).a
 .PHONY: default clean $(TARGETS)
 
 clean:
-	rm -rf *.o $(TARGETS_BENCH) $(TARGETS_BASE)
+	rm -rf *.o $(TARGETS_BENCH)
+
+baseclean:
+	rm -rf $(TARGETS_BASE)
