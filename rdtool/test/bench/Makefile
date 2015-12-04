@@ -13,8 +13,7 @@ bench: $(TARGETS_BENCH)
 ALL_TESTS = $(TARGETS)
 LIB = $(LIB_DIR)/lib$(TOOL_NAME).a
 
-$(TARGETS): %: %_bench
-	touch %_bench
+$(TARGETS) : % : %_bench
 
 # fib: fib.o $(LIB)
 # fib-serial: fib-serial.o 
@@ -32,8 +31,14 @@ $(TARGETS): %: %_bench
 # loop-matmul: loop-matmul.o
 # qsort: qsort.o
 
+%_bench: CFLAGS += $(RDFLAGS)
+%_bench: CXXFLAGS += $(RDFLAGS)
+%_bench: LDFLAGS += $(RUNTIME_LIB)
 %_bench: %.o getoptions.o $(LIB)
 	$(CXX) $< getoptions.o $(LIB) $(LDFLAGS) -o $@
+
+%_base: %.base.o getoptions.o
+	$(CXX) $< getoptions.o $(LDFLAGS) -o $@
 
 .PHONY: default clean $(TARGETS)
 
