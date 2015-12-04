@@ -27,27 +27,27 @@ ARFLAGS=
 
 # This rule generates a file of prerequisites (i.e., a makefile)
 # called name.d from a C source file name.c.
-%.d: CFLAGS += -MM -MP
-%.d: %.c
-	@set -e; rm -f $@; \
-	$(CC) $(CFLAGS) -MF $@.$$$$ $<; \
-	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-	rm -f $@.$$$$
+# %.d: CFLAGS += -MM -MP
+# %.d: %.c
+# 	@set -e; rm -f $@; \
+# 	$(CC) $(CFLAGS) -MF $@.$$$$ $<; \
+# 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+# 	rm -f $@.$$$$
 
 # This rule generates a file of prerequisites (i.e., a makefile)
 # called name.d from a CPP source file name.cpp.
-%.d: CXXFLAGS += -MM -MP
-%.d: %.cpp
-	@set -e; rm -f $@; \
-	$(CXX) $(CXXFLAGS) -MF $@.$$$$ $<; \
-	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-	rm -f $@.$$$$
+# %.d: CXXFLAGS += -MM -MP
+# %.d: %.cpp
+# 	@set -e; rm -f $@; \
+# 	$(CXX) $(CXXFLAGS) -MF $@.$$$$ $<; \
+# 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+# 	rm -f $@.$$$$
 
 %.o: %.c
-	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
 #$(LIB_DIR)
 $(LIB_DIR)/lib%.a: $(OBJ)
@@ -56,3 +56,5 @@ $(LIB_DIR)/lib%.a: $(OBJ)
 #$(LIB_DIR)
 $(LIB_DIR)/lib%.so: $(OBJ)
 	$(CC) $(OBJ) -shared -o $@
+
+.PRECIOUS: %.o
