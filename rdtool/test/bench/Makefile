@@ -32,7 +32,7 @@ $(TARGETS) : % : %_bench
 # loop-matmul: loop-matmul.o
 # qsort: qsort.o
 
-%_base: OBJ_DIR := $(OBJ_DIR_BENCH)
+%_base: OBJ_DIR := $(OBJ_DIR_BASE)
 %_base: LDFLAGS += $(RUNTIME_LIB)
 %_base: $(OBJ_DIR)/%.o $(OBJ_DIR)/getoptions.o
 	$(CXX) $(OBJ_DIR)/$< $(OBJ_DIR)/getoptions.o $(LDFLAGS) -o $@
