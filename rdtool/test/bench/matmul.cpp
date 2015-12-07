@@ -38,13 +38,13 @@
 
 #include <iostream>
 #include <chrono>
-#include "../omrd.h"
-#include "../rd.h"
-#include "../print_addr.h"
 
 #ifdef RACEDETECT
 #define RD_ENABLE __om_enable_checking()
 #define RD_DISABLE __om_disable_checking()
+#include "rd.h"
+#include "../src/print_addr.h" // Hack. @todo declare the necessary
+                               // funcs in rd.h
 #else
 #define RD_ENABLE
 #define RD_DISABLE
@@ -379,7 +379,10 @@ int main(int argc, char *argv[])
   //  printf("\nCilk Example: matmul\n");
   //  printf("Options: size = %d\n", n);
   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+
+#ifdef RACEDETECT
   cilk_tool_destroy();
+#endif
 
   free(C);
   free(B);
@@ -393,7 +396,9 @@ int main(int argc, char *argv[])
     free(C2);
   }
 
-assert(get_num_races_found() == 0);
+#ifdef RACEDETECT
+  assert(get_num_races_found() == 0);
+#endif
 
   return 0;
 }
