@@ -1,36 +1,30 @@
 include ../test.mk
-TARGETS := matmul sum
+TARGETS := matmul fft cholesky
 TARGETS_BENCH := $(TARGETS:=_bench)
 TARGETS_BASE := $(TARGETS:=_base)
-OBJ_DIR_BASE := ./baseobj
-OBJ_DIR_BENCH := ./rdobj
+TARGETS_ICC := $(TARGETS:=_icc)
+TARGETS_INSERT := $(TARGETS:=_insert)
+OBJ_DIR_BASE := ./obj_base
+OBJ_DIR_BENCH := ./obj_rd
+OBJ_DIR_INSERT := ./obj_insert
+OBJ_DIR_ICC := ./obj_icc
 LIB = $(LIB_DIR)/lib$(TOOL_NAME).a
 
-#fib fib-serial fibx cholesky cilksort fft heat knapsack lu \
-matmul nqueens rectmul strassen qsort # throw foo
-
 default : $(TARGETS_BENCH)
+all: $(TARGETS_BENCH) $(TARGETS_BASE) $(TARGETS_INSERT) $(TARGETS_ICC)
 bench: $(TARGETS_BENCH)
 base: $(TARGETS_BASE)
+insert: $(TARGETS_INSERT)
+icc: $(TARGETS_ICC)
 
 
 $(TARGETS) : % : %_bench
 
-# fib: fib.o $(LIB)
-# fib-serial: fib-serial.o 
-# fibx: fibx.o
-# cholesky: getoptions.o cholesky.o
-# cilksort: getoptions.o cilksort.o
-# fft: getoptions.o fft.o
-# heat: getoptions.o heat.o
-# knapsack: getoptions.o knapsack.o
-# lu: getoptions.o lu.o
-# matmul: getoptions.o matmul.o
-# nqueens: getoptions.o nqueens.o
-# rectmul: getoptions.o rectmul.o
-# strassen: getoptions.o strassen.o
-# loop-matmul: loop-matmul.o
-# qsort: qsort.o
+%_all:
+	$(MAKE) $(@:_all=_base)
+	$(MAKE) $(@:_all=_insert)
+	$(MAKE) $(@:_all=_bench)
+	$(MAKE) $(@:_all=_icc)
 
 %_base: OBJ_DIR := $(OBJ_DIR_BASE)
 %_base: LDFLAGS += $(RUNTIME_LIB)
@@ -44,11 +38,27 @@ $(TARGETS) : % : %_bench
 %_bench: $(OBJ_DIR)/%.o $(OBJ_DIR)/getoptions.o $(LIB)
 	$(CXX) $(OBJ_DIR)/$< $(OBJ_DIR)/getoptions.o $(LIB) $(LDFLAGS) -o $@
 
+%_insert: OBJ_DIR := $(OBJ_DIR_INSERT)
+%_insert: CFLAGS += $(RDFLAGS) -DINSERTSONLY
+%_insert: CXXFLAGS += $(RDFLAGS) -DINSERTSONLY
+%_insert: LDFLAGS += $(RUNTIME_LIB)
+%_insert: $(OBJ_DIR)/%.o $(OBJ_DIR)/getoptions.o $(LIB)
+	$(CXX) $(OBJ_DIR)/$< $(OBJ_DIR)/getoptions.o $(LIB) $(LDFLAGS) -o $@
+
+%_icc: OBJ_DIR := $(OBJ_DIR_ICC)
+%_icc: LDFLAGS += $(MALLOC)
+%_icc: CC := $(ICC)
+%_icc: CXX := $(ICC)
+%_icc: LDFLAGS += -lcilkrts
+%_icc: $(OBJ_DIR)/%.o $(OBJ_DIR)/getoptions.o
+	$(CXX) $(OBJ_DIR)/$< $(OBJ_DIR)/getoptions.o $(LDFLAGS) -o $@
+
 .PHONY: default clean $(TARGETS) %_bench
 
 clean:
-	rm -rf *.o $(TARGETS_BENCH)
-	rm -rf $(OBJ_DIR_BENCH)
+	rm -rf *.o $(OBJ_DIR_BENCH) $(OBJ_DIR_INSERT)
+	rm -rf $(TARGETS_BENCH) $(TARGETS_INSERT)
 
 baseclean:
-	rm -rf $(TARGETS_BASE) $(OBJ_DIR_BASE)
+	rm -rf $(OBJ_DIR_BASE) $(OBJ_DIR_ICC)
+	rm -rf $(TARGETS_BASE) $(TARGETS_ICC)
