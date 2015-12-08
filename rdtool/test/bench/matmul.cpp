@@ -38,17 +38,8 @@
 
 #include <iostream>
 #include <chrono>
+#include "bench.h"
 
-#ifdef RACEDETECT
-#define RD_ENABLE __om_enable_checking()
-#define RD_DISABLE __om_disable_checking()
-#include "rd.h"
-#include "../src/print_addr.h" // Hack. @todo declare the necessary
-                               // funcs in rd.h
-#else
-#define RD_ENABLE
-#define RD_DISABLE
-#endif
 
 #ifndef RAND_MAX
 #define RAND_MAX 32767
@@ -308,9 +299,9 @@ int opt_types[] = {INTARG, BOOLARG, BOOLARG, BOOLARG, 0};
 
 int main(int argc, char *argv[])
 { 
-  // __om_disable_instrumentation();
-  //  __om_disable_checking();
-  //  __om_init();
+#ifdef INSERTSONLY
+  RD_DISABLE;
+#endif
   RD_DISABLE;
   int n = 1024; // default input size 
   int check = 0, rand_check = 0, help = 0; // default options
@@ -377,7 +368,7 @@ int main(int argc, char *argv[])
   }
 
   //  printf("\nCilk Example: matmul\n");
-  //  printf("Options: size = %d\n", n);
+  //printf("Options: size = %d\n", n);
   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
 
 #ifdef RACEDETECT
@@ -402,4 +393,3 @@ int main(int argc, char *argv[])
 
   return 0;
 }
-
