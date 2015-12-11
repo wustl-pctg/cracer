@@ -6,7 +6,7 @@
 #include <cilk/batcher.h>
 #include "debug_util.h" 
 #include "mem_access.h" 
-#include "omrd.h" 
+#include "rd.h" 
 
 /* defined in omrd.cpp */
 extern "C" void 
@@ -315,6 +315,7 @@ extern "C" void cilk_leave_stolen(__cilkrts_worker* w,
                                   int is_original,
                                   char* stack_base)
 { 
+  /// @todo: don't do anything on inserts only!
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   om_assert(clear_stack == true); 
 
@@ -328,7 +329,8 @@ extern "C" void cilk_leave_stolen(__cilkrts_worker* w,
   // cilk_leave_stolen
 
   uint64_t stack_high_watermark;
-  if (is_original) stack_high_watermark = (uint64_t)__builtin_frame_address(4);
+  /// @todo is the 'is_original' necessary? 
+  if (is_original) stack_high_watermark = (uint64_t)__builtin_frame_address(3);
   else stack_high_watermark = (uint64_t)stack_base;
 
   DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_stolen, stack_high_watermark: %lx.\n", 
