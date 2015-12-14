@@ -6,10 +6,14 @@ import StringIO
 
 cilkscreen = "/home/rob/src/cilktools-linux-004421/bin/cilkscreen"
 
+## @todo{Use `git rev-parse HEAD` to get the commit id, which should
+## be output to the logs. That way I can save every log file and know
+## exactly which code was used to run it}
+
 def run_tests():
-    cores = [1,2,4,6,8]# + (range(2,17,2))
-    tests = ["matmul", "fft", "cholesky"]
-    args = ["-n 1024", "-n 1048576", "-n 1000 -z 4000"]
+    cores = [4,6,8]# + (range(2,17,2))
+    tests = ["cholesky"]#["matmul", "fft", "cholesky"]
+    args = ["-n 1000 -z 4000"]#["-n 1024", "-n 1048576", "-n 1000 -z 4000"]
     #args = ["-n 32", "-n 32", "-n 100 -z 20"]
     comp = ["base", "insert", "bench", "icc"]
     use_cilkscreen = True

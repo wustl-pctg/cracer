@@ -4,7 +4,7 @@
 #include <cassert>
 
 #include <cilk/cilk.h>
-#include "../omrd.h"
+#include "rd.h"
 
 #define spawn cilk_spawn
 #define sync cilk_sync
