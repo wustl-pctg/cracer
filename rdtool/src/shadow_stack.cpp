@@ -2,7 +2,7 @@
 
 #include <internal/abi.h>
 #include <cilk/batcher.h>
-#include "shadow_stack.h"
+#include "rd.h"
 #include "print_addr.h"
 #include "shadow_mem.h"
 #include "mem_access.h"
@@ -11,7 +11,7 @@
 #define FRAME_HELPER_MASK 0x1
 #define FRAME_FULL_MASK 0x2
 #include "stack.h"
-#include "om/om.h"
+#include "om/om.c" // Hack @todo fix linking errors
 
 typedef enum {
   TOOL = 0,
@@ -722,6 +722,7 @@ extern "C" void clear_shadow_memory(size_t start, size_t end) {
   om_assert(ALIGN_BY_NEXT_MAX_GRAIN_SIZE(end) == end); 
   om_assert(start < end);
   //  om_assert(end-start < 4096);
+  size_t original_start = start;
 
   while(start != end) {
     // DBG_TRACE(DEBUG_MEMORY, "Erasing mem %p.\n", (void *)start);

@@ -2441,6 +2441,8 @@ void __cilkrts_c_THE_exception_check(__cilkrts_worker *w,
                                       w->l->fiber_to_free :
                                       ff->parent->fiber_child );
         CILK_ASSERT(current_fiber);
+
+        /// @todo is this even necessary?
         int is_original = 1;
         if (ff->parent && ff->parent->fiber_child) {
             cilk_fiber_data* fdata = ((cilk_fiber_data*)ff->parent->fiber_child);

@@ -9,7 +9,7 @@
 #include <pthread.h>
 
 #include "debug_util.h"
-#include "shadow_stack.h" // is this necessary?
+#include "rd.h" // is this necessary?
 #include "om/om.h"
 
 #define MAX_GRAIN_SIZE 8

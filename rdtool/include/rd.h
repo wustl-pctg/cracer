@@ -1,5 +1,5 @@
-#ifndef _OMRD_H
-#define _OMRD_H
+#ifndef _RD_H
+#define _RD_H
 
 #include <pthread.h>
 #include <malloc.h> // for memalign
@@ -10,11 +10,6 @@ extern "C" void __om_enable_checking();
 extern "C" void __om_disable_checking();
 extern "C" void __om_disable_instrumentation();
 extern "C" void __om_init();
-
-/* #include "om/om.h"
-extern "C" om_node* get_current_english();
-extern "C" om_node* get_current_hebrew();
-*/
 
 extern "C" void record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
                                   uint32_t mem_size);
@@ -33,4 +28,4 @@ typedef struct local_mut_s {
 //pthread_spinlock_t* g_worker_mutexes; 
 //local_mut* g_worker_mutexes;
 
-#endif // _OMRD_H
+#endif // _RD_H
