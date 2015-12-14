@@ -1,4 +1,4 @@
-# Get the absoluate path of where this test.mk resides;
+# Get the absolute path of where this test.mk resides;
 # this is necessary because test.mk can be included by multiple 
 # different files, and the current working directory is set to 
 # where it is included, but not where this test.mk resides
@@ -9,3 +9,5 @@ RDFLAGS = -DRACEDETECT -fcilktool -fsanitize=thread
 LDFLAGS += -ldl -lpthread $(MALLOC)
 CFLAGS += 
 CXXFLAGS += 
+
+include $(patsubst %,%.d, $(TARGETS))

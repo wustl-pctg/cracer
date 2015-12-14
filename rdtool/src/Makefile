@@ -3,13 +3,13 @@ include ../common.mk
 
 SRC := shadow_stack.cpp debug_util.cpp print_addr.cpp mem_access.cpp tsan.cpp
 OBJ = $(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(SRC)))
-#-include $(OBJ:.o=.d)
 LIB_INC = -I$(RUNTIME_INTERNAL)/include
 CFLAGS += $(LIB_INC)
 CXXFLAGS += $(LIB_INC)
 TARGET = $(LIB_DIR)/lib$(TOOL_NAME).a
 
 all: $(TARGET)
+include $(OBJ:.o=.d)
 
 $(TARGET): $(OBJ) $(LIB_DIR)
 
