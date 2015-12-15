@@ -17,7 +17,6 @@ base: $(TARGETS_BASE)
 insert: $(TARGETS_INSERT)
 icc: $(TARGETS_ICC)
 
-
 $(TARGETS) : % : %_bench
 
 %_all:
