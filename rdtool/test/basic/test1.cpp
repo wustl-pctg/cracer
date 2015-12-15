@@ -4,8 +4,7 @@
 #include <stdint.h>
 
 // expect a race
-//#include "../../omrd.h"
-#include "../../print_addr.h"
+#include "test.h"
 
 #include <inttypes.h>
 

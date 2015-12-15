@@ -3,8 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-//#include "cilksan.h"
-#include "../../print_addr.h"
+#include "test.h"
 
 void g(int n) {
     printf("hi\n");

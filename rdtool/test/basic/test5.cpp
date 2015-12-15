@@ -2,8 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-//#include "cilksan.h"
-#include "../../print_addr.h"
+#include "test.h"
 
 void add1(int n) {
     int a = 0;

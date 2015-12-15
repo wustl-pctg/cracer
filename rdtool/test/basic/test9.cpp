@@ -4,8 +4,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-//#include "cilksan.h"
-#include "../../print_addr.h"
+#include "test.h"
 
 int y[16];
 

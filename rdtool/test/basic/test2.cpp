@@ -3,8 +3,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-//#include "cilksan.h"
-#include "../../print_addr.h"
+#include "test.h"
 
 int a;
 

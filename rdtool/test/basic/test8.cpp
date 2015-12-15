@@ -3,8 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-//#include "cilksan.h"
-#include "../../print_addr.h"
+#include "test.h"
 
 void foo(char *x) {
   x[0] = 1;

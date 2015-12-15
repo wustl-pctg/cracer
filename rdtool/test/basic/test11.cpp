@@ -3,9 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-//#include "../../omrd.h"
-#include "../../print_addr.h"
-
+#include "test.h"
 
 char x[16];
 
