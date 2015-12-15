@@ -19,4 +19,4 @@ $(LIB_DIR):
 	if [ ! -e $(LIB_DIR) ]; then mkdir -p $(LIB_DIR); fi
 
 clean:
-	rm -rf *.o $(LIB_DIR)/*
+	rm -rf *.o $(LIB_DIR)/* *.d

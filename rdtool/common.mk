@@ -9,10 +9,12 @@ CC = $(COMPILER_HOME)/bin/clang #-flto
 CXX = $(COMPILER_HOME)/bin/clang++ #-flto
 
 OPT_FLAG ?= -O3
+TOOL_DEBUG ?= 0
 CILKFLAGS += -fcilkplus -fno-inline-detach
 INC = -I$(INC_DIR) -I$(COMPILER_HOME)/include
 # -fno-omit-frame-pointer required to work properly
-FLAGS += $(OPT_FLAG) -Wall -g -fno-omit-frame-pointer $(CILKFLAGS) $(INC) #-DNDEBUG
+FLAGS += -Wall -fno-omit-frame-pointer $(CILKFLAGS) $(INC)
+FLAGS += $(OPT_FLAG) -g -DTOOL_DEBUG=$(TOOL_DEBUG)
 CFLAGS += $(FLAGS) -std=c99
 CXXFLAGS += $(FLAGS) -std=c++11
 LDFLAGS += 
