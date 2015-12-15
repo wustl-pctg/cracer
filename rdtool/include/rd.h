@@ -2,6 +2,7 @@
 #define _RD_H
 
 #include <pthread.h>
+#include <stdint.h>
 #include <malloc.h> // for memalign
 
 extern "C" void cilk_tool_print(void);
