@@ -91,17 +91,18 @@ update:
 
   // update the readers list with this mem access; same start / end indices
   for(int i = start; i < end; i += gtype_to_mem_size[lreader_gtype]) {
-    reader = lreaders[i];
-    if(reader == NULL) {
+    if(lreaders[i] == NULL) {
       pthread_spin_lock(&lreader_lock);
-      if (reader == NULL) {
+      if (lreaders[i] == NULL) {
         new_reader->inc_ref_count();
         lreaders[i] = new_reader;
         reader_used = true;
       }
+      reader = lreaders[i];
       pthread_spin_unlock(&lreader_lock);
+      if (reader == new_reader) continue;
     }    
-    if (lreaders[i] == new_reader) continue;
+    reader = lreaders[i];
       //    } else { // potentially update the left-most reader 
       // replace it if 
       // - the new reader is to the left of the old lreader 
@@ -141,19 +142,21 @@ update:
   // now rreader_gtype = min{ old rreader_gtype, gtype };
   om_assert(rreader_gtype <= gtype);
   om_assert(IS_ALIGNED_WITH_GTYPE(end, rreader_gtype)); 
+  reader = NULL;
 
   for(int i = start; i < end; i += gtype_to_mem_size[rreader_gtype]) {
-    reader = rreaders[i];
-    if(reader == NULL) {
+    if(rreaders[i] == NULL) {
       pthread_spin_lock(&rreader_lock);
-      if (reader == NULL) {
+      if (rreaders[i] == NULL) {
         new_reader->inc_ref_count();
         rreaders[i] = new_reader;
         reader_used = true;
       }
+      reader = rreaders[i];
       pthread_spin_unlock(&rreader_lock);
-    }
-    if (rreaders[i] == new_reader) continue;
+      if (reader == new_reader) continue;
+    }    
+    reader = lreaders[i];
       //    } else { // potentially update the right-most reader 
       // replace it if 
       // - the new reader is to the right of the old rreader 
@@ -322,7 +325,7 @@ MemAccessList_t::MemAccessList_t(uint64_t addr, bool is_read,
 
   om_assert(start >= 0 && start < end && end <= MAX_GRAIN_SIZE);
 
-  MemAccess_t **l;
+  //  MemAccess_t **l; /// @todo ???
   if(is_read) {
     lreader_gtype = rreader_gtype = gtype;
     for(int i=start; i < end; i += gtype_to_mem_size[gtype]) {
