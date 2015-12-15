@@ -15,7 +15,7 @@
 
 static inline int is_leaf(tl_node* n)
 {
-return n->level == MAX_LEVEL || (n->prev == NULL && n->right == NULL);
+  return n->level == MAX_LEVEL || (n->prev == NULL && n->right == NULL);
 }
 
 static inline label_t range_right(tl_node* n) { return n->label; }

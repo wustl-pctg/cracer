@@ -61,7 +61,7 @@ typedef struct MemAccess_t {
 
     // race if the ordering in english and hebrew differ
     bool has_race = (prec_in_english == !prec_in_hebrew);
-#if OM_DEBUG
+#if OM_DEBUG > DEBUG_BASIC
     if(has_race) {
       DBG_TRACE(DEBUG_MEMORY, 
             "Race with estrand: %p, and curr estrand: %p, prec: %d.\n", 
@@ -204,7 +204,7 @@ public:
     }
   }
 
-#if OM_DEBUG 
+#if OM_DEBUG > DEBUG_BASIC
   void check_invariants(uint64_t current_func_id); 
 #endif
 }; // end of class MemAccessList_t def
