@@ -5,21 +5,27 @@ import os, sys, subprocess, shlex
 import StringIO
 
 cilkscreen = "/home/rob/src/cilktools-linux-004421/bin/cilkscreen"
-use_cilkscreen = True
+use_cilkscreen = False
 print_status = True # Makes log file ugly
 column_format = "{: >25},"
 status_column = 200
 
-def runit(n, prog, args, env):
+# For now, returns just the runtime, in a list
+def parse_result(bench_type, proc):
+    ## @todo check for errors
+    out, err = proc.communicate()
+    buf = StringIO.StringIO(out)
+    line = buf.readline()
+    return [int(line[:-1])]
+
+def runit(n, bench_type, prog, args, env):
     cmd = prog + " " + args
     results = []
     for i in range(n):
         proc = subprocess.Popen(cmd.split(), shell=False, env=env,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
-        out, err = proc.communicate()
-        buf = StringIO.StringIO(out)
-        results += [int(buf.readline()[:-1])]
+        results += parse_result(bench_type, proc)
     avg = sum(results) / float(n)
     return "{0:.2f}".format(avg)
 
@@ -51,11 +57,15 @@ def print_header(comp):
 def run_tests():
     num_iter = 3
     cores = [1] + range(2,17,2)
-    tests = ["matmul", "fft", "cholesky"]
-    args = ["-n 1024", "-n 1048576", "-n 1000 -z 4000"]
-    #args = ["-n 4096", "-n 2097152", "-n 2000 -z 8000"]
-    #args = ["-n 32", "-n 32", "-n 100 -z 20"]
-    comp = ["base", "insert", "bench", "icc"]
+    tests = ["matmul", "fft", "cholesky", "cilksort"]
+    # args = ["-n 1024", "-n 1048576", "-n 1000 -z 4000", "-n 100000"]
+    # args = ["-n 4096", "-n 2097152", "-n 1500 -z 12000", "-n 1048576"]
+    args = ["-n 32", "-n 32", "-n 100 -z 20", "-n 128"]
+    comp = ["icc", "base", "insert", "brd", "cilksan"]
+    # tests = ["cholesky"]
+    # args = ["-n 1500 -z 12000"]
+    # comp = ["brd"]
+    bin_dir = "bin"
 
     print_header(comp)
 
@@ -63,7 +73,7 @@ def run_tests():
         base = tests[i]
         print("------------------------------")
         print("Running {} {} times with '{}':".format(base,num_iter,args[i]))
-        base = os.path.join(os.getcwd(), base)
+        base = os.path.join(os.getcwd(), bin_dir, base)
         cilkscreen_result = ""
 
         for p in cores:
@@ -71,27 +81,26 @@ def run_tests():
             line = "{:2},".format(p)
             print(line, end='')
 
+            for c in comp:
+                prog = base + "_" + c
+                pre_status(line)
+                result = runit(num_iter, c, prog, args[i], env)
+                if not print_status: line = ""
+                line += column_format.format(result)
+                post_status(line)
+
             if use_cilkscreen:
                 if p == 1:
                     prog = cilkscreen + " -- " + base + "_icc"
                     pre_status(line)
-                    cilkscreen_result = runit(num_iter, prog, args[i], env)
+                    cilkscreen_result = runit(num_iter, "cilkscreen", prog, args[i], env)
                 if not print_status: line = ""
                 line += column_format.format(cilkscreen_result)
-                post_status(line)
-
-            for c in comp:
-                prog = base + "_" + c
-                pre_status(line)
-                result = runit(num_iter, prog, args[i], env)
-                if not print_status: line = ""
-                line += column_format.format(result)
                 post_status(line)
 
             if print_status:
                 s = " " * 20
                 s = s.rjust(status_column - len(line))
-                #post_status("\r\r\r" + line)
             else:
                 s = ""
             print(s)
