@@ -62,9 +62,9 @@
 #include <string.h>
 
 #include "getoptions.h"
-
-//#include "cilksan.h"
-
+#include "bench.h"
+#include <iostream>
+#include <chrono>
 
 #ifndef RAND_MAX
 #define RAND_MAX 32767
@@ -487,7 +487,10 @@ int main(int argc, char **argv) {
   tmp = (ELM *) malloc(size * sizeof(ELM));
 
   fill_array(array, size);
+
+  auto start = std::chrono::high_resolution_clock::now();
   cilksort(array, tmp, size);
+  auto end = std::chrono::high_resolution_clock::now();
 
   if(check) {
     printf("Now check result ... \n");
@@ -503,14 +506,20 @@ int main(int argc, char **argv) {
       printf("Sorting successful.");
   }
 
-  printf("\nCilk Example: cilksort\n");
-  printf("options: number of elements = %ld\n\n", size);
+  // printf("\nCilk Example: cilksort\n");
+  // printf("options: number of elements = %ld\n\n", size);
+  std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
 
   free(array);
   free(tmp);
+#ifdef RACEDETECT
+  cilk_tool_destroy();
+#endif
 
-  assert(__cilksan_error_count() == 0);
+  // assert(__cilksan_error_count() == 0);
+#ifdef RACEDETECT
+  assert(get_num_races_found() == 0);
+#endif
 
   return 0;
 }
-
