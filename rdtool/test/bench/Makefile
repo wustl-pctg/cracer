@@ -8,18 +8,22 @@ TARGETS_BASE := $(TARGETS:=_base)
 TARGETS_ICC := $(TARGETS:=_icc)
 TARGETS_INSERT := $(TARGETS:=_insert)
 TARGETS_CILKSAN := $(TARGETS:=_cilksan)
+TARGETS_QSTAT := $(TARGETS:=_qstat)
 
 OBJ_DIR_BASE := $(OBJ_DIR_PREFIX:=_base)
+OBJ_DIR_QSTAT := $(OBJ_DIR_PREFIX:=_qstat)
 OBJ_DIR_BRD := $(OBJ_DIR_PREFIX:=_brd)
 OBJ_DIR_INSERT := $(OBJ_DIR_PREFIX:=_insert)
 OBJ_DIR_ICC := $(OBJ_DIR_PREFIX:=_icc)
 
 LIB = $(LIB_DIR)/lib$(TOOL_NAME).a
+STATLIB = $(LIB_DIR)/libstattool.a
 
 default : $(TARGETS_BRD)
 all: $(TARGETS_BRD) $(TARGETS_BASE) $(TARGETS_INSERT) $(TARGETS_ICC) $(TARGETS_CILKSAN)
 brd: $(TARGETS_BRD)
 base: $(TARGETS_BASE)
+qstat: $(TARGETS_QSTAT)
 insert: $(TARGETS_INSERT)
 icc: $(TARGETS_ICC)
 cilksan: $(TARGETS_CILKSAN)
@@ -57,6 +61,13 @@ $(BIN_DIR):
 %_insert: LDFLAGS += $(RUNTIME_LIB)
 %_insert: $(OBJ_DIR)/%.o $(OBJ_DIR)/getoptions.o $(LIB) $(BIN_DIR)
 	$(CXX) $(OBJ_DIR)/$< $(OBJ_DIR)/getoptions.o $(LIB) $(LDFLAGS) -o $(BIN_DIR)/$@
+
+%_qstat: OBJ_DIR := $(OBJ_DIR_QSTAT)
+%_qstat: CFLAGS += -fcilktool -fsanitize=thread -DSTATS
+%_qstat: CXXFLAGS += -fcilktool -fsanitize=thread -DSTATS
+%_qstat: LDFLAGS += $(RUNTIME_LIB)
+%_qstat: $(OBJ_DIR)/%.o $(OBJ_DIR)/getoptions.o $(STATLIB) $(BIN_DIR)
+	$(CXX) $(OBJ_DIR)/$< $(OBJ_DIR)/getoptions.o $(STATLIB) $(LDFLAGS) -o $(BIN_DIR)/$@
 
 %_icc: OBJ_DIR := $(OBJ_DIR_ICC)
 %_icc: LDFLAGS += $(MALLOC)
