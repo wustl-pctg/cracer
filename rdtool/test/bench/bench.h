@@ -17,4 +17,8 @@
 #define RD_DISABLE
 #endif
 
+#ifdef STATS
+#include "stattool.h"
+#endif
+
 #endif
