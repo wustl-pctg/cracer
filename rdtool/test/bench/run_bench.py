@@ -5,14 +5,15 @@ import os, sys, subprocess, shlex
 import StringIO
 
 cilkscreen = "/home/rob/src/cilktools-linux-004421/bin/cilkscreen"
-use_cilkscreen = False
+use_cilkscreen = True
 print_status = True # Makes log file ugly
-column_format = "{: >25},"
+column_size = 23
+column_format = "{: >" + str(column_size) + "},"
 status_column = 200
 
 # For now, returns just the runtime, in a list
 def parse_result(bench_type, proc):
-    ## @todo check for errors
+    ## @todo check for errors with err
     out, err = proc.communicate()
     buf = StringIO.StringIO(out)
     line = buf.readline()
@@ -58,13 +59,12 @@ def run_tests():
     num_iter = 3
     cores = [1] + range(2,17,2)
     tests = ["matmul", "fft", "cholesky", "cilksort"]
-    # args = ["-n 1024", "-n 1048576", "-n 1000 -z 4000", "-n 100000"]
-    # args = ["-n 4096", "-n 2097152", "-n 1500 -z 12000", "-n 1048576"]
+    #args = ["-n 1024", "-n 1048576", "-n 1000 -z 4000", "-n 100000"]
+    #args = ["-n 4096", "-n 2097152", "-n 1500 -z 12000", "-n 1048576"]
     args = ["-n 32", "-n 32", "-n 100 -z 20", "-n 128"]
     comp = ["icc", "base", "insert", "brd", "cilksan"]
-    # tests = ["cholesky"]
-    # args = ["-n 1500 -z 12000"]
-    # comp = ["brd"]
+    status_column = 3 + len(comp) * column_size + 3
+    if use_cilkscreen: status_column += column_size
     bin_dir = "bin"
 
     print_header(comp)
@@ -75,16 +75,24 @@ def run_tests():
         print("Running {} {} times with '{}':".format(base,num_iter,args[i]))
         base = os.path.join(os.getcwd(), bin_dir, base)
         cilkscreen_result = ""
+        cilksan_result = ""
 
         for p in cores:
             env = dict(os.environ, CILK_NWORKERS=str(p))
             line = "{:2},".format(p)
             print(line, end='')
 
+
             for c in comp:
                 prog = base + "_" + c
+                if c == "cilksan" and p != 1:
+                    if not print_status: line = ""
+                    line += column_format.format(cilksan_result)
+                    post_status(line)
+                    continue
                 pre_status(line)
                 result = runit(num_iter, c, prog, args[i], env)
+                if c == "cilksan" and p == 1: cilksan_result = result
                 if not print_status: line = ""
                 line += column_format.format(result)
                 post_status(line)
@@ -99,7 +107,7 @@ def run_tests():
                 post_status(line)
 
             if print_status:
-                s = " " * 20
+                s = " " * 53
                 s = s.rjust(status_column - len(line))
             else:
                 s = ""
