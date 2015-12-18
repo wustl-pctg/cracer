@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-size_t get_num_inserts();
-size_t get_num_queries();
+void __stattool_print_info();
 
 #endif // _STATTOOL_H
