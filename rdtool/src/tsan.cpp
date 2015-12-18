@@ -385,6 +385,7 @@ extern "C" void cilk_continue(__cilkrts_stack_frame* sf, char* new_sp)
   if (new_sp != NULL) {
     stack_low_watermark = (uint64_t) new_sp; //GET_SP(sf);
   }
+  // Set int cilk_spawn_or_continue
   //  enable_checking();
 }
 

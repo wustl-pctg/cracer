@@ -40,7 +40,6 @@
 #include <chrono>
 #include "bench.h"
 
-
 #ifndef RAND_MAX
 #define RAND_MAX 32767
 #endif
@@ -371,10 +370,6 @@ int main(int argc, char *argv[])
   //printf("Options: size = %d\n", n);
   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
 
-#ifdef RACEDETECT
-  cilk_tool_destroy();
-#endif
-
   free(C);
   free(B);
   free(A);
@@ -389,6 +384,11 @@ int main(int argc, char *argv[])
 
 #ifdef RACEDETECT
   assert(get_num_races_found() == 0);
+  cilk_tool_destroy();
+#endif
+
+#ifdef STATS
+  __stattool_print_info();
 #endif
 
   return 0;

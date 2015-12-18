@@ -513,12 +513,13 @@ int main(int argc, char **argv) {
   free(array);
   free(tmp);
 #ifdef RACEDETECT
+  assert(get_num_races_found() == 0);
+  // assert(__cilksan_error_count() == 0);
   cilk_tool_destroy();
 #endif
 
-  // assert(__cilksan_error_count() == 0);
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
+#ifdef STATS
+  __stattool_print_info();
 #endif
 
   return 0;

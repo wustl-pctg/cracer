@@ -979,12 +979,16 @@ again:
   free_matrix (depth, A);
   free_matrix (depth, R);
 
-  // assert(__cilksan_error_count() == 0);
+
 #ifdef RACEDETECT
-  cilk_tool_destroy();
   assert(get_num_races_found() == 0);
+  // assert(__cilksan_error_count() == 0);
+  cilk_tool_destroy();
 #endif
 
+#ifdef STATS
+  __stattool_print_info();
+#endif
 
   return 0;
 }
