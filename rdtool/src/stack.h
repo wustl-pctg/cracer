@@ -206,10 +206,10 @@ public:
     Stack_t<T>::pop();
     if (this->_head <= this->_tail && this->_tail > 0) {
       if (this->_head == this->_tail)
-	assert(this->_stack[this->_head].flags & FRAME_HELPER_MASK);
+        assert(this->_stack[this->_head].flags & FRAME_HELPER_MASK);
       T* f;
       do {
-	f = &this->_stack[--this->_tail];
+        f = &this->_stack[--this->_tail];
       } while (!(f->flags & FRAME_HELPER_MASK) && this->_tail > 0);
 
     }

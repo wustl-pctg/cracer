@@ -18,6 +18,10 @@ extern "C" void record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t add
 
 #define PADDING char pad[(64 - sizeof(pthread_spinlock_t))]
 
+//enum frame_t { FRAME_USER = 0, FRAME_HELPER };
+#define FRAME_HELPER_MASK 0x1
+#define FRAME_FULL_MASK 0x2
+
 typedef struct local_mut_s {
   pthread_spinlock_t mut;
   PADDING;

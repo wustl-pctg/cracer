@@ -79,7 +79,7 @@ void bl_create(blist* self)
 {
   self->head = self->tail = NULL;
   self->above = NULL;
-  self->half_full = 0;
+  self->heavy = 0;
 }
 
 void bl_destroy(blist* self)

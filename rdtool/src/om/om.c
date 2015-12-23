@@ -37,21 +37,15 @@ void om_create(om* self)
   root->below = bl_new();
   root->below->above = root;
 
-  // fast version
   root->level = 0;
   root->num_leaves = 0;
-  root->label = MAX_LABEL;
-
-  // slow but almost assuredly correct version:
-  /* root->level = MAX_LEVEL; */
-  /* root->num_leaves = 1; */
-  /* root->label = 0; */
-
-  root->needs_rebalance = 0;
-  root->parent = root->left = root->right = NULL;
 
   /// The label of an internal node is the highest possible leaf label
   /// it could possibly contain.
+  root->label = MAX_LABEL;
+
+  root->needs_rebalance = 0;
+  root->parent = root->left = root->right = NULL;
 
   self->root = root;
   self->head = self->tail = NULL;

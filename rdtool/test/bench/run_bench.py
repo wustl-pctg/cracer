@@ -63,6 +63,7 @@ def run_tests():
     #args = ["-n 4096", "-n 2097152", "-n 1500 -z 12000", "-n 1048576"]
     args = ["-n 32", "-n 32", "-n 100 -z 20", "-n 128"]
     comp = ["icc", "base", "insert", "brd", "cilksan"]
+    global status_column
     status_column = 3 + len(comp) * column_size + 3
     if use_cilkscreen: status_column += column_size
     bin_dir = "bin"

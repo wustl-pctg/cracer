@@ -21,7 +21,7 @@ struct blist_s {
 
   // Needed for interacting with top list.
   struct tl_node_s* above;
-  unsigned char half_full;
+  unsigned char heavy;
 };
 typedef struct blist_s blist;
 
