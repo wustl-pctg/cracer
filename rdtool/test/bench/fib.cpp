@@ -1,39 +1,76 @@
-#include <iostream>
-#include <chrono>
-#include <cstdlib>
-#include <cassert>
+/*
+ * Copyright (c) 1994-2003 Massachusetts Institute of Technology
+ * Copyright (c) 2003 Bradley C. Kuszmaul
+ * Copyright (c) 2013 I-Ting Angelina Lee and Tao B. Schardl 
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ */
 
+#include <assert.h>
 #include <cilk/cilk.h>
-#include "rd.h"
+#include <stdlib.h>
+#include <stdio.h>
 
-#define spawn cilk_spawn
-#define sync cilk_sync
-#define parfor cilk_for
+#include "bench.h"
 
-int fib(int n)
-{
-  if (n < 2) return n;
-  int x, y;
-  x = spawn fib(n - 1);
-  y = fib(n - 2);
-  sync;
-  return x + y;
+int fib(int n) {
+    if (n < 2) { 
+        return (n);
+
+    } else {
+        int x = 0;
+        int y = 0;
+
+        x = cilk_spawn fib(n - 1);
+        y = fib(n - 2);
+        cilk_sync;
+
+        return (x + y);
+    }
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
-  if (argc != 2) {
-    std::cerr << "Usage: fib <n>" << std::endl;
-    exit(1);
-  }
+#ifdef INSERTSONLY
+  RD_DISABLE;
+#endif
+    int n, result;
 
-  int n = std::atoi(argv[1]);
-  auto start = std::chrono::high_resolution_clock::now();
-  int result = fib(n);
-  auto end = std::chrono::high_resolution_clock::now();
+    if (argc != 2) {
+        fprintf(stderr, "Usage: fib [<cilk options>] <n>\n");
+        exit(1); 
+    }
+    n = atoi(argv[1]);
 
-  std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    result = fib(n);
+    auto end = std::chrono::high_resolution_clock::now();
+
+    // printf("Result: %d\n", result);
+    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+
+#ifdef RACEDETECT
+  assert(get_num_races_found() == 0);
   cilk_tool_destroy();
+#endif
 
-  return 0;
+#ifdef STATS
+  __stattool_print_info();
+#endif
+
+
+    return 0;
 }
