@@ -5,9 +5,9 @@ import os, sys, subprocess, shlex
 import StringIO
 
 cilkscreen = "/home/rob/src/cilktools-linux-004421/bin/cilkscreen"
-use_cilkscreen = True
+use_cilkscreen = False
 print_status = True # Makes log file ugly
-column_size = 23
+column_size = 22
 column_format = "{: >" + str(column_size) + "},"
 status_column = 200
 
@@ -48,22 +48,22 @@ def print_header(comp):
     commit = subprocess.check_output("git rev-parse HEAD".split(), shell=False)[0:-1]
     print("Running benchmarks with tool built from {}".format(commit))
     print("P", end='')
-    if use_cilkscreen:
-        print(column_format.format("cilkscreen"), end='')
     for c in comp:
         print(column_format.format(c), end='')
+    if use_cilkscreen:
+        print(column_format.format("cilkscreen"), end='')
     print()
 
 
 def run_tests():
     num_iter = 3
     cores = [1] + range(2,17,2)
-    tests = ["matmul", "fft", "cholesky", "cilksort"]
-    #args = ["-n 1024", "-n 1048576", "-n 1000 -z 4000", "-n 100000"]
-    #args = ["-n 4096", "-n 2097152", "-n 1500 -z 12000", "-n 1048576"]
-    args = ["-n 32", "-n 32", "-n 100 -z 20", "-n 128"]
-    comp = ["icc", "base", "insert", "brd", "cilksan"]
-    global status_column
+    tests = ["matmul", "fft", "cholesky", "cilksort", "strassen", "fib", "fibx"]
+    args = ["-n 2048", "-n " + str(64*1024*1024), "-n 3000 -z 30000", "-n 25000000"]
+    args += ["-n 4096", "42", "772"]
+    #args = ["-n 32", "-n 32", "-n 100 -z 20", "-n 128", "-n 32", "5", "5"]
+    #comp = ["icc", "base", "insert", "brd", "cilksan"]
+    comp = ["base", "insert"]
     status_column = 3 + len(comp) * column_size + 3
     if use_cilkscreen: status_column += column_size
     bin_dir = "bin"
@@ -82,7 +82,6 @@ def run_tests():
             env = dict(os.environ, CILK_NWORKERS=str(p))
             line = "{:2},".format(p)
             print(line, end='')
-
 
             for c in comp:
                 prog = base + "_" + c
@@ -108,7 +107,7 @@ def run_tests():
                 post_status(line)
 
             if print_status:
-                s = " " * 53
+                s = " " * 84
                 s = s.rjust(status_column - len(line))
             else:
                 s = ""
