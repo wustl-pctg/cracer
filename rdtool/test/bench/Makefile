@@ -1,5 +1,5 @@
 include ../test.mk
-TARGETS := matmul fft cholesky cilksort fib fibx
+TARGETS := matmul fft cholesky cilksort fib fibx strassen
 OBJ_DIR_PREFIX := ./obj
 BIN_DIR := ./bin
 
