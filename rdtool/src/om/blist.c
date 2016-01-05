@@ -59,10 +59,7 @@ static void insert_internal(blist* self, node* base, node* n)
 /** Allocate a new, uninitialized node. */
 static inline node* node_new()
 { 
-  //  g_num_malloc_calls++;
-  //  RDTOOL_INTERVAL_BEGIN(OM_REBUILD_MALLOC);
   node* n = (node*)malloc(sizeof(node));
-  //  RDTOOL_INTERVAL_END(OM_REBUILD_MALLOC);
   return n;
 }
 
@@ -137,11 +134,12 @@ size_t bl_size(const blist* self)
 #endif // BL_HAS_SIZE_FIELD  
 }
 
+/// @todo bl_verify
 int bl_verify(const blist* self)
 {
-  /// @todo
   return 0;
 }
+
 void bl_fprint(const blist* self, FILE* out)
 {
   node* current = self->head;

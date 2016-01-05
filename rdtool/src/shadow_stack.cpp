@@ -9,18 +9,14 @@
 #include "mem_access.h"
 
 #include "stack.h"
-#include "stat_time.h"
+#include "stat_util.h"
 
 //#include "om/om.c" // Hack @todo fix linking errors
 #include "omrd.cpp"
 
 int g_tool_init = 0;
-// om* g_english;
-// om* g_hebrew;
 omrd_t g_english;
 omrd_t g_hebrew;
-__thread __cilkrts_worker* t_worker = NULL;
-__thread int self = -1;
 
 typedef struct FrameData_s {
   om_node* current_english;
@@ -79,10 +75,14 @@ void init_strand(__cilkrts_worker* w, FrameData_t* init)
 extern "C" void do_tool_init(void) 
 {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_init called.\n");
-
+  int p = __cilkrts_get_nworkers();
 #if STATS > 1
+  g_nproc = p;
+  g_timing_events = (double*)malloc(sizeof(double) * NUM_INTERVAL_TYPES * p);
+  g_timing_event_starts = (struct timespec*)malloc(sizeof(struct timespec) * NUM_INTERVAL_TYPES * p);
+  g_timing_event_ends = (struct timespec*)malloc(sizeof(struct timespec) * NUM_INTERVAL_TYPES * p);
   EMPTY_TIME_POINT.tv_sec = 0; EMPTY_TIME_POINT.tv_nsec = 0;
-  for (int i = 0; i < NUM_INTERVAL_TYPES; ++i) {
+  for (int i = 0; i < (NUM_INTERVAL_TYPES*p); ++i) {
     g_timing_events[i] = INTERVAL_CAST(ZERO_DURATION);
     g_timing_event_starts[i].tv_sec = EMPTY_TIME_POINT.tv_sec;
     g_timing_event_starts[i].tv_nsec = EMPTY_TIME_POINT.tv_nsec;
@@ -90,7 +90,6 @@ extern "C" void do_tool_init(void)
     g_timing_event_ends[i].tv_nsec = EMPTY_TIME_POINT.tv_nsec;
   }
 #endif
-  int p = __cilkrts_get_nworkers();
   frames = new AtomicStack_t<FrameData_t>[p];
   //  g_worker_mutexes = new pthread_spinlock_t[p];
   g_worker_mutexes = (local_mut*)memalign(64, sizeof(local_mut)*p);
@@ -112,21 +111,27 @@ extern "C" void do_tool_init(void)
 }
 
 
-int g_counter = 0;
-
 extern "C" void do_tool_print(void)
 {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_print called.\n");
 
 #if STATS > 1
-  for (int i = 0; i < NUM_INTERVAL_TYPES; ++i) {
-    assert(g_timing_event_starts[i].tv_sec == EMPTY_TIME_POINT.tv_sec);
-    assert(g_timing_event_starts[i].tv_nsec == EMPTY_TIME_POINT.tv_nsec);
-    std::cout << "\t\t" << g_timing_events[i];
+  // for (int i = 0; i < NUM_INTERVAL_TYPES; ++i) {
+  //   assert(g_timing_event_starts[i].tv_sec == EMPTY_TIME_POINT.tv_sec);
+  //   assert(g_timing_event_starts[i].tv_nsec == EMPTY_TIME_POINT.tv_nsec);
+  //   std::cout << "\t\t" << g_timing_events[i];
+  // }
+  // std::cout << std::endl;
+  int p = __cilkrts_get_nworkers();
+  std::cout << "Fast Path time: ";
+  for (int i = 0; i < p; ++i) {
+    std::cout << g_timing_events[(i*p) + FAST_PATH] << std::endl;
   }
-  std::cout << std::endl;
+  std::cout << "Slow Path time: ";
+  for (int i = 0; i < p; ++i) {
+    std::cout << g_timing_events[(i*p) + SLOW_PATH] << std::endl;
+  }
 #endif
-  std::cout << "counter: " << g_counter << std::endl;
 #if STATS > 0  
   std::cout << "Num relabels: " << g_num_relabels << std::endl;
   std::cout << "Num inserts: " << g_num_inserts << std::endl;
@@ -139,8 +144,6 @@ extern "C" void do_tool_destroy(void)
   DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_destroy called.\n");
 
   do_tool_print();
-  // om_free(g_english);
-  // om_free(g_hebrew);
   delete[] frames;
 
   for (int i = 0; i < __cilkrts_get_nworkers(); ++i) {
@@ -150,6 +153,11 @@ extern "C" void do_tool_destroy(void)
 
   //  delete[] g_worker_mutexes;
   free(g_worker_mutexes);
+#if STATS > 1
+  free(g_timing_events);
+  free(g_timing_event_starts);
+  free(g_timing_event_ends);
+#endif
   //  delete_proc_maps(); /// @todo shakespeare has problems compiling print_addr.cpp
 }
 
@@ -416,7 +424,6 @@ record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
   MemAccessList_t *mem_list = NULL;
 
   if( val == NULL ) {
-    g_counter++;
     // not in shadow memory; create a new MemAccessList_t and insert
     //    if (acc == NULL) {
       acc = new MemAccess_t(f->current_english, f->current_hebrew, inst_addr);

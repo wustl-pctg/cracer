@@ -282,7 +282,7 @@ void om_relabel_slow(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
 void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
 {
   size_t old_size = self->root->num_leaves; // to check for overflow
-  parfor (int i = 0; i < num_heavy_lists; ++i) {
+  /*par*/for (int i = 0; i < num_heavy_lists; ++i) {
     tl_node* current = heavy_lists[i];
 
     assert(current->level == MAX_LEVEL);

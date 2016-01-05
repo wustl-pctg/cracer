@@ -158,13 +158,6 @@ public:
     return size() == 0;
   }
 
-  // void steal_top(STACK_DATA_T* f) {
-  //   assert(this->_head >= this->_tail);
-  //   *f = this->_stack[this->_tail];
-  //   this->_tail++;
-  //   return;
-  // }
-
 };
 
 // Simple atomic class
@@ -193,9 +186,17 @@ public:
     pthread_spin_unlock(&_slock);
   }
 
+  void add(T item) {
+    pthread_spin_lock(&_slock);
+    Stack_t<T>::push();
+    *(Stack_t<T>::head()) = item;
+    pthread_spin_unlock(&_slock);
+  }
+
   void reset() {
     pthread_spin_lock(&_slock);
-    memset((void*)this->_stack, 0xff, sizeof(T)*this->_capacity);
+    /// This is inefficient, but REALLY helps with debugging
+    memset((void*)this->_stack, 0xff, sizeof(T)*this->size());
     Stack_t<T>::reset();
     pthread_spin_unlock(&_slock);
   }

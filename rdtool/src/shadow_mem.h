@@ -90,7 +90,7 @@ public:
   }
 
   ~ShadowMem() {
-    printf("Table allocated %i times.\n", m_counter);
+    //printf("Table allocated %i times.\n", m_counter);
   }
 
 };
