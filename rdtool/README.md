@@ -2,11 +2,26 @@ An asymptotically efficient race detector for Cilk Plus programs. It
 requires a version of Cilk Plus that supports both -fno-inline-detach
 and the Batcher runtime system.
 
+You should defined a top-level file 'config.mk' which must include definitions for the compiler home, internal runtime headers, and runtime library location. For example:
+
+  COMPILER_HOME ?= $(HOME)/llvm-cilk
+  RUNTIME_INTERNAL ?= $(HOME)/devel/batch/cilkplusrts
+  RUNTIME_LIB ?= $(HOME)/llvm-cilk/lib/x86_64/libcilkrts.a
+  OPT_FLAG ?= -O3 -DSTATS=1
+  TOOL_DEBUG ?= 0
+
+If you'd also like to compare against cilksan or cilkscreen, or use a different malloc, use:
+
+  CILKSAN_HOME := $(HOME)/devel/cilksan
+  MALLOC=-ltcmalloc # Can also be empty or "-ltbbmalloc_proxy"
+  ICC=$(HOME)/intel/bin/icc
+  INTEL_LIB=$(HOME)/intel/lib/intel64
+
+
+
 TODO:
 
-* We should pick a good name for this tool. Obviously low priority.
-* Restructure the file hierarchy and add good Makefiles.
+* We should pick a good name for this tool.
 * Split this off into a separate project repo -- it should not be part of Batcher.
-* Run with tests other than matmul -- cilksort, cholesky, etc.
 * Debug performance issues
 * Cleanup the OM data structure.
