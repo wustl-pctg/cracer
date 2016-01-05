@@ -5,8 +5,8 @@ TOOL_NAME = rd
 LIB_DIR ?= $(TOOL_HOME)/lib
 INC_DIR ?= $(TOOL_HOME)/include
 
-CC = $(COMPILER_HOME)/bin/clang #-flto
-CXX = $(COMPILER_HOME)/bin/clang++ #-flto
+CC ?= $(COMPILER_HOME)/bin/clang #-flto
+CXX ?= $(COMPILER_HOME)/bin/clang++ #-flto
 
 OPT_FLAG ?= -O3
 TOOL_DEBUG ?= 0
@@ -43,14 +43,14 @@ ARFLAGS=
 	$(CXX) $(CXXFLAGS) -MF $@.$$$$ $<; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
-
+ 
 $(OBJ_DIR)/%.o: %.c
-	mkdir -p $(OBJ_DIR)
+	@mkdir -p $(OBJ_DIR)
 	$(CC) $(CFLAGS) -o $(OBJ_DIR)/$@ -c $<
 
 $(OBJ_DIR)/%.o: %.cpp
-	mkdir -p $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -o $(OBJ_DIR)$@ -c $<
+	@mkdir -p $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
 $(LIB_DIR)/lib%.a: $(OBJ)
 	ar $(ARFLAGS) -r $@ $(OBJ)
@@ -58,4 +58,5 @@ $(LIB_DIR)/lib%.a: $(OBJ)
 $(LIB_DIR)/lib%.so: $(OBJ)
 	$(CC) $(OBJ) -shared -o $@
 
-.PRECIOUS: %.o
+# Don't delete any intermediate files
+.SECONDARY:

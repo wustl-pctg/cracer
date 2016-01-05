@@ -10,4 +10,4 @@ LDFLAGS += -ldl -lpthread $(MALLOC)
 CFLAGS += 
 CXXFLAGS += 
 
-include $(patsubst %,%.d, $(TARGETS))
+#include $(patsubst %,%.d, $(TARGETS))
