@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
 #ifdef INSERTSONLY
   RD_DISABLE;
 #endif
-  RD_DISABLE;
+  //  RD_DISABLE;
   int n = 1024; // default input size 
   int check = 0, rand_check = 0, help = 0; // default options
 
@@ -338,11 +338,11 @@ int main(int argc, char *argv[])
     zero(C2, n);
   }
 
-  RD_ENABLE;
+  //  RD_ENABLE;
   init(A, n);
   init(B, n);
   zero(C, n);  /* initialization and reset */
-  RD_DISABLE; 
+  //  RD_DISABLE; 
 
   //  printf("\nCalculate using recursive method ... \n");
 
