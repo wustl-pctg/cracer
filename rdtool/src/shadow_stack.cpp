@@ -425,10 +425,8 @@ record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
 
   if( val == NULL ) {
     // not in shadow memory; create a new MemAccessList_t and insert
-    //    if (acc == NULL) {
-      acc = new MemAccess_t(f->current_english, f->current_hebrew, inst_addr);
-      mem_list = new MemAccessList_t(addr, is_read, acc, mem_size);
-      //    }
+    mem_list = new MemAccessList_t(addr, is_read, f->current_english, 
+                                   f->current_hebrew, inst_addr, mem_size);
     val = shadow_mem.insert(ADDR_TO_KEY(addr), mem_list);
     // insert failed; someone got to the slot first;
     // delete new mem_list and fall through to check race with it 
@@ -442,6 +440,7 @@ record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
 }
 
 // XXX: We can only read 1,2,4,8,16 bytes; optimize later
+/* Deprecated
 extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size)
 {
   DBG_TRACE(DEBUG_MEMORY, "record read of %lu bytes at addr %p and rip %p.\n", 
@@ -500,6 +499,7 @@ extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size)
     record_mem_helper(false, inst_addr, addr+i, mem_size-i);
   }
 }
+*/
 
 // clear the memory block at [start-end) (end is exclusive).
 extern "C" void clear_shadow_memory(size_t start, size_t end) {

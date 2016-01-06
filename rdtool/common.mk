@@ -5,8 +5,8 @@ TOOL_NAME = rd
 LIB_DIR ?= $(TOOL_HOME)/lib
 INC_DIR ?= $(TOOL_HOME)/include
 
-CC ?= $(COMPILER_HOME)/bin/clang #-flto
-CXX ?= $(COMPILER_HOME)/bin/clang++ #-flto
+CC = $(COMPILER_HOME)/bin/clang #-flto
+CXX = $(COMPILER_HOME)/bin/clang++ #-flto
 
 OPT_FLAG ?= -O3
 TOOL_DEBUG ?= 0

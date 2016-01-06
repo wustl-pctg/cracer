@@ -1,8 +1,12 @@
 #include <cstdio>
 #include "debug_util.h"
 
-#define LOG_KEY_SIZE  3 
-#define LOG_TBL_SIZE 21
+                                                                                
+#ifndef __SHADOWMEM_H__                                                        
+#define __SHADOWMEM_H__ 
+
+#define LOG_KEY_SIZE  4
+#define LOG_TBL_SIZE 20
 
 // macro for address manipulation for shadow mem
 #define ADDR_TO_KEY(addr) ((uint64_t) ((uint64_t)addr >> LOG_KEY_SIZE))
@@ -14,8 +18,6 @@ private:
   struct shadow_tbl { T *shadow_entries[1<<LOG_TBL_SIZE]; };
 
   struct shadow_tbl **shadow_dir;
-  int m_counter;
-  //  shadow_tbl *m_tbl;
 
   inline T** find_slot(uint64_t key, bool alloc) {
     /* I think this volatile is necessary and sufficient ... */
@@ -25,10 +27,7 @@ private:
     if (!alloc && !tbl) {
       return NULL;
     } else if (tbl == NULL) {
-      //  if (m_tbl == NULL) m_tbl = new struct shadow_tbl();
-      shadow_tbl *new_tbl = new struct shadow_tbl();
-      m_counter++;
-      //      struct shadow_tbl *new_tbl = new struct shadow_tbl();
+      struct shadow_tbl *new_tbl = new struct shadow_tbl();
       do {
         tbl = __sync_val_compare_and_swap(dest, tbl, new_tbl);
       } while(tbl == NULL);
@@ -46,7 +45,6 @@ public:
   ShadowMem() {
     shadow_dir = 
       new struct shadow_tbl *[1<<(48 - LOG_TBL_SIZE - LOG_KEY_SIZE)]();
-    m_counter = 0;
   }
 
   inline T* find(uint64_t key) {
@@ -89,8 +87,8 @@ public:
       *slot = NULL;
   }
 
-  ~ShadowMem() {
-    //printf("Table allocated %i times.\n", m_counter);
-  }
+  ~ShadowMem() { }
 
 };
+
+#endif // __SHADOWMEM_H__  

@@ -11,8 +11,13 @@
 #include "debug_util.h"
 #include "rd.h" // is this necessary?
 #include "om/om.h"
+#include "shadow_mem.h"
 
-#define MAX_GRAIN_SIZE 8
+#define GRAIN_SIZE 4
+#define LOG_GRAIN_SIZE 2
+#define MAX_GRAIN_SIZE (1 << LOG_KEY_SIZE)
+#define NUM_SLOTS (MAX_GRAIN_SIZE / GRAIN_SIZE)
+ 
 // a mask that keeps all the bits set except for the least significant bits
 // that represent the max grain size
 #define MAX_GRAIN_MASK (~(uint64_t)(MAX_GRAIN_SIZE-1))
@@ -23,13 +28,12 @@
 #define ALIGN_BY_NEXT_MAX_GRAIN_SIZE(addr) \
   ((uint64_t) ((addr+(MAX_GRAIN_SIZE-1)) & MAX_GRAIN_MASK))
 
-enum GrainType_t { UNINIT = -1, ONE = 0, TWO = 1, FOUR = 2, EIGHT = 3 };
-static const int gtype_to_mem_size[4] = { 1, 2, 4, 8 };
-#define MAX_GTYPE EIGHT // the max value that the enum GrainType_t can take
+// compute (addr % 16) / GRAIN_SIZE 
+#define ADDR_TO_MEM_INDEX(addr) \
+    (((uint64_t)addr & (uint64_t)(MAX_GRAIN_SIZE-1)) >> LOG_GRAIN_SIZE)
 
-// check if addr is aligned with the granularity represented by gtype
-#define IS_ALIGNED_WITH_GTYPE(addr, gtype) \
-  ((addr & (uint64_t)gtype_to_mem_size[gtype]-1) == 0)
+// compute size / GRAIN_SIZE 
+#define SIZE_TO_NUM_GRAINS(size) (size >> LOG_GRAIN_SIZE) 
 
 //extern pthread_spinlock_t* g_worker_mutexes;
 extern local_mut* g_worker_mutexes;
@@ -41,11 +45,11 @@ typedef struct MemAccess_t {
   om_node *estrand; // the strand that made this access stored in g_english
   om_node *hstrand; // the strand that made this access stored in g_hebrew
   uint64_t rip; // the instruction address of this access
-  int16_t ref_count; // number of pointers aliasing to this object
+  // int16_t ref_count; // number of pointers aliasing to this object
   // ref_count == 0 if only a single unique pointer to this object exists
 
   MemAccess_t(om_node *_estrand, om_node *_hstrand, uint64_t _rip)
-    : estrand(_estrand), hstrand(_hstrand), rip(_rip), ref_count(0)
+    : estrand(_estrand), hstrand(_hstrand), rip(_rip)
   { }
 
   inline bool races_with(om_node *curr_estrand, om_node *curr_hstrand) {
@@ -74,9 +78,17 @@ typedef struct MemAccess_t {
 
     return has_race;
   }
+  
+  inline void update_acc_info(om_node *_estrand, om_node *_hstrand, 
+                              uint64_t _rip) {
+    estrand = _estrand;
+    hstrand = _hstrand;
+    rip = _rip;
+  }
 
-  inline int16_t inc_ref_count() { ref_count++; return ref_count; }
-  inline int16_t dec_ref_count() { ref_count--; return ref_count; }
+  // ref counting deprecated
+  // inline int16_t inc_ref_count() { ref_count++; return ref_count; }
+  // inline int16_t dec_ref_count() { ref_count--; return ref_count; }
 
 } MemAccess_t;
 
@@ -86,71 +98,14 @@ class MemAccessList_t {
 private:
   // the smallest addr of memory locations that this MemAccessList represents
   uint64_t start_addr;
-  enum GrainType_t lreader_gtype; // for left-most readers
-  MemAccess_t *lreaders[MAX_GRAIN_SIZE];
-  enum GrainType_t rreader_gtype; // for right-most readers
-  MemAccess_t *rreaders[MAX_GRAIN_SIZE];
-  enum GrainType_t writer_gtype;
-  MemAccess_t *writers[MAX_GRAIN_SIZE];
+  MemAccess_t *lreaders[NUM_SLOTS];
+  MemAccess_t *rreaders[NUM_SLOTS];
+  MemAccess_t *writers[NUM_SLOTS];
 
   // locks for updating lreaders, rreaders, and writers
   pthread_spinlock_t lreader_lock;
   pthread_spinlock_t rreader_lock;
   pthread_spinlock_t writer_lock;
-
-  __attribute__((always_inline))
-  static enum GrainType_t mem_size_to_gtype(size_t size) {
-    om_assert(size > 0 && size <= MAX_GRAIN_SIZE);
-    switch(size) {
-      case 8:
-        return EIGHT;
-      case 4:
-        return FOUR;
-      case 2:
-        return TWO;
-      default: // everything else gets byte-granularity
-        return ONE;
-    }
-  }
-
-  __attribute__((always_inline))
-  static int get_prev_aligned_index(int index, enum GrainType_t gtype) {
-
-    om_assert(index >= 0 && index < MAX_GRAIN_SIZE);
-    om_assert(gtype != UNINIT && gtype <= MAX_GTYPE);
-    if( IS_ALIGNED_WITH_GTYPE(index, gtype) ) {
-      return index;
-    }
-    return ((index >> gtype) << gtype);
-  }
-
-  // get the start and end indices and gtype to use for accesing 
-  // the readers / writers lists; the gtype is the largest granularity
-  // that this memory access is aligned with 
-  static enum GrainType_t 
-  get_mem_index(uint64_t addr, size_t size, int& start, int& end); 
-
-  // helper function: break one of the MemAcess list into a smaller
-  // granularity;
-  void break_list_into_smaller_gtype(MemAccess_t **l, 
-                                     enum GrainType_t *old_gtype, 
-                                     enum GrainType_t new_gtype) {
-
-    om_assert(*old_gtype > new_gtype && new_gtype != UNINIT);
-    const int stride = gtype_to_mem_size[new_gtype];
-    MemAccess_t *acc = l[0];
-
-    for(int i = stride; i < MAX_GRAIN_SIZE; i += stride) {
-      if( IS_ALIGNED_WITH_GTYPE(i, *old_gtype) ) { 
-        acc = l[i];
-      } else if(acc) {
-        om_assert(l[i] == NULL);
-        acc->inc_ref_count();
-        l[i] = acc;
-      }
-    }
-    *old_gtype = new_gtype;
-  }
 
   // Check races on memory represented by this mem list with this read access
   // Once done checking, update the mem list with this new read access
@@ -171,10 +126,16 @@ public:
   //
   // addr: the memory address of the access
   // is_read: whether the initializing memory access is a read
-  // acc: the memory access that causes this MemAccessList_t to be created
+  // estrand: the strand in g_english that made the accesss that causes this
+  //          MemAccessList_t to be created 
+  // estrand: the strand in g_hebrew that made the accesss that causes this
+  //          MemAccessList_t to be created 
+  // rip: the instruction address that access the memory that
+  //            causes this MemAccessList_t to be created
   // mem_size: the size of the access 
   MemAccessList_t(uint64_t addr, bool is_read,
-                  MemAccess_t *acc, size_t mem_size); 
+                  om_node *estrand, om_node *hstrand, uint64_t rip, 
+                  size_t mem_size); 
 
   ~MemAccessList_t();
 

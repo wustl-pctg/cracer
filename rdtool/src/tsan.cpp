@@ -21,8 +21,8 @@ extern "C" int do_leave_end();
 extern "C" int do_leave_stolen(__cilkrts_stack_frame* sf);
 extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
                       __cilkrts_stack_frame* sf);
-extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size); 
-extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size);
+// extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size); 
+// extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size);
 extern "C" void clear_shadow_memory(size_t start, size_t end); 
 extern "C" void do_tool_init(void);
 extern "C" void do_tool_print(void);
@@ -437,11 +437,10 @@ extern "C" void* malloc(size_t s) {
 static inline void tsan_read(void *addr, size_t mem_size, void *rip) {
   om_assert(TOOL_INITIALIZED);
   if(should_check()) {
-    //    disable_checking();
+    disable_checking();
     DBG_TRACE(DEBUG_MEMORY, "%s read %p\n", __FUNCTION__, addr);
-    //    do_read((uint64_t)rip, (uint64_t)addr, mem_size);
     record_mem_helper(true, (uint64_t)rip, (uint64_t)addr, mem_size);
-    //    enable_checking();
+    enable_checking();
   } else {
     DBG_TRACE(DEBUG_MEMORY, "SKIP %s read %p\n", __FUNCTION__, addr);
   }
@@ -451,11 +450,10 @@ static inline void tsan_write(void *addr, size_t mem_size, void *rip)
 {
   om_assert(TOOL_INITIALIZED);
   if(should_check()) {
-    //    disable_checking();
+    disable_checking();
     DBG_TRACE(DEBUG_MEMORY, "%s wrote %p\n", __FUNCTION__, addr);
-    //    do_write((uint64_t)rip, (uint64_t)addr, mem_size);
     record_mem_helper(false, (uint64_t)rip, (uint64_t)addr, mem_size);
-    //    enable_checking();
+    enable_checking();
   } else {
     DBG_TRACE(DEBUG_MEMORY, "SKIP %s wrote %p\n", __FUNCTION__, addr);
   }
