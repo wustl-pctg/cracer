@@ -1,4 +1,5 @@
-TARGETS := matmul heat fft cholesky cilksort fib fibx strassen
+TARGETS = matmul heat fft cholesky cilksort fib fibx strassen
+TARGETS += knapsack lu nqueens qsort rectmul
 OBJ_DIR_PREFIX := obj
 BIN_DIR := bin
 CC = $(COMPILER_HOME)/bin/clang #-flto
@@ -57,8 +58,6 @@ insert:
 	$(MAKE) $(TARGETS) mode=insert
 icc:
 	$(MAKE) $(TARGETS) mode=icc
-icc:
-	$(MAKE) $(TARGETS) mode=icc
 cilksan:
 	$(MAKE) $(TARGETS:=_cilksan) mode=cilksan
 
@@ -71,14 +70,20 @@ $(BIN_DIR):
 	cp $(CILKSAN_HOME)/test/bench/$(@:_cilksan=) $(BIN_DIR)/$@
 
 ifdef mode
+fib: $(OBJ_DIR)/fib.o
+fibx: $(OBJ_DIR)/fibx.o
+qsort: $(OBJ_DIR)/qsort.o
+nqueens: $(OBJ_DIR)/nqueens.o
 matmul: $(OBJ_DIR)/matmul.o $(OBJ_DIR)/getoptions.o
 heat: $(OBJ_DIR)/heat.o $(OBJ_DIR)/getoptions.o
 fft: $(OBJ_DIR)/fft.o $(OBJ_DIR)/getoptions.o
 cholesky: $(OBJ_DIR)/cholesky.o $(OBJ_DIR)/getoptions.o
 cilksort: $(OBJ_DIR)/cilksort.o $(OBJ_DIR)/getoptions.o
-fib: $(OBJ_DIR)/fib.o $(OBJ_DIR)/getoptions.o
-fibx: $(OBJ_DIR)/fibx.o $(OBJ_DIR)/getoptions.o
 strassen: $(OBJ_DIR)/strassen.o $(OBJ_DIR)/getoptions.o
+knapsack: $(OBJ_DIR)/knapsack.o $(OBJ_DIR)/getoptions.o
+lu: $(OBJ_DIR)/lu.o $(OBJ_DIR)/getoptions.o
+rectmul: $(OBJ_DIR)/rectmul.o $(OBJ_DIR)/getoptions.o
+
 $(TARGETS): 
 	$(CXX) $< $(OBJ_DIR)/getoptions.o $(LIB) $(LDFLAGS) -o $(BIN_DIR)/$@_$(mode)
 else
