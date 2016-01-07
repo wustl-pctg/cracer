@@ -58,13 +58,42 @@ def print_header(comp):
 def run_tests():
     num_iter = 3
     cores = [1] + range(2,17,2)
-    tests = ["matmul", "fft", "cholesky", "cilksort", "strassen", "fib", "fibx"]
-    args = ["-n 2048", "-n " + str(64*1024*1024), "-n 3000 -z 30000", "-n 25000000"]
-    args += ["-n 4096", "42", "772"]
-    #args = ["-n 32", "-n 32", "-n 100 -z 20", "-n 128", "-n 32", "5", "5"]
-    #comp = ["icc", "base", "insert", "brd", "cilksan"]
-    comp = ["base", "insert"]
-    status_column = 3 + len(comp) * column_size + 3
+
+    # Currently, knapsack is too short and lu segfaults on 4 procs
+    # runs = {"matmul": "-n 32",
+    #         "fft": "-n " + str(1024),
+    #         "cholesky": "-n 500 -z 5000",
+    #         "cilksort": "-n 1000",
+    #         "strassen": "-n 256",
+    #         "fib": "10",
+    #         "fibx": "10",
+    #         "heat": "-nx 32 -ny 32 -nt 10",
+    #         "nqueens": "5",
+    #         "qsort": "1024",
+    #         "rectmul": "-x 32 -y 32 -z 32",
+    #         # "knapsack": "-benchmark long",
+    #         # "lu": "-n 32",
+    # }
+    runs = {"matmul": "-n 2048",
+            "fft": "-n " + str(64),#str(64*1024*1024),
+            "cholesky": "-n 3000 -z 30000",
+            "cilksort": "-n 25000000",
+            "strassen": "-n 4096",
+            "fib": "42",
+            "fibx": "772",
+            "heat": "-nx 2048 -ny 2048 -nt 500",
+            "nqueens": "14",
+            "qsort": str(64*1024*1024),
+            "rectmul": "-x 4096 -y 4096 -z 4096",
+            "knapsack": "-n ",
+            "lu": "-n ",
+    }
+    tests = runs.keys()
+    args = runs.values()
+
+    comp = ["icc", "base", "insert", "brd", "cilksan"]
+    global status_column
+    status_column = (len(comp)+1) * (column_size+3) + 25
     if use_cilkscreen: status_column += column_size
     bin_dir = "bin"
 
