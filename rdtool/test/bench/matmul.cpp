@@ -188,36 +188,25 @@ void rec_matmul(REAL *A, REAL *B, REAL *C,
   if ((m + n + p) <= 64) {
     int i, j, k;
     /* base case */
-    RD_ENABLE;
     if (add) {
       for (i = 0; i < m; i++)
         for (k = 0; k < p; k++) {
           REAL c = 0.0;
           for (j = 0; j < n; j++) {
-            //            RD_ENABLE;
             c += A[i * ld + j] * B[j * ld + k];
-            //            RD_DISABLE;
-
           }
-          //          RD_ENABLE;
           C[i * ld + k] += c;
-          //          RD_DISABLE;
         }
     } else {
       for (i = 0; i < m; i++)
         for (k = 0; k < p; k++) {
           REAL c = 0.0;
           for (j = 0; j < n; j++) {
-            //            RD_ENABLE;
             c += A[i * ld + j] * B[j * ld + k];
-            //            RD_DISABLE;
           }
-          //          RD_ENABLE;
           C[i * ld + k] = c;
-          //RD_DISABLE;
         }
     }
-    RD_DISABLE;
     return;
   } 
 
@@ -301,7 +290,6 @@ int main(int argc, char *argv[])
 #ifdef INSERTSONLY
   RD_DISABLE;
 #endif
-  //  RD_DISABLE;
   int n = 1024; // default input size 
   int check = 0, rand_check = 0, help = 0; // default options
 
@@ -338,11 +326,9 @@ int main(int argc, char *argv[])
     zero(C2, n);
   }
 
-  //  RD_ENABLE;
   init(A, n);
   init(B, n);
   zero(C, n);  /* initialization and reset */
-  //  RD_DISABLE; 
 
   //  printf("\nCalculate using recursive method ... \n");
 

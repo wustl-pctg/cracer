@@ -50,9 +50,9 @@ int main(int argc, char *argv[])
   auto start = std::chrono::high_resolution_clock::now();
   res = fibx(n, 1); 
   auto end = std::chrono::high_resolution_clock::now();
-
-  //  printf("Result: %d\n", res);
   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+  printf("Result: %d\n", res);
+
 
 #ifdef RACEDETECT
   assert(get_num_races_found() == 0);

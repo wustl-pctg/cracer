@@ -58,9 +58,8 @@ int main(int argc, char *argv[])
     auto start = std::chrono::high_resolution_clock::now();
     result = fib(n);
     auto end = std::chrono::high_resolution_clock::now();
-
-    // printf("Result: %d\n", result);
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+    printf("Result: %d\n", result);
 
 #ifdef RACEDETECT
   assert(get_num_races_found() == 0);

@@ -454,7 +454,9 @@ const char *specifiers[] = {"-n", "-c", "-benchmark", "-h", 0};
 int opt_types[] = {LONGARG, BOOLARG, BENCHMARK, BOOLARG, 0};
 
 int main(int argc, char **argv) {
-
+#ifdef INSERTSONLY
+  RD_DISABLE;
+#endif
   long size;
   ELM *array, *tmp;
   long i;
@@ -491,6 +493,7 @@ int main(int argc, char **argv) {
   auto start = std::chrono::high_resolution_clock::now();
   cilksort(array, tmp, size);
   auto end = std::chrono::high_resolution_clock::now();
+  std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
 
   if(check) {
     printf("Now check result ... \n");
@@ -506,9 +509,8 @@ int main(int argc, char **argv) {
       printf("Sorting successful.");
   }
 
-  // printf("\nCilk Example: cilksort\n");
-  // printf("options: number of elements = %ld\n\n", size);
-  std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+  printf("\nCilk Example: cilksort\n");
+  printf("options: number of elements = %ld\n\n", size);
 
   free(array);
   free(tmp);
