@@ -5,8 +5,8 @@ TOOL_NAME = rd
 LIB_DIR ?= $(TOOL_HOME)/lib
 INC_DIR ?= $(TOOL_HOME)/include
 
-CC = $(COMPILER_HOME)/bin/clang #-flto
-CXX = $(COMPILER_HOME)/bin/clang++ #-flto
+CC = $(COMPILER_HOME)/bin/clang
+CXX = $(COMPILER_HOME)/bin/clang++
 
 OPT_FLAG ?= -O3
 TOOL_DEBUG ?= 0
@@ -18,10 +18,7 @@ FLAGS += $(OPT_FLAG) -g -DTOOL_DEBUG=$(TOOL_DEBUG)
 CFLAGS += $(FLAGS) -std=c99
 CXXFLAGS += $(FLAGS) -std=c++11
 LDFLAGS += 
-
-ARFLAGS=
-# #ARFLAGS=--plugin $(COMPILE_HOME/lib/LLVMgold.so
-# LDLIBS = $(TOOL_LDLIBS) $(APP_LDLIBS)
+ARFLAGS +=
 
 ## Each C source file will have a corresponding file of prerequisites.
 ## Include the prerequisites for each of our C source files.
