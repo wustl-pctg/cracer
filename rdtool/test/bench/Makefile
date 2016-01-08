@@ -2,24 +2,20 @@ TARGETS = matmul heat fft cholesky cilksort fib fibx strassen
 TARGETS += knapsack lu nqueens qsort rectmul
 OBJ_DIR_PREFIX := obj
 BIN_DIR := bin
-CC = $(COMPILER_HOME)/bin/clang #-flto
-CXX = $(COMPILER_HOME)/bin/clang++ #-flto
 MODES = brd base icc insert cilksan qstat prof
 
 ifeq ($(mode), brd)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_brd)
 	CFLAGS += $(RDFLAGS)
 	CXXFLAGS += $(RDFLAGS)
-	LDFLAGS += $(RUNTIME_LIB)
 	LIB = $(LIB_DIR)/lib$(TOOL_NAME).a
+	LDFLAGS += $(RUNTIME_LIB)
 else ifeq ($(mode), base)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_base)
 	LDFLAGS += $(RUNTIME_LIB)
 else ifeq ($(mode), icc)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_icc)
 	LDFLAGS += $(MALLOC)
-	CC = $(ICC)
-	CXX = $(ICC)
 	LDFLAGS += -lcilkrts -Wl,-rpath,$(INTEL_LIB)
 else ifeq ($(mode), insert)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_insert)
@@ -43,6 +39,11 @@ else ifeq ($(mode), prof)
 	LIB = $(LIB_DIR)/librd.prof.a
 endif
 include ../test.mk
+# common.mk (included by test.mk) resets CC,CXX
+ifeq ($(mode), icc)
+	CC = $(ICC)
+	CXX = $(ICC)
+endif
 
 most: brd base insert icc cilksan
 all: most qstat prof
@@ -114,7 +115,7 @@ endif
 .PHONY: clean modeclean %_clean $(TARGETS) %_brd %_base %_insert %_icc %_prof %_qstat %_cilksan
 
 %_clean:
-	rm -rf $(BIN_DIR)/$(@:_clean=)*
+	rm -rf $(BIN_DIR)/*_$(@:_clean=)
 	for m in $(MODES); do \
 		rm -f $(OBJ_DIR_PREFIX)_$$m/$(@:_clean=.o); \
 	done
