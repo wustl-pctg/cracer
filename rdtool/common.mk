@@ -50,7 +50,7 @@ $(OBJ_DIR)/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
 $(LIB_DIR)/lib%.a: $(OBJ)
-	ar $(ARFLAGS) -r $@ $(OBJ)
+	ar rcs $(ARFLAGS) $@ $(OBJ)
 
 $(LIB_DIR)/lib%.so: $(OBJ)
 	$(CC) $(OBJ) -shared -o $@
