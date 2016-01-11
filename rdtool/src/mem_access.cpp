@@ -6,7 +6,8 @@
 
 // Check races on memory represented by this mem list with this read access
 // Once done checking, update the mem list with this new read access
-void MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr, 
+void
+MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr, 
                               uint64_t addr, size_t mem_size,
                               om_node *curr_estrand, om_node *curr_hstrand) {
 
@@ -104,9 +105,10 @@ void MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
 // Check races on memory represented by this mem list with this write access
 // Also, update the writers list.  
 // Very similar to check_races_and_update_with_read function above.
-void MemAccessList_t::check_races_and_update_with_write(uint64_t inst_addr,
-                              uint64_t addr, size_t mem_size,
-                              om_node *curr_estrand, om_node *curr_hstrand) {
+void
+MemAccessList_t::check_races_and_update_with_write(uint64_t inst_addr,
+                                                   uint64_t addr, size_t mem_size,
+                                                   om_node *curr_estrand, om_node *curr_hstrand) {
 
   DBG_TRACE(DEBUG_MEMORY, "check race w/ write addr %lx and size %lu.\n",
             addr, mem_size);
@@ -134,9 +136,12 @@ void MemAccessList_t::check_races_and_update_with_write(uint64_t inst_addr,
           writer = writers[i];
       }
     }
-    om_assert(writer && writer == writers[i]);
-    om_assert(writer->estrand != curr_estrand && 
-              writer->hstrand != curr_hstrand);
+    // At this point, someone else may come along and write into writers[i]...
+    // om_assert(writer == writers[i]);
+    om_assert(writer);
+
+    // om_assert(writer->estrand != curr_estrand && 
+    //           writer->hstrand != curr_hstrand);
 
     // last writer exists; possibly report race and replace it
     if( writer->races_with(curr_estrand, curr_hstrand) ) { 
