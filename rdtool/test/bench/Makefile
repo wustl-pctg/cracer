@@ -71,10 +71,10 @@ $(BIN_DIR):
 	cp $(CILKSAN_HOME)/test/bench/$(@:_cilksan=) $(BIN_DIR)/$@
 
 ifdef mode
-fib: $(OBJ_DIR)/fib.o
-fibx: $(OBJ_DIR)/fibx.o
-qsort: $(OBJ_DIR)/qsort.o
-nqueens: $(OBJ_DIR)/nqueens.o
+fib: $(OBJ_DIR)/fib.o $(OBJ_DIR)/getoptions.o
+fibx: $(OBJ_DIR)/fibx.o $(OBJ_DIR)/getoptions.o
+qsort: $(OBJ_DIR)/qsort.o $(OBJ_DIR)/getoptions.o
+nqueens: $(OBJ_DIR)/nqueens.o $(OBJ_DIR)/getoptions.o
 matmul: $(OBJ_DIR)/matmul.o $(OBJ_DIR)/getoptions.o
 heat: $(OBJ_DIR)/heat.o $(OBJ_DIR)/getoptions.o
 fft: $(OBJ_DIR)/fft.o $(OBJ_DIR)/getoptions.o
@@ -85,7 +85,7 @@ knapsack: $(OBJ_DIR)/knapsack.o $(OBJ_DIR)/getoptions.o
 lu: $(OBJ_DIR)/lu.o $(OBJ_DIR)/getoptions.o
 rectmul: $(OBJ_DIR)/rectmul.o $(OBJ_DIR)/getoptions.o
 
-$(TARGETS): 
+$(TARGETS): | $(BIN_DIR)
 	$(CXX) $< $(OBJ_DIR)/getoptions.o $(LIB) $(LDFLAGS) -o $(BIN_DIR)/$@_$(mode)
 else
 $(TARGETS):
