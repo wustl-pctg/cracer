@@ -186,6 +186,7 @@ void report_race(uint64_t first_inst, uint64_t second_inst,
   } else {
     // have to get the info before user program exits
     print_race_info(race);
+    std::exit(1);
     races_found.insert( std::make_pair(key, race) );
   }
   //  std::exit(1);
