@@ -289,6 +289,7 @@ int main(int argc, char *argv[])
 { 
 #ifdef INSERTSONLY
   RD_DISABLE;
+  __om_disable_instrumentation();
 #endif
   int n = 1024; // default input size 
   int check = 0, rand_check = 0, help = 0; // default options

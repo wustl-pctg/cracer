@@ -3344,6 +3344,7 @@ int main(int argc, char *argv[])
 { 
 #ifdef INSERTSONLY
   RD_DISABLE;
+  __om_disable_instrumentation();
 #endif
   int correctness, help, benchmark;
   long size;

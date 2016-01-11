@@ -45,6 +45,7 @@ int fib(int n) {
 int main(int argc, char *argv[])
 {
 #ifdef INSERTSONLY
+  __om_disable_instrumentation();
   RD_DISABLE;
 #endif
     int n, result;

@@ -478,6 +478,7 @@ int opt_types[] = { INTARG, BOOLARG, BOOLARG, BENCHMARK, BOOLARG, 0 };
 int main(int argc, char *argv[]) { 
 #ifdef INSERTSONLY
   RD_DISABLE;
+  __om_disable_instrumentation();
 #endif
 
   int print, test, n, benchmark, help, failed;
