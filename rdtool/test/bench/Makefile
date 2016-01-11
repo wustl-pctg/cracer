@@ -115,7 +115,7 @@ endif
 .PHONY: clean modeclean %_clean $(TARGETS) %_brd %_base %_insert %_icc %_prof %_qstat %_cilksan
 
 %_clean:
-	rm -rf $(BIN_DIR)/*_$(@:_clean=)
+	rm -rf $(BIN_DIR)/$(@:_clean=)_*
 	for m in $(MODES); do \
 		rm -f $(OBJ_DIR_PREFIX)_$$m/$(@:_clean=.o); \
 	done
