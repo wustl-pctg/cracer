@@ -115,6 +115,9 @@ extern "C" void do_tool_print(void)
 {
   DBG_TRACE(DEBUG_CALLBACK, "cilk_tool_print called.\n");
 
+#if STATS > 0
+  int p = __cilkrts_get_nworkers();
+#endif
 #if STATS > 1
   // for (int i = 0; i < NUM_INTERVAL_TYPES; ++i) {
   //   assert(g_timing_event_starts[i].tv_sec == EMPTY_TIME_POINT.tv_sec);
@@ -122,7 +125,6 @@ extern "C" void do_tool_print(void)
   //   std::cout << "\t\t" << g_timing_events[i];
   // }
   // std::cout << std::endl;
-  int p = __cilkrts_get_nworkers();
   std::cout << "Fast Path time: ";
   for (int i = 0; i < p; ++i) {
     std::cout << g_timing_events[(i*p) + FAST_PATH] << std::endl;
@@ -136,6 +138,11 @@ extern "C" void do_tool_print(void)
   std::cout << "Num relabels: " << g_num_relabels << std::endl;
   std::cout << "Num inserts: " << g_num_inserts << std::endl;
   std::cout << "Avg size per relabel: " << (double)g_relabel_size / (double)g_num_relabels << std::endl;
+  std::cout << "English OM memory used: " << g_english.memsize() << std::endl;
+  std::cout << "Hebrew OM memory used: " << g_hebrew.memsize() << std::endl;
+  size_t sssize = 0;
+  for (int i = 0; i < p; ++i) sssize += frames[i].memsize();
+  std::cout << "Shadow stack(s) total size: " << sssize << std::endl;
 #endif
 }
 
@@ -179,7 +186,8 @@ extern "C" om_node* get_current_hebrew()
 extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
                                  __cilkrts_stack_frame* sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "Worker %i stole from %i.\n", w->self, victim->self);
+  //  DBG_TRACE(DEBUG_CALLBACK,
+  printf("Worker %i stole from %i.\n", w->self, victim->self);
 
   frames[w->self].reset();
   FrameData_t* loot = frames[victim->self].steal_top(frames[w->self]);
@@ -229,7 +237,8 @@ extern "C" void do_detach_begin(__cilkrts_stack_frame* parent_sf)
   assert(parent + 1 == f);
 
   assert(!(parent->flags & FRAME_HELPER_MASK));
-  f->flags = FRAME_HELPER_MASK;
+  assert(f->flags & FRAME_HELPER_MASK);
+  //  f->flags = FRAME_HELPER_MASK;
 
   if (!parent->sync_english) { // first of spawn group
     om_assert(!parent->sync_hebrew);
@@ -346,6 +355,8 @@ extern "C" void do_leave_stolen(__cilkrts_stack_frame* sf)
   // We *should* still have a helper frame on the shadow stack, since
   // cilk_leave_end will not be called
   //  FrameData_t* child = frames[self].head();
+  if (frames[self].size() < 2 || !(frames[self].head()->flags & FRAME_HELPER_MASK))
+    printf("worker %i has a problem.\n", self);
   FrameData_t* parent = frames[self].ancestor(1);
 
   om_assert(frames[self].head()->flags & FRAME_HELPER_MASK);
@@ -413,7 +424,7 @@ extern "C" int do_leave_end()
 
 // called by record_memory_read/write, with the access broken down 
 // into 8-byte aligned memory accesses
-void 
+void
 record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
                   uint32_t mem_size)
 {
@@ -502,7 +513,8 @@ extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size)
 */
 
 // clear the memory block at [start-end) (end is exclusive).
-extern "C" void clear_shadow_memory(size_t start, size_t end) {
+extern "C" void
+clear_shadow_memory(size_t start, size_t end) {
 
   DBG_TRACE(DEBUG_MEMORY, "Clear shadow memory %p--%p (%u).\n", 
             start, end, end-start);

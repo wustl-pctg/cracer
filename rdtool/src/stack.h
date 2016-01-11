@@ -177,6 +177,7 @@ public:
     assert(this->_head != (uint32_t)-1);
     assert(!(Stack_t<T>::head()->flags & FRAME_HELPER_MASK));
     Stack_t<T>::push();
+    Stack_t<T>::head()->flags = FRAME_HELPER_MASK;
     pthread_spin_unlock(&_slock);
   }
 
@@ -271,6 +272,11 @@ public:
     }
 
     pthread_spin_unlock(&_slock);
+  }
+
+  size_t memsize()
+  {
+    return (this->_capacity * sizeof(T)) + sizeof(*this);
   }
 
 };
