@@ -127,7 +127,7 @@ extern "C" void __tsan_func_entry(void *pc){ }
 extern "C" void cilk_tool_init(void)
 {
   disable_checking();
-  disable_instrumentation();
+  //  disable_instrumentation();
   do_tool_init();
   enable_checking();
 }
@@ -135,7 +135,7 @@ extern "C" void cilk_tool_init(void)
 extern "C" void cilk_tool_print(void)
 {
   disable_checking();
-  disable_instrumentation();
+  //  disable_instrumentation();
   do_tool_print();
   enable_checking();
 }
@@ -145,7 +145,7 @@ extern "C" void cilk_tool_destroy(void)
   disable_checking();
   disable_instrumentation();
   do_tool_destroy();
-  enable_checking();
+  //enable_checking();
 }
 
 /* We would like to clear the shadow memory correponding to the cactus
@@ -310,39 +310,51 @@ extern "C" void cilk_leave_end() {
 // parent is stolen and control should longjmp into the runtime
 // (switch to scheduling fiber). Thus we don't need to
 // enable_checking, but otherwise need to do the same as cilk_leave_end()
-extern "C" void cilk_leave_stolen(__cilkrts_worker* w,
+extern "C" void
+cilk_leave_stolen(__cilkrts_worker* w,
                                   __cilkrts_stack_frame *saved_sf,
                                   int is_original,
                                   char* stack_base)
 { 
   /// @todo: don't do anything on inserts only!
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  om_assert(clear_stack == true); 
 
-  //  __tsan_func_exit();
-  // We can't just call __tsan_func_exit because now the stack now
-  //  looks like:
-  // Spawning (stolen) function
-  // __cilk_spawn_helper
-  // __cilkrts_leave_frame
-  // __cilkrts_c_THE_exception_check
-  // cilk_leave_stolen
+  if (instrumentation) {
 
-  uint64_t stack_high_watermark;
-  /// @todo is the 'is_original' necessary? 
-  if (is_original) stack_high_watermark = (uint64_t)__builtin_frame_address(3);
-  else stack_high_watermark = (uint64_t)stack_base;
+    om_assert(clear_stack == true); 
 
-  DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_stolen, stack_high_watermark: %lx.\n", 
-            stack_high_watermark);
-  om_assert( stack_low_watermark != ((uint64_t)-1) );
-  om_assert( stack_low_watermark <= stack_high_watermark );
+    //  __tsan_func_exit();
+    // We can't just call __tsan_func_exit because now the stack now
+    //  looks like:
+    // Spawning (stolen) function
+    // __cilk_spawn_helper
+    // __cilkrts_leave_frame
+    // __cilkrts_c_THE_exception_check (not when lto enabled)
+    // cilk_leave_stolen (not when lto enabled)
 
-  clear_shadow_memory(stack_low_watermark, stack_high_watermark);
-  // We're jumping back to the runtime, but keep this in case we do a
-  // provably good steal
-  stack_low_watermark = stack_high_watermark;
-  clear_stack = 0;
+    uint64_t stack_high_watermark;
+#ifdef USE_LTO
+#define SPAWN_FRAME_POS 2
+#else
+#define SPAWN_FRAME_POS 3
+#endif
+    /// @todo is the 'is_original' necessary? 
+    if (is_original)
+      stack_high_watermark = (uint64_t)__builtin_frame_address(SPAWN_FRAME_POS);
+    else
+      stack_high_watermark = (uint64_t)stack_base;
+
+    DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_stolen, stack_high_watermark: %lx.\n", 
+              stack_high_watermark);
+    om_assert( stack_low_watermark != ((uint64_t)-1) );
+    om_assert( stack_low_watermark <= stack_high_watermark );
+
+    clear_shadow_memory(stack_low_watermark, stack_high_watermark);
+    // We're jumping back to the runtime, but keep this in case we do a
+    // provably good steal
+    stack_low_watermark = stack_high_watermark;
+    clear_stack = 0;
+  }
 
   do_leave_stolen(saved_sf);
 }
@@ -439,6 +451,7 @@ static inline void tsan_read(void *addr, size_t mem_size, void *rip) {
   if(should_check()) {
     disable_checking();
     DBG_TRACE(DEBUG_MEMORY, "%s read %p\n", __FUNCTION__, addr);
+    om_assert(mem_size <= 16);
     record_mem_helper(true, (uint64_t)rip, (uint64_t)addr, mem_size);
     enable_checking();
   } else {
@@ -452,6 +465,7 @@ static inline void tsan_write(void *addr, size_t mem_size, void *rip)
   if(should_check()) {
     disable_checking();
     DBG_TRACE(DEBUG_MEMORY, "%s wrote %p\n", __FUNCTION__, addr);
+    om_assert(mem_size <= 16);
     record_mem_helper(false, (uint64_t)rip, (uint64_t)addr, mem_size);
     enable_checking();
   } else {
