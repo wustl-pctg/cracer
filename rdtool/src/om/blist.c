@@ -134,6 +134,11 @@ size_t bl_size(const blist* self)
 #endif // BL_HAS_SIZE_FIELD  
 }
 
+size_t bl_memsize(const blist* self)
+{
+  return (bl_size(self) * sizeof(bl_node)) + sizeof(blist);
+}
+
 /// @todo bl_verify
 int bl_verify(const blist* self)
 {

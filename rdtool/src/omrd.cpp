@@ -97,9 +97,9 @@ private:
     pthread_spinlock_t* mut = &g_worker_mutexes[w->self].mut;
     while (!n) {
       if (!base->list->heavy && CAS(&base->list->heavy, 0, 1)) {
-        DBG_TRACE(DEBUG_BACKTRACE,
-                  "Could not fit into list of size %zu, not heavy.\n",
-                  base->list->size);
+        // DBG_TRACE(DEBUG_BACKTRACE,
+        //           "Could not fit into list of size %zu, not heavy.\n",
+        //           base->list->size);
         add_heavy(base);
       }
 
@@ -146,8 +146,8 @@ public:
     assert(n->list == base->list);
     if (!n->list->heavy && is_heavy(n)) {
       if (CAS(&base->list->heavy, 0, 1)) {
-        DBG_TRACE(DEBUG_BACKTRACE,
-                  "List marked as heavy with %zu items.\n", n->list->size);
+        // DBG_TRACE(DEBUG_BACKTRACE,
+        //           "List marked as heavy with %zu items.\n", n->list->size);
         add_heavy(base);
       }
     }
@@ -162,6 +162,13 @@ public:
     label_t old = g_heavy_threshold;
     g_heavy_threshold = new_threshold;
     return old;
+  }
+
+  size_t memsize()
+  {
+    size_t ds_size = om_memsize(m_ds);
+    size_t hnode_size = m_heavy_nodes.memsize();
+    return ds_size + hnode_size + sizeof(void*) + sizeof(omrd_t);
   }
 };
 
@@ -181,3 +188,5 @@ void batch_relabel(void* _ds, void* data, size_t size, void* results)
 
   heavy_nodes->reset();
 }
+
+

@@ -13,6 +13,11 @@ double g_malloc_begin;
 extern "C" {
 #endif
 
+static inline int is_leaf(tl_node* n)
+{
+  return n->level == MAX_LEVEL || (n->prev == NULL && n->right == NULL);
+}
+
 tl_node* tl_node_new()
 {
   tl_node* x = (tl_node*)malloc(1 * sizeof(tl_node));
@@ -190,6 +195,22 @@ void om_fprint(const om* self, FILE* out)
 }
 
 void om_print(const om* self) { om_fprint(self, stdout); }
+
+size_t node_memsize(tl_node* n)
+{
+  if (!n) return 0;
+  size_t size = sizeof(*n);
+  if (is_leaf(n))
+    size += bl_memsize(n->below);
+  else
+    size += node_memsize(n->left) + node_memsize(n->right);
+  return size;
+}
+
+size_t om_memsize(const om* self)
+{
+  return node_memsize(self->root) + sizeof(om);
+}
 
 
 #ifdef __cplusplus
