@@ -86,9 +86,6 @@ int qmain(int n) {
 }
 
 int main(int argc, char* argv[]) {
-#ifdef INSERTSONLY
-  RD_DISABLE;
-#endif
 
   int n = 10 * 1000 * 1000;
   if (argc > 1) {
@@ -101,17 +98,6 @@ int main(int argc, char* argv[]) {
     }
   }
   int ret = qmain(n);
-
-  //  assert(__cilksan_error_count() == 0);
-
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
 
   return ret;
 }

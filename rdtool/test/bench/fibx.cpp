@@ -36,9 +36,6 @@ int fibx(int n, int even_depth) {
 
 int main(int argc, char *argv[]) 
 {
-#ifdef INSERTSONLY
-  RD_DISABLE;
-#endif
   int n, res;
 
   if(argc != 2) {
@@ -52,16 +49,6 @@ int main(int argc, char *argv[])
   auto end = std::chrono::high_resolution_clock::now();
   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
   printf("Result: %d\n", res);
-
-
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
 
   return 0;
 }

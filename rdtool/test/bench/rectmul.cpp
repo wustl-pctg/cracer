@@ -518,15 +518,5 @@ int main(int argc, char *argv[]) {
 
   t = run(x,y,z,check);
 
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
-  //  assert(__cilksan_error_count() == 0);
-
   return t; 
 }

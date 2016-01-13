@@ -158,9 +158,6 @@ const char *specifiers[] = {"-f", "-benchmark", "-h", 0};
 int opt_types[] = {STRINGARG, BENCHMARK, BOOLARG, 0};
 
 int main(int argc, char *argv[]) {
-#ifdef INSERTSONLY
-  RD_DISABLE;
-#endif
 
   struct item items[MAX_ITEMS];	/* array of items */
   int n, capacity, sol, benchmark, help;
@@ -200,16 +197,6 @@ int main(int argc, char *argv[]) {
   printf("\nCilk Example: knapsack\n");
   printf("options: problem-file = %s\n\n", filename);
   printf("Best value is %d\n\n", sol);
-
-  //  assert(__cilksan_error_count() == 0);
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
 
   return 0;
 }

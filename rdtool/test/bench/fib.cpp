@@ -44,10 +44,6 @@ int fib(int n) {
 
 int main(int argc, char *argv[])
 {
-#ifdef INSERTSONLY
-  __om_disable_instrumentation();
-  RD_DISABLE;
-#endif
     int n, result;
 
     if (argc != 2) {
@@ -61,16 +57,6 @@ int main(int argc, char *argv[])
     auto end = std::chrono::high_resolution_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
     printf("Result: %d\n", result);
-
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
-
 
     return 0;
 }

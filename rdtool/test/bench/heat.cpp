@@ -306,9 +306,6 @@ int opt_types[] = {INTARG, INTARG, INTARG, INTARG, DOUBLEARG, DOUBLEARG, DOUBLEA
 
 int main(int argc, char *argv[])
 {
-#ifdef INSERTSONLY
-  RD_DISABLE;
-#endif
   int ret, benchmark, help;
   char filename[100];
 
@@ -404,17 +401,6 @@ int main(int argc, char *argv[])
   // printf("         nx          = %d\n", nx);
   // printf("         ny          = %d\n", ny);
   // printf("         nt          = %d\n", nt);
-
-  //  assert(__cilksan_error_count() == 0);
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
-
 
   return 0;
 }

@@ -85,9 +85,6 @@ int nqueens (int n, int j, char *a) {
 
 
 int main(int argc, char *argv[]) { 
-#ifdef INSERTSONLY
-  RD_DISABLE;
-#endif
 
   int n = 13;
   char *a;
@@ -115,16 +112,6 @@ int main(int argc, char *argv[]) {
   } else {
     printf ("Total number of solutions : %d\n", res);
   }
-
-  //  assert(__cilksan_error_count() == 0);
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
 
   return 0;
 }

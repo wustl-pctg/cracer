@@ -796,9 +796,6 @@ int opt_types[] = {INTARG, BOOLARG, BOOLARG, BENCHMARK, BOOLARG, 0};
 
 int main(int argc, char *argv[]) 
 {
-#ifdef INSERTSONLY
-  RD_DISABLE;
-#endif
   REAL *A, *B, *C;
   int verify, rand_check, benchmark, help, n;
 
@@ -878,16 +875,6 @@ int main(int argc, char *argv[])
   free_matrix(A);
   free_matrix(B);
   free_matrix(C);
-
-  //  assert(__cilksan_error_count() == 0);
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
 
   return 0;
 }

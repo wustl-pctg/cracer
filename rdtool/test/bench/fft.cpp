@@ -3342,10 +3342,6 @@ int opt_types[] = {LONGARG, BOOLARG, BENCHMARK, BOOLARG, 0};
 
 int main(int argc, char *argv[])
 { 
-#ifdef INSERTSONLY
-  RD_DISABLE;
-  __om_disable_instrumentation();
-#endif
   int correctness, help, benchmark;
   long size;
 
@@ -3386,16 +3382,6 @@ int main(int argc, char *argv[])
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
 
   }
-
-  // assert(__cilksan_error_count() == 0);
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
 
   return 0;
 }

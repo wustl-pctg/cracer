@@ -807,9 +807,6 @@ int opt_types[] = { INTARG, INTARG, BOOLARG, STRINGARG, BENCHMARK, BOOLARG, 0 };
 
 int main (int argc, char *argv[])
 {
-#ifdef INSERTSONLY
-  RD_DISABLE;
-#endif
   Matrix A, R;
   int size, depth, nonzeros, i, benchmark, help, check = 1;
   int input_nonzeros, input_blocks, output_nonzeros, output_blocks;
@@ -978,17 +975,6 @@ again:
 
   free_matrix (depth, A);
   free_matrix (depth, R);
-
-
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  // assert(__cilksan_error_count() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
 
   return 0;
 }

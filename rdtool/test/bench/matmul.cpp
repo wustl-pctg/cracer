@@ -287,10 +287,6 @@ int opt_types[] = {INTARG, BOOLARG, BOOLARG, BOOLARG, 0};
 
 int main(int argc, char *argv[])
 { 
-#ifdef INSERTSONLY
-  RD_DISABLE;
-  __om_disable_instrumentation();
-#endif
   int n = 1024; // default input size 
   int check = 0, rand_check = 0, help = 0; // default options
 
@@ -368,15 +364,6 @@ int main(int argc, char *argv[])
   } else if( check) {
     free(C2);
   }
-
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
 
   return 0;
 }

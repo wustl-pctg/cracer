@@ -454,9 +454,6 @@ const char *specifiers[] = {"-n", "-c", "-benchmark", "-h", 0};
 int opt_types[] = {LONGARG, BOOLARG, BENCHMARK, BOOLARG, 0};
 
 int main(int argc, char **argv) {
-#ifdef INSERTSONLY
-  RD_DISABLE;
-#endif
   long size;
   ELM *array, *tmp;
   long i;
@@ -514,15 +511,6 @@ int main(int argc, char **argv) {
 
   free(array);
   free(tmp);
-#ifdef RACEDETECT
-  assert(get_num_races_found() == 0);
-  // assert(__cilksan_error_count() == 0);
-  cilk_tool_destroy();
-#endif
-
-#ifdef STATS
-  __stattool_print_info();
-#endif
 
   return 0;
 }
