@@ -1,5 +1,5 @@
 TARGETS = matmul heat fft cholesky cilksort fib fibx strassen
-TARGETS += knapsack lu nqueens qsort rectmul
+TARGETS += knapsack lu nqueens qsort rectmul test
 OBJ_DIR_PREFIX := obj
 BIN_DIR := bin
 MODES = brd base icc insert cilksan qstat prof
@@ -19,8 +19,8 @@ else ifeq ($(mode), icc)
 	LDFLAGS += -lcilkrts -Wl,-rpath,$(INTEL_LIB)
 else ifeq ($(mode), insert)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_insert)
-	CFLAGS += $(RDFLAGS) -DINSERTSONLY
-	CXXFLAGS += $(RDFLAGS) -DINSERTSONLY
+	CFLAGS += $(INSERTFLAGS)
+	CXXFLAGS += $(INSERTFLAGS)
 	LDFLAGS += $(RUNTIME_LIB)
 	LIB = $(LIB_DIR)/lib$(TOOL_NAME).a
 else ifeq ($(mode), cilksan)
@@ -84,6 +84,7 @@ strassen: $(OBJ_DIR)/strassen.o $(OBJ_DIR)/getoptions.o
 knapsack: $(OBJ_DIR)/knapsack.o $(OBJ_DIR)/getoptions.o
 lu: $(OBJ_DIR)/lu.o $(OBJ_DIR)/getoptions.o
 rectmul: $(OBJ_DIR)/rectmul.o $(OBJ_DIR)/getoptions.o
+test: $(OBJ_DIR)/test.o
 
 $(TARGETS): | $(BIN_DIR)
 	$(CXX) $< $(OBJ_DIR)/getoptions.o $(LIB) $(LDFLAGS) -o $(BIN_DIR)/$@_$(mode)
