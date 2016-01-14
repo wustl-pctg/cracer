@@ -176,7 +176,7 @@ public:
 /// @todo It would be great define batch functions as class methods...
 void batch_relabel(void* _ds, void* data, size_t size, void* results)
 {
-  DBG_TRACE(DEBUG_BACKTRACE, "Begin relabel %zu.\n", g_num_relabels);
+  RD_STATS(DBG_TRACE(DEBUG_BACKTRACE, "Begin relabel %zu.\n", g_num_relabels));
   omrd_t* ds = (omrd_t*)_ds;
   AtomicStack_t<tl_node*>* heavy_nodes = ds->get_heavy_nodes();
   if (!heavy_nodes->empty()) {

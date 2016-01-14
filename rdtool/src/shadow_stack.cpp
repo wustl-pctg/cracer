@@ -186,8 +186,7 @@ extern "C" om_node* get_current_hebrew()
 extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
                                  __cilkrts_stack_frame* sf)
 {
-  //  DBG_TRACE(DEBUG_CALLBACK,
-  printf("Worker %i stole from %i.\n", w->self, victim->self);
+  DBG_TRACE(DEBUG_CALLBACK, "Worker %i stole from %i.\n", w->self, victim->self);
 
   frames[w->self].reset();
   FrameData_t* loot = frames[victim->self].steal_top(frames[w->self]);
@@ -431,7 +430,7 @@ record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
   om_assert(self != -1);
   FrameData_t *f = frames[self].head();
   MemAccessList_t *val = shadow_mem.find( ADDR_TO_KEY(addr) );
-  MemAccess_t *acc = NULL;
+  //  MemAccess_t *acc = NULL;
   MemAccessList_t *mem_list = NULL;
 
   if( val == NULL ) {
