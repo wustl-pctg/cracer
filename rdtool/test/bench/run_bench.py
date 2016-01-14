@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # Run the benchmarks
 from __future__ import print_function
+from collections import OrderedDict
 import os, sys, subprocess, shlex
 import StringIO
 
 cilkscreen = "/home/rob/src/cilktools-linux-004421/bin/cilkscreen"
-use_cilkscreen = False
+use_cilkscreen = True
 print_status = True # Makes log file ugly
 column_size = 22
 column_format = "{: >" + str(column_size) + "},"
@@ -15,6 +16,14 @@ status_column = 200
 def parse_result(bench_type, proc):
     ## @todo check for errors with err
     out, err = proc.communicate()
+    if proc.returncode != 0:
+        print("\nExecution terminated with:")
+        sep = "-"*column_size
+        print(sep + "stdout" + sep)
+        print(out)
+        print(sep + "stderr" + sep)
+        print(err)
+        sys.exit(1)
     buf = StringIO.StringIO(out)
     line = buf.readline()
     return [int(line[:-1])]
@@ -56,42 +65,44 @@ def print_header(comp):
 
 
 def run_tests():
-    num_iter = 3
+    num_iter = 1
     cores = [1] + range(2,17,2)
 
+    runs = OrderedDict()
     # Currently, knapsack is too short and lu segfaults on 4 procs
-    # runs = {"matmul": "-n 32",
+    # runs = {"matmul": "-n 1024",
     #         "fft": "-n " + str(1024),
     #         "cholesky": "-n 500 -z 5000",
-    #         "cilksort": "-n 1000",
-    #         "strassen": "-n 256",
-    #         "fib": "10",
-    #         "fibx": "10",
-    #         "heat": "-nx 32 -ny 32 -nt 10",
-    #         "nqueens": "5",
-    #         "qsort": "1024",
-    #         "rectmul": "-x 32 -y 32 -z 32",
-    #         # "knapsack": "-benchmark long",
+    #         "cilksort": "-n 100000",
+    #         "strassen": "-n 512",
+    #         "fib": "20",
+    #         "fibx": "20",
+    #         "heat": "-nx 256 -ny 256 -nt 25",
+    #         "nqueens": "8",
+    #         "qsort": "100000",
+    #         "rectmul": "-x 256 -y 256 -z 256",
+    #          "knapsack": "-benchmark long",
     #         # "lu": "-n 32",
     # }
-    runs = {"matmul": "-n 2048",
-            "fft": "-n " + str(64),#str(64*1024*1024),
-            "cholesky": "-n 3000 -z 30000",
-            "cilksort": "-n 25000000",
-            "strassen": "-n 4096",
-            "fib": "42",
-            "fibx": "772",
-            "heat": "-nx 2048 -ny 2048 -nt 500",
-            "nqueens": "14",
-            "qsort": str(64*1024*1024),
-            "rectmul": "-x 4096 -y 4096 -z 4096",
-            "knapsack": "-n ",
-            "lu": "-n ",
-    }
+    runs["matmul"] = "-n 2048"
+    runs["fft"] = "-n " + str(64*1024*1024)
+    #runs["cholesky"] = "-n 3000 -z 30000", #bug? Infinite loop, probably when clearing shadow memory!
+    runs["cilksort"] = "-n 25000000"
+    #runs["strassen"] = "-n 4096"
+    #runs["fib"] = "40", # Takes too long..
+    #runs["fibx"] = "772"
+    runs["heat"] = "-nx 2048 -ny 2048 -nt 500"
+    runs["knapsack"] = "-benchmark long"
+    #runs["nqueens"] = "14"
+    runs["qsort"] = str(64*1024*1024)
+    runs["rectmul"] = "-x 4096 -y 4096 -z 4096"
+    #runs["lu"] = "-n ", # bug
+    
     tests = runs.keys()
     args = runs.values()
 
     comp = ["icc", "base", "insert", "brd", "cilksan"]
+    #comp = ["base", "insert", "brd"]
     global status_column
     status_column = (len(comp)+1) * (column_size+3) + 25
     if use_cilkscreen: status_column += column_size
