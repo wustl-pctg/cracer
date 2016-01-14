@@ -303,14 +303,15 @@ extern "C" void cilk_leave_end() {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   enable_checking();
   DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_leave_end.\n");
-  int is_last_frame = do_leave_end();
+  // int is_last_frame =
+  do_leave_end();
 }
 
 // This is called when cilkrts_c_THE_exception_check realizes the
 // parent is stolen and control should longjmp into the runtime
 // (switch to scheduling fiber). Thus we don't need to
 // enable_checking, but otherwise need to do the same as cilk_leave_end()
-extern "C" void
+extern "C" void __attribute__((noinline))
 cilk_leave_stolen(__cilkrts_worker* w,
                                   __cilkrts_stack_frame *saved_sf,
                                   int is_original,
@@ -333,11 +334,11 @@ cilk_leave_stolen(__cilkrts_worker* w,
     // cilk_leave_stolen (not when lto enabled)
 
     uint64_t stack_high_watermark;
-#ifdef USE_LTO
-#define SPAWN_FRAME_POS 2
-#else
+// #ifdef USE_LTO
+// #define SPAWN_FRAME_POS 2
+// #else
 #define SPAWN_FRAME_POS 3
-#endif
+// #endif
     /// @todo is the 'is_original' necessary? 
     if (is_original)
       stack_high_watermark = (uint64_t)__builtin_frame_address(SPAWN_FRAME_POS);
