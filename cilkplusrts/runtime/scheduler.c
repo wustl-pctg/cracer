@@ -2371,8 +2371,9 @@ void __cilkrts_promote_own_deque(__cilkrts_worker *w)
    to the __cilkrts_stack_frame that we are finishing (i.e., the
    argument to __cilkrts_leave_frame).
 */
-void __cilkrts_c_THE_exception_check(__cilkrts_worker *w, 
-                                     __cilkrts_stack_frame *returning_sf)
+void __attribute__((noinline))
+__cilkrts_c_THE_exception_check(__cilkrts_worker *w, 
+                                __cilkrts_stack_frame *returning_sf)
 {
     full_frame *ff;
     int stolen_p;
