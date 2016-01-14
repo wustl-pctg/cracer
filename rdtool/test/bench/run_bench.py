@@ -10,7 +10,7 @@ use_cilkscreen = True
 print_status = True # Makes log file ugly
 column_size = 22
 column_format = "{: >" + str(column_size) + "},"
-status_column = 200
+status_column = 100
 
 # For now, returns just the runtime, in a list
 def parse_result(bench_type, proc):
@@ -84,18 +84,18 @@ def run_tests():
     #          "knapsack": "-benchmark long",
     #         # "lu": "-n 32",
     # }
-    runs["matmul"] = "-n 2048"
-    runs["fft"] = "-n " + str(64*1024*1024)
-    #runs["cholesky"] = "-n 3000 -z 30000", #bug? Infinite loop, probably when clearing shadow memory!
+    #runs["matmul"] = "-n 2048"
     runs["cilksort"] = "-n 25000000"
+    runs["qsort"] = str(64*1024*1024)
+    runs["heat"] = "-nx 2048 -ny 2048 -nt 500"
+    runs["knapsack"] = "-benchmark long"
+    runs["fft"] = "-n " + str(64*1024*1024)
+    runs["rectmul"] = "-x 4096 -y 4096 -z 4096"
+    #runs["cholesky"] = "-n 3000 -z 30000", #bug? Infinite loop, probably when clearing shadow memory!
     #runs["strassen"] = "-n 4096"
     #runs["fib"] = "40", # Takes too long..
     #runs["fibx"] = "772"
-    runs["heat"] = "-nx 2048 -ny 2048 -nt 500"
-    runs["knapsack"] = "-benchmark long"
     #runs["nqueens"] = "14"
-    runs["qsort"] = str(64*1024*1024)
-    runs["rectmul"] = "-x 4096 -y 4096 -z 4096"
     #runs["lu"] = "-n ", # bug
     
     tests = runs.keys()
@@ -147,7 +147,7 @@ def run_tests():
                 post_status(line)
 
             if print_status:
-                s = " " * 84
+                s = " " * 20
                 s = s.rjust(status_column - len(line))
             else:
                 s = ""
