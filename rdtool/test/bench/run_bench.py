@@ -2,15 +2,22 @@
 # Run the benchmarks
 from __future__ import print_function
 from collections import OrderedDict
-import os, sys, subprocess, shlex
-import StringIO
+import os, sys, shlex, subprocess
+import StringIO, datetime, argparse
+
+## @todo In the future, print out to a log file, by default named with a timestamp, e.g.
+## shell: date +%Y%m%d-%H%M
+## python: import datetime; datetime.datetime.now().strftime("%Y%m%d-%H%M")
 
 cilkscreen = "/home/rob/src/cilktools-linux-004421/bin/cilkscreen"
-use_cilkscreen = True
+use_cilkscreen = False
 print_status = True # Makes log file ugly
 column_size = 22
 column_format = "{: >" + str(column_size) + "},"
 status_column = 100
+
+def timestamp():
+    return datetime.datetime.now()
 
 # For now, returns just the runtime, in a list
 def parse_result(bench_type, proc):
@@ -41,15 +48,16 @@ def runit(n, bench_type, prog, args, env):
 
 def pre_status(prev_line):
     if not print_status: return
-    start_time = subprocess.check_output("date".split(), shell=False)
-    s = "Started latest at {}".format(start_time)[0:-1]
+    time = datetime.date
+    s = "Started latest at {:%d %b %Y %H:%m}".format(timestamp())
     s = s.rjust(status_column - len(prev_line))
-    print(s, end='')
-    sys.stdout.flush()    
+    sys.stderr.write(s)
+    sys.stderr.flush()    
 
 def post_status(new_line):
     if print_status:
-        new_line = '\r' + new_line
+        sys.stderr.write('\r')
+        sys.stderr.flush()
     print(new_line, end='')
     sys.stdout.flush()
 
@@ -85,12 +93,12 @@ def run_tests():
     #         # "lu": "-n 32",
     # }
     #runs["matmul"] = "-n 2048"
-    runs["cilksort"] = "-n 25000000"
-    runs["qsort"] = str(64*1024*1024)
-    runs["heat"] = "-nx 2048 -ny 2048 -nt 500"
-    runs["knapsack"] = "-benchmark long"
-    runs["fft"] = "-n " + str(64*1024*1024)
-    runs["rectmul"] = "-x 4096 -y 4096 -z 4096"
+    #runs["cilksort"] = "-n 25000000"
+    runs["qsort"] = "32" #str(64*1024*1024)
+    # runs["heat"] = "-nx 2048 -ny 2048 -nt 500"
+    # runs["knapsack"] = "-benchmark long"
+    # runs["fft"] = "-n " + str(64*1024*1024)
+    # runs["rectmul"] = "-x 4096 -y 4096 -z 4096"
     #runs["cholesky"] = "-n 3000 -z 30000", #bug? Infinite loop, probably when clearing shadow memory!
     #runs["strassen"] = "-n 4096"
     #runs["fib"] = "40", # Takes too long..
@@ -101,8 +109,8 @@ def run_tests():
     tests = runs.keys()
     args = runs.values()
 
-    comp = ["icc", "base", "insert", "brd", "cilksan"]
-    #comp = ["base", "insert", "brd"]
+    #comp = ["icc", "base", "insert", "brd", "cilksan"]
+    comp = ["insert"]
     global status_column
     status_column = (len(comp)+1) * (column_size+3) + 25
     if use_cilkscreen: status_column += column_size
@@ -121,7 +129,7 @@ def run_tests():
         for p in cores:
             env = dict(os.environ, CILK_NWORKERS=str(p))
             line = "{:2},".format(p)
-            print(line, end='')
+            #print(line, end='')
 
             for c in comp:
                 prog = base + "_" + c
@@ -155,8 +163,13 @@ def run_tests():
             sys.stdout.flush()    
 
 def main(argv=None):
+    if sys.version_info < (2,7):
+        print("This script requires Python 2.7+")
+        sys.exit(1)
+    parser = argparse.ArgumentParser(description='Run the benchmarks')
+    parser.add_argument('--log', dest='log_file', 
+                        help='Output to a log file. (default: ???)')
     run_tests()
-
 
 if __name__ == "__main__":
     sys.exit(main())
