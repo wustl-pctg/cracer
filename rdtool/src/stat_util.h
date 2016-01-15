@@ -1,5 +1,7 @@
 #ifndef _STAT_UTIL_H
 #define _STAT_UTIL_H
+#include <cilk/cilk.h>
+#include <internal/abi.h>
 
 extern __thread __cilkrts_worker* t_worker;
 extern __thread int self;

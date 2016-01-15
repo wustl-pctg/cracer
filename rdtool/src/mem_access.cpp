@@ -3,7 +3,6 @@
 #include "print_addr.h"
 #include "mem_access.h"
 
-
 // Check races on memory represented by this mem list with this read access
 // Once done checking, update the mem list with this new read access
 void
@@ -54,10 +53,10 @@ MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
     // - the new reader is to the left of the old lreader 
     //   (i.e., comes first in serially execution)  OR
     // - there is a path from old lreader to this reader
-    pthread_spin_lock(&g_worker_mutexes[self].mut);
+    QUERY_START;
     bool is_leftmost = om_precedes(curr_estrand, reader->estrand) ||
                        om_precedes(reader->hstrand, curr_hstrand);
-    pthread_spin_unlock(&g_worker_mutexes[self].mut);
+    QUERY_END;
 
     if(is_leftmost) {
       pthread_spin_lock(&lreader_lock);
@@ -90,10 +89,10 @@ MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
     // - there is a path from old rreader to this reader
     // but actually the second condition subsumes the first, so if the 
     // first condition is false, there is no point checking the second
-    pthread_spin_lock(&g_worker_mutexes[self].mut);
+    QUERY_START;
     bool is_rightmost = om_precedes(reader->estrand, curr_estrand);
-    pthread_spin_unlock(&g_worker_mutexes[self].mut);
-
+    QUERY_END;
+    
     if(is_rightmost) {
       pthread_spin_lock(&rreader_lock);
       rreaders[i]->update_acc_info(curr_estrand, curr_hstrand, inst_addr);

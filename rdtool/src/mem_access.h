@@ -12,6 +12,10 @@
 #include "rd.h" // is this necessary?
 #include "om/om.h"
 #include "shadow_mem.h"
+#include "omrd.h"
+
+#define QUERY_START while (pthread_spin_trylock(&g_worker_mutexes[self].mut) != 0) { join_batch(self); }
+#define QUERY_END pthread_spin_unlock(&g_worker_mutexes[self].mut)
 
 #define GRAIN_SIZE 4
 #define LOG_GRAIN_SIZE 2
@@ -58,10 +62,10 @@ typedef struct MemAccess_t {
 
     /// @todo Is it worth it to join the batch relabel here?
     om_assert(self > -1);
-    pthread_spin_lock(&g_worker_mutexes[self].mut);
+    QUERY_START;
     bool prec_in_english = om_precedes(estrand, curr_estrand);
     bool prec_in_hebrew  = om_precedes(hstrand, curr_hstrand);
-    pthread_spin_unlock(&g_worker_mutexes[self].mut);
+    QUERY_END;
 
     // race if the ordering in english and hebrew differ
     bool has_race = (prec_in_english == !prec_in_hebrew);

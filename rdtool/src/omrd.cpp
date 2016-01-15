@@ -1,13 +1,11 @@
 // A wrapper around my OM data structure, made specifically with the
 // extra features necessary for race detection.
+#include "omrd.h"
 #include <internal/abi.h> // for __cilkrts_get_nworkers();
 #include <cilk/batcher.h> // for cilK_batchify
-#include <cstdio>
-#include "rd.h"
+#include <cstdio> // temporary
 #include "om/om.c"
 #include "stack.h"
-#include "debug_util.h"
-#include "stat_util.h"
 
 #define HALF_BITS ((sizeof(label_t) * 8) / 2)
 #define DEFAULT_HEAVY_THRESHOLD HALF_BITS
@@ -54,6 +52,20 @@ extern "C" int cilk_tool_om_try_lock_all(__cilkrts_worker* w)
   return 1;
 }
 
+void join_batch(int self)
+{
+  DBG_TRACE(DEBUG_BACKTRACE, "Worker %i calling batchify.\n", self);
+  cilk_batchify(batch_relabel, NULL, 0, sizeof(int));
+  if (self == g_batch_owner_id) {
+    g_batch_owner_id = -1;
+    for (int i = 0; i < __cilkrts_get_nworkers(); ++i) {
+      pthread_spin_unlock(&g_worker_mutexes[i].mut);
+    }
+    pthread_spin_unlock(&g_relabel_mutex);
+  }
+}
+
+
 class omrd_t {
 private:
   AtomicStack_t<tl_node*> m_heavy_nodes;
@@ -77,18 +89,6 @@ private:
     return n;
   }
 
-  void join_batch(int self)
-  {
-    DBG_TRACE(DEBUG_BACKTRACE, "Worker %i calling batchify.\n", self);
-    cilk_batchify(batch_relabel, this, 0, sizeof(int));
-    if (self == g_batch_owner_id) {
-      g_batch_owner_id = -1;
-      for (int i = 0; i < __cilkrts_get_nworkers(); ++i) {
-        pthread_spin_unlock(&g_worker_mutexes[i].mut);
-      }
-      pthread_spin_unlock(&g_relabel_mutex);
-    }
-  }
 
   om_node* slow_path(__cilkrts_worker *w, om_node* base)
   {
