@@ -16,6 +16,10 @@ extern "C" {
 
 typedef unsigned char flag_t;
 struct tl_node_s {
+
+  /** Even internal nodes have a label. For internal nodes this
+     corresponds to the highest possible leaf label it could possibly
+     contain. */
   label_t label;
   size_t level;
 

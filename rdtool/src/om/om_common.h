@@ -16,6 +16,10 @@ static label_t SUBLIST_SIZE = ((label_t)64); // log_2 N = 64
 static label_t MAX_LEVEL = (sizeof(label_t) * 8);
 #endif
 
+/* static label_t MAX_LABEL = (((label_t)1) << 16) - 1; */
+/* static label_t MAX_LEVEL = ((label_t)16); */
+/* static label_t NODE_INTERVAL = (((label_t)1) << 12); */
+/* static label_t SUBLIST_SIZE = ((label_t)16); */
 /* static label_t MAX_LABEL = (label_t) 31; */
 /* static label_t MAX_LEVEL = (label_t) 5; */
 /* static label_t NODE_INTERVAL = (label_t)6; // 3 / log 1 */

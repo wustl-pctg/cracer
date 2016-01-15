@@ -42,18 +42,15 @@ void om_create(om* self)
   root->below = bl_new();
   root->below->above = root;
 
-  root->level = 0;
-  root->num_leaves = 0;
-
-  /// The label of an internal node is the highest possible leaf label
-  /// it could possibly contain.
-  root->label = MAX_LABEL;
+  root->level = MAX_LEVEL;
+  root->num_leaves = 1;
+  root->label = 0;
 
   root->needs_rebalance = 0;
   root->parent = root->left = root->right = NULL;
 
   self->root = root;
-  self->head = self->tail = NULL;
+  self->head = self->tail = root;
   self->height = 0;
 }
 
@@ -93,28 +90,9 @@ void om_destroy(om* self) { destroy(self->root); }
 
 node* om_insert_initial(om* self)
 {
-  assert(self->root->num_leaves == 0);
-
-  // Make upper-level node first
-  tl_node* t = tl_node_new();
-  t->label = 0;
-  t->level = MAX_LEVEL;
-  t->size = 1;
-  t->parent = self->root;
-  t->prev = t->next = NULL;
-  t->needs_rebalance = 0;
-
-  self->root->left = t;
-  self->head = self->tail = t;
-  self->root->num_leaves++;
-
-  // Now create new bottom list and insert
-  t->below = bl_new();
-  t->below->above = t;
-
-  //  node* n = bl_insert_initial(self->root->below);
-  node* n = bl_insert_initial(t->below);
-  assert(n->list == t->below);
+  assert(self->root->num_leaves == 1);
+  node* n = bl_insert_initial(self->root->below);
+  assert(n->list == self->root->below);
   return n;
 }
 
