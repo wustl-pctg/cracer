@@ -20,6 +20,21 @@
 #define RD_DISABLE
 #endif
 
+typedef struct FrameData_s {
+  void* current_english;
+  void* current_hebrew;
+  void* cont_english;
+  void* cont_hebrew;
+  void* sync_english;
+  void* sync_hebrew;
+  uint32_t flags;
+  char func_name[32];
+} FrameData_t;
+extern FrameData_t* get_frame();
+#include "../../../cilkplusrts/include/internal/abi.h" /// For get_tls_worker(), remove later
+#define ENTER_FRAME int last = __cilkrts_get_tls_worker()->self; strcpy(get_frame()->func_name,__func__)
+#define CORRECT_FRAME assert(strncmp(get_frame()->func_name, __func__, 2) == 0); last = __cilkrts_get_tls_worker()->self
+
 #ifdef INSERTSONLY
 extern "C" void __tsan_init();
 void init_inserts_only(void) __attribute__((constructor));
