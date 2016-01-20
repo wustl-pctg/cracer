@@ -19,7 +19,7 @@ void die(const char *fmt, ...);
 void debug_printf(int level, const char *fmt, ...);
 
 #if TOOL_DEBUG > DEBUG_NONE
-static int debug_level = DEBUG_CALLBACK | DEBUG_MEMORY;
+static int debug_level = DEBUG_CALLBACK; //| DEBUG_MEMORY;
 #else
 static int debug_level = 0;
 #endif

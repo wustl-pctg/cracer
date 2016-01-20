@@ -11,6 +11,9 @@ struct blist_node_s {
   struct blist_node_s* next;
   struct blist_node_s* prev;
   struct blist_s* list; // Needed for node comparison
+  volatile int in_use; // debug
+  volatile int active_insert;
+  volatile int last_insert_id;
 };
 
 typedef struct blist_node_s bl_node;

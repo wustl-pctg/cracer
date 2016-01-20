@@ -24,12 +24,17 @@ tl_node* tl_node_new()
   return x;
 }
 
-void tl_node_free(tl_node* n)
+void tl_node_free_recursive(tl_node* n)
 {
   if (n->level < MAX_LEVEL) {
-    if (n->left) tl_node_free(n->left);
-    if (n->right) tl_node_free(n->right);
+    if (n->left) tl_node_free_recursive(n->left);
+    if (n->right) tl_node_free_recursive(n->right);
   }
+  free(n);
+}
+
+void tl_node_free(tl_node* n)
+{
   free(n);
 }
 
@@ -113,9 +118,31 @@ bool om_precedes(const node* x, const node* y)
   return x->list->above->label < y->list->above->label;
 }
 
+int verify(tl_node* n)
+{
+  if (!n) return 0;
+  assert(n->level <= MAX_LEVEL);
+  int left = verify(n->left);
+  int right = verify(n->right);
+  if (n->left) assert(n->left->parent == n);
+  if (n->right) assert(n->right->parent == n);
+
+  if (n->level == MAX_LEVEL) { // leaf
+    assert(n->num_leaves == 1);
+    assert(n->left == NULL && n->right == NULL);
+    bl_verify(n->below);
+    assert(n->below->above == n);
+  } else { // not leaf
+    assert(n->num_leaves == left + right);
+  }
+  return n->num_leaves;
+}
+
 int om_verify(const om* self)
 {
-  return 1; /// @todo [#C]
+  assert(self->root->parent == NULL);
+  verify(self->root);
+  return 0;
 }
 
 void om_fprint(const om* self, FILE* out)

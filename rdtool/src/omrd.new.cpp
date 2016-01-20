@@ -7,8 +7,7 @@
 #include "om/om.c"
 #include "stack.h"
 
-//#define HALF_BITS ((sizeof(label_t) * 8) / 2)
-#define HALF_BITS 8
+#define HALF_BITS ((sizeof(label_t) * 8) / 2)
 #define DEFAULT_HEAVY_THRESHOLD HALF_BITS
 static label_t g_heavy_threshold = DEFAULT_HEAVY_THRESHOLD;
 
@@ -29,7 +28,7 @@ size_t count_set_bits(label_t label)
 int is_heavy(om_node* n)
 {
   label_t next_lab = (n->next) ? n->next->label : MAX_LABEL;
-  return (next_lab - n->label) < (1L << g_heavy_threshold);
+  return (next_lab - n->label) < (1L << HALF_BITS);
 }
 
 #define CAS(loc,old,nval) __sync_bool_compare_and_swap(loc,old,nval)
@@ -85,7 +84,6 @@ private:
 
   om_node* try_insert(om_node* base = NULL)
   {
-    assert(g_batch_in_progress == 0);
     om_node* n;
     if (base == NULL) n = om_insert_initial(m_ds);
     else n = om_insert(m_ds, base);
@@ -194,7 +192,6 @@ omrd_t *g_hebrew;
 void relabel(omrd_t *_ds)
 {
   om* ds = _ds->get_ds();
-  om_verify(ds);
   AtomicStack_t<tl_node*> *heavy_nodes = _ds->get_heavy_nodes();
   if (!heavy_nodes->empty()) {
     om_relabel(ds, heavy_nodes->at(0), heavy_nodes->size());
@@ -202,7 +199,6 @@ void relabel(omrd_t *_ds)
     RD_STATS(g_relabel_size += heavy_nodes->size());
     heavy_nodes->reset();
   }
-  om_verify(ds);
 }
 
 // We actually only need the DS.

@@ -16,6 +16,7 @@ extern "C" void do_detach_begin(__cilkrts_stack_frame* parent);
 extern "C" void do_enter_begin();
 extern "C" int do_enter_end(__cilkrts_stack_frame* sf, void* rsp);
 extern "C" void do_sync_begin(__cilkrts_stack_frame* sf);
+extern "C" void do_sync_end();
 extern "C" int do_leave_begin(__cilkrts_stack_frame *sf);
 extern "C" int do_leave_end();
 extern "C" int do_leave_stolen(__cilkrts_stack_frame* sf);
@@ -194,7 +195,7 @@ extern "C" void __tsan_vptr_update(void **vptr_p, void *new_val) {}
 
 extern "C" void cilk_enter_begin() {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_begin.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_begin.\n");
   disable_checking();
   do_enter_begin();
   om_assert(TOOL_INITIALIZED);
@@ -203,7 +204,7 @@ extern "C" void cilk_enter_begin() {
 extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, 
                                         void* this_fn, void* rip) {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_helper_begin.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_helper_begin.\n");
   disable_checking();
   do_enter_helper_begin(sf, this_fn, rip);
 }
@@ -219,12 +220,12 @@ extern "C" void cilk_enter_end(__cilkrts_stack_frame *sf, void *rsp) {
     stack_low_watermark = (uint64_t)(-1);
   }
   enable_checking();
-  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_enter_end.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_enter_end.\n");
 }
 
 extern "C" void cilk_spawn_prepare() {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  DBG_TRACE(DEBUG_CALLBACK, "cilk_spawn_prepare.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_spawn_prepare.\n");
   disable_checking();
 }
 
@@ -232,7 +233,7 @@ extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim
                                    __cilkrts_stack_frame* sf)
 {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  DBG_TRACE(DEBUG_CALLBACK, "%i stealing from %i.\n", w->self, victim->self);
+  //  DBG_TRACE(DEBUG_CALLBACK, "%i stealing from %i.\n", w->self, victim->self);
   //  om_assert(checking_disabled > 0);
   om_assert(!should_check());
   do_steal_success(w, victim, sf);
@@ -246,13 +247,13 @@ extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim
 extern "C" void cilk_spawn_or_continue(int in_continuation) {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   enable_checking();
-  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_spawn_or_continue.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_spawn_or_continue.\n");
 }
 
 extern "C" void 
 cilk_detach_begin(__cilkrts_stack_frame *parent_sf) { 
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  DBG_TRACE(DEBUG_CALLBACK, "cilk_detach_begin.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_detach_begin.\n");
   disable_checking(); 
   do_detach_begin(parent_sf);
 }
@@ -261,12 +262,12 @@ extern "C" void cilk_detach_end() {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   //  do_detach_end();
   enable_checking(); 
-  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_detach_end.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_detach_end.\n");
 }
 
 extern "C" void cilk_sync_begin(__cilkrts_stack_frame* sf) {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  DBG_TRACE(DEBUG_CALLBACK, "cilk_sync_begin.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_sync_begin.\n");
   disable_checking();
   om_assert(TOOL_INITIALIZED);
   do_sync_begin(sf);
@@ -276,12 +277,13 @@ extern "C" void cilk_sync_end() {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   om_assert(TOOL_INITIALIZED);
   enable_checking();
-  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_sync_end.\n");
+  do_sync_end();
+  //  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_sync_end.\n");
 }
 
 extern "C" void cilk_leave_begin(__cilkrts_stack_frame* sf) {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_begin.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_begin.\n");
   disable_checking();
   int is_last_frame = do_leave_begin(sf);
   if(is_last_frame) {
@@ -302,7 +304,7 @@ extern "C" void cilk_leave_begin(__cilkrts_stack_frame* sf) {
 extern "C" void cilk_leave_end() {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   enable_checking();
-  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_leave_end.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_leave_end.\n");
   // int is_last_frame =
   do_leave_end();
 }
@@ -313,9 +315,9 @@ extern "C" void cilk_leave_end() {
 // enable_checking, but otherwise need to do the same as cilk_leave_end()
 extern "C" void __attribute__((noinline))
 cilk_leave_stolen(__cilkrts_worker* w,
-                                  __cilkrts_stack_frame *saved_sf,
-                                  int is_original,
-                                  char* stack_base)
+		  __cilkrts_stack_frame *saved_sf,
+		  int is_original,
+		  char* stack_base)
 { 
   /// @todo: don't do anything on inserts only!
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
@@ -345,8 +347,8 @@ cilk_leave_stolen(__cilkrts_worker* w,
     else
       stack_high_watermark = (uint64_t)stack_base;
 
-    DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_stolen, stack_high_watermark: %lx.\n", 
-              stack_high_watermark);
+    // DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_stolen, stack_high_watermark: %lx.\n", 
+    //           stack_high_watermark);
     om_assert( stack_low_watermark != ((uint64_t)-1) );
     om_assert( stack_low_watermark <= stack_high_watermark );
 
@@ -384,6 +386,7 @@ extern "C" void cilk_done_with_stack(__cilkrts_stack_frame *sf_at_sync,
   clear_shadow_memory(stack_low_watermark, stack_high_watermark);
   stack_low_watermark = ((uint64_t)-1);
   clear_stack = 0;
+  //  printf("cilk_done_with_stack: w: %i, sf: %p, sb: %p\n", self, sf_at_sync, stack_base);
 
   // If we got here, then we called cilk_sync_begin with no
   // corresponding cilk_sync_end, so checking is already disabled.
@@ -398,6 +401,7 @@ extern "C" void cilk_continue(__cilkrts_stack_frame* sf, char* new_sp)
   if (new_sp != NULL) {
     stack_low_watermark = (uint64_t) new_sp; //GET_SP(sf);
   }
+  //  printf("cilk_continue: w: %i, sf: %p, sp: %p\n", self, sf, new_sp);
   // Set int cilk_spawn_or_continue
   //  enable_checking();
 }
@@ -407,7 +411,7 @@ static malloc_t real_malloc = NULL;
 
 extern "C" void* malloc(size_t s) {
 
-  DBG_TRACE(DEBUG_CALLBACK, "malloc called.\n");
+  //  DBG_TRACE(DEBUG_CALLBACK, "malloc called.\n");
   // make it 8-byte aligned; easier to erase from shadow mem
   uint64_t new_size = ALIGN_BY_NEXT_MAX_GRAIN_SIZE(s);
 

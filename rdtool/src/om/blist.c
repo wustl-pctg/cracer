@@ -60,6 +60,9 @@ static void insert_internal(blist* self, node* base, node* n)
 static inline node* node_new()
 { 
   node* n = (node*)malloc(sizeof(node));
+  n->in_use = 42;
+  n->active_insert = 0;
+  n->last_insert_id = -1;
   return n;
 }
 
@@ -83,6 +86,7 @@ void bl_destroy(blist* self)
 {
   if (!self->head) return;
   for (node* it = self->head->next; it != NULL; it = it->next) {
+    it->prev->in_use = 69;
     free(it->prev);
   }
   free(self->tail);
@@ -105,11 +109,36 @@ node* bl_insert_initial(blist* self)
 node* bl_insert(blist* self, node* base)
 {
   assert(base);
+
+  asm volatile("": : :"memory");
+  __sync_synchronize();
+  if (base->active_insert != 0 || base->last_insert_id != -1) {
+    printf("Error: workers %i and %i inserting at %p!\n", base->last_insert_id, t_worker->self, base);
+    assert(0);
+  }
+  assert(base->active_insert == 0);
+  __sync_fetch_and_add(&base->active_insert, 1);
+  assert(base->active_insert == 1);
+  base->last_insert_id = t_worker->self;
+  asm volatile("": : :"memory");
+  __sync_synchronize();
+
   label_t lab = get_new_label(self, base);
-  if (lab == 0) return NULL; // Only the initial insert has label 0.
-  node* n = node_new();
-  n->label = lab;
-  insert_internal(self, base, n);
+  node* n = NULL;
+  if (lab > 0) { // Only the initial insert has label 0.
+    n = node_new();
+    n->label = lab;
+    insert_internal(self, base, n);
+  }
+
+  asm volatile("": : :"memory");
+  __sync_synchronize();
+  __sync_fetch_and_add(&base->active_insert, -1);
+  assert(base->active_insert == 0);
+  base->last_insert_id = -1;
+  asm volatile("": : :"memory");
+  __sync_synchronize();
+
   return n;
 }
 
@@ -139,9 +168,33 @@ size_t bl_memsize(const blist* self)
   return (bl_size(self) * sizeof(bl_node)) + sizeof(blist);
 }
 
-/// @todo bl_verify
 int bl_verify(const blist* self)
 {
+  node *n = self->head;
+  if (!n) {
+    assert(self->tail == NULL);
+    assert(self->heavy == 0);
+    return 0;
+  }
+  assert(n->prev == NULL);
+  
+  while (n->next) {
+    assert(n->in_use == 42);
+    assert(n->active_insert == 0);
+    assert(n->last_insert_id == -1);
+    assert(n->next != n);
+    assert(n->label < n->next->label);
+    assert(n->list == self);
+    assert(n->next->prev == n);
+    n = n->next;
+  }
+  assert(n->in_use == 42);
+  assert(n->active_insert == 0);
+  assert(n->last_insert_id == -1);
+
+  assert(n->list == self);
+  assert(n->next == NULL);
+  assert(self->tail == n);
   return 0;
 }
 

@@ -22,11 +22,7 @@ struct tl_node_s {
      contain. */
   label_t label;
   size_t level;
-
-  union {
-    size_t size;
-    size_t num_leaves;
-  };
+  size_t num_leaves; // Note we only keep this, not the actual node count
   
   struct tl_node_s* parent;
 

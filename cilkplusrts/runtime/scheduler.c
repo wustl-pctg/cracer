@@ -3799,9 +3799,8 @@ execute_reductions_for_spawn_return(__cilkrts_worker *w,
             // different worker).
             // We can't hold locks while actually executing
             // reduce functions.
-            w = slow_path_reductions_for_spawn_return(w,
-                                                      ff,
-                                                      left_map_ptr);
+            assert(0);
+            w = slow_path_reductions_for_spawn_return(w, ff, left_map_ptr);
             verify_current_wkr(w);
         }
 

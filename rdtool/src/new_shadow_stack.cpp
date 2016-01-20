@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdlib> // for getenv
 
-#include <internal/abi.h>
+#include <internal/abi.h> // for __cilkrts_stack_frame
 #include <cilk/batcher.h>
 #include "rd.h"
 #include "print_addr.h"
@@ -11,47 +11,27 @@
 #include "stack.h"
 #include "stat_util.h"
 
-#include "omrd.cpp" /// Hack @todo fix linking errors
+#include "omrd.cpp" // Hack @todo fix linking errors
 
 int g_tool_init = 0;
-__thread int t_pushes = 0; /// @todo remove after debugging
-__thread int t_inside_leave = 0;
 
-typedef struct FrameData_s {
-  om_node* current_english;
-  om_node* current_hebrew;
-  om_node* cont_english;
-  om_node* cont_hebrew;
-  om_node* sync_english;
-  om_node* sync_hebrew;
-  uint32_t flags;
-  char func_name[32];
-} FrameData_t;
-
-AtomicStack_t<FrameData_t>* frames;
 om_node* base_english = NULL;
 om_node* base_hebrew = NULL;
-
-FrameData_t* get_frame() { return frames[self].head(); }
 
 // XXX Need to synchronize access to it when update
 static ShadowMem<MemAccessList_t> shadow_mem;
 
-
-void init_strand(__cilkrts_worker* w, FrameData_t* init)
+void init_strand(__cilkrts_worker* w, __cilkrts_stack_frame *sf)
 {
   self = w->self;
   t_worker = w;
 
   FrameData_t* f;
-  if (init) {
-    t_pushes = 5; /// Hack
-    f = frames[w->self].head();
+  if (sf) {
     assert(!(init->flags & FRAME_HELPER_MASK));
     assert(!init->current_english);
     assert(!init->current_hebrew);
 
-    //    pthread_spin_lock(&g_worker_mutexes[self]);
     f->current_english = init->cont_english;
     f->current_hebrew = init->cont_hebrew;
     f->sync_english = init->sync_english;
@@ -59,11 +39,9 @@ void init_strand(__cilkrts_worker* w, FrameData_t* init)
     f->cont_english = NULL;
     f->cont_hebrew = NULL;
     f->flags = init->flags;
-    //    pthread_spin_unlock(&g_worker_mutexes[self]);
   }  else {
     assert(frames[w->self].empty());
     frames[w->self].push();
-    t_pushes = 1;
     f = frames[w->self].head();
     f->flags = 0;
 
@@ -195,32 +173,26 @@ extern "C" om_node* get_current_hebrew()
 extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
                                  __cilkrts_stack_frame* sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_steal_success, w: %i stole from %i.\n", w->self, victim->self);
-  assert(t_inside_leave == 0);
+  DBG_TRACE(DEBUG_CALLBACK, "Worker %i stole from %i.\n", w->self, victim->self);
+
   frames[w->self].reset();
-  frames[victim->self].verify();
   FrameData_t* loot = frames[victim->self].steal_top(frames[w->self]);
-  //  printf("Worker %i stole %s from %i.\n", w->self, loot->func_name, victim->self);
+  printf("Worker %i stole %s from %i.\n", w->self, loot->func_name, victim->self);
   om_assert(!(loot->flags & FRAME_HELPER_MASK));
   init_strand(w, loot);
-  frames[self].verify();
 }
 
 extern "C" void cilk_return_to_first_frame(__cilkrts_worker* w, __cilkrts_worker* team,
 					   __cilkrts_stack_frame* sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "Transfering shadow stack from w: %d to original thread %d.\n", self, team->self);
-  //  printf("Transfering shadow stack from %d to original thread %d.\n", self, team->self);
+  DBG_TRACE(DEBUG_CALLBACK, "Transfering shadow stack from %d to original thread %d.\n", self, team->self);
   if (self != team->self) frames[self].transfer(frames[team->self]);
 }
 
 extern "C" void do_enter_begin()
 {
   if (self == -1) return;
-  DBG_TRACE(DEBUG_CALLBACK, "do_enter_begin, w: %d.\n", self);
   frames[self].push();
-  t_pushes++;
-  if (t_pushes >= 5) frames[self].verify();
   FrameData_t* parent = frames[self].ancestor(1);
   FrameData_t* f = frames[self].head();
   f->flags = 0;
@@ -231,24 +203,19 @@ extern "C" void do_enter_begin()
 }
 
   //  DBG_TRACE(DEBUG_CALLBACK, "do_detach_begin, parent sf %p.\n", sf->call_parent);
-extern "C" void do_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip)
-{ 
-  DBG_TRACE(DEBUG_CALLBACK, "do_enter_helper_begin, w: %d, sf: %p.\n", self, sf);
-}
+extern "C" void do_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip) { }
 
 extern "C" void do_detach_begin(__cilkrts_stack_frame* parent_sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_detach_end, w: %d, parent_sf: %p.\n", self, parent_sf);
+  DBG_TRACE(DEBUG_CALLBACK, "do_detach_end, worker %d.\n", self);
   __cilkrts_worker* w = __cilkrts_get_tls_worker();
 
   // can't be empty now that we init strand in do_enter_end
   om_assert(!frames[w->self].empty());
 
-  if (t_pushes >= 5) frames[self].verify();
   frames[w->self].push_helper();
   FrameData_t* parent = frames[w->self].ancestor(1);
   FrameData_t* f = frames[w->self].head();
-  strcpy(f->func_name, "helper");
   assert(parent + 1 == f);
 
   assert(!(parent->flags & FRAME_HELPER_MASK));
@@ -267,14 +234,14 @@ extern "C" void do_detach_begin(__cilkrts_stack_frame* parent_sf)
     // assert(om_precedes(parent->current_hebrew, parent->sync_hebrew));
     // pthread_spin_unlock(&g_worker_mutexes[self]);
 
-    // DBG_TRACE(DEBUG_CALLBACK, 
-    //     "do_detach_begin, setting parent sync_eng %p and sync heb %p.\n",
-    //     parent->sync_english, parent->sync_hebrew);
+    DBG_TRACE(DEBUG_CALLBACK, 
+        "do_detach_begin, setting parent sync_eng %p and sync heb %p.\n",
+        parent->sync_english, parent->sync_hebrew);
   } else {
-    // DBG_TRACE(DEBUG_CALLBACK, 
-    //           "do_detach_begin, NOT first spawn, parent sync eng %p.\n", 
-    //           parent->sync_english);
-    // DBG_TRACE(DEBUG_BACKTRACE, "NOT first of spawn group\n");
+    DBG_TRACE(DEBUG_CALLBACK, 
+              "do_detach_begin, NOT first spawn, parent sync eng %p.\n", 
+              parent->sync_english);
+    DBG_TRACE(DEBUG_BACKTRACE, "NOT first of spawn group\n");
   }
 
   f->current_english = g_english->insert(w, parent->current_english);
@@ -283,12 +250,12 @@ extern "C" void do_detach_begin(__cilkrts_stack_frame* parent_sf)
   parent->cont_hebrew = g_hebrew->insert(w, parent->current_hebrew);
   f->current_hebrew = g_hebrew->insert(w, parent->cont_hebrew);
   
-  // DBG_TRACE(DEBUG_CALLBACK, 
-  //           "do_detach_begin, f curr eng: %p and parent cont eng: %p.\n", 
-  //           f->current_english, parent->cont_english);
-  // DBG_TRACE(DEBUG_CALLBACK, 
-  //           "do_detach_begin, f curr heb: %p and parent cont heb: %p.\n", 
-  //           f->current_hebrew, parent->cont_hebrew);
+  DBG_TRACE(DEBUG_CALLBACK, 
+            "do_detach_begin, f curr eng: %p and parent cont eng: %p.\n", 
+            f->current_english, parent->cont_english);
+  DBG_TRACE(DEBUG_CALLBACK, 
+            "do_detach_begin, f curr heb: %p and parent cont heb: %p.\n", 
+            f->current_hebrew, parent->cont_hebrew);
 
   f->cont_english = NULL;
   f->cont_hebrew = NULL;
@@ -301,14 +268,20 @@ extern "C" void do_detach_begin(__cilkrts_stack_frame* parent_sf)
 /* return 1 if we are entering top-level user frame and 0 otherwise */
 extern "C" int do_enter_end (__cilkrts_stack_frame* sf, void* rsp)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_enter_end, sf %p, w: %d.\n", sf, self);
+  DBG_TRACE(DEBUG_CALLBACK, "do_enter_end, sf %p and worker %d.\n", sf, self);
 
   __cilkrts_worker* w = sf->worker;
   if (__cilkrts_get_batch_id(w) != -1) return 0;
 
   if (frames[w->self].empty()) {
     self = w->self;
-    init_strand(w, NULL); // enter_counter already set to 1 in init_strand
+    t_worker = w;
+    sf->current_english = (void*)g_english->get_base();
+    sf->current_hebrew = (void*)g_hebrew->get_base();
+    sf->cont_english = NULL;
+    sf->cont_hebrew = NULL;
+    sf->sync_english = NULL;
+    sf->sync_hebrew = NULL;
     return 1;
   } else {
     //FrameData_t* f = frames[sf->worker->self].head();
@@ -318,8 +291,7 @@ extern "C" int do_enter_end (__cilkrts_stack_frame* sf, void* rsp)
 
 extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_sync_begin, sf %p, w: %d.\n", sf, self);
-  assert(t_inside_leave == 0);
+  DBG_TRACE(DEBUG_CALLBACK, "do_sync_begin, sf %p and worker %d.\n", sf, self);
 
   om_assert(self != -1);
   om_assert(!frames[self].empty());
@@ -327,6 +299,7 @@ extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
   if (__cilkrts_get_batch_id(sf->worker) != -1) return;
 
   FrameData_t* f = frames[self].head();
+  DBG_TRACE(DEBUG_CALLBACK, "do_sync_begin, shadow frame %p and worker %d.\n", f, self);
 
   if (f->flags & FRAME_HELPER_MASK) { // this is a stolen frame, and this worker will be returning to the runtime shortly
     //printf("do_sync_begin error.\n");
@@ -341,14 +314,14 @@ extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
 
   if (f->sync_english) { // spawned
     om_assert(f->sync_hebrew);
-    //    DBG_TRACE(DEBUG_CALLBACK, "function spawned (in cilk_sync_begin) (worker %d)\n", self);
+    DBG_TRACE(DEBUG_CALLBACK, "function spawned (in cilk_sync_begin) (worker %d)\n", self);
 
     f->current_english = f->sync_english;
     f->current_hebrew = f->sync_hebrew;
-    // DBG_TRACE(DEBUG_CALLBACK, 
-    //           "do_sync_begin, setting eng to %p.\n", f->current_english);
-    // DBG_TRACE(DEBUG_CALLBACK, 
-    //           "do_sync_begin, setting heb to %p.\n", f->current_hebrew);
+    DBG_TRACE(DEBUG_CALLBACK, 
+              "do_sync_begin, setting eng to %p.\n", f->current_english);
+    DBG_TRACE(DEBUG_CALLBACK, 
+              "do_sync_begin, setting heb to %p.\n", f->current_hebrew);
     f->sync_english = NULL; 
     f->sync_hebrew = NULL;
   } else { // function didn't spawn, or this is a function-ending sync
@@ -356,27 +329,19 @@ extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
     om_assert(!f->sync_hebrew);
   }
 }
-extern "C" void do_sync_end()
-{
-  DBG_TRACE(DEBUG_CALLBACK, "do_sync_end, w: %d.\n", self);
-  assert(t_inside_leave == 0);
-}
 
 // Noticed that the frame was stolen.
 extern "C" void do_leave_stolen(__cilkrts_stack_frame* sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_leave_stolen, sf %p, w: %d.\n", sf, self);
-  //  printf("do_leave_stolen, sf %p and worker %d.\n", sf, self);
-  // if (sf == NULL) {
-  //   assert(t_inside_leave == 0);
-  //   return;
-  // }
+  //  DBG_TRACE(DEBUG_CALLBACK, "do_leave_stolen, sf %p and worker %d.\n", sf, self);
+  printf("do_leave_stolen, sf %p and worker %d.\n", sf, self);
+  //  if (sf == NULL) return; /// Why does this happen???
 
   // We *should* still have a helper frame on the shadow stack, since
   // cilk_leave_end will not be called
   FrameData_t* parent = frames[self].ancestor(1);
   if (!(frames[self].head()->flags & FRAME_HELPER_MASK))
-    fprintf(stderr, "w: %i failed in do_leave_stolen.\n", self);
+    printf("Error\n");
 
   om_assert(frames[self].head()->flags & FRAME_HELPER_MASK);
   om_assert(!(parent->flags & FRAME_HELPER_MASK));
@@ -394,26 +359,20 @@ extern "C" void do_leave_stolen(__cilkrts_stack_frame* sf)
   parent->sync_english = NULL;
   parent->sync_hebrew = NULL;
 
-  t_inside_leave--;
-  assert(t_inside_leave == 0);
-
-  frames[self].verify();
   frames[self].pop();
 }
 
 /* return 1 if we are leaving last frame and 0 otherwise */
 extern "C" int do_leave_begin (__cilkrts_stack_frame *sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "w: %d, do_leave_begin.\n", self);
-  assert(t_inside_leave == 0);
-  t_inside_leave++;
   return frames[sf->worker->self].empty();
 }
 
 
 extern "C" int do_leave_end()
 {
-  DBG_TRACE(DEBUG_CALLBACK, "w: %d, do_leave_end.\n", self);
+  //  DBG_TRACE(DEBUG_CALLBACK, "do_leave_end, sf %p and worker %d.\n", sf, self);
+  DBG_TRACE(DEBUG_CALLBACK, "do_leave_end, worker %d.\n", self);
   assert(t_worker);
   if (__cilkrts_get_batch_id(t_worker) != -1) return 0;
 
@@ -422,17 +381,17 @@ extern "C" int do_leave_end()
 
   FrameData_t* child = frames[self].head();
   if (frames[self].size() > 1) {
-    //    DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): popping and changing nodes.\n", self);
+    DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): popping and changing nodes.\n", self);
     FrameData_t* parent = frames[self].ancestor(1);
     if (!(child->flags & FRAME_HELPER_MASK)) { // parent called current
-      //      DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): returning from call.\n", self);
+      DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): returning from call.\n", self);
 
       om_assert(!parent->cont_english);
       om_assert(!parent->cont_hebrew);
       parent->current_english = child->current_english;
       parent->current_hebrew = child->current_hebrew;
     } else { // parent spawned current
-      //      DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): parent spawned child.\n", self);
+      DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_end(%d): parent spawned child.\n", self);
       om_assert(!parent->current_english); om_assert(!parent->current_hebrew);
       om_assert(parent->cont_english); om_assert(parent->cont_hebrew);
       om_assert(parent->sync_english); om_assert(parent->sync_hebrew);
@@ -440,11 +399,9 @@ extern "C" int do_leave_end()
       parent->current_hebrew = parent->cont_hebrew;
       parent->cont_english = parent->cont_hebrew = NULL;
     }
-    frames[self].verify();
     frames[self].pop();
   }
-  t_inside_leave--;
-  assert(t_inside_leave == 0);
+
   // we are leaving the last frame if the shadow stack is empty
   return frames[self].empty();
 }
@@ -476,68 +433,6 @@ record_mem_helper(bool is_read, uint64_t inst_addr, uint64_t addr,
   val->check_races_and_update(is_read, inst_addr, addr, mem_size, 
                               f->current_english, f->current_hebrew);
 }
-
-// XXX: We can only read 1,2,4,8,16 bytes; optimize later
-/* Deprecated
-extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size)
-{
-  DBG_TRACE(DEBUG_MEMORY, "record read of %lu bytes at addr %p and rip %p.\n", 
-            mem_size, addr, inst_addr);
-
-  // handle the prefix
-  uint64_t next_addr = ALIGN_BY_NEXT_MAX_GRAIN_SIZE(addr); 
-  size_t prefix_size = next_addr - addr;
-  om_assert(prefix_size >= 0 && prefix_size < MAX_GRAIN_SIZE);
-
-  if(prefix_size >= mem_size) { // access falls within a max grain sized block
-    record_mem_helper(true, inst_addr, addr, mem_size);
-  } else { 
-    om_assert( prefix_size <= mem_size );
-    if(prefix_size) { // do the prefix first
-      record_mem_helper(true, inst_addr, addr, prefix_size);
-      mem_size -= prefix_size;
-    }
-    addr = next_addr;
-    // then do the rest of the max-grain size aligned blocks
-    uint32_t i;
-    for(i = 0; (i+MAX_GRAIN_SIZE) < mem_size; i += MAX_GRAIN_SIZE) {
-      record_mem_helper(true, inst_addr, addr + i, MAX_GRAIN_SIZE);
-    }
-    // trailing bytes
-    record_mem_helper(true, inst_addr, addr+i, mem_size-i);
-  }
-}
-
-// XXX: We can only read 1,2,4,8,16 bytes; optimize later
-extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size)
-{
-  DBG_TRACE(DEBUG_MEMORY, "record write of %lu bytes at addr %p and rip %p.\n", 
-            mem_size, addr, inst_addr);
-
-  // handle the prefix
-  uint64_t next_addr = ALIGN_BY_NEXT_MAX_GRAIN_SIZE(addr); 
-  size_t prefix_size = next_addr - addr;
-  om_assert(prefix_size >= 0 && prefix_size < MAX_GRAIN_SIZE);
-
-  if(prefix_size >= mem_size) { // access falls within a max grain sized block
-    record_mem_helper(false, inst_addr, addr, mem_size);
-  } else {
-    om_assert( prefix_size <= mem_size );
-    if(prefix_size) { // do the prefix first
-      record_mem_helper(false, inst_addr, addr, prefix_size);
-      mem_size -= prefix_size;
-    }
-    addr = next_addr;
-    // then do the rest of the max-grain size aligned blocks
-    uint32_t i=0;
-    for(i=0; (i+MAX_GRAIN_SIZE) < mem_size; i += MAX_GRAIN_SIZE) {
-      record_mem_helper(false, inst_addr, addr + i, MAX_GRAIN_SIZE);
-    }
-    // trailing bytes
-    record_mem_helper(false, inst_addr, addr+i, mem_size-i);
-  }
-}
-*/
 
 // clear the memory block at [start-end) (end is exclusive).
 extern "C" void

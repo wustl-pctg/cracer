@@ -12,6 +12,7 @@ static size_t split(blist* self)
     n->level = MAX_LEVEL;
     n->next = NULL;
     n->prev = prev_tl_node;
+    n->num_leaves = 1;
     if (prev_tl_node) prev_tl_node->next = n;
     else self->above->split_nodes = n;
     
