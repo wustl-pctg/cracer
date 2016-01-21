@@ -1,5 +1,5 @@
 TARGETS = matmul heat fft cholesky cilksort fib fibx strassen
-TARGETS += knapsack lu nqueens qsort rectmul test
+TARGETS += knapsack lu nqueens qsort rectmul #matmul-int
 OBJ_DIR_PREFIX := obj
 BIN_DIR := bin
 MODES = brd base icc insert cilksan qstat prof
@@ -19,18 +19,24 @@ else ifeq ($(mode), icc)
 	LDFLAGS += -lcilkrts -Wl,-rpath,$(INTEL_LIB)
 else ifeq ($(mode), insert)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_insert)
-	CFLAGS += $(INSERTFLAGS)
+	CFLAGS += $(INSERTFLAGS) 
 	CXXFLAGS += $(INSERTFLAGS)
 	LDFLAGS += $(RUNTIME_LIB)
 	LIB = $(LIB_DIR)/lib$(TOOL_NAME).a
 else ifeq ($(mode), cilksan)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_cilksan)
-else ifeq ($(mode), qstat)
-	OBJ_DIR := $(OBJ_DIR_PREFIX:=_qstat)
-	CFLAGS += -fcilktool -fsanitize=thread -DSTATS
-	CXXFLAGS += -fcilktool -fsanitize=thread -DSTATS
+else ifeq ($(mode), cstats)
+	OBJ_DIR := $(OBJ_DIR_PREFIX:=_cstat)
+	CFLAGS += -fcilktool -fsanitize=thread
+	CXXFLAGS += -fcilktool -fsanitize=thread
 	LDFLAGS += $(RUNTIME_LIB)
-	LIB = $(LIB_DIR)/libstattool.a
+	LIB = $(LIB_DIR)/libcilkstats.a
+else ifeq ($(mode), istats)
+	OBJ_DIR := $(OBJ_DIR_PREFIX:=_istat)
+	CFLAGS += $(INSERTFLAGS) -DSTATS=1
+	CXXFLAGS += $(INSERTFLAGS) -DSTATS=1
+	LDFLAGS += $(RUNTIME_LIB)
+	LIB = $(LIB_DIR)/lib$(TOOL_NAME).a
 else ifeq ($(mode), prof)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_prof)
 	CFLAGS += $(RDFLAGS) -DSTATS=2
@@ -45,14 +51,14 @@ ifeq ($(mode), icc)
 	CXX = $(ICC)
 endif
 
-most: brd base insert icc cilksan
-all: most qstat prof
+most: brd base insert icc cilksan cstats
+all: most istats prof
 brd:
 	$(MAKE) $(TARGETS) mode=brd
 base:
 	$(MAKE) $(TARGETS) mode=base
-qstat:
-	$(MAKE) $(TARGETS) mode=qstat
+istats:
+	$(MAKE) $(TARGETS) mode=istats
 prof:
 	$(MAKE) $(TARGETS) mode=prof
 insert:
@@ -61,6 +67,8 @@ icc:
 	$(MAKE) $(TARGETS) mode=icc
 cilksan:
 	$(MAKE) $(TARGETS:=_cilksan) mode=cilksan
+cstats:
+	$(MAKE) $(TARGETS) mode=cstats
 
 $(BIN_DIR):
 	mkdir $(BIN_DIR)
@@ -86,6 +94,9 @@ lu: $(OBJ_DIR)/lu.o $(OBJ_DIR)/getoptions.o
 rectmul: $(OBJ_DIR)/rectmul.o $(OBJ_DIR)/getoptions.o
 test: $(OBJ_DIR)/test.o
 
+# matmul-int: CXXFLAGS += -DREAL=int
+# matmul-int: $(OBJ_DIR)/matmul-int.o
+
 $(TARGETS): | $(BIN_DIR)
 	$(CXX) $< $(OBJ_DIR)/getoptions.o $(LIB) $(LDFLAGS) -o $(BIN_DIR)/$@_$(mode)
 else
@@ -101,8 +112,10 @@ endif
 	$(MAKE) $(@:_prof=) mode=prof
 %_insert:
 	$(MAKE) $(@:_insert=) mode=insert
-%_qstat:
-	$(MAKE) $(@:_qstat=) mode=qstat
+%_cstats:
+	$(MAKE) $(@:_cstats=) mode=cstats
+%_istats:
+	$(MAKE) $(@:_istats=) mode=istats
 %_icc:
 	$(MAKE) $(@:_icc=) mode=icc
 
@@ -113,7 +126,7 @@ endif
 	$(MAKE) $(@:_all=_icc)
 	$(MAKE) $(@:_all=_cilksan)
 
-.PHONY: clean modeclean %_clean $(TARGETS) %_brd %_base %_insert %_icc %_prof %_qstat %_cilksan
+.PHONY: clean modeclean %_clean $(TARGETS) %_brd %_base %_insert %_icc %_prof %_cstats %_istats %_cilksan
 
 %_clean:
 	rm -rf $(BIN_DIR)/$(@:_clean=)_*

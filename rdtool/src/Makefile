@@ -9,17 +9,18 @@ LIB_INC = -I$(RUNTIME_INTERNAL)/include
 CFLAGS += $(LIB_INC)
 CXXFLAGS += $(LIB_INC)
 TARGET = $(LIB_DIR)/lib$(TOOL_NAME).a
+OBJ_DIR=.
 
 all: $(TARGET)
 include $(OBJ:.o=.d)
 
 $(TARGET): $(OBJ) $(LIB_DIR)
 
-stat: $(LIB_DIR)/libstattool.a
+stats: $(LIB_DIR)/libcilkstats.a
 
-$(LIB_DIR)/libstattool.a: OBJ=stattool.o
-$(LIB_DIR)/libstattool.a: stattool.o $(LIB_DIR)
-
+.SECONDEXPANSION:
+$(LIB_DIR)/libcilkstats.a: OBJ=cilkstats.o
+$(LIB_DIR)/libcilkstats.a: $$(OBJ) $(LIB_DIR)
 
 .PHONY: all clean
 
