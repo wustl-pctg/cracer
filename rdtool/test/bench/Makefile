@@ -2,7 +2,7 @@ TARGETS = matmul heat fft cholesky cilksort fib fibx strassen
 TARGETS += knapsack lu nqueens qsort rectmul #matmul-int
 OBJ_DIR_PREFIX := obj
 BIN_DIR := bin
-MODES = brd base icc insert cilksan qstat prof
+MODES = brd base icc insert cilksan cstats prof istats
 
 ifeq ($(mode), brd)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_brd)
@@ -15,6 +15,8 @@ else ifeq ($(mode), base)
 	LDFLAGS += $(RUNTIME_LIB)
 else ifeq ($(mode), icc)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_icc)
+	CFLAGS += -no-vec -fp-model precise
+	CXXFLAGS += -no-vec -fp-model precise
 	LDFLAGS += $(MALLOC)
 	LDFLAGS += -lcilkrts -Wl,-rpath,$(INTEL_LIB)
 else ifeq ($(mode), insert)
@@ -26,13 +28,13 @@ else ifeq ($(mode), insert)
 else ifeq ($(mode), cilksan)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_cilksan)
 else ifeq ($(mode), cstats)
-	OBJ_DIR := $(OBJ_DIR_PREFIX:=_cstat)
+	OBJ_DIR := $(OBJ_DIR_PREFIX:=_cstats)
 	CFLAGS += -fcilktool -fsanitize=thread
 	CXXFLAGS += -fcilktool -fsanitize=thread
 	LDFLAGS += $(RUNTIME_LIB)
 	LIB = $(LIB_DIR)/libcilkstats.a
 else ifeq ($(mode), istats)
-	OBJ_DIR := $(OBJ_DIR_PREFIX:=_istat)
+	OBJ_DIR := $(OBJ_DIR_PREFIX:=_istats)
 	CFLAGS += $(INSERTFLAGS) -DSTATS=1
 	CXXFLAGS += $(INSERTFLAGS) -DSTATS=1
 	LDFLAGS += $(RUNTIME_LIB)
