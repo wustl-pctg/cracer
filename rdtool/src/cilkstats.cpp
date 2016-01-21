@@ -47,6 +47,7 @@ size_t __cilkstats_get_num_mem_accesses() {
 
 static void print_stats(FILE *output = stdout) {
   fprintf(output, "----- Cilk Stats -----\n");
+
   size_t num_mem_accesses = __cilkstats_get_num_mem_accesses();
   if (num_mem_accesses > 0) {
     fprintf(output, "Reads: %zu\n", GET(num_reads));
@@ -54,11 +55,19 @@ static void print_stats(FILE *output = stdout) {
     fprintf(output, "Total memory accesses: %zu\n", num_mem_accesses);
   } else {
     fprintf(output,
-	    "No memory access info: Not compiled with -fsanitize=thread or manually disabled.\n");
+	    "No memory accesses reported: "
+	    "Not compiled with -fsanitize=thread or manually disabled.\n");
   }
-  fprintf(output, "Spawns: %zu\n", GET(num_spawns));
-  fprintf(output, "Syncs: %zu\n", GET(num_syncs));
-  fprintf(output, "Cilk functions: %zu\n", GET(num_cilk_functions));
+
+  size_t num_cilk_functions = GET(num_cilk_functions);
+  if (num_cilk_functions > 0) {
+    fprintf(output, "Spawns: %zu\n", GET(num_spawns));
+    fprintf(output, "Syncs: %zu\n", GET(num_syncs));
+    fprintf(output, "Cilk functions: %zu\n", GET(num_cilk_functions));
+  } else {
+    fprintf(output, "No cilk functions reported: "
+	    "Not compiled with -fcilktool or no cilk functions were entered.\n");
+  }
 }
 
 extern "C" {
