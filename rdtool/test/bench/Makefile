@@ -15,8 +15,8 @@ else ifeq ($(mode), base)
 	LDFLAGS += $(RUNTIME_LIB)
 else ifeq ($(mode), icc)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_icc)
-	CFLAGS += -no-vec -fp-model precise
-	CXXFLAGS += -no-vec -fp-model precise
+	CFLAGS += -fp-model precise
+	CXXFLAGS += -fp-model precise
 	LDFLAGS += $(MALLOC)
 	LDFLAGS += -lcilkrts -Wl,-rpath,$(INTEL_LIB)
 else ifeq ($(mode), insert)
