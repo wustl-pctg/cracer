@@ -281,6 +281,8 @@ extern "C" void cilk_sync_end() {
   //  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_sync_end.\n");
 }
 
+extern "C" void cilk_resume(__cilkrts_stack_frame *sf) { enable_checking(); }
+
 extern "C" void cilk_leave_begin(__cilkrts_stack_frame* sf) {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   //  DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_begin.\n");
