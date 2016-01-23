@@ -6,8 +6,6 @@
 #include <cilk/cilk.h>
 #include "bench.h"
 
-// int * count;
-
 /* 
  * nqueen  4 = 2 
  * nqueen  5 = 10 
@@ -23,14 +21,20 @@
  * nqueen 15 = 2279184 
  */
 
+// For batcher race detection, we only use a 4-byte granularity
+#ifndef POSITION_TYPE
+#define POSITION_TYPE int
+#endif
+typedef POSITION_TYPE pos_t;
+
 /*
  * <a> contains array of <n> queen positions.  Returns 1
  * if none of the queens conflict, and returns 0 otherwise.
  */
-int ok (int n, char *a) {
+int ok (int n, pos_t *a) {
 
   int i, j;
-  char p, q;
+  pos_t p, q;
 
   for (i = 0; i < n; i++) {
     p = a[i];
@@ -44,9 +48,9 @@ int ok (int n, char *a) {
   return 1;
 }
 
-int nqueens (int n, int j, char *a) {
+int nqueens (int n, int j, pos_t *a) {
 
-  char *b;
+  pos_t *b;
   int i;
   int *count;
   int solNum = 0;
@@ -66,8 +70,8 @@ int nqueens (int n, int j, char *a) {
      * alloca is only used in this iteration; later spawns don't 
      * need to be able to access copies of b from previous iterations 
      ***/
-    b = (char *) alloca((j + 1) * sizeof (char));
-    memcpy(b, a, j * sizeof (char));
+    b = (pos_t *) alloca((j + 1) * sizeof (pos_t));
+    memcpy(b, a, j * sizeof (pos_t));
     b[j] = i;
 
     if(ok (j + 1, b)) {
@@ -87,7 +91,7 @@ int nqueens (int n, int j, char *a) {
 int main(int argc, char *argv[]) { 
 
   int n = 13;
-  char *a;
+  pos_t *a;
   int res;
 
   if (argc < 2) {
@@ -99,7 +103,7 @@ int main(int argc, char *argv[]) {
     //printf ("Running %s with n = %d.\n", argv[0], n);
   }
 
-  a = (char *) alloca (n * sizeof (char));
+  a = (pos_t *) alloca (n * sizeof (pos_t));
   res = 0;
 
   auto start = std::chrono::high_resolution_clock::now();

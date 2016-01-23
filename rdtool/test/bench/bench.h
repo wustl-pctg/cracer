@@ -61,10 +61,10 @@ void destroy_rd(void)
 }
 #endif
 
-#ifdef STATS
-#include "stattool.h"
-void print_final_stats(void) __attribute__((destructor));
-void print_final_stats(void) {}
-#endif
+/* #ifdef STATS */
+/* #include "stattool.h" */
+/* void print_final_stats(void) __attribute__((destructor)); */
+/* void print_final_stats(void) {} */
+/* #endif */
 
 #endif
