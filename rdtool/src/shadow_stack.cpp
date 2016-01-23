@@ -195,31 +195,36 @@ extern "C" om_node* get_current_hebrew()
 extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
                                  __cilkrts_stack_frame* sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_steal_success, w: %i stole from %i.\n", w->self, victim->self);
+  DBG_TRACE(DEBUG_CALLBACK, 
+      "%d: do_steal_success, stole %p from %d.\n", w->self, sf, victim->self);
   assert(t_inside_leave == 0);
   frames[w->self].reset();
   frames[victim->self].verify();
   FrameData_t* loot = frames[victim->self].steal_top(frames[w->self]);
-  //  printf("Worker %i stole %s from %i.\n", w->self, loot->func_name, victim->self);
+  DBG_TRACE(DEBUG_CALLBACK, "%d: stole %s (index %d) from %i.\n", 
+          w->self, loot->func_name, frames[w->self].size()-1, victim->self);
   om_assert(!(loot->flags & FRAME_HELPER_MASK));
   init_strand(w, loot);
-  frames[self].verify();
+  frames[w->self].verify();
 }
 
 extern "C" void cilk_return_to_first_frame(__cilkrts_worker* w, __cilkrts_worker* team,
 					   __cilkrts_stack_frame* sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "Transfering shadow stack from w: %d to original thread %d.\n", self, team->self);
-  //  printf("Transfering shadow stack from %d to original thread %d.\n", self, team->self);
-  if (self != team->self) frames[self].transfer(frames[team->self]);
+  DBG_TRACE(DEBUG_CALLBACK, 
+        "%d: Transfering shadow stack %p to original worker %d.\n", 
+        w->self, sf, team->self);
+  if (w->self != team->self) frames[w->self].transfer(frames[team->self]);
 }
 
 extern "C" void do_enter_begin()
 {
   if (self == -1) return;
-  DBG_TRACE(DEBUG_CALLBACK, "do_enter_begin, w: %d.\n", self);
   frames[self].push();
   t_pushes++;
+  DBG_TRACE(DEBUG_CALLBACK, "%d: do_enter_begin, new size: %d.\n", 
+        self, frames[self].size());
+
   if (t_pushes >= 5) frames[self].verify();
   FrameData_t* parent = frames[self].ancestor(1);
   FrameData_t* f = frames[self].head();
@@ -233,12 +238,14 @@ extern "C" void do_enter_begin()
   //  DBG_TRACE(DEBUG_CALLBACK, "do_detach_begin, parent sf %p.\n", sf->call_parent);
 extern "C" void do_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip)
 { 
-  DBG_TRACE(DEBUG_CALLBACK, "do_enter_helper_begin, w: %d, sf: %p.\n", self, sf);
+  DBG_TRACE(DEBUG_CALLBACK, "%d: do_enter_helper_begin, sf: %p, parent: %p.\n", 
+      self, sf, sf->call_parent);
 }
 
-extern "C" void do_detach_begin(__cilkrts_stack_frame* parent_sf)
+// XXX: the doc says the sf is frame pointer to parent frame, but actually
+// it's the pointer to the helper shadow frame. 
+extern "C" void do_detach_begin(__cilkrts_stack_frame* sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_detach_end, w: %d, parent_sf: %p.\n", self, parent_sf);
   __cilkrts_worker* w = __cilkrts_get_tls_worker();
 
   // can't be empty now that we init strand in do_enter_end
@@ -246,6 +253,11 @@ extern "C" void do_detach_begin(__cilkrts_stack_frame* parent_sf)
 
   if (t_pushes >= 5) frames[self].verify();
   frames[w->self].push_helper();
+
+  DBG_TRACE(DEBUG_CALLBACK, 
+        "%d: do_detach_begin, sf: %p, parent: %p, stack size: %d.\n", 
+        self, sf, sf->call_parent, frames[self].size());
+
   FrameData_t* parent = frames[w->self].ancestor(1);
   FrameData_t* f = frames[w->self].head();
   strcpy(f->func_name, "helper");
@@ -301,16 +313,20 @@ extern "C" void do_detach_begin(__cilkrts_stack_frame* parent_sf)
 /* return 1 if we are entering top-level user frame and 0 otherwise */
 extern "C" int do_enter_end (__cilkrts_stack_frame* sf, void* rsp)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_enter_end, sf %p, w: %d.\n", sf, self);
-
   __cilkrts_worker* w = sf->worker;
   if (__cilkrts_get_batch_id(w) != -1) return 0;
 
   if (frames[w->self].empty()) {
     self = w->self;
     init_strand(w, NULL); // enter_counter already set to 1 in init_strand
+
+    DBG_TRACE(DEBUG_CALLBACK, "%d: do_enter_end, sf %p %s, parent %p, size %d.\n",
+        self, sf, get_frame()->func_name, sf->call_parent, frames[self].size());
     return 1;
   } else {
+    DBG_TRACE(DEBUG_CALLBACK, "%d: do_enter_end, sf %p %s, parent %p, size %d.\n",
+        self, sf, get_frame()->func_name, sf->call_parent, frames[self].size());
+
     //FrameData_t* f = frames[sf->worker->self].head();
     return 0;
   }
@@ -318,7 +334,8 @@ extern "C" int do_enter_end (__cilkrts_stack_frame* sf, void* rsp)
 
 extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_sync_begin, sf %p, w: %d.\n", sf, self);
+  DBG_TRACE(DEBUG_CALLBACK, "%d: do_sync_begin, sf %p %s, size %d.\n", 
+        self, sf, get_frame()->func_name, frames[self].size());
   assert(t_inside_leave == 0);
 
   om_assert(self != -1);
@@ -328,10 +345,12 @@ extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
 
   FrameData_t* f = frames[self].head();
 
-  if (f->flags & FRAME_HELPER_MASK) { // this is a stolen frame, and this worker will be returning to the runtime shortly
+  // XXX: This should never happen
+  // if (f->flags & FRAME_HELPER_MASK) { // this is a stolen frame, and this worker will be returning to the runtime shortly
+  //  assert(0);
     //printf("do_sync_begin error.\n");
-    return; /// @todo is this correct? this only seems to happen on the initial frame, when it is stolen
-  }
+  //  return; /// @todo is this correct? this only seems to happen on the initial frame, when it is stolen
+  // }
 
   //  assert(!(f->flags & FRAME_HELPER_MASK));
   om_assert(f->current_english); 
@@ -358,14 +377,17 @@ extern "C" void do_sync_begin (__cilkrts_stack_frame* sf)
 }
 extern "C" void do_sync_end()
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_sync_end, w: %d.\n", self);
+  DBG_TRACE(DEBUG_CALLBACK, "%d: do_sync_end, %s, size %d.\n", 
+        self, get_frame()->func_name, frames[self].size());
   assert(t_inside_leave == 0);
 }
 
 // Noticed that the frame was stolen.
 extern "C" void do_leave_stolen(__cilkrts_stack_frame* sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "do_leave_stolen, sf %p, w: %d.\n", sf, self);
+  DBG_TRACE(DEBUG_CALLBACK, 
+        "%d: do_leave_stolen, spawning sf %p %s, size before pop: %d.\n",
+        self, sf, get_frame()->func_name, frames[self].size());
   //  printf("do_leave_stolen, sf %p and worker %d.\n", sf, self);
   // if (sf == NULL) {
   //   assert(t_inside_leave == 0);
@@ -375,8 +397,7 @@ extern "C" void do_leave_stolen(__cilkrts_stack_frame* sf)
   // We *should* still have a helper frame on the shadow stack, since
   // cilk_leave_end will not be called
   FrameData_t* parent = frames[self].ancestor(1);
-  if (!(frames[self].head()->flags & FRAME_HELPER_MASK))
-    fprintf(stderr, "w: %i failed in do_leave_stolen.\n", self);
+  assert(frames[self].head()->flags & FRAME_HELPER_MASK);
 
   om_assert(frames[self].head()->flags & FRAME_HELPER_MASK);
   om_assert(!(parent->flags & FRAME_HELPER_MASK));
@@ -397,14 +418,16 @@ extern "C" void do_leave_stolen(__cilkrts_stack_frame* sf)
   t_inside_leave--;
   assert(t_inside_leave == 0);
 
-  frames[self].verify();
+  // frames[self].verify();
+  // frames[self].head()->func_name[0] = '\0';
   frames[self].pop();
 }
 
 /* return 1 if we are leaving last frame and 0 otherwise */
 extern "C" int do_leave_begin (__cilkrts_stack_frame *sf)
 {
-  DBG_TRACE(DEBUG_CALLBACK, "w: %d, do_leave_begin.\n", self);
+  DBG_TRACE(DEBUG_CALLBACK, "%d: do_leave_begin, sf %p %s, size: %d.\n", 
+        self, sf, get_frame()->func_name, frames[self].size());
   assert(t_inside_leave == 0);
   t_inside_leave++;
   return frames[sf->worker->self].empty();
@@ -413,7 +436,8 @@ extern "C" int do_leave_begin (__cilkrts_stack_frame *sf)
 
 extern "C" int do_leave_end()
 {
-  DBG_TRACE(DEBUG_CALLBACK, "w: %d, do_leave_end.\n", self);
+  DBG_TRACE(DEBUG_CALLBACK, "%d: do_leave_end %s, size before pop %d.\n", 
+        self, get_frame()->func_name, frames[self].size());
   assert(t_worker);
   if (__cilkrts_get_batch_id(t_worker) != -1) return 0;
 
@@ -440,7 +464,8 @@ extern "C" int do_leave_end()
       parent->current_hebrew = parent->cont_hebrew;
       parent->cont_english = parent->cont_hebrew = NULL;
     }
-    frames[self].verify();
+    // frames[self].verify();
+    // frames[self].head()->func_name[0] = '\0';
     frames[self].pop();
   }
   t_inside_leave--;

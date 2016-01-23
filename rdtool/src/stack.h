@@ -212,21 +212,30 @@ public:
     assert(this->_head >= this->_tail);
     if (m_active) verify();
     Stack_t<T>::pop();
-    //    memset((void*)&this->_stack[this->_head+1], 0xff, sizeof(T));
+
+    /*
     if (this->_head <= this->_tail && this->_tail > 0) {
       if (this->_head == this->_tail)
         assert(this->_stack[this->_head].flags & FRAME_HELPER_MASK);
+      memset((void*)&this->_stack[this->_head+1], 0xff, sizeof(T));
       T* f;
       do {
         f = &this->_stack[--this->_tail];
       } while (!(f->flags & FRAME_HELPER_MASK) && this->_tail > 0);
-
+    } */
+    if (this->_head < this->_tail) { 
+      // note that this path won't be taken if _head == -1 since it's an
+      // unsigned int, so the comparison expr uses unsigned comparison 
+      this->_tail--; 
+      assert(this->_tail == this->_head);
+      memset((void*)&this->_stack[this->_head+1], 0xff, sizeof(T));
     }
     assert(this->_head >= 0);
     pthread_spin_unlock(&_slock);
   }
 
   void verify() {
+    /*
     assert(this->_head >= g_lu_level);
     assert(strncmp(this->_stack[0].func_name, "lu", 2) == 0);
     assert((this->_stack[0].flags & FRAME_HELPER_MASK) == 0);
@@ -237,6 +246,7 @@ public:
     assert(strncmp(this->_stack[3].func_name, "lu", 2) == 0);
     assert((this->_stack[3].flags & FRAME_HELPER_MASK) == 0);
     m_active = 1;
+    */
   }
 
   T* steal_top(AtomicStack_t<T>& thief) {
@@ -300,7 +310,7 @@ public:
     }
     orig._tail = this->_tail;
     pthread_spin_unlock(&_slock);
-    
+
   }
 
   size_t memsize()
