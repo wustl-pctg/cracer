@@ -268,10 +268,11 @@ public:
 
     // Now copy up to next HELPER frame
     // Note: there MUST be another helper frame, since stealing is possible
+    /*
     if (this->_tail > 0) {
       assert(!(this->_stack[this->_tail-1].flags & FRAME_HELPER_MASK));
       assert(this->_stack[this->_tail].flags & FRAME_HELPER_MASK);
-    }
+    } */
     T* f = &this->_stack[this->_tail];
     thief.push();
     *(thief.head()) = *f;
