@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring> /// for memset, @todo remove later
+#include <cstring> /// memset
 #include <string.h>
 #include <inttypes.h>
 #include <pthread.h>
@@ -161,18 +161,14 @@ public:
 
 };
 
-extern int g_lu_level;
-
 // Simple atomic class
 template <typename T>
 class AtomicStack_t : public Stack_t<T> {
 private:
   pthread_spinlock_t _slock;
-  int m_active;
 public:
   AtomicStack_t() {
     pthread_spin_init(&_slock, PTHREAD_PROCESS_PRIVATE);
-    m_active = 0;
   }
   ~AtomicStack_t() { 
     pthread_spin_destroy(&_slock);
@@ -210,19 +206,8 @@ public:
   void pop() {
     pthread_spin_lock(&_slock);
     assert(this->_head >= this->_tail);
-    if (m_active) verify();
     Stack_t<T>::pop();
 
-    /*
-    if (this->_head <= this->_tail && this->_tail > 0) {
-      if (this->_head == this->_tail)
-        assert(this->_stack[this->_head].flags & FRAME_HELPER_MASK);
-      memset((void*)&this->_stack[this->_head+1], 0xff, sizeof(T));
-      T* f;
-      do {
-        f = &this->_stack[--this->_tail];
-      } while (!(f->flags & FRAME_HELPER_MASK) && this->_tail > 0);
-    } */
     if (this->_head < this->_tail) { 
       // note that this path won't be taken if _head == -1 since it's an
       // unsigned int, so the comparison expr uses unsigned comparison 
@@ -234,21 +219,6 @@ public:
     pthread_spin_unlock(&_slock);
   }
 
-  void verify() {
-    /*
-    assert(this->_head >= g_lu_level);
-    assert(strncmp(this->_stack[0].func_name, "lu", 2) == 0);
-    assert((this->_stack[0].flags & FRAME_HELPER_MASK) == 0);
-    assert(strncmp(this->_stack[1].func_name, "lu", 2) == 0);
-    assert((this->_stack[1].flags & FRAME_HELPER_MASK) == 0);
-    assert(strncmp(this->_stack[2].func_name, "lu", 2) == 0);
-    assert((this->_stack[2].flags & FRAME_HELPER_MASK) == 0);
-    assert(strncmp(this->_stack[3].func_name, "lu", 2) == 0);
-    assert((this->_stack[3].flags & FRAME_HELPER_MASK) == 0);
-    m_active = 1;
-    */
-  }
-
   T* steal_top(AtomicStack_t<T>& thief) {
     pthread_spin_lock(&_slock);
     assert(this->_tail != (uint32_t)-1);
@@ -257,7 +227,6 @@ public:
 
     // Take victim's tail
     thief._tail = this->_tail;
-
 
     // Copy up to the tail
     for (uint32_t i = 0; i < this->_tail; ++i) {
@@ -268,11 +237,6 @@ public:
 
     // Now copy up to next HELPER frame
     // Note: there MUST be another helper frame, since stealing is possible
-    /*
-    if (this->_tail > 0) {
-      assert(!(this->_stack[this->_tail-1].flags & FRAME_HELPER_MASK));
-      assert(this->_stack[this->_tail].flags & FRAME_HELPER_MASK);
-    } */
     T* f = &this->_stack[this->_tail];
     thief.push();
     *(thief.head()) = *f;
@@ -298,20 +262,13 @@ public:
     //    assert(orig.empty());
     pthread_spin_lock(&_slock);
 
-    // orig worker should be spinning
-    assert(pthread_spin_trylock(&orig._slock) == 0);
-    pthread_spin_unlock(&orig._slock);
-
-    orig.verify();
     orig.reset();
-    this->verify();
     for (int i = 0; i <= this->_head; ++i) {
       orig.push();
       *(orig.head()) = this->_stack[i];
     }
     orig._tail = this->_tail;
     pthread_spin_unlock(&_slock);
-
   }
 
   size_t memsize()
@@ -320,7 +277,5 @@ public:
   }
 
 };
-
-
 
 #endif // #define _STACK_H

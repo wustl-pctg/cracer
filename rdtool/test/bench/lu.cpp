@@ -30,8 +30,6 @@
 #include "getoptions.h"
 #include "bench.h"
 
-int g_lu_level = 0;
-
 /* Define the size of a block. */
 #ifndef BLOCK_SIZE
 #define BLOCK_SIZE 16
@@ -239,7 +237,7 @@ static void block_schur(Block B, Block A, Block C) {
  * schur - Compute M' = M - VW.
  */
 
-void schur(Matrix M, Matrix V, Matrix W, int nb) { ENTER_FRAME;
+void schur(Matrix M, Matrix V, Matrix W, int nb) {
 
   Matrix M00, M01, M10, M11;
   Matrix V00, V01, V10, V11;
@@ -305,12 +303,12 @@ void aux_lower_solve(Matrix Ma, Matrix Mb, Matrix L, int nb) {
   /* Solve with recursive calls. */
   lower_solve(Ma, L00, nb);
 
-  //  schur(Mb, L10, Ma, nb);
+  schur(Mb, L10, Ma, nb);
 
   lower_solve(Mb, L11, nb);
 }
 
-void lower_solve(Matrix M, Matrix L, int nb) { ENTER_FRAME;
+void lower_solve(Matrix M, Matrix L, int nb) {
 
   Matrix M00, M01, M10, M11;
   int hnb;
@@ -330,14 +328,9 @@ void lower_solve(Matrix M, Matrix L, int nb) { ENTER_FRAME;
 
   /* Solve with recursive calls. */
 
-  CORRECT_FRAME;
   cilk_spawn aux_lower_solve(M00, M10, L, hnb);
-  CORRECT_FRAME;
   aux_lower_solve(M01, M11, L, hnb);
-  CORRECT_FRAME;
-
   cilk_sync;
-  CORRECT_FRAME;
 
   return;
 }
@@ -361,14 +354,14 @@ void aux_upper_solve(Matrix Ma, Matrix Mb, Matrix U, int nb) {
   /* Solve with recursive calls. */
   upper_solve(Ma, U00, nb);
 
-  //  schur(Mb, Ma, U01, nb);
+  schur(Mb, Ma, U01, nb);
 
   upper_solve(Mb, U11, nb);
 
   return;
 }
 
-void upper_solve(Matrix M, Matrix U, int nb) { ENTER_FRAME;
+void upper_solve(Matrix M, Matrix U, int nb) {
 
   Matrix M00, M01, M10, M11;
   int hnb;
@@ -387,14 +380,9 @@ void upper_solve(Matrix M, Matrix U, int nb) { ENTER_FRAME;
   M11 = &MATRIX(M, hnb, hnb);
 
   /* Solve with recursive calls. */
-  CORRECT_FRAME;
   cilk_spawn aux_upper_solve(M00, M01, U, hnb);
-  CORRECT_FRAME;
   aux_upper_solve(M10, M11, U, hnb);
-  CORRECT_FRAME;
-
   cilk_sync; 
-  CORRECT_FRAME;
 
   return;
 }
@@ -402,8 +390,7 @@ void upper_solve(Matrix M, Matrix U, int nb) { ENTER_FRAME;
 /*
  * lu - Perform LU decomposition of matrix M.
  */
-
-void lu(Matrix M, int nb) { ENTER_FRAME;
+void lu(Matrix M, int nb) {
 
   Matrix M00, M01, M10, M11;
   int hnb;
@@ -411,7 +398,6 @@ void lu(Matrix M, int nb) { ENTER_FRAME;
   /* Check base case. */
   if (nb == 1) {
     block_lu(*M);
-
     return;
   }
 
@@ -423,24 +409,17 @@ void lu(Matrix M, int nb) { ENTER_FRAME;
   M11 = &MATRIX(M, hnb, hnb);
 
   /* Decompose upper left. */
-  CORRECT_FRAME;
-  g_lu_level++; lu(M00, hnb); g_lu_level--;
-  CORRECT_FRAME;
+  lu(M00, hnb);
 
   cilk_spawn lower_solve(M01, M00, hnb);
-  CORRECT_FRAME;
   upper_solve(M10, M00, hnb);
-  CORRECT_FRAME;
-
   cilk_sync;
-  CORRECT_FRAME;
 
   /* Compute Schur complement of lower right. */
-  //  schur(M11, M10, M01, hnb);
+  schur(M11, M10, M01, hnb);
 
   /* Decompose lower right. */
-  g_lu_level++; lu(M11, hnb); g_lu_level--;
-  CORRECT_FRAME;
+  lu(M11, hnb);
 
   return;
 }
@@ -543,7 +522,6 @@ int main(int argc, char *argv[]) {
   memcpy((void *) Msave, (void *) M, n * n * sizeof(double));
 
   auto start = std::chrono::high_resolution_clock::now();
-  //  g_lu_level++;
   lu(M, nBlocks);
   auto end = std::chrono::high_resolution_clock::now();
   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;

@@ -1,7 +1,7 @@
 # Compile the race detector library, which *includes* cilkplusrts
 include ../common.mk
 
-SRC := shadow_stack.cpp debug_util.cpp print_addr.cpp mem_access.cpp tsan.cpp omrd.cpp stat_util.cpp
+SRC := shadow_stack.cpp debug_util.cpp print_addr.cpp mem_access.cpp tsan.cpp stat_util.cpp #omrd.cpp
 #OBJ := $(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(SRC)))
 OBJ1 := $(SRC:.cpp=.o)
 OBJ := $(OBJ1:.c=.o)
