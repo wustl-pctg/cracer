@@ -53,11 +53,12 @@ MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
     // - the new reader is to the left of the old lreader 
     //   (i.e., comes first in serially execution)  OR
     // - there is a path from old lreader to this reader
+    bool is_leftmost;
     QUERY_START;
-    bool is_leftmost = om_precedes(curr_estrand, reader->estrand) ||
-                       om_precedes(reader->hstrand, curr_hstrand);
+    is_leftmost = om_precedes(curr_estrand, reader->estrand) ||
+      om_precedes(reader->hstrand, curr_hstrand);
     QUERY_END;
-
+    
     if(is_leftmost) {
       pthread_spin_lock(&lreader_lock);
       lreaders[i]->update_acc_info(curr_estrand, curr_hstrand, inst_addr);
@@ -89,8 +90,9 @@ MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
     // - there is a path from old rreader to this reader
     // but actually the second condition subsumes the first, so if the 
     // first condition is false, there is no point checking the second
+    bool is_rightmost;
     QUERY_START;
-    bool is_rightmost = om_precedes(reader->estrand, curr_estrand);
+    is_rightmost = om_precedes(reader->estrand, curr_estrand);
     QUERY_END;
     
     if(is_rightmost) {
@@ -98,7 +100,7 @@ MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
       rreaders[i]->update_acc_info(curr_estrand, curr_hstrand, inst_addr);
       pthread_spin_unlock(&rreader_lock);
     }
-  }
+   }
 }
 
 // Check races on memory represented by this mem list with this write access
@@ -160,9 +162,9 @@ MemAccessList_t::check_races_and_update_with_write(uint64_t inst_addr,
       report_race(reader->rip, inst_addr, start_addr+i, RW_RACE);
     }
   }
-  // Now we detect races with the rreaders
+  //  Now we detect races with the rreaders
   for(int i = start; i < (start + grains); i++) {
-    MemAccess_t *reader = lreaders[i];
+    MemAccess_t *reader = rreaders[i];
     if( reader && reader->races_with(curr_estrand, curr_hstrand) ) {
       report_race(reader->rip, inst_addr, start_addr+i, RW_RACE);
     }
@@ -175,6 +177,7 @@ MemAccessList_t::MemAccessList_t(uint64_t addr, bool is_read,
   : start_addr( ALIGN_BY_PREV_MAX_GRAIN_SIZE(addr) ) {
   for(int i=0; i < NUM_SLOTS; i++) {
     lreaders[i] = rreaders[i] = writers[i] = NULL;
+    //    lreaders[i] = writers[i] = NULL;
   }
 
   const int start = ADDR_TO_MEM_INDEX(addr);

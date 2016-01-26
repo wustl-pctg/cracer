@@ -14,8 +14,12 @@
 #include "shadow_mem.h"
 #include "omrd.h"
 
-#define QUERY_START while (pthread_spin_trylock(&g_worker_mutexes[self].mut) != 0) { join_batch(self); }
-#define QUERY_END pthread_spin_unlock(&g_worker_mutexes[self].mut)
+//#define QUERY_START while (pthread_spin_trylock(&g_worker_mutexes[self].mut) != 0) { join_batch(self); }
+//#define QUERY_END pthread_spin_unlock(&g_worker_mutexes[self].mut)
+// Note this starts a new block
+#define QUERY_START { size_t relabel_id = 0; do { relabel_id = g_relabel_id;
+#define QUERY_END } while ( !( (relabel_id & 0x1) == 0 &&     \
+                               relabel_id == g_relabel_id)); }
 
 #define GRAIN_SIZE 4
 #define LOG_GRAIN_SIZE 2
@@ -42,6 +46,7 @@
 //extern pthread_spinlock_t* g_worker_mutexes;
 extern local_mut* g_worker_mutexes;
 extern __thread int self;
+extern volatile size_t g_relabel_id;
 
 // Struct to hold strands corresponding to left / right readers and last writer
 typedef struct MemAccess_t {
@@ -62,9 +67,10 @@ typedef struct MemAccess_t {
 
     /// @todo Is it worth it to join the batch relabel here?
     om_assert(self > -1);
+    bool prec_in_english, prec_in_hebrew;
     QUERY_START;
-    bool prec_in_english = om_precedes(estrand, curr_estrand);
-    bool prec_in_hebrew  = om_precedes(hstrand, curr_hstrand);
+    prec_in_english = om_precedes(estrand, curr_estrand);
+    prec_in_hebrew  = om_precedes(hstrand, curr_hstrand);
     QUERY_END;
 
     // race if the ordering in english and hebrew differ
