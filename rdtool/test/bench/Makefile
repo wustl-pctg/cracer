@@ -15,8 +15,8 @@ else ifeq ($(mode), base)
 	LDFLAGS += $(RUNTIME_LIB)
 else ifeq ($(mode), icc)
 	OBJ_DIR := $(OBJ_DIR_PREFIX:=_icc)
-	CFLAGS += -fp-model precise
-	CXXFLAGS += -fp-model precise
+#	CFLAGS += -fp-model precise -no-vec
+#	CXXFLAGS += -fp-model precise -no-vec
 	LDFLAGS += $(MALLOC)
 	LDFLAGS += -lcilkrts -Wl,-rpath,$(INTEL_LIB)
 else ifeq ($(mode), insert)
@@ -51,6 +51,11 @@ include ../test.mk
 ifeq ($(mode), icc)
 	CC = $(ICC)
 	CXX = $(ICC)
+# I am not sure what vectorization icc does and what clang doesn't
+# do, but there is some different in performance
+#	-no-vec
+	CFLAGS = -O3 -DNDEBUG -march=native -m64 -g -std=c99 -no-vec
+	CXXFLAGS = -O3 -DNDEBUG -march=native -m64 -g -std=c++11 -no-vec
 endif
 
 most: brd base insert icc cilksan cstats
