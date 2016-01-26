@@ -378,9 +378,16 @@ extern "C" void do_leave_stolen(__cilkrts_stack_frame* sf)
     om_assert(parent->cont_english); om_assert(parent->cont_hebrew);
     om_assert(parent->sync_english); om_assert(parent->sync_hebrew);
 
-    parent->current_english = parent->cont_english;
-    parent->current_hebrew = parent->cont_hebrew;
+    /** I would expect this would work: */
+    // parent->current_english = parent->cont_english;
+    // parent->current_hebrew = parent->cont_hebrew;
+    // parent->cont_english = parent->cont_hebrew = NULL;
+
+    /** Instead, I seem to have to do the following. Why? */
+    parent->current_english = parent->sync_english;
+    parent->current_hebrew = parent->sync_hebrew;
     parent->cont_english = parent->cont_hebrew = NULL;
+    parent->sync_english = parent->sync_hebrew = NULL;
 
   } else { // full frame returning
     om_assert(sf == NULL);
