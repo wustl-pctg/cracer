@@ -13,6 +13,7 @@
 static label_t g_heavy_threshold = DEFAULT_HEAVY_THRESHOLD;
 
 static volatile int g_batch_in_progress = 0;
+volatile size_t g_relabel_id = 0;
 
 // Brian Kernighan's algorithm
 size_t count_set_bits(label_t label)
@@ -217,8 +218,11 @@ void batch_relabel(void* _ds, void* data, size_t size, void* results)
   // } else {
   //   printf("Empty set of heavy nodes!\n");
   // }
+  g_relabel_id++;
+  asm volatile("": : :"memory");
   cilk_spawn relabel(g_english);
   relabel(g_hebrew);
   cilk_sync;
+  g_relabel_id++;
 
 }
