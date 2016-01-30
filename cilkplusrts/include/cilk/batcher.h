@@ -18,6 +18,7 @@ CILK_API(void) cilk_batchify(batch_function_t f, void* ds,
                              batch_data_t data, size_t data_size);
 CILK_API(void) __cilkrts_c_terminate_batch();
 CILK_API(void) __cilkrts_c_start_batch();
+CILK_API(void) __cilkrts_set_batch_id(__cilkrts_worker* w);
 CILK_API(int) __cilkrts_get_batch_id(__cilkrts_worker* w);
 CILK_API(int) batcher_trylock(__cilkrts_worker* w);
 CILK_API(void) cilk_set_next_batch_owner();

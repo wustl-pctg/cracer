@@ -258,7 +258,14 @@ void execute_batch(__cilkrts_worker* w, cilk_fiber* fiber, int batch_id)
   volatile int * global_batch_id = &w->g->pending_batch.id;
   full_frame* ff = NULL;
 
-  while (*global_batch_id == batch_id) {
+  // while the batch I belong to is not done or have not started yet, loop
+  // batch I belong to is either the pending_batch when I added my heavy node
+  // or is the on-going batch that I encountered after failing to acquire
+  // my own local lock during insert (which could have finished by the time I 
+  // loop around here, and I have read the next pending batch id, so checking
+  // the owner is necessary in that case --- owner == NULL means that I got
+  // the next pending batch_id, and it's not necessary for me to stay).
+  while ((*global_batch_id <= batch_id) && w->g->batch_lock.owner) {
     //if (w->g->batch_lock.owner == NULL) return;
 
     //__cilkrts_short_pause();
@@ -298,9 +305,11 @@ void execute_batch(__cilkrts_worker* w, cilk_fiber* fiber, int batch_id)
       w = __cilkrts_get_tls_worker();
     }
   }
+  /*
   fprintf(stderr,
           "Worker %d leaving batch with local id %zu and global id %zu\n",
           w->self, batch_id, *global_batch_id);
+  */
 }
 
 COMMON_PORTABLE
@@ -475,12 +484,19 @@ CILK_API_VOID cilk_batchify(batch_function_t f, void* ds,
   CILK_ASSERT(w->l->team != NULL);
 
   cilk_fiber* current_fiber = switch_to_batch_deque(w);
-  w->l->batch_id = w->g->pending_batch.id;
-  fprintf(stderr, "Worker %d joining batch %zu\n", w->self, w->l->batch_id);
+  if( w->l->batch_id == -1) {
+    w->l->batch_id = w->g->pending_batch.id;
+  }
+  // fprintf(stderr, "Worker %d joining batch %zu\n", w->self, w->l->batch_id);
   insert_batch_record(w, f, ds, data, sizeof(int));
   execute_until_op_done(w, current_fiber);
   switch_to_core_deque(w);
   CILK_ASSERT(!w->l->batch_frame_ff);
+}
+
+CILK_API_VOID __cilkrts_set_batch_id(__cilkrts_worker* w)
+{
+  w->l->batch_id = w->g->pending_batch.id;
 }
 
 CILK_API(int) __cilkrts_get_batch_id(__cilkrts_worker* w)

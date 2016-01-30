@@ -61,10 +61,9 @@ extern "C" int cilk_tool_om_try_lock_all(__cilkrts_worker* w)
   if (!insert_failed) return 0;
   if ((g_relabel_id & 0x1) == 1) return 0;
 
-  
-  fprintf(stderr, "Worker %d trying to start batch %zu\n", w->self, g_num_relabels);
-  assert(failed_at_relabel < ((int)g_num_relabels));
-  failed_at_relabel = g_num_relabels;
+  // fprintf(stderr, "Worker %d trying to start batch %zu\n", w->self, g_num_relabels);
+  // assert(failed_at_relabel < ((int)g_num_relabels));
+  // failed_at_relabel = g_num_relabels;
 
   __sync_fetch_and_add(&g_num_relabel_lock_tries, 1);
   RDTOOL_INTERVAL_BEGIN(RELABEL_LOCK);
@@ -76,11 +75,11 @@ extern "C" int cilk_tool_om_try_lock_all(__cilkrts_worker* w)
   //  fprintf(stderr, "Relabel lock acquired by %d\n", g_relabel_mutex.owner->self);
   //  assert(t_in_batch == 1);
 
+  cilk_set_next_batch_owner();
   int p = __cilkrts_get_nworkers();
   for (int i = 0; i < p; ++i) {
     pthread_spin_lock(&g_worker_mutexes[i].mut);
   }
-  cilk_set_next_batch_owner();
   g_batch_in_progress = 1;
   om_assert(g_batch_owner_id == -1);
   g_batch_owner_id = w->self;
@@ -154,6 +153,7 @@ private:
         //           base->list->size);
         add_heavy(base);
       }
+      __cilkrts_set_batch_id(w);
 
       pthread_spin_unlock(mut);
       //fprintf(stderr, "Worker %d trying to start batch %zu\n", w->self, g_num_relabels);
@@ -261,7 +261,7 @@ void batch_relabel(void* _ds, void* data, size_t size, void* results)
   RD_STATS(DBG_TRACE(DEBUG_BACKTRACE, "Begin relabel %zu.\n", g_num_relabels));
   g_relabel_id++;
   asm volatile("": : :"memory");
-  fprintf(stderr, "Worker %d starting relabeling phase %zu\n", self, g_num_relabels);
+  // fprintf(stderr, "Worker %d starting relabeling phase %zu\n", self, g_num_relabels);
 
   // omrd_t* ds = (omrd_t*)_ds;
   // relabel(ds);
@@ -271,5 +271,5 @@ void batch_relabel(void* _ds, void* data, size_t size, void* results)
   relabel(g_hebrew);
   cilk_sync;
   g_relabel_id++;
-  fprintf(stderr, "Ending relabeling phase %zu\n", g_num_relabels-1);
+  // fprintf(stderr, "Ending relabeling phase %zu\n", g_num_relabels-1);
 }
