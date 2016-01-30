@@ -10,7 +10,7 @@ import StringIO, datetime, argparse
 ## python: import datetime; datetime.datetime.now().strftime("%Y%m%d-%H%M")
 
 cilkscreen = "/home/rob/src/cilktools-linux-004421/bin/cilkscreen"
-use_cilkscreen = True
+use_cilkscreen = False
 print_status = True # Makes log file ugly
 column_size = 22
 column_format = "{: >" + str(column_size) + "},"
@@ -79,12 +79,13 @@ def run_tests():
     cores = [1] + range(2,17,2)
 
     runs = OrderedDict()
-    runs["matmul"] = "-n 2048"
-    runs["cilksort"] = "-n 25000000"
-    runs["heat"] = "-nx 2048 -ny 2048 -nt 500"
+    #runs["matmul"] = "-n 2048"
+    #runs["cilksort"] = "-n 25000000"
+    #runs["heat"] = "-nx 2048 -ny 2048 -nt 500"
     runs["fft"] = "-n " + str(64*1024*1024)
-    runs["cholesky"] = "-n 2000 -z 20000"
-    runs["fib"] = "38"
+    #runs["fft"] = "-benchmark medium"
+    #runs["cholesky"] = "-n 2000 -z 20000"
+    #runs["fib"] = "35"
     #runs["nqueens"] = "13" ## @bug Detects race!
     #runs["qsort"] = "32" #str(64*1024*1024)
     # runs["knapsack"] = "-benchmark long"
@@ -95,7 +96,8 @@ def run_tests():
     
     tests = runs.keys()
     args = runs.values()
-    comp = ["icc", "base", "insert", "brd", "cilksan"]
+    #comp = ["icc", "base", "insert", "brd", "cilksan"]
+    comp = ["insert"]
     bin_dir = "bin"
     global status_column
     status_column = (len(comp)+1) * (column_size+3) + 25

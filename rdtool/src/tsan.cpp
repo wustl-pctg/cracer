@@ -21,7 +21,7 @@ extern "C" int do_leave_begin(__cilkrts_stack_frame *sf);
 extern "C" int do_leave_end();
 extern "C" int do_leave_stolen(__cilkrts_stack_frame* sf);
 extern "C" void do_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
-                      __cilkrts_stack_frame* sf);
+                                 __cilkrts_stack_frame* sf);
 // extern "C" void do_read(uint64_t inst_addr, uint64_t addr, size_t mem_size); 
 // extern "C" void do_write(uint64_t inst_addr, uint64_t addr, size_t mem_size);
 extern "C" void clear_shadow_memory(size_t start, size_t end); 
@@ -30,7 +30,8 @@ extern "C" void do_tool_print(void);
 extern "C" void do_tool_destroy(void);
 
 extern __thread __cilkrts_worker *t_worker;
-
+size_t g_num_reads = 0;
+size_t g_num_writes = 0;
 
 static bool TOOL_INITIALIZED = false;
 
@@ -138,6 +139,10 @@ extern "C" void cilk_tool_print(void)
   disable_checking();
   //  disable_instrumentation();
   do_tool_print();
+  fprintf(stderr, "--- Thread Sanitizer Stats ---\n");
+  fprintf(stderr, "Reads: %zu\n", g_num_reads);
+  fprintf(stderr, "Writes: %zu\n", g_num_writes);
+  fprintf(stderr, "Total Accesses: %zu\n", g_num_reads + g_num_writes);
   enable_checking();
 }
 
@@ -195,8 +200,8 @@ extern "C" void __tsan_vptr_update(void **vptr_p, void *new_val) {}
 
 extern "C" void cilk_enter_begin() {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_begin.\n");
   disable_checking();
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_begin.\n");
   do_enter_begin();
   om_assert(TOOL_INITIALIZED);
 }
@@ -204,8 +209,8 @@ extern "C" void cilk_enter_begin() {
 extern "C" void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, 
                                         void* this_fn, void* rip) {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_helper_begin.\n");
   disable_checking();
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_enter_helper_begin.\n");
   do_enter_helper_begin(sf, this_fn, rip);
 }
 
@@ -225,8 +230,8 @@ extern "C" void cilk_enter_end(__cilkrts_stack_frame *sf, void *rsp) {
 
 extern "C" void cilk_spawn_prepare() {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_spawn_prepare.\n");
   disable_checking();
+  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_spawn_prepare.\n");
 }
 
 extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim,
@@ -234,7 +239,6 @@ extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim
 {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   //  DBG_TRACE(DEBUG_CALLBACK, "%i stealing from %i.\n", w->self, victim->self);
-  //  om_assert(checking_disabled > 0);
   om_assert(!should_check());
   do_steal_success(w, victim, sf);
 }
@@ -247,28 +251,28 @@ extern "C" void cilk_steal_success(__cilkrts_worker* w, __cilkrts_worker* victim
 extern "C" void cilk_spawn_or_continue(int in_continuation) {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   enable_checking();
-  //  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_spawn_or_continue.\n");
+  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_spawn_or_continue.\n");
 }
 
 extern "C" void 
 cilk_detach_begin(__cilkrts_stack_frame *parent_sf) { 
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_detach_begin.\n");
   disable_checking(); 
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_detach_begin.\n");
   do_detach_begin(parent_sf);
 }
 
 extern "C" void cilk_detach_end() { 
-  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   //  do_detach_end();
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
+  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_detach_end.\n");
   enable_checking(); 
-  //  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_detach_end.\n");
 }
 
 extern "C" void cilk_sync_begin(__cilkrts_stack_frame* sf) {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_sync_begin.\n");
   disable_checking();
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_sync_begin.\n");
   om_assert(TOOL_INITIALIZED);
   do_sync_begin(sf);
 }
@@ -276,17 +280,17 @@ extern "C" void cilk_sync_begin(__cilkrts_stack_frame* sf) {
 extern "C" void cilk_sync_end() {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   om_assert(TOOL_INITIALIZED);
-  enable_checking();
   do_sync_end();
-  //  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_sync_end.\n");
+  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_sync_end.\n");
+  enable_checking();
 }
 
 extern "C" void cilk_resume(__cilkrts_stack_frame *sf) { enable_checking(); }
 
 extern "C" void cilk_leave_begin(__cilkrts_stack_frame* sf) {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-  //  DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_begin.\n");
   disable_checking();
+  DBG_TRACE(DEBUG_CALLBACK, "cilk_leave_begin.\n");
   int is_last_frame = do_leave_begin(sf);
   if(is_last_frame) {
     disable_instrumentation();
@@ -306,7 +310,7 @@ extern "C" void cilk_leave_begin(__cilkrts_stack_frame* sf) {
 extern "C" void cilk_leave_end() {
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   enable_checking();
-  //  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_leave_end.\n");
+  DBG_TRACE(DEBUG_CALLBACK, "leaving cilk_leave_end.\n");
   // int is_last_frame =
   do_leave_end();
 }
@@ -317,13 +321,11 @@ extern "C" void cilk_leave_end() {
 // enable_checking, but otherwise need to do the same as cilk_leave_end()
 extern "C" void __attribute__((noinline))
 cilk_leave_stolen(__cilkrts_worker* w,
-		  __cilkrts_stack_frame *saved_sf,
-		  int is_original,
-		  char* stack_base)
+                  __cilkrts_stack_frame *saved_sf,
+                  int is_original,
+                  char* stack_base)
 { 
-  /// @todo: don't do anything on inserts only!
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
-
   if (instrumentation) {
 
     om_assert(clear_stack == true); 
@@ -338,14 +340,9 @@ cilk_leave_stolen(__cilkrts_worker* w,
     // cilk_leave_stolen (not when lto enabled)
 
     uint64_t stack_high_watermark;
-// #ifdef USE_LTO
-// #define SPAWN_FRAME_POS 2
-// #else
-#define SPAWN_FRAME_POS 3
-// #endif
     /// @todo is the 'is_original' necessary? 
     if (is_original)
-      stack_high_watermark = (uint64_t)__builtin_frame_address(SPAWN_FRAME_POS);
+      stack_high_watermark = (uint64_t)__builtin_frame_address(3);
     else
       stack_high_watermark = (uint64_t)stack_base;
 
@@ -429,6 +426,7 @@ extern "C" void* malloc(size_t s) {
   }
   void *r = real_malloc(new_size);
 
+  //  if (t_worker && t_worker && __cilkrts_get_batch_id(t_worker) != -1) return r;
   if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return r;
 
   if(TOOL_INITIALIZED && should_check()) {
@@ -454,8 +452,10 @@ extern "C" void* malloc(size_t s) {
 // the return addr of __tsan_read/write[1-16] is the rip for the read / write
 
 static inline void tsan_read(void *addr, size_t mem_size, void *rip) {
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   om_assert(TOOL_INITIALIZED);
   if(should_check()) {
+    g_num_reads++;
     disable_checking();
     DBG_TRACE(DEBUG_MEMORY, "%s read %p\n", __FUNCTION__, addr);
     om_assert(mem_size <= 16);
@@ -468,8 +468,10 @@ static inline void tsan_read(void *addr, size_t mem_size, void *rip) {
 
 static inline void tsan_write(void *addr, size_t mem_size, void *rip)
 {
+  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   om_assert(TOOL_INITIALIZED);
   if(should_check()) {
+    g_num_writes++;
     disable_checking();
     DBG_TRACE(DEBUG_MEMORY, "%s wrote %p\n", __FUNCTION__, addr);
     om_assert(mem_size <= 16);

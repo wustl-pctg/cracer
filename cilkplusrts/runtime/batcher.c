@@ -64,6 +64,7 @@ unsigned int collect_batch(struct batch* pending, struct batch_record* records)
         && pending->operation == records[i].operation) {
 
       records[i].status = ITEM_IN_PROGRESS;
+      assert(pending->data_size == sizeof(int));
       memcpy(((int*)pending->work_array) + num_ops, &records[i].data,
              pending->data_size);
 
@@ -84,7 +85,12 @@ struct batch* create_batch(struct batch_record* record)
   b->operation = record->operation;
   b->ds = record->ds;
   b->data_size = record->data_size;
-  b->num_ops = collect_batch(b, records);
+  assert(b->data_size == sizeof(int));
+
+  /// @todo For FPSP, we don't do this. This should really be a
+  /// weakly-linked function so that a data structure designer can
+  /// override it.
+  //  b->num_ops = collect_batch(b, records);
 
   BATCH_DBGPRINTF("Batch %d has %d ops.\n---", b->id, b->num_ops);
 
@@ -98,18 +104,18 @@ void terminate_batch(struct batch_record* records)
   int p = cilkg_get_nworkers();
 
   BATCH_DBGPRINTF("Worker %i terminating batch %i.\n", w->self, w->g->pending_batch.id);
-
-  for (int i = 0; i < p; ++i) {
-    if (records[i].status == ITEM_IN_PROGRESS) {
-      records[i].status = ITEM_DONE;
-    }
-  }
+  
+  /// @todo don't need to do this for FPSP...
+  /* for (int i = 0; i < p; ++i) { */
+  /*   if (records[i].status == ITEM_IN_PROGRESS) { */
+  /*     records[i].status = ITEM_DONE; */
+  /*     assert(records[i].data_size == sizeof(int)); */
+  /*   } */
+  /* } */
   
   CILK_ASSERT(!w->l->batch_frame_ff);
 
   w->g->pending_batch.id++;
-
-
   w->g->batch_lock.owner = 0;
   w->g->batch_lock.lock = 0;
   __cilkrts_fence();
@@ -198,6 +204,7 @@ void invoke_batch(cilk_fiber *fiber)
   // 2. Do the collection for the batch.
   struct batch_record* records = w->g->batch_records;
   struct batch* b = &w->g->pending_batch;
+
   create_batch(&records[w->self]);
 
   // 3. Call the batch operation.
@@ -252,7 +259,7 @@ void execute_batch(__cilkrts_worker* w, cilk_fiber* fiber, int batch_id)
   full_frame* ff = NULL;
 
   while (*global_batch_id == batch_id) {
-    if (w->g->batch_lock.owner == NULL) return;
+    //if (w->g->batch_lock.owner == NULL) return;
 
     //__cilkrts_short_pause();
     // @@ batch stealing
@@ -291,6 +298,9 @@ void execute_batch(__cilkrts_worker* w, cilk_fiber* fiber, int batch_id)
       w = __cilkrts_get_tls_worker();
     }
   }
+  fprintf(stderr,
+          "Worker %d leaving batch with local id %zu and global id %zu\n",
+          w->self, batch_id, *global_batch_id);
 }
 
 COMMON_PORTABLE
@@ -309,25 +319,28 @@ void batch_scheduler_function(cilk_fiber *fiber)
 
     BATCH_DBGPRINTF("Worker %i entered scheduler function at batch %i.\n",w->self, w->g->pending_batch.id);
 
-    while (record->status != ITEM_DONE) {
+    /// @todo FPSP should just execute this one batch
+    execute_batch(w, fiber, w->l->batch_id);
 
-      execute_batch(w, fiber, w->l->batch_id);
-      CILK_ASSERT(w == __cilkrts_get_tls_worker());
+    /* while (record->status != ITEM_DONE) { */
 
-      if (record->status != ITEM_DONE) {
-        w->l->batch_id = w->g->pending_batch.id;
-        cilk_fiber* new_fiber = try_to_start_batch(w);
-        if (new_fiber) {
-          CILK_ASSERT(w->g->batch_lock.owner == w);
-          CILK_ASSERT(w->g->batch_records[w->self].status == ITEM_WAITING);
-          BATCH_DBGPRINTF("Worker %i restarting a batch.\n", w->self);
+    /*   execute_batch(w, fiber, w->l->batch_id); */
+    /*   CILK_ASSERT(w == __cilkrts_get_tls_worker()); */
 
-          w->l->batch_id = w->g->pending_batch.id;
-          w->current_stack_frame = NULL;
-          cilk_fiber_suspend_self_and_resume_other(fiber, new_fiber);
-        }
-      }
-    }
+    /*   if (record->status != ITEM_DONE) { */
+    /*     w->l->batch_id = w->g->pending_batch.id; */
+    /*     cilk_fiber* new_fiber = try_to_start_batch(w); */
+    /*     if (new_fiber) { */
+    /*       CILK_ASSERT(w->g->batch_lock.owner == w); */
+    /*       CILK_ASSERT(w->g->batch_records[w->self].status == ITEM_WAITING); */
+    /*       BATCH_DBGPRINTF("Worker %i restarting a batch.\n", w->self); */
+
+    /*       w->l->batch_id = w->g->pending_batch.id; */
+    /*       w->current_stack_frame = NULL; */
+    /*       cilk_fiber_suspend_self_and_resume_other(fiber, new_fiber); */
+    /*     } */
+    /*   } */
+    /* } */
     cilk_fiber_suspend_self_and_resume_other(w->l->scheduling_fiber,
                                              w->l->saved_core_fiber);
   }
@@ -430,10 +443,10 @@ void execute_until_op_done(__cilkrts_worker* w, cilk_fiber* current_fiber)
 
   batch_fiber = try_to_start_batch(w);
 
-  if (w->g->batch_records[w->self].status == ITEM_DONE) {
-    CILK_ASSERT(!batch_fiber);
-    return;
-  }
+  /* if (w->g->batch_records[w->self].status == ITEM_DONE) { */
+  /*   CILK_ASSERT(!batch_fiber); */
+  /*   return; */
+  /* } */
 
   w->l->saved_core_fiber = current_fiber;
   saved_fiber = w->l->scheduling_fiber;
@@ -463,6 +476,7 @@ CILK_API_VOID cilk_batchify(batch_function_t f, void* ds,
 
   cilk_fiber* current_fiber = switch_to_batch_deque(w);
   w->l->batch_id = w->g->pending_batch.id;
+  fprintf(stderr, "Worker %d joining batch %zu\n", w->self, w->l->batch_id);
   insert_batch_record(w, f, ds, data, sizeof(int));
   execute_until_op_done(w, current_fiber);
   switch_to_core_deque(w);

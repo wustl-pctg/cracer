@@ -3,6 +3,8 @@
 #include "print_addr.h"
 #include "mem_access.h"
 
+size_t num_new_memaccess = 0;
+
 // Check races on memory represented by this mem list with this read access
 // Once done checking, update the mem list with this new read access
 void
@@ -36,6 +38,7 @@ MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
     MemAccess_t *reader = lreaders[i];
     if(reader == NULL) {
       reader = new MemAccess_t(curr_estrand, curr_hstrand, inst_addr);
+      num_new_memaccess++;
       pthread_spin_lock(&lreader_lock);
       if (lreaders[i] == NULL) {
         lreaders[i] = reader;
@@ -71,6 +74,7 @@ MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
     MemAccess_t *reader = rreaders[i];
     if(reader == NULL) {
       reader = new MemAccess_t(curr_estrand, curr_hstrand, inst_addr);
+      num_new_memaccess++;
       pthread_spin_lock(&rreader_lock);
       if (rreaders[i] == NULL) {
         rreaders[i] = reader;
@@ -126,6 +130,7 @@ MemAccessList_t::check_races_and_update_with_write(uint64_t inst_addr,
     MemAccess_t *writer = writers[i];
     if(writer == NULL) {
       writer = new MemAccess_t(curr_estrand, curr_hstrand, inst_addr);
+      num_new_memaccess++;
       pthread_spin_lock(&writer_lock);
       if(writers[i] == NULL) {
         writers[i] = writer;
@@ -191,11 +196,14 @@ MemAccessList_t::MemAccessList_t(uint64_t addr, bool is_read,
   if(is_read) {
     for(int i=start; i < (start + grains); i++) {
       lreaders[i] = new MemAccess_t(estrand, hstrand, inst_addr);
+      num_new_memaccess++;
       rreaders[i] = new MemAccess_t(estrand, hstrand, inst_addr);
+      num_new_memaccess++;
     }
   } else {
     for(int i=start; i < (start + grains); i++) {
       writers[i] = new MemAccess_t(estrand, hstrand, inst_addr);
+      num_new_memaccess++;
     }
   }
 

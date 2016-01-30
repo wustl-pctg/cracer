@@ -7,13 +7,14 @@
 #include "om/om.c"
 #include "stack.h"
 
-//#define HALF_BITS ((sizeof(label_t) * 8) / 2)
-#define HALF_BITS 8
+#define HALF_BITS ((sizeof(label_t) * 8) / 2)
+//#define HALF_BITS 8
 #define DEFAULT_HEAVY_THRESHOLD HALF_BITS
 static label_t g_heavy_threshold = DEFAULT_HEAVY_THRESHOLD;
 
 static volatile int g_batch_in_progress = 0;
 volatile size_t g_relabel_id = 0;
+size_t g_num_relabel_lock_tries = 0;
 
 // Brian Kernighan's algorithm
 size_t count_set_bits(label_t label)
@@ -39,13 +40,42 @@ void batch_relabel(void* _ds, void* data, size_t size, void* results);
 /// @todo break this into a FPSPController class (or something similar)
 #include "rd.h" // for local_mut definition
 local_mut* g_worker_mutexes;
-pthread_spinlock_t g_relabel_mutex;
+#include <../runtime/worker_mutex.h>
+mutex g_relabel_mutex;
+#define LOCK_SUCCESS 1
+
+//pthread_spinlock_t g_relabel_mutex;
+//__cilkrts_worker *g_relabel_owner;
+//#define LOCK_SUCCESS 0
 
 int g_batch_owner_id = -1;
+__thread int insert_failed = 0;
+__thread int failed_at_relabel = -1;
+//__thread int t_in_batch = 0;
 
 extern "C" int cilk_tool_om_try_lock_all(__cilkrts_worker* w)
 {
-  if (pthread_spin_trylock(&g_relabel_mutex) != 0) return 0;
+  // If we haven't failed an insert, we came here because someone had
+  // our lock when we wanted to insert. Don't don't even try to
+  // contend on the lock.
+  if (!insert_failed) return 0;
+  if ((g_relabel_id & 0x1) == 1) return 0;
+
+  
+  fprintf(stderr, "Worker %d trying to start batch %zu\n", w->self, g_num_relabels);
+  assert(failed_at_relabel < ((int)g_num_relabels));
+  failed_at_relabel = g_num_relabels;
+
+  __sync_fetch_and_add(&g_num_relabel_lock_tries, 1);
+  RDTOOL_INTERVAL_BEGIN(RELABEL_LOCK);
+  //int result = pthread_spin_trylock(&g_relabel_mutex);
+  int result = __cilkrts_mutex_trylock(w, &g_relabel_mutex);
+  RDTOOL_INTERVAL_END(RELABEL_LOCK);
+
+  if (result != LOCK_SUCCESS) return 0;
+  //  fprintf(stderr, "Relabel lock acquired by %d\n", g_relabel_mutex.owner->self);
+  //  assert(t_in_batch == 1);
+
   int p = __cilkrts_get_nworkers();
   for (int i = 0; i < p; ++i) {
     pthread_spin_lock(&g_worker_mutexes[i].mut);
@@ -54,21 +84,34 @@ extern "C" int cilk_tool_om_try_lock_all(__cilkrts_worker* w)
   g_batch_in_progress = 1;
   om_assert(g_batch_owner_id == -1);
   g_batch_owner_id = w->self;
+  //assert(self == __cilkrts_get_tls_worker()->self);
   return 1;
 }
 
-void join_batch(int self)
+class omrd_t;
+
+void join_batch(__cilkrts_worker *w, omrd_t *ds)
 {
-  DBG_TRACE(DEBUG_BACKTRACE, "Worker %i calling batchify.\n", self);
-  cilk_batchify(batch_relabel, NULL, 0, sizeof(int));
-  if (self == g_batch_owner_id) {
+  DBG_TRACE(DEBUG_BACKTRACE, "Worker %i calling batchify.\n", w->self);
+  //  assert(self == __cilkrts_get_tls_worker()->self);
+  //  t_in_batch++;
+  cilk_batchify(batch_relabel, (void*)ds, 0, sizeof(int));
+  //  assert(self == __cilkrts_get_tls_worker()->self);
+  //  assert(t_in_batch == 1);
+
+  if (w->self == g_batch_owner_id) {
     g_batch_in_progress = 0;
     g_batch_owner_id = -1;
     for (int i = 0; i < __cilkrts_get_nworkers(); ++i) {
       pthread_spin_unlock(&g_worker_mutexes[i].mut);
     }
-    pthread_spin_unlock(&g_relabel_mutex);
+    //    fprintf(stderr, "Relabel lock owner is %d\n", g_relabel_mutex.owner->self);
+    //pthread_spin_unlock(&g_relabel_mutex);
+    __cilkrts_mutex_unlock(t_worker, &g_relabel_mutex);
   }
+  //  t_in_batch--;
+  //  assert(t_in_batch == 0);
+  //  assert(self == __cilkrts_get_tls_worker()->self);
 }
 
 class omrd_t {
@@ -104,6 +147,7 @@ private:
 
     /// Assert: mut is owned by self
     while (!n) {
+      insert_failed = 1;
       if (!base->list->heavy && CAS(&base->list->heavy, 0, 1)) {
         // DBG_TRACE(DEBUG_BACKTRACE,
         //           "Could not fit into list of size %zu, not heavy.\n",
@@ -112,17 +156,18 @@ private:
       }
 
       pthread_spin_unlock(mut);
-      join_batch(w->self);
+      //fprintf(stderr, "Worker %d trying to start batch %zu\n", w->self, g_num_relabels);
+      join_batch(w, this); // try to start
     
+      insert_failed = 0; // Don't start a batch, just join if one has started.
       while (pthread_spin_trylock(mut) != 0) {
-        join_batch(w->self);
+        //fprintf(stderr, "Worker %d joining batch %zu from slow_path\n", w->self, g_num_relabels);
+        join_batch(w, this);
       }
       n = try_insert(base);
-      if (!n) {
-	printf("Weird...\n");
-      }
-      //assert(n);
+      //      assert(n);
     }
+    assert(insert_failed == 0);
     RDTOOL_INTERVAL_END(SLOW_PATH);
     return n;
   }
@@ -149,7 +194,8 @@ public:
     RDTOOL_INTERVAL_BEGIN(FAST_PATH);
     pthread_spinlock_t* mut = &g_worker_mutexes[w->self].mut;
     while (pthread_spin_trylock(mut) != 0) {
-      join_batch(w->self);
+      //fprintf(stderr, "Worker %d joining batch %zu from fast path\n", w->self, g_num_relabels);
+      join_batch(w, this);
     }
 
     om_node* n = try_insert(base);
@@ -195,15 +241,17 @@ omrd_t *g_hebrew;
 void relabel(omrd_t *_ds)
 {
   om* ds = _ds->get_ds();
-  om_verify(ds);
+  //  om_verify(ds);
   AtomicStack_t<tl_node*> *heavy_nodes = _ds->get_heavy_nodes();
   if (!heavy_nodes->empty()) {
     om_relabel(ds, heavy_nodes->at(0), heavy_nodes->size());
-    RD_STATS(g_num_relabels++);
+    RD_STATS(__sync_fetch_and_add(&g_num_relabels, 1));
     RD_STATS(g_relabel_size += heavy_nodes->size());
     heavy_nodes->reset();
+  } else {
+    RD_STATS(__sync_fetch_and_add(&g_num_empty_relabels, 1));
   }
-  om_verify(ds);
+  //  om_verify(ds);
 }
 
 // We actually only need the DS.
@@ -211,18 +259,17 @@ void relabel(omrd_t *_ds)
 void batch_relabel(void* _ds, void* data, size_t size, void* results)
 {
   RD_STATS(DBG_TRACE(DEBUG_BACKTRACE, "Begin relabel %zu.\n", g_num_relabels));
-  // omrd_t* ds = (omrd_t*)_ds;
-  // AtomicStack_t<tl_node*>* heavy_nodes = ds->get_heavy_nodes();
-  // if (!heavy_nodes->empty()) {
-  //   om_relabel(ds->get_ds(), heavy_nodes->at(0), heavy_nodes->size());
-  // } else {
-  //   printf("Empty set of heavy nodes!\n");
-  // }
   g_relabel_id++;
   asm volatile("": : :"memory");
+  fprintf(stderr, "Worker %d starting relabeling phase %zu\n", self, g_num_relabels);
+
+  // omrd_t* ds = (omrd_t*)_ds;
+  // relabel(ds);
+
+  // You might as well try to relabel both structures...or should you?
   cilk_spawn relabel(g_english);
   relabel(g_hebrew);
   cilk_sync;
   g_relabel_id++;
-
+  fprintf(stderr, "Ending relabeling phase %zu\n", g_num_relabels-1);
 }

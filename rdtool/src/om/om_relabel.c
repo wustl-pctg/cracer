@@ -193,12 +193,12 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
 
     // Split into several sublists.
     size_t num_split_lists = split(current->below);
-    tl_node* test = current->split_nodes;
-    while (test) {
-      bl_verify(test->below);
-      assert(test == test->below->above);
-      test = test->next;
-    }
+    //    tl_node* test = current->split_nodes;
+    /* while (test) { */
+    /*   bl_verify(test->below); */
+    /*   assert(test == test->below->above); */
+    /*   test = test->next; */
+    /* } */
 
     if (num_split_lists > 1) {
 
@@ -241,5 +241,5 @@ void om_relabel(om* self, tl_node** heavy_lists, size_t num_heavy_lists)
   } else {
     om_rebalance(self);
   }
-  om_verify(self);
+  //  om_verify(self);
 }

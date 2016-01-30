@@ -163,10 +163,11 @@ static void print_race_info(const RaceInfo_t& race) {
   std::cerr << std::endl;
 }
 
+size_t g_tmp_fake;
+
 // Log the race detected
 void report_race(uint64_t first_inst, uint64_t second_inst, 
                  uint64_t addr, enum RaceType_t race_type) {
-
   bool found = false;
   uint64_t key = first_inst < second_inst ? first_inst : second_inst;
   RaceInfo_t race(first_inst, second_inst, addr, race_type);
@@ -189,7 +190,6 @@ void report_race(uint64_t first_inst, uint64_t second_inst,
     std::exit(1);
     races_found.insert( std::make_pair(key, race) );
   }
-  //  std::exit(1);
 }
 
 // Report viewread race

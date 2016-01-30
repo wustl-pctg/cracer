@@ -3081,10 +3081,10 @@ static void fft_unshuffle_32(int a, int b, COMPLEX * in, COMPLEX * out, int m) {
  *
  */
 static void fft_aux(int n, COMPLEX * in, COMPLEX * out, int *factors,
-    COMPLEX * W, int nW) {
+                    COMPLEX * W, int nW) {
 
   int r, m;
-  int k;
+//  int k;
 
   /* special cases */
   if(n == 32) {
@@ -3137,11 +3137,12 @@ static void fft_aux(int n, COMPLEX * in, COMPLEX * out, int *factors,
     else
       unshuffle(0, m, in, out, r, m);
 
-    for(k = 0; k < n; k += m) {
-      cilk_spawn fft_aux(m, out + k, in + k, factors + 1, W, nW);
+    cilk_for(int k = 0; k < n; k += m) {
+      //      cilk_spawn fft_aux(m, out + k, in + k, factors + 1, W, nW);
+      fft_aux(m, out + k, in + k, factors + 1, W, nW);
     }
 
-    cilk_sync; 
+    //    cilk_sync; 
   }
 
   /* 
@@ -3230,13 +3231,14 @@ void test_fft_elem(int n, int j, COMPLEX * in, COMPLEX * out) {
 
 void test_fft(int n, COMPLEX * in, COMPLEX * out) {
 
-  int j = 0;
+  //  int j = 0;
 
-  for(j = 0; j < n; ++j) {
-    cilk_spawn test_fft_elem(n, j, in, out);
+  cilk_for(int j = 0; j < n; ++j) {
+    //cilk_spawn
+    test_fft_elem(n, j, in, out);
   }
 
-  cilk_sync;
+  //  cilk_sync;
 
   return;
 }

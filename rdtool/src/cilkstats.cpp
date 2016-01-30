@@ -78,18 +78,18 @@ void cilk_tool_init(void) { }
 void cilk_tool_destroy(void) { }
 
 void cilk_enter_begin() {
-  INCR(num_cilk_functions);
   disable_checking(); 
+  INCR(num_cilk_functions);
 }
 void cilk_enter_helper_begin(__cilkrts_stack_frame* sf, void* this_fn, void* rip) { 
-  INCR(num_spawns);
   disable_checking(); 
+  INCR(num_spawns);
 }
 void cilk_enter_end(__cilkrts_stack_frame *sf, void *rsp) { enable_checking(); }
 
 void cilk_sync_begin(__cilkrts_stack_frame* sf) {
-  INCR(num_syncs);
   disable_checking();
+  INCR(num_syncs);
 }
 void cilk_sync_end() { enable_checking(); }
 void cilk_resume(__cilkrts_stack_frame* sf) { enable_checking(); }

@@ -14,6 +14,8 @@
 #include "omrd.cpp" /// Hack @todo fix linking errors
 
 int g_tool_init = 0;
+extern size_t g_num_reads;
+extern size_t g_num_writes;
 
 typedef struct FrameData_s {
   om_node* current_english;
@@ -26,8 +28,6 @@ typedef struct FrameData_s {
 } FrameData_t;
 
 AtomicStack_t<FrameData_t>* frames;
-om_node* base_english = NULL;
-om_node* base_hebrew = NULL;
 
 FrameData_t* get_frame() { return frames[self].head(); }
 
@@ -77,12 +77,12 @@ extern "C" void do_tool_init(void)
   int p = __cilkrts_get_nworkers();
 #if STATS > 1
   g_nproc = p;
-  g_timing_events = (double*)malloc(sizeof(double) * NUM_INTERVAL_TYPES * p);
+  g_timing_events = (struct timespec*)malloc(sizeof(struct timespec) * NUM_INTERVAL_TYPES * p);
   g_timing_event_starts = (struct timespec*)malloc(sizeof(struct timespec) * NUM_INTERVAL_TYPES * p);
   g_timing_event_ends = (struct timespec*)malloc(sizeof(struct timespec) * NUM_INTERVAL_TYPES * p);
   EMPTY_TIME_POINT.tv_sec = 0; EMPTY_TIME_POINT.tv_nsec = 0;
   for (int i = 0; i < (NUM_INTERVAL_TYPES*p); ++i) {
-    g_timing_events[i] = INTERVAL_CAST(ZERO_DURATION);
+    g_timing_events[i] = EMPTY_TIME_POINT;//INTERVAL_CAST(ZERO_DURATION);
     g_timing_event_starts[i].tv_sec = EMPTY_TIME_POINT.tv_sec;
     g_timing_event_starts[i].tv_nsec = EMPTY_TIME_POINT.tv_nsec;
     g_timing_event_ends[i].tv_sec = EMPTY_TIME_POINT.tv_sec;
@@ -95,7 +95,8 @@ extern "C" void do_tool_init(void)
   for (int i = 0; i < p; ++i) {
     pthread_spin_init(&g_worker_mutexes[i].mut, PTHREAD_PROCESS_PRIVATE);
   }
-  pthread_spin_init(&g_relabel_mutex, PTHREAD_PROCESS_PRIVATE);
+  //pthread_spin_init(&g_relabel_mutex, PTHREAD_PROCESS_PRIVATE);
+  __cilkrts_mutex_init(&g_relabel_mutex);
   g_english = new omrd_t();
   g_hebrew = new omrd_t();
 
@@ -111,6 +112,7 @@ extern "C" void do_tool_init(void)
   g_tool_init = 1;
 }
 
+extern size_t g_num_relabel_lock_tries;
 
 extern "C" void do_tool_print(void)
 {
@@ -120,23 +122,33 @@ extern "C" void do_tool_print(void)
   int p = __cilkrts_get_nworkers();
 #endif
 #if STATS > 1
-  // for (int i = 0; i < NUM_INTERVAL_TYPES; ++i) {
-  //   assert(g_timing_event_starts[i].tv_sec == EMPTY_TIME_POINT.tv_sec);
-  //   assert(g_timing_event_starts[i].tv_nsec == EMPTY_TIME_POINT.tv_nsec);
-  //   std::cout << "\t\t" << g_timing_events[i];
-  // }
-  // std::cout << std::endl;
-  std::cout << "Fast Path time: ";
+  fprintf(stderr, "%-20s:\t", "Fast Path time");
   for (int i = 0; i < p; ++i) {
-    std::cout << g_timing_events[(i*p) + FAST_PATH] << std::endl;
+    int self = i;
+    double t = (g_timing_events[TIDX(FAST_PATH)].tv_sec * 1000.0) +
+      (g_timing_events[TIDX(FAST_PATH)].tv_nsec / 1000000.0);
+    fprintf(stderr, "% 10.2f", t);
   }
-  std::cout << "Slow Path time: ";
+  fprintf(stderr, "\n%-20s:\t", "Slow Path time");
   for (int i = 0; i < p; ++i) {
-    std::cout << g_timing_events[(i*p) + SLOW_PATH] << std::endl;
+    int self = i;
+    double t = (g_timing_events[TIDX(SLOW_PATH)].tv_sec * 1000.0) +
+      (g_timing_events[TIDX(SLOW_PATH)].tv_nsec / 1000000.0);
+    fprintf(stderr, "% 10.2f", t);
   }
+  fprintf(stderr, "\n%-20s:\t", "Relabel lock time");
+  for (int i = 0; i < p; ++i) {
+    int self = i;
+    double t = (g_timing_events[TIDX(RELABEL_LOCK)].tv_sec * 1000.0) +
+      (g_timing_events[TIDX(RELABEL_LOCK)].tv_nsec / 1000000.0);
+    fprintf(stderr, "% 10.2f", t);
+  }
+  fprintf(stderr, "\nTotal relabel lock acquires:\t%zu\n", g_num_relabel_lock_tries);
+
 #endif
 #if STATS > 0  
   std::cout << "Num relabels: " << g_num_relabels << std::endl;
+  std::cout << "Num EMPTY relabels: " << g_num_empty_relabels << std::endl;
   std::cout << "Num inserts: " << g_num_inserts << std::endl;
   std::cout << "Avg size per relabel: " << (double)g_relabel_size / (double)g_num_relabels << std::endl;
   std::cout << "English OM memory used: " << g_english->memsize() << std::endl;
@@ -145,6 +157,11 @@ extern "C" void do_tool_print(void)
   for (int i = 0; i < p; ++i) sssize += frames[i].memsize();
   std::cout << "Shadow stack(s) total size: " << sssize << std::endl;
 #endif
+  fprintf(stderr, "--- Thread Sanitizer Stats ---\n");
+  fprintf(stderr, "Reads: %zu\n", g_num_reads);
+  fprintf(stderr, "Writes: %zu\n", g_num_writes);
+  fprintf(stderr, "Total Accesses: %zu\n", g_num_reads + g_num_writes);
+  fprintf(stderr, "MemAccess_ts allocated: %zu\n", num_new_memaccess);
 }
 
 extern "C" void do_tool_destroy(void) 
@@ -159,7 +176,8 @@ extern "C" void do_tool_destroy(void)
   for (int i = 0; i < __cilkrts_get_nworkers(); ++i) {
     pthread_spin_destroy(&g_worker_mutexes[i].mut);
   }
-  pthread_spin_destroy(&g_relabel_mutex);
+  //pthread_spin_destroy(&g_relabel_mutex);
+  __cilkrts_mutex_destroy(t_worker, &g_relabel_mutex);
 
   //  delete[] g_worker_mutexes;
   free(g_worker_mutexes);

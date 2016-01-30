@@ -47,6 +47,7 @@
 extern local_mut* g_worker_mutexes;
 extern __thread int self;
 extern volatile size_t g_relabel_id;
+extern size_t num_new_memaccess;
 
 // Struct to hold strands corresponding to left / right readers and last writer
 typedef struct MemAccess_t {
