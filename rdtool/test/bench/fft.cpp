@@ -97,7 +97,7 @@ static int factor(int n) {
     return 1;
 
   if(n == 64 || n == 128 || n == 256 || n == 1024 || n == 2048
-      || n == 4096)
+     || n == 4096)
     return 8;
   if((n & 15) == 0)
     return 16;
@@ -233,7 +233,7 @@ static void fft_base_2(COMPLEX * in, COMPLEX * out) {
 }
 
 static void fft_twiddle_2(int a, int b, COMPLEX * in, COMPLEX * out,
-    COMPLEX * W, int nW, int nWdn, int m) {
+                          COMPLEX * W, int nW, int nWdn, int m) {
 
   int l1, i;
   COMPLEX *jp, *kp;
@@ -277,7 +277,7 @@ static void fft_twiddle_2(int a, int b, COMPLEX * in, COMPLEX * out,
 }
 
 static void fft_unshuffle_2(int a, int b, COMPLEX * in, 
-    COMPLEX * out, int m) {
+                            COMPLEX * out, int m) {
 
   int i;
   const COMPLEX *ip;
@@ -348,7 +348,7 @@ static void fft_base_4(COMPLEX * in, COMPLEX * out) {
 }
 
 static void fft_twiddle_4(int a, int b, COMPLEX * in, COMPLEX * out,
-    COMPLEX * W, int nW, int nWdn, int m) {
+                          COMPLEX * W, int nW, int nWdn, int m) {
 
   int l1, i;
   COMPLEX *jp, *kp;
@@ -569,7 +569,7 @@ static void fft_base_8(COMPLEX * in, COMPLEX * out) {
 }
 
 static void fft_twiddle_8(int a, int b, COMPLEX * in, COMPLEX * out,
-    COMPLEX * W, int nW, int nWdn, int m) {
+                          COMPLEX * W, int nW, int nWdn, int m) {
 
   int l1, i;
   COMPLEX *jp, *kp;
@@ -1052,7 +1052,7 @@ static void fft_base_16(COMPLEX * in, COMPLEX * out) {
 }
 
 static void fft_twiddle_16(int a, int b, COMPLEX * in, COMPLEX * out,
-    COMPLEX * W, int nW, int nWdn, int m) {
+                           COMPLEX * W, int nW, int nWdn, int m) {
 
   int l1, i;
   COMPLEX *jp, *kp;
@@ -2149,7 +2149,7 @@ static void fft_base_32(COMPLEX * in, COMPLEX * out) {
 }
 
 static void fft_twiddle_32(int a, int b, COMPLEX * in, COMPLEX * out,
-    COMPLEX * W, int nW, int nWdn, int m) {
+                           COMPLEX * W, int nW, int nWdn, int m) {
 
   int l1, i;
   COMPLEX *jp, *kp;
@@ -3065,6 +3065,32 @@ static void fft_unshuffle_32(int a, int b, COMPLEX * in, COMPLEX * out, int m) {
 
 /* end of machine-generated code */
 
+
+// #define GRAIN_SIZE 32
+// static void fft_aux(int n, COMPLEX * in, COMPLEX * out, int *factors,
+//              COMPLEX * W, int nW);
+// struct parfor_helper {
+//   int m;
+//   COMPLEX *in;
+//   COMPLEX *out;
+//   int *factors;
+//   COMPLEX *W;
+//   int nW;
+// };
+
+// void myparfor_fft_aux(int low, int high, int by, struct parfor_helper s) {
+//   int range = high - low;
+//   if (range < GRAIN_SIZE) {
+//     for (int k = low*by; k < high*by; k += by)
+//       fft_aux(s.m, s.out + k, s.in + k, s.factors + 1, s.W, s.nW);
+//     return;
+//   }
+//   int mid = low + range / 2;
+//   cilk_spawn myparfor_fft_aux(low, mid, by, s);
+//   myparfor_fft_aux(mid, high, by, s);
+//   cilk_sync;
+// }
+
 /*
  * Recursive complex FFT on the n complex components of the array in:
  * basic Cooley-Tukey algorithm, with some improvements for
@@ -3084,7 +3110,7 @@ static void fft_aux(int n, COMPLEX * in, COMPLEX * out, int *factors,
                     COMPLEX * W, int nW) {
 
   int r, m;
-//  int k;
+  //  int k;
 
   /* special cases */
   if(n == 32) {
@@ -3137,12 +3163,18 @@ static void fft_aux(int n, COMPLEX * in, COMPLEX * out, int *factors,
     else
       unshuffle(0, m, in, out, r, m);
 
-    cilk_for(int k = 0; k < n; k += m) {
-      //      cilk_spawn fft_aux(m, out + k, in + k, factors + 1, W, nW);
-      fft_aux(m, out + k, in + k, factors + 1, W, nW);
-    }
+    // cilk_for(int k = 0; k < n; k += m) {
+    //   fft_aux(m, out + k, in + k, factors + 1, W, nW);
+    // }
 
-    //    cilk_sync; 
+    // struct parfor_helper s = {m, in, out, factors, W, nW};
+    // myparfor_fft_aux(0, n, m, s);
+
+    for (int k = 0; k < n; k += m) {
+      cilk_spawn fft_aux(m, out + k, in + k, factors + 1, W, nW);
+    }
+    cilk_sync; 
+
   }
 
   /* 
@@ -3274,11 +3306,11 @@ void test_correctness(void) {
     for(i = 0; i < n; ++i) {
       double d;
       a = sqrt((c_re(out1[i]) - c_re(out2[i])) *
-          (c_re(out1[i]) - c_re(out2[i])) +
-          (c_im(out1[i]) - c_im(out2[i])) *
-          (c_im(out1[i]) - c_im(out2[i])));
+               (c_re(out1[i]) - c_re(out2[i])) +
+               (c_im(out1[i]) - c_im(out2[i])) *
+               (c_im(out1[i]) - c_im(out2[i])));
       d =  sqrt(c_re(out2[i]) * c_re(out2[i]) + 
-          c_im(out2[i]) * c_im(out2[i]));
+                c_im(out2[i]) * c_im(out2[i]));
       if(d < -1.0e-10 || d > 1.0e-10)
         a /= d;
       if(a > error)
@@ -3326,16 +3358,16 @@ void test_speed(long size) {
 int usage(void) {
 
   fprintf(stderr, 
-      "\nusage: fft [<cilk-options>] [-n #] [-c] [-benchmark] [-h]\n\n");
+          "\nusage: fft [<cilk-options>] [-n #] [-c] [-benchmark] [-h]\n\n");
   fprintf(stderr, 
-      "this program is a highly optimized version of the classical\n");
+          "this program is a highly optimized version of the classical\n");
   fprintf(stderr, 
-      "cooley-tukey fast fourier transform algorithm.  "
-      "some documentation can\n");
+          "cooley-tukey fast fourier transform algorithm.  "
+          "some documentation can\n");
   fprintf(stderr, 
-      "be found in the source code. the program is optimized for an exact\n");
+          "be found in the source code. the program is optimized for an exact\n");
   fprintf(stderr, 
-      "power of 2.  to test for correctness use parameter -c.\n\n");
+          "power of 2.  to test for correctness use parameter -c.\n\n");
   return 1;
 }
 
@@ -3354,25 +3386,25 @@ int main(int argc, char *argv[])
   // fprintf(stderr, "Testing cos: %f\n", cos(2.35));
 
   get_options(argc, argv, specifiers, opt_types, &size, 
-      &correctness, &benchmark, &help);
+              &correctness, &benchmark, &help);
 
   if(help)
     return usage();
 
   if(benchmark) {
     switch (benchmark) {
-      case 1:		/* short benchmark options -- a little work */
-        // size = 512 * 512;
-        size = 16 * 1024 * 1024;
-        break;
-      case 2:		/* standard benchmark options */
-        // size = 1024 * 1024;
-        size = 32 * 1024 * 1024;
-        break;
-      case 3:		/* long benchmark options -- a lot of work */
-        //size = 4 * 1024 * 1024;
-        size = 64 * 1024 * 1024;
-        break;
+    case 1:		/* short benchmark options -- a little work */
+      // size = 512 * 512;
+      size = 16 * 1024 * 1024;
+      break;
+    case 2:		/* standard benchmark options */
+      // size = 1024 * 1024;
+      size = 32 * 1024 * 1024;
+      break;
+    case 3:		/* long benchmark options -- a lot of work */
+      //size = 4 * 1024 * 1024;
+      size = 64 * 1024 * 1024;
+      break;
     }
   }
   if(correctness)
