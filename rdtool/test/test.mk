@@ -7,7 +7,7 @@ include $(TEST_MK_DIR)/../common.mk
 
 RDFLAGS = -DRACEDETECT -fcilktool -fsanitize=thread
 INSERTFLAGS = -DINSERTSONLY -fcilktool
-LDFLAGS += -ldl -lpthread $(MALLOC)
+LDFLAGS += -ldl -lpthread $(MALLOC) -lrt
 CFLAGS += 
 CXXFLAGS += 
 
