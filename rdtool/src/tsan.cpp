@@ -30,8 +30,6 @@ extern "C" void do_tool_print(void);
 extern "C" void do_tool_destroy(void);
 
 extern __thread __cilkrts_worker *t_worker;
-size_t g_num_reads = 0;
-size_t g_num_writes = 0;
 
 static bool TOOL_INITIALIZED = false;
 
@@ -134,15 +132,17 @@ extern "C" void cilk_tool_init(void)
   enable_checking();
 }
 
+/** @todo this doesn't actually get called...
+ */
 extern "C" void cilk_tool_print(void)
 {
   disable_checking();
   //  disable_instrumentation();
   do_tool_print();
-  fprintf(stderr, "--- Thread Sanitizer Stats ---\n");
-  fprintf(stderr, "Reads: %zu\n", g_num_reads);
-  fprintf(stderr, "Writes: %zu\n", g_num_writes);
-  fprintf(stderr, "Total Accesses: %zu\n", g_num_reads + g_num_writes);
+  // fprintf(stderr, "--- Thread Sanitizer Stats ---\n");
+  // fprintf(stderr, "Reads: %zu\n", g_num_reads);
+  // fprintf(stderr, "Writes: %zu\n", g_num_writes);
+  // fprintf(stderr, "Total Accesses: %zu\n", g_num_reads + g_num_writes);
   enable_checking();
 }
 
@@ -452,10 +452,12 @@ extern "C" void* malloc(size_t s) {
 // the return addr of __tsan_read/write[1-16] is the rip for the read / write
 
 static inline void tsan_read(void *addr, size_t mem_size, void *rip) {
-  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
+  //  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   om_assert(TOOL_INITIALIZED);
   if(should_check()) {
-    g_num_reads++;
+#if STATS > 0
+    //    __sync_fetch_and_add(&g_num_reads, 1);
+#endif
     disable_checking();
     DBG_TRACE(DEBUG_MEMORY, "%s read %p\n", __FUNCTION__, addr);
     om_assert(mem_size <= 16);
@@ -468,10 +470,12 @@ static inline void tsan_read(void *addr, size_t mem_size, void *rip) {
 
 static inline void tsan_write(void *addr, size_t mem_size, void *rip)
 {
-  if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
+  //if (t_worker && __cilkrts_get_batch_id(t_worker) != -1) return;
   om_assert(TOOL_INITIALIZED);
   if(should_check()) {
-    g_num_writes++;
+#if STATS > 0
+    //    __sync_fetch_and_add(&g_num_writes, 1);
+#endif
     disable_checking();
     DBG_TRACE(DEBUG_MEMORY, "%s wrote %p\n", __FUNCTION__, addr);
     om_assert(mem_size <= 16);
