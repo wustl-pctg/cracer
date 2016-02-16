@@ -3,8 +3,6 @@
 #include "print_addr.h"
 #include "mem_access.h"
 
-size_t num_new_memaccess = 0;
-
 // Check races on memory represented by this mem list with this read access
 // Once done checking, update the mem list with this new read access
 void
@@ -38,7 +36,6 @@ MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
     MemAccess_t *reader = lreaders[i];
     if(reader == NULL) {
       reader = new MemAccess_t(curr_estrand, curr_hstrand, inst_addr);
-      num_new_memaccess++;
       pthread_spin_lock(&lreader_lock);
       if (lreaders[i] == NULL) {
         lreaders[i] = reader;
@@ -57,9 +54,14 @@ MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
     //   (i.e., comes first in serially execution)  OR
     // - there is a path from old lreader to this reader
     bool is_leftmost;
+#if STATS > 0
+    __sync_fetch_and_add(&g_num_queries, 1);
+#endif
     QUERY_START;
+    RDTOOL_INTERVAL_BEGIN(QUERY);
     is_leftmost = om_precedes(curr_estrand, reader->estrand) ||
       om_precedes(reader->hstrand, curr_hstrand);
+    RDTOOL_INTERVAL_END(QUERY);
     QUERY_END;
     
     if(is_leftmost) {
@@ -74,7 +76,6 @@ MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
     MemAccess_t *reader = rreaders[i];
     if(reader == NULL) {
       reader = new MemAccess_t(curr_estrand, curr_hstrand, inst_addr);
-      num_new_memaccess++;
       pthread_spin_lock(&rreader_lock);
       if (rreaders[i] == NULL) {
         rreaders[i] = reader;
@@ -95,9 +96,15 @@ MemAccessList_t::check_races_and_update_with_read(uint64_t inst_addr,
     // but actually the second condition subsumes the first, so if the 
     // first condition is false, there is no point checking the second
     bool is_rightmost;
+#if STATS > 0
+    //    __sync_fetch_and_add(&g_num_queries, 1);
+#endif
     QUERY_START;
+    RDTOOL_INTERVAL_BEGIN(QUERY);
     is_rightmost = om_precedes(reader->estrand, curr_estrand);
+    RDTOOL_INTERVAL_END(QUERY);
     QUERY_END;
+
     
     if(is_rightmost) {
       pthread_spin_lock(&rreader_lock);
@@ -130,7 +137,6 @@ MemAccessList_t::check_races_and_update_with_write(uint64_t inst_addr,
     MemAccess_t *writer = writers[i];
     if(writer == NULL) {
       writer = new MemAccess_t(curr_estrand, curr_hstrand, inst_addr);
-      num_new_memaccess++;
       pthread_spin_lock(&writer_lock);
       if(writers[i] == NULL) {
         writers[i] = writer;
@@ -196,14 +202,11 @@ MemAccessList_t::MemAccessList_t(uint64_t addr, bool is_read,
   if(is_read) {
     for(int i=start; i < (start + grains); i++) {
       lreaders[i] = new MemAccess_t(estrand, hstrand, inst_addr);
-      num_new_memaccess++;
       rreaders[i] = new MemAccess_t(estrand, hstrand, inst_addr);
-      num_new_memaccess++;
     }
   } else {
     for(int i=start; i < (start + grains); i++) {
       writers[i] = new MemAccess_t(estrand, hstrand, inst_addr);
-      num_new_memaccess++;
     }
   }
 

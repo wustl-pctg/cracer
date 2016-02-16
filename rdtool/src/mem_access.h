@@ -9,6 +9,7 @@
 #include <pthread.h>
 
 #include "debug_util.h"
+#include "stat_util.h"
 #include "rd.h" // is this necessary?
 #include "om/om.h"
 #include "shadow_mem.h"
@@ -16,8 +17,10 @@
 
 //#define QUERY_START while (pthread_spin_trylock(&g_worker_mutexes[self].mut) != 0) { join_batch(self); }
 //#define QUERY_END pthread_spin_unlock(&g_worker_mutexes[self].mut)
+
 // Note this starts a new block
-#define QUERY_START { size_t relabel_id = 0; do { relabel_id = g_relabel_id;
+#define QUERY_START { size_t relabel_id = 0; \
+      do { relabel_id = g_relabel_id;
 #define QUERY_END } while ( !( (relabel_id & 0x1) == 0 &&     \
                                relabel_id == g_relabel_id)); }
 
@@ -69,9 +72,20 @@ typedef struct MemAccess_t {
     /// @todo Is it worth it to join the batch relabel here?
     om_assert(self > -1);
     bool prec_in_english, prec_in_hebrew;
+
+#if STATS > 0
+    //    __sync_fetch_and_add(&g_num_queries, 1);
+#endif
+    // fprintf(stderr, "estrand: %p\n", estrand);
+    // fprintf(stderr, "hstrand: %p\n", hstrand);
+    // fprintf(stderr, "curr_estrand: %p\n", curr_estrand);
+    // fprintf(stderr, "curr_hstrand: %p\n", curr_hstrand);
+
     QUERY_START;
+    RDTOOL_INTERVAL_BEGIN(QUERY);
     prec_in_english = om_precedes(estrand, curr_estrand);
     prec_in_hebrew  = om_precedes(hstrand, curr_hstrand);
+    RDTOOL_INTERVAL_END(QUERY);
     QUERY_END;
 
     // race if the ordering in english and hebrew differ
