@@ -70,7 +70,7 @@ void cilk_srand(unsigned int seed) {
 
 typedef double Real;
 
-#define BLOCK_DEPTH 2                /* logarithm base 2 of BLOCK_SIZE */
+#define BLOCK_DEPTH 4                /* logarithm base 2 of BLOCK_SIZE */
 #define BLOCK_SIZE  (1<<BLOCK_DEPTH) /* 4 seems to be the optimum */
 
 typedef Real Block[BLOCK_SIZE][BLOCK_SIZE];
