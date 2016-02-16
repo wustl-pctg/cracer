@@ -31,7 +31,7 @@ size_t count_set_bits(label_t label)
 int is_heavy(om_node* n)
 {
   label_t next_lab = (n->next) ? n->next->label : MAX_LABEL;
-  return (next_lab - n->label) < (1L << g_heavy_threshold);
+  return (next_lab - n->label) < (1L << (64 - g_heavy_threshold));
 }
 
 #define CAS(loc,old,nval) __sync_bool_compare_and_swap(loc,old,nval)
@@ -65,11 +65,11 @@ extern "C" int cilk_tool_om_try_lock_all(__cilkrts_worker* w)
   // assert(failed_at_relabel < ((int)g_num_relabels));
   // failed_at_relabel = g_num_relabels;
 
-  __sync_fetch_and_add(&g_num_relabel_lock_tries, 1);
-  RDTOOL_INTERVAL_BEGIN(RELABEL_LOCK);
+  //  __sync_fetch_and_add(&g_num_relabel_lock_tries, 1);
+  // RDTOOL_INTERVAL_BEGIN(RELABEL_LOCK);
   //int result = pthread_spin_trylock(&g_relabel_mutex);
   int result = __cilkrts_mutex_trylock(w, &g_relabel_mutex);
-  RDTOOL_INTERVAL_END(RELABEL_LOCK);
+  // RDTOOL_INTERVAL_END(RELABEL_LOCK);
 
   if (result != LOCK_SUCCESS) return 0;
   //  fprintf(stderr, "Relabel lock acquired by %d\n", g_relabel_mutex.owner->self);
@@ -131,7 +131,11 @@ private:
     assert(g_batch_in_progress == 0);
     om_node* n;
     if (base == NULL) n = om_insert_initial(m_ds);
-    else n = om_insert(m_ds, base);
+    else {
+      //      RDTOOL_INTERVAL_BEGIN(INSERT);
+      n = om_insert(m_ds, base);
+      //      RDTOOL_INTERVAL_END(INSERT);
+    }
 
     if (base) om_assert(base->list->above);
     if (n) om_assert(n->list->above);
@@ -140,7 +144,7 @@ private:
 
   om_node* slow_path(__cilkrts_worker *w, om_node* base)
   {
-    RDTOOL_INTERVAL_BEGIN(SLOW_PATH);
+    //    RDTOOL_INTERVAL_BEGIN(SLOW_PATH);
     om_node *n = NULL;
     pthread_spinlock_t* mut = &g_worker_mutexes[w->self].mut;
 
@@ -168,7 +172,7 @@ private:
       //      assert(n);
     }
     assert(insert_failed == 0);
-    RDTOOL_INTERVAL_END(SLOW_PATH);
+    //    RDTOOL_INTERVAL_END(SLOW_PATH);
     return n;
   }
 
@@ -191,7 +195,7 @@ public:
 
   om_node* insert(__cilkrts_worker* w, om_node* base)
   {
-    RDTOOL_INTERVAL_BEGIN(FAST_PATH);
+    //    RDTOOL_INTERVAL_BEGIN(FAST_PATH);
     pthread_spinlock_t* mut = &g_worker_mutexes[w->self].mut;
     while (pthread_spin_trylock(mut) != 0) {
       //fprintf(stderr, "Worker %d joining batch %zu from fast path\n", w->self, g_num_relabels);
@@ -199,7 +203,7 @@ public:
     }
 
     om_node* n = try_insert(base);
-    RDTOOL_INTERVAL_END(FAST_PATH);
+    //    RDTOOL_INTERVAL_END(FAST_PATH);
     if (!n) {
       n = slow_path(w, base);
       assert(!is_heavy(n));
@@ -213,7 +217,7 @@ public:
       }
     }
     pthread_spin_unlock(mut);
-    RD_STATS(__sync_fetch_and_add(&g_num_inserts, 1));
+    //    RD_STATS(__sync_fetch_and_add(&g_num_inserts, 1));
     return n;
   }
 
@@ -245,11 +249,18 @@ void relabel(omrd_t *_ds)
   AtomicStack_t<tl_node*> *heavy_nodes = _ds->get_heavy_nodes();
   if (!heavy_nodes->empty()) {
     om_relabel(ds, heavy_nodes->at(0), heavy_nodes->size());
-    RD_STATS(__sync_fetch_and_add(&g_num_relabels, 1));
-    RD_STATS(g_relabel_size += heavy_nodes->size());
+
+    // Sequential only!
+#if STATS > 0
+    g_heavy_node_info[g_num_relabels] = heavy_nodes->size();
+    g_num_relabels++;
+#endif
+    //    RD_STATS(__sync_fetch_and_add(&g_num_relabels, 1));
+    //    RD_STATS(g_relabel_size += heavy_nodes->size());
+
     heavy_nodes->reset();
   } else {
-    RD_STATS(__sync_fetch_and_add(&g_num_empty_relabels, 1));
+    //    RD_STATS(__sync_fetch_and_add(&g_num_empty_relabels, 1));
   }
   //  om_verify(ds);
 }
@@ -258,7 +269,7 @@ void relabel(omrd_t *_ds)
 /// @todo It would be great define batch functions as class methods...
 void batch_relabel(void* _ds, void* data, size_t size, void* results)
 {
-  RD_STATS(DBG_TRACE(DEBUG_BACKTRACE, "Begin relabel %zu.\n", g_num_relabels));
+  //  RD_STATS(DBG_TRACE(DEBUG_BACKTRACE, "Begin relabel %zu.\n", g_num_relabels));
   g_relabel_id++;
   asm volatile("": : :"memory");
   // fprintf(stderr, "Worker %d starting relabeling phase %zu\n", self, g_num_relabels);
@@ -267,9 +278,11 @@ void batch_relabel(void* _ds, void* data, size_t size, void* results)
   // relabel(ds);
 
   // You might as well try to relabel both structures...or should you?
+  //  RDTOOL_INTERVAL_BEGIN(RELABEL);
   cilk_spawn relabel(g_english);
   relabel(g_hebrew);
   cilk_sync;
   g_relabel_id++;
+  //  RDTOOL_INTERVAL_END(RELABEL);
   // fprintf(stderr, "Ending relabeling phase %zu\n", g_num_relabels-1);
 }
