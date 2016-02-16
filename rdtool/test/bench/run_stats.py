@@ -1,46 +1,79 @@
 #!/usr/bin/env python
 # Run the benchmarks
 from __future__ import print_function
+from collections import OrderedDict, Counter
 import os, sys, subprocess, shlex
-import StringIO
+import StringIO, datetime, argparse
 
 cilkscreen = "/home/rob/src/cilktools-linux-004421/bin/cilkscreen"
-use_cilkscreen = True
+use_cilkscreen = False
 print_status = True # Makes log file ugly
 column_size = 23
 column_format = "{: >" + str(column_size) + "},"
-status_column = 200
+status_column = 100
+
+stat_lines = OrderedDict()
+# stat_lines['insert_time'] =  'Total Insert time:'
+stat_lines['query_time'] = 'Total Query time:'
+# stat_lines['inserts'] = 'Num inserts:'
+# stat_lines['relabels'] = 'Num relabels:'
+
+def timestamp():
+    return datetime.datetime.now()
 
 # For now, returns just the runtime, in a list
 def parse_result(bench_type, proc):
-    ## @todo check for errors with err
     out, err = proc.communicate()
-    buf = StringIO.StringIO(out)
-    line = buf.readline()
-    return [int(line[:-1])]
+    if proc.returncode != 0:
+        print("\nExecution terminated with:")
+        sep = "-"*column_size
+        print(sep + "stdout" + sep)
+        print(out)
+        print(sep + "stderr" + sep)
+        print(err)
+        sys.exit(1)
+    runtime = int(StringIO.StringIO(out).readline()[:-1])
+    bufs = [StringIO.StringIO(out), StringIO.StringIO(err)]
+    stats = Counter()
+    for buf in bufs:
+        for line in buf:
+            for s in stat_lines.keys():
+                ind = line.find(stat_lines[s])
+                if ind > -1:
+                    stats[s] = float(line[ind + len(stat_lines[s]):])
+                    break
+    return runtime, stats
 
 def runit(n, bench_type, prog, args, env):
     cmd = prog + " " + args
-    results = []
+    times = []
+    stats = Counter()
     for i in range(n):
         proc = subprocess.Popen(cmd.split(), shell=False, env=env,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
-        results += parse_result(bench_type, proc)
-    avg = sum(results) / float(n)
-    return "{0:.2f}".format(avg)
+        t, results = parse_result(bench_type, proc)
+        times.append(t)
+        stats.update(results)
+    for s in stats.keys():
+        stats[s] = stats[s] / float(n)
+    # output_string = "{0:10.2f} ({insert_time:10.2f}, {query_time:10.2f}, {inserts:4.0f}, {relabels:4.0f})"
+    output_string = "{0:10.2f} ({query_time:10.2f})"
+    return output_string.format(sum(times)/float(n), **stats)
 
 def pre_status(prev_line):
     if not print_status: return
-    start_time = subprocess.check_output("date".split(), shell=False)
-    s = "Started latest at {}".format(start_time)[0:-1]
+    s = "Started latest at {:%d %b %Y %H:%M}".format(timestamp())
     s = s.rjust(status_column - len(prev_line))
-    print(s, end='')
-    sys.stdout.flush()    
+    sys.stderr.write(s)
+    sys.stderr.flush()    
 
 def post_status(new_line):
     if print_status:
-        new_line = '\r' + new_line
+        sys.stderr.write('\r')
+        sys.stderr.flush()
+        sys.stdout.write('\r')
+        sys.stdout.flush()
     print(new_line, end='')
     sys.stdout.flush()
 
@@ -58,14 +91,26 @@ def print_header(comp):
 def run_tests():
     num_iter = 3
     cores = [1] + range(2,17,2)
-    tests = ["matmul", "fft", "cholesky", "cilksort"]
-    #args = ["-n 1024", "-n 1048576", "-n 1000 -z 4000", "-n 100000"]
-    #args = ["-n 4096", "-n 2097152", "-n 1500 -z 12000", "-n 1048576"]
-    args = ["-n 32", "-n 32", "-n 100 -z 20", "-n 128"]
-    comp = ["icc", "base", "insert", "brd", "cilksan"]
-    status_column = 3 + len(comp) * column_size + 3
-    if use_cilkscreen: status_column += column_size
+    runs = OrderedDict()
+    #runs["matmul"] = "-n 32"
+    runs["fft"] = "-n " + str(64*1024*1024)
+
+    tests = runs.keys()
+    args = runs.values()
+    comp = ["brd"]
     bin_dir = "bin"
+    global status_column
+    status_column = (len(comp)+1) * (column_size+3) + 25
+    if use_cilkscreen: status_column += column_size
+
+    # Let's validate the benchmarks so we don't waste time
+    for i in range(0, len(tests)):
+        base = os.path.join(os.getcwd(), bin_dir, tests[i])
+        for c in comp:
+            prog = base + "_" + c
+            if not os.path.isfile(prog):
+                print("Error: {} does not exist!".format(prog))
+                sys.exit(1)
 
     print_header(comp)
 
@@ -81,33 +126,33 @@ def run_tests():
             env = dict(os.environ, CILK_NWORKERS=str(p))
             line = "{:2},".format(p)
             print(line, end='')
-
+            sys.stdout.flush()
 
             for c in comp:
                 prog = base + "_" + c
+                if not print_status: line = ""
+                pre_status(line)
                 if c == "cilksan" and p != 1:
                     if not print_status: line = ""
                     line += column_format.format(cilksan_result)
                     post_status(line)
                     continue
-                pre_status(line)
                 result = runit(num_iter, c, prog, args[i], env)
                 if c == "cilksan" and p == 1: cilksan_result = result
-                if not print_status: line = ""
-                line += column_format.format(result)
+                line += result#column_format.format(result)
                 post_status(line)
 
             if use_cilkscreen:
+                if not print_status: line = ""
+                pre_status(line)
                 if p == 1:
                     prog = cilkscreen + " -- " + base + "_icc"
-                    pre_status(line)
                     cilkscreen_result = runit(num_iter, "cilkscreen", prog, args[i], env)
-                if not print_status: line = ""
                 line += column_format.format(cilkscreen_result)
                 post_status(line)
 
             if print_status:
-                s = " " * 53
+                s = " " * 20
                 s = s.rjust(status_column - len(line))
             else:
                 s = ""
@@ -115,6 +160,9 @@ def run_tests():
             sys.stdout.flush()    
 
 def main(argv=None):
+    if sys.version_info < (2,7):
+        print("This script requires Python 2.7+")
+        sys.exit(1)
     run_tests()
 
 

@@ -11,17 +11,40 @@ import StringIO, datetime, argparse
 
 cilkscreen = "/home/rob/src/cilktools-linux-004421/bin/cilkscreen"
 use_cilkscreen = False
+calc_stdev = True
 print_status = True # Makes log file ugly
 column_size = 22
+if calc_stdev: column_size += 6
 column_format = "{: >" + str(column_size) + "},"
 status_column = 100
+
+def mean(data):
+    """Return the sample arithmetic mean of data."""
+    n = len(data)
+    if n < 1:
+        raise ValueError('mean requires at least one data point')
+    return sum(data)/float(n)
+
+def _ss(data):
+    """Return sum of square deviations of sequence data."""
+    c = mean(data)
+    ss = sum((x-c)**2 for x in data)
+    return ss
+
+def pstdev(data):
+    """Calculates the population standard deviation."""
+    n = len(data)
+    if n < 2:
+        raise ValueError('variance requires at least two data points')
+    ss = _ss(data)
+    pvar = ss/n # the population variance
+    return pvar**0.5
 
 def timestamp():
     return datetime.datetime.now()
 
 # For now, returns just the runtime, in a list
 def parse_result(bench_type, proc):
-    ## @todo check for errors with err
     out, err = proc.communicate()
     if proc.returncode != 0:
         print("\nExecution terminated with:")
@@ -33,7 +56,7 @@ def parse_result(bench_type, proc):
         sys.exit(1)
     buf = StringIO.StringIO(out)
     line = buf.readline()
-    return [int(line[:-1])]
+    return int(line[:-1])
 
 def runit(n, bench_type, prog, args, env):
     cmd = prog + " " + args
@@ -42,14 +65,16 @@ def runit(n, bench_type, prog, args, env):
         proc = subprocess.Popen(cmd.split(), shell=False, env=env,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
-        results += parse_result(bench_type, proc)
-    avg = sum(results) / float(n)
-    return "{0:.2f}".format(avg)
+        results.append(parse_result(bench_type, proc))
+    s = "{0:.2f}".format(mean(results))
+    if calc_stdev:
+        s += " ({0:.2f})".format(pstdev(results))
+    return s
+    #return "{0:.2f}, {1:.2f}".format(mean(results),pstdev(results))
 
 def pre_status(prev_line):
     if not print_status: return
-    time = datetime.date
-    s = "Started latest at {:%d %b %Y %H:%m}".format(timestamp())
+    s = "Started latest at {:%d %b %Y %H:%M}".format(timestamp())
     s = s.rjust(status_column - len(prev_line))
     sys.stderr.write(s)
     sys.stderr.flush()    
@@ -75,29 +100,35 @@ def print_header(comp):
 
 
 def run_tests():
-    num_iter = 1
+    num_iter = 3
     cores = [1] + range(2,17,2)
 
     runs = OrderedDict()
     #runs["matmul"] = "-n 2048"
-    #runs["cilksort"] = "-n 25000000"
+    #runs["cilksort"] = "-n 100000000"
     #runs["heat"] = "-nx 2048 -ny 2048 -nt 500"
-    runs["fft"] = "-n " + str(64*1024*1024)
-    #runs["fft"] = "-benchmark medium"
-    #runs["cholesky"] = "-n 2000 -z 20000"
+    #runs["fft"] = "-n " + str(64*1024*1024)
+    #runs["cholesky"] = "-n 3000 -z 30000"
     #runs["fib"] = "35"
     #runs["nqueens"] = "13" ## @bug Detects race!
-    #runs["qsort"] = "32" #str(64*1024*1024)
-    # runs["knapsack"] = "-benchmark long"
-    # runs["rectmul"] = "-x 4096 -y 4096 -z 4096"
-    #runs["strassen"] = "-n 4096"
     #runs["fibx"] = "772"
-    #runs["lu"] = "-n "
+
+    # runs["qsort"] = "60000000"
+    # runs["knapsack"] = "-f knapsack-example4.input"
+    # runs["rectmul"] = "-x 3500 -y 3500 -z 3500"
+    # runs["strassen"] = "-n 2048"
+    # runs["lu"] = "-n 2048"
+
+    # runs["strassen"] = "-n 2048"
+    # runs["lu"] = "-n 2048"
+    runs["qsort"] = "50000000"
+    runs["rectmul"] = "-x 2500 -y 2500 -z 2500"
+    runs["knapsack"] = "-f knapsack-example4.input"
     
     tests = runs.keys()
     args = runs.values()
-    #comp = ["icc", "base", "insert", "brd", "cilksan"]
-    comp = ["insert"]
+    comp = ["base", "insert", "brd", "cilksan"]
+    #comp = ["cilksan"]
     bin_dir = "bin"
     global status_column
     status_column = (len(comp)+1) * (column_size+3) + 25
@@ -134,6 +165,7 @@ def run_tests():
                 if not print_status: line = ""
                 pre_status(line)
                 if c == "cilksan" and p != 1:
+                    if not print_status: line = ""
                     line += column_format.format(cilksan_result)
                     post_status(line)
                     continue
