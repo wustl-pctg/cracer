@@ -1,5 +1,7 @@
+# CRACER
+
 An asymptotically efficient race detector for Cilk Plus programs. It
-requires a version of Cilk Plus that supports both -fno-inline-detach
+requires a version of Cilk Plus that supports both -fno-inline-detach (or -fcilk-no-inline)
 and the Batcher runtime system.
 
 You should defined a top-level file `config.mk` which must include definitions for the compiler home, internal runtime headers, and runtime library location. For example:
