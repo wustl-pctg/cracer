@@ -27,6 +27,12 @@ If you want link-time optimization, you'll need to add `-flto` to `OPT_FLAG` and
 
 For this to work, the gold linker should be installed in the system path as `ld`, llvm/clang must have been compiled to use gold, and the Cilk Plus runtime must have been compiled with `-flto`.
 
+In order for the tool to work correctly, apps need to be compiled with
+
+	 -fno-omit-frame-pointer
+
+The tool and runtime also need this, I believe.
+
 
 TODO:
 
