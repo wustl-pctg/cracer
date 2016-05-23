@@ -45,6 +45,17 @@ else ifeq ($(mode), prof)
 	CXXFLAGS += $(RDFLAGS) -DSTATS=2
 	LDFLAGS += $(RUNTIME_LIB)
 	LIB = $(LIB_DIR)/librd.prof.a
+else ifeq ($(mode), asm) # Show the asm generated for brd
+	OBJ_DIR := $(OBJ_DIR_PREFIX:=_asm)
+ifeq ($(sanitize), yes)	
+	CFLAGS += $(RDFLAGS)
+	CXXFLAGS += $(RDFLAGS)
+else
+	CFLAGS += $(INSERTFLAGS) 
+	CXXFLAGS += $(INSERTFLAGS)
+endif
+	CFLAGS += -S -emit-llvm
+	CXXFLAGS += -S -emit-llvm
 endif
 include ../test.mk
 # common.mk (included by test.mk) resets CC,CXX
@@ -60,6 +71,8 @@ endif
 
 most: brd base insert icc cilksan cstats
 all: most istats prof
+asm:
+	$(MAKE) $(TARGETS) mode=asm
 brd:
 	$(MAKE) $(TARGETS) mode=brd
 base:
@@ -85,6 +98,7 @@ $(BIN_DIR):
 	$(MAKE) -C $(CILKSAN_HOME)/test/bench $(@:_cilksan=)
 	cp $(CILKSAN_HOME)/test/bench/$(@:_cilksan=) $(BIN_DIR)/$@
 
+
 ifdef mode
 fib: $(OBJ_DIR)/fib.o $(OBJ_DIR)/getoptions.o
 fibx: $(OBJ_DIR)/fibx.o $(OBJ_DIR)/getoptions.o
@@ -104,8 +118,19 @@ test: $(OBJ_DIR)/test.o
 # matmul-int: CXXFLAGS += -DREAL=int
 # matmul-int: $(OBJ_DIR)/matmul-int.o
 
+ifeq ($(mode), asm)
+ifeq ($(sanitize), yes)
+$(TARGETS):
+	mv $< $(<:.o=.sanitized.asm)
+else
+$(TARGETS):
+	mv $< $(<:.o=.normal.asm)
+endif
+else
+$(TARGETS): export USE_GOLD = "yes"
 $(TARGETS): | $(BIN_DIR)
 	$(CXX) $< $(OBJ_DIR)/getoptions.o $(LIB) $(LDFLAGS) -o $(BIN_DIR)/$@_$(mode)
+endif
 else
 $(TARGETS):
 	$(MAKE) $@ mode=brd

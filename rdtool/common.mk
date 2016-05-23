@@ -11,7 +11,7 @@ CXX = $(COMPILER_HOME)/bin/clang++
 OPT_FLAG ?= -O3
 TOOL_DEBUG ?= 0
 CILKFLAGS += -fcilkplus -fno-inline-detach
-INC = -I$(INC_DIR) -I$(COMPILER_HOME)/include
+INC = -I$(INC_DIR) -I$(RUNTIME_INTERNAL)/include
 # -fno-omit-frame-pointer required to work properly
 FLAGS += -Wall -fno-omit-frame-pointer $(CILKFLAGS) $(INC)
 FLAGS += $(OPT_FLAG) -g -DTOOL_DEBUG=$(TOOL_DEBUG)
