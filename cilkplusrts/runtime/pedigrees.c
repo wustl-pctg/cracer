@@ -71,6 +71,18 @@ void load_pedigree_leaf_into_user_worker(__cilkrts_worker *w)
     CILK_ASSERT(w->pedigree.parent->parent == NULL);
 }
 
+COMMON_PORTABLE
+void update_pedigree_after_sync(__cilkrts_stack_frame *sf)
+{
+	__cilkrts_worker *w = __cilkrts_get_tls_worker();
+	// Update the worker's pedigree information if this is an ABI 1 or later
+  // frame
+  if (CILK_FRAME_VERSION_VALUE(sf->flags) >= 1) {
+		++(w->pedigree.rank);
+	}
+
+}
+
 void save_pedigree_leaf_from_user_worker(__cilkrts_worker *w)
 {
     CILK_ASSERT(w->l->type == WORKER_USER);

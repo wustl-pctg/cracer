@@ -203,6 +203,14 @@ static int __cilkrts_undo_detach(__cilkrts_stack_frame *sf)
     return __builtin_expect(t < *w->exc, 0);
 }
 
+CILK_ABI_VOID __cilkrts_pop_frame(struct __cilkrts_stack_frame *sf)
+{
+	struct __cilkrts_worker *w = __cilkrts_get_tls_worker();
+	w->current_stack_frame = sf->call_parent;
+	sf->call_parent = 0;
+}
+
+
 CILK_ABI_VOID __cilkrts_leave_frame(__cilkrts_stack_frame *sf)
 {
     __cilkrts_worker *w = sf->worker;
