@@ -7,9 +7,9 @@ and the Batcher runtime system.
 You should defined a top-level file `config.mk` which must include definitions for the compiler home, internal runtime headers, and runtime library location. For example:
 
 	COMPILER_HOME = $(HOME)/llvm-cilk
-	RUNTIME_INTERNAL = $(HOME)/devel/batch/cilkplusrts
+	RUNTIME_INTERNAL = $(HOME)/devel/batcher/cilkplusrts
 	RUNTIME_LIB = $(HOME)/llvm-cilk/lib/x86_64/libcilkrts.a
-	OPT_FLAG = -O3 -DSTATS=1
+	OPT_FLAG = -O3 -DSTATS=0
 	TOOL_DEBUG = 0
 	LDFLAGS +=
 	ARFLAGS =
