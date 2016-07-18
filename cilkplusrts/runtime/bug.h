@@ -54,6 +54,7 @@ __CILKRTS_BEGIN_EXTERN_C
  */
 COMMON_PORTABLE NORETURN __cilkrts_bug(const char *fmt,...) cilk_nothrow;
 
+/// @todo{Why are cilkrts runtime assertions basically always on? Shouldn't they be disabled if NDEBUG is defined?}
 #ifndef CILK_ASSERT
 
 /** Standard text for failed assertion */
