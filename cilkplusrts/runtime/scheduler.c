@@ -2112,9 +2112,19 @@ static void worker_scheduler_function(__cilkrts_worker *w)
 
             // Return here only when this (scheduling) fiber is
             // resumed (i.e., this worker wants to reenter the runtime).
+        } else {
+            // We should NOT enter the loop again, since work_done is volatile, but somehow we do!
+            // Something is wrong here, causing an assertion failure in START_INTERVAL above
+            STOP_INTERVAL(w, INTERVAL_IN_RUNTIME);
+            START_INTERVAL(w, INTERVAL_WORKING);
         }
     }
 
+    // This is a hack, because we will fail on an assertion if this
+    // worker never entered the above loop, since START_INTERVAL will
+    // not be used.
+    START_INTERVAL(w, INTERVAL_IN_RUNTIME);
+    
     // Finish the scheduling loop.
     worker_scheduler_terminate_function(w);
 }
@@ -2927,6 +2937,13 @@ __cilkrts_worker *make_worker(global_state_t *g,
     w->l->original_pedigree_leaf = NULL;
     w->l->rand_seed = 0; /* the scheduler will overwrite this field */
 
+#if CILK_PROFILE
+    w->l->stats = __cilkrts_malloc(sizeof(statistics));
+    __cilkrts_init_stats(w->l->stats);
+#else
+    w->l->stats = NULL;
+#endif    
+
 	START_INTERVAL(w, INTERVAL_FIBER_ALLOCATE) {
     w->l->batch_scheduling_fiber = cilk_fiber_allocate(&w->l->fiber_pool);
     CILK_ASSERT(w->l->batch_scheduling_fiber);
@@ -2939,14 +2956,7 @@ __cilkrts_worker *make_worker(global_state_t *g,
     w->l->fiber_to_free = NULL;
     w->l->pending_exception = NULL;
 
-#if CILK_PROFILE
-    w->l->stats = __cilkrts_malloc(sizeof(statistics));
-    __cilkrts_init_stats(w->l->stats);
-#else
-    w->l->stats = NULL;
-#endif    
     w->l->steal_failure_count = 0;
-
     w->l->work_stolen = 0;
 
     // Initialize record/replay assuming we're doing neither
