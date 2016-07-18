@@ -273,7 +273,9 @@ void execute_batch(__cilkrts_worker* w, cilk_fiber* fiber, int batch_id)
 
     ff = pop_next_frame(w);
     if (!ff) {
-      ff = check_for_work(w, STEAL_BATCH);
+      START_INTERVAL(w, INTERVAL_BATCH_STEALING) {
+        ff = check_for_work(w, STEAL_BATCH);
+      } STOP_INTERVAL(w, INTERVAL_BATCH_STEALING);
     }
 
     if (ff) {
