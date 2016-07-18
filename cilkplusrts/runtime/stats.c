@@ -75,7 +75,8 @@ static const char *names[] = {
     /*[INTERVAL_FIBER_ALLOCATE_FROM_THREAD]*/   "fiber_allocate_from_thread",
     /*[INTERVAL_FIBER_DEALLOCATE_FROM_THREAD]*/ "fiber_deallocate (thread)", 
     /*[INTERVAL_SUSPEND_RESUME_OTHER]*/         "fiber suspend self + resume",
-    /*[INTERVAL_DEALLOCATE_RESUME_OTHER]*/      "fiber deallocate self + resume", 
+    /*[INTERVAL_DEALLOCATE_RESUME_OTHER]*/      "fiber deallocate self + resume",
+    /*[INTERVAL_BATCH_STEALING]*/      "batch stealing", 
 };
 #endif
 
@@ -158,6 +159,8 @@ void dump_stats_to_file(FILE *stat_file, statistics *s)
                     (double)s->accum[i] / (double)s->count[i],
                     100.0 * (double)s->accum[i] / 
                     (double)s->accum[INTERVAL_IN_SCHEDULER]);
+        } else {
+          fprintf(stat_file, " %10.3g %12.3g %10.2f", 0.0, 0.0, 0.0);
         }
         fprintf(stat_file, "\n");
     }

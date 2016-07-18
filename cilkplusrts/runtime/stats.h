@@ -94,6 +94,7 @@ enum interval
     INTERVAL_FIBER_DEALLOCATE_FROM_THREAD,  ///< Time spent calling cilk_fiber_deallocate (from thread)
     INTERVAL_SUSPEND_RESUME_OTHER,          ///< Count of fiber suspend_self_and_resume_other
     INTERVAL_DEALLOCATE_RESUME_OTHER,       ///< Count of fiber deallocate_self_and_resume_other
+    INTERVAL_BATCH_STEALING,               ///< Time spent stealing during batches
     INTERVAL_N                              ///< Number of intervals, must be last
 };
 
