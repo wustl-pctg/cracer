@@ -40,4 +40,5 @@ The tool and runtime also need this, I believe.
 * Split this off into a separate project repo -- it should not be part of Batcher.
 * Debug performance issues
 * Cleanup the OM data structure. Possibly write in C++.
-* BUG (unconfirmed): should re-enable checking at cilk_continue or similar?
+* BUG (unconfirmed): should re-enable checking at cilk_continue or similar (cilk_resume?)?
+* BUG (cilktool): Why is cilk_resume never called from the runtime? It is documented...check this.
