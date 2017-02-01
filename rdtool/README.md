@@ -34,9 +34,10 @@ In order for the tool to work correctly, apps need to be compiled with
 The tool and runtime also need this, I believe.
 
 
-TODO:
+# TODO 
 
 * We should pick a good name for this tool.
 * Split this off into a separate project repo -- it should not be part of Batcher.
 * Debug performance issues
-* Cleanup the OM data structure.
+* Cleanup the OM data structure. Possibly write in C++.
+* BUG (unconfirmed): should re-enable checking at cilk_continue or similar?
