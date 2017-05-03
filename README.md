@@ -21,3 +21,6 @@ Batcher functionality, but I haven't tested this.
 - Archive Cilk 5 version and remove it
 - Split rdtool stuff into separate project
 - Finish and convert data structures to use Cilk Plus
+- Compare to flat combining. We did this initially but the results
+  were too weird to get anything useful from a comparison. We may have
+  done something wrong.
