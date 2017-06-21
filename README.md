@@ -18,7 +18,6 @@ decently-parallel batched operation.
 - `rdtool`: The CRacer tool itself.
 - `cilk5rts`: The MIT Cilk 5 version of the Batcher runtime. No longer in use.
 - `ds`: Unfinished batched data structures that were for the Cilk 5 version.
-- `logs`: An old directory that should be removed...
 - `scripts`: A set of scripts, mostly used for running the cilk5 benchmarks.
 
 ## License
@@ -31,12 +30,18 @@ distributed under the MIT license, unless otherwise specified.
 
 ## Dependencies
 
-## Compiling
+To use CRacer you will need a compiler that supports Cilk Plus and the
+`-fcilk-no-inline` option. The only known such compiler is
+the [WUSTL LLVM branch](https://gitlab.com/wustl-pctg-pub/llvm-cilk). To reproduce performance results, you will
+probably also want to use link-time optimization (requires `gold`
+linker) and Google's `tcmalloc`.
 
-## Using
+## Compiling and Using
 
-# TODO
-- Cleanup old logs and scripts.
+Instructions for compiling and using CRacer can be found in rdtool/README.md.
+
+## TODO
+- Cleanup old scripts.
 - Archive Cilk 5 version and remove it
 - Split the runtime info a separate project and make sure vanilla Batcher functionality isn't broken.
 - Finish and convert data structures to use Cilk Plus

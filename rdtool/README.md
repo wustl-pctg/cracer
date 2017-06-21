@@ -34,11 +34,11 @@ In order for the tool to work correctly, apps need to be compiled with
 The tool and runtime also need this, I believe.
 
 
-# TODO 
+## TODO 
 
-* We should pick a good name for this tool.
-* Split this off into a separate project repo -- it should not be part of Batcher.
-* Debug performance issues
-* Cleanup the OM data structure. Possibly write in C++.
-* BUG (unconfirmed): should re-enable checking at cilk_continue or similar (cilk_resume?)?
-* BUG (cilktool): Why is cilk_resume never called from the runtime? It is documented...check this.
+- Split this off into a separate project repo -- it should not be part of Batcher.
+- Debug performance issues with some benchmarks
+- Cleanup the OM data structure. Possibly write in C++. It may even be
+  worth it to split this into a separate project; I know of no other
+  OM data structures implemented in C/C++, so others might find it
+  useful.
