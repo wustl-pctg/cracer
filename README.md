@@ -50,3 +50,16 @@ Instructions for compiling and using CRacer can be found in rdtool/README.md.
 
 [cracer]: https://dl.acm.org/citation.cfm?id=2935801
 [batcher]: https://dl.acm.org/citation.cfm?id=2612688
+
+## Cititation
+Please use the following citiation when using this software in your work:
+
+Robert Utterback, Kunal Agrawal, Jeremy T. Fineman, I-Ting Angelina Lee, "Provably Good and Practically Efficient Parallel Race Detection for Fork-Join Programs", Proceedings of the 28th ACM Symposium on Parallelism in Algorithms and Architectures (SPAA), 2016.
+Available: https://dl.acm.org/citation.cfm?id=2935801.
+
+## Acknowledgment
+This research was supported in part by National Science Foundation under grant number CCF-1527692, CCF-1218017, CCF-1150036, CCF-1218188, and CCF-1314633.
+
+Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) 
+and do not necessarily reflect the views of the National Science Foundation.
+
